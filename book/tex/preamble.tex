@@ -1,0 +1,119 @@
+% Physical AI Engineering — PDF style. LuaLaTeX + KOMA scrbook, Quarto-safe.
+% (Quarto loads fontspec, xcolor, then hyperref AFTER this include.)
+
+\usepackage{microtype}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\usepackage{scrlayer-scrpage}
+\usepackage{needspace}
+
+% Brand palette.
+\definecolor{reflex}{HTML}{18A999}
+\definecolor{deliberation}{HTML}{1B2A4A}
+\definecolor{learning}{HTML}{E8A33D}
+\definecolor{ink}{HTML}{111318}
+\definecolor{softink}{HTML}{404856}
+\definecolor{paleink}{HTML}{697386}
+
+% Links: deferred so hyperref is loaded first.
+\AtBeginDocument{%
+  \hypersetup{colorlinks=true, linkcolor=deliberation, urlcolor=reflex,
+    citecolor=reflex, filecolor=reflex}%
+}
+
+% Body rhythm.
+\frenchspacing
+\setlength{\emergencystretch}{2em}
+\microtypesetup{protrusion=true, expansion=true, final}
+
+% Headings: Avenir Next (sansfont), indigo, restrained.
+\setkomafont{disposition}{\normalfont\sffamily\color{deliberation}}
+\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{26}{30}\selectfont\color{deliberation}}
+\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{16}{20}\selectfont\color{deliberation}}
+\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{12.5}{16}\selectfont\color{deliberation}}
+\setkomafont{captionlabel}{\normalfont\sffamily\bfseries\color{deliberation}}
+\setkomafont{caption}{\normalfont\small\color{softink}}
+
+% Chapter opener: a small amber label above the title, then a subtle rule.
+\renewcommand*{\chapterformat}{%
+  {\normalfont\sffamily\bfseries\fontsize{11}{13}\selectfont\color{learning}CHAPTER~\thechapter}\par
+  \vspace{0.45\baselineskip}}
+\renewcommand*{\chapterlinesformat}[3]{%
+  \vspace*{0.2in}%
+  #2#3\par\nobreak
+  \vspace{0.55\baselineskip}{\textcolor{softink}{\rule{0.4\linewidth}{0.4pt}}}}
+
+% Section spacing.
+\RedeclareSectionCommand[beforeskip=1.6\baselineskip,afterskip=0.5\baselineskip]{section}
+\RedeclareSectionCommand[beforeskip=1.2\baselineskip,afterskip=0.35\baselineskip]{subsection}
+
+% Running heads/feet: chapter mark inner, page number outer, teal hairline.
+\clearpairofpagestyles
+\automark[chapter]{chapter}
+\renewcommand*{\chaptermarkformat}{}
+\setkomafont{pagehead}{\normalfont\sffamily\small\color{softink}}
+\setkomafont{pagenumber}{\normalfont\sffamily\small\color{softink}}
+\ihead{\headmark}
+\ohead{\pagemark}
+\KOMAoptions{headsepline=0.3pt}
+\addtokomafont{headsepline}{\color{paleink}}
+
+% TOC: chapters indigo bold.
+\setkomafont{chapterentry}{\normalfont\sffamily\bfseries\color{deliberation}}
+\setkomafont{chapterentrypagenumber}{\normalfont\sffamily\bfseries\color{deliberation}}
+
+% Title-page fonts.
+\setkomafont{title}{\normalfont\sffamily\bfseries\fontsize{30}{34}\selectfont\color{deliberation}}
+\setkomafont{subtitle}{\normalfont\sffamily\fontsize{13}{17}\selectfont\color{softink}}
+\setkomafont{author}{\normalfont\large\color{ink}}
+\setkomafont{date}{\normalfont\normalsize\color{softink}}
+
+% The closed-loop motif, drawn in TikZ (no external image).
+\newcommand{\paloop}[1]{%
+  \begin{tikzpicture}
+    \draw[reflex,line width=1.4pt,-{Stealth[length=2.4mm]}] (0:#1) arc (0:312:#1);
+    \fill[learning] (312:#1) circle (0.13*#1);
+  \end{tikzpicture}}
+
+% Cover page then title page, both via \maketitle (correct order under Quarto).
+\makeatletter
+\renewcommand*{\maketitle}{%
+  % --- Cover ---
+  \begin{titlepage}\thispagestyle{empty}%
+    \newgeometry{margin=0pt}%
+    \begin{tikzpicture}[remember picture,overlay]
+      \fill[deliberation] (current page.south west) rectangle (current page.north east);
+      \fill[reflex] ([yshift=3.55in]current page.west) rectangle ([yshift=3.66in]current page.east);
+      \node[anchor=east] at ([xshift=-0.95in,yshift=-0.7in]current page.east)
+        {\paloop{1.5cm}};
+      \node[anchor=south west,text width=6.2in,align=left]
+        at ([xshift=0.95in,yshift=3.9in]current page.south west)
+        {\sffamily\bfseries\fontsize{44}{48}\selectfont\color{white}Physical\hskip 0.25em AI\\Engineering\par
+         \vspace{0.2in}{\sffamily\fontsize{15}{20}\selectfont\color{reflex}A Hands-On Systems Discipline}\par};
+      \node[anchor=south west,text width=6.2in,align=left]
+        at ([xshift=0.95in,yshift=0.95in]current page.south west)
+        {\sffamily\fontsize{13}{17}\selectfont\color{white}Vijay Janapa Reddi\par
+         \vspace{2pt}{\sffamily\fontsize{9.5}{12}\selectfont\color{paleink}Working outline \textbullet\ June 27, 2026}\par};
+    \end{tikzpicture}%
+    \restoregeometry
+  \end{titlepage}%
+  % --- Title page ---
+  \begin{titlepage}\thispagestyle{empty}%
+    \raggedright
+    \vspace*{1.1in}
+    {\textcolor{reflex}{\rule{2.3in}{1.3pt}}\par}
+    \vspace{0.35in}
+    {\usekomafont{title}\@title\par}
+    \vspace{0.16in}
+    {\usekomafont{subtitle}\@subtitle\par}
+    \vspace{0.8in}
+    {\usekomafont{author}\@author\par}
+    \vspace{0.12in}
+    {\usekomafont{date}\@date\par}
+    \vfill
+    {\paloop{0.7cm}\par}
+    \vspace{0.28in}
+    {\sffamily\footnotesize\color{paleink}Closed-loop systems, embodied constraints, and engineering practice.\par}
+  \end{titlepage}%
+}
+\makeatother
