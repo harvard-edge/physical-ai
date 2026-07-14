@@ -1,4 +1,4 @@
-# Physical AI Engineering: The Discipline of Closed-Loop AI
+# Physical AI: Machine Learning Systems That Sense and Act
 
 > ⚠️ **SUPERSEDED for structure.** After the Round-4 review, the canonical chapter
 > list and per-chapter content live in **CHAPTER-OUTLINES.md** (13 chapters, the two
@@ -107,8 +107,8 @@ Not a chapter. The manifesto. Roughly these beats, kept short:
 - **The lineage**: this is TinyML with the loop closed. You learned to make a
   device perceive; now you make it act, and account for the consequence.
 - **The claim, humbly**: "physical AI" is the capability, and it is crowded.
-  This book is the *engineering* of it, the discipline of closed-loop AI, defined
-  by its limit and taught by measurement.
+  This book brings the machine learning systems perspective to it, defining the
+  running loop by its limits and teaching it through measurement.
 - **Who it is for and how to read it**: the embedded and TinyML community stepping
   up; the kit, the hero, and the through-line artifact.
 
@@ -511,6 +511,6 @@ privacy, and consent concrete, never a lab dependency.
    one chapter or two? It is the densest chapter in the book.
 4. **World Model and Perception** as two chapters (Ch4, Ch5) or one "Grounding"
    chapter?
-5. **Name on the cover**: "Physical AI Engineering: The Discipline of Closed-Loop
-   AI," or lead with "Closed-Loop AI" and let "physical AI engineering" be the
-   descriptor?
+
+**Resolved cover title.** *Physical AI: Machine Learning Systems That Sense and
+Act.*

@@ -1,4 +1,4 @@
-# Physical AI Engineering — Curriculum Plan
+# Physical AI — Curriculum Plan
 
 Status: **draft for review, uncommitted.** This is the careful plan we build the
 chapters from: the scope boundary, the pedagogy model, the per-chapter
@@ -9,13 +9,14 @@ mark it up, and we lock the open decisions at the end before writing prose.
 
 ## 1. Scope: what this book is, and is not
 
-**It is** a book about *physical AI engineering as a discipline*: how to engineer
-a system that couples AI to the physical world in a closed loop, under the limits
-of a body, in a space that belongs to a person. The recurring skill is
-**placement**, and the deliverable is a **defended design decision**.
+**It is** *Physical AI: Machine Learning Systems That Sense and Act*. It extends
+the systems perspective into a machine that closes a time-bounded feedback loop
+with the physical world, under the limits of a body and in a space that belongs
+to a person. The recurring skill is **placement**, and the deliverable is a
+**defended design decision**.
 
-**It is not** a machine learning systems course. This is the sharp line, and we
-hold it:
+**It is not** a repeat of a conventional machine learning systems course. This
+is the sharp line, and we hold it:
 
 - **Out of scope** (lives in the companion *Introduction to Machine Learning
   Systems*): how models work inside — quantization, training, architectures,
@@ -24,12 +25,12 @@ hold it:
   (latency, size, accuracy, failure modes, cost) that the engineer must *place*
   in a loop and a box, and *bound* with a safety and privacy envelope.
 
-> The test for every paragraph: *am I teaching how the model works, or how to
-> engineer a physical, closed-loop system around it?* The first is the ML systems
-> book. The second is this one. When a model detail appears (a precision knob, a
-> model size), it appears **only as an illustrative instance of a coupling** — a
-> decision about the component that spends a physical property — never as a
-> subject in its own right.
+> The test for every paragraph is whether it teaches how the model works or what
+> changes when that model participates in a physical feedback loop. The first
+> belongs in the introductory ML systems book. The second belongs here. When a
+> model detail appears (a precision knob, a model size), it appears **only as an
+> illustrative instance of a coupling**, a decision about the component that
+> spends a physical property, never as a subject in its own right.
 
 This is what keeps the book distinct from its neighbors rather than a remix of
 them: the subject is the **coupling and the placement**, not the parts.
@@ -78,7 +79,7 @@ them. New layers relative to the current draft chapters are marked `+`.
 | A | **The question** (styled box) | the one question the chapter answers |
 | + | **Learning objectives** | what the reader will be able to *decide or do* after this chapter — concept-level, testable |
 | C | **The scene** | the robot moment that makes the concept matter; the stakes you can see (the WHY) |
-| **B** | **The concept, taught** | **the physical AI engineering idea developed properly**: the core idea, the mental model, the recurring diagram, the reasoning, the **iron law** (a napkin formula that makes it quantitative), the **properties in tension**. This is the body the current chapters skip. |
+| **B** | **The concept, taught** | **the physical AI systems idea developed properly**: the core idea, the mental model, the recurring diagram, the reasoning, the **iron law** (a napkin formula that makes it quantitative), the **properties in tension**. This is the body the current chapters skip. |
 | D | **The decision: placement** | apply the concept to a placement and defend it — the climax |
 | E | **Why it is physical AI** | tie the concept back to the coupling: the consequence that only exists because the loop is closed around a body. Keeps the chapter from reading as generic systems. |
 | **F** | **Manifestation (the lab)** | predict → build → measure → reconcile. **Hero robot now** (realize it on Reachy); **kit later** (deferred UNO Q rung); analytical/thought-experiment fallback where hardware is out of reach |

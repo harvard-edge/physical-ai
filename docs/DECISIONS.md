@@ -7,6 +7,9 @@ the top of each section.
 
 These are settled, with the reasoning, so we do not relitigate them.
 
+- **The title is *Physical AI: Machine Learning Systems That Sense and Act*.**
+  The title keeps the recognized field name while the subtitle makes the
+  progression from machine learning systems explicit.
 - **Hybrid brain: reflexes local, thinking in the cloud.** The robot is a CM4
   with no accelerator, which cannot run a conversational model at usable speed.
   So the always-on loop lives on the robot and Claude does the reasoning.

@@ -1,4 +1,4 @@
-# Physical AI: a systems way to think about it
+# Physical AI: Machine Learning Systems That Sense and Act
 
 ## Why this document exists
 
