@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -39,6 +40,9 @@ class GroqCloud:
     def __init__(self, api_key: str | None | object = _ENV_API_KEY) -> None:
         self.api_key = configured_api_key() if api_key is _ENV_API_KEY else api_key
         self.chat_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+        self.transcription_model = os.environ.get(
+            "GROQ_TRANSCRIPTION_MODEL", "whisper-large-v3-turbo"
+        )
 
     @property
     def configured(self) -> bool:
@@ -127,6 +131,51 @@ class GroqCloud:
         result["reply"] = result["reply"].strip()[:200]
         return result
 
+    def transcribe(self, audio: bytes, *, filename: str = "speech.wav") -> str:
+        """Transcribe one short audio clip with Groq Whisper."""
+        if not audio:
+            raise CloudUnavailable("No microphone audio was captured")
+        if len(audio) > 10 * 1024 * 1024:
+            raise CloudUnavailable("The microphone recording is too large")
+
+        boundary = f"mayas-reachy-{secrets.token_hex(12)}"
+        fields = {
+            "model": self.transcription_model,
+            "response_format": "json",
+            "language": "en",
+        }
+        body = bytearray()
+        for name, value in fields.items():
+            body.extend(f"--{boundary}\r\n".encode())
+            body.extend(
+                f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode()
+            )
+            body.extend(value.encode())
+            body.extend(b"\r\n")
+        body.extend(f"--{boundary}\r\n".encode())
+        body.extend(
+            (
+                f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+                "Content-Type: audio/wav\r\n\r\n"
+            ).encode()
+        )
+        body.extend(audio)
+        body.extend(f"\r\n--{boundary}--\r\n".encode())
+
+        raw = self._request_raw(
+            "/audio/transcriptions",
+            bytes(body),
+            content_type=f"multipart/form-data; boundary={boundary}",
+        )
+        try:
+            parsed = json.loads(raw)
+            text = parsed["text"].strip()
+        except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as exc:
+            raise CloudUnavailable("Groq returned an invalid transcription") from exc
+        if not text:
+            raise CloudUnavailable("I could not hear any words")
+        return text[:500]
+
     def _request_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         raw = self._request_bytes(path, payload)
         try:
@@ -138,14 +187,21 @@ class GroqCloud:
         return parsed
 
     def _request_bytes(self, path: str, payload: dict[str, Any]) -> bytes:
+        return self._request_raw(
+            path,
+            json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+        )
+
+    def _request_raw(self, path: str, data: bytes, *, content_type: str) -> bytes:
         if not self.api_key:
             raise CloudUnavailable("GROQ_API_KEY is not configured")
         request = urllib.request.Request(
             GROQ_BASE_URL + path,
-            data=json.dumps(payload).encode("utf-8"),
+            data=data,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
+                "Content-Type": content_type,
                 "User-Agent": "mayas-reachy/0.1",
             },
             method="POST",

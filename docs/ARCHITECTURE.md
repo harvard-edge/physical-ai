@@ -4,9 +4,11 @@
 
 ```text
 Maya or Alexander
-       │ type or browser dictation
+       │ type or tap the microphone
        ▼
 robot-hosted web interface on port 8042
+       │
+       ├──► Reachy onboard mic ──► Groq Whisper transcription
        │
        ▼
 Groq LLM ──► structured intent, candidate fact, reply, and mood
@@ -36,9 +38,10 @@ The robot splits work by latency and compute cost.
 - **Local work:** The robot hosts the interface, validates model output, writes
   memory, synthesizes speech with Piper, and controls motion. It also retains a
   packaged greeting when the network is unavailable.
-- **Cloud work:** Groq runs `openai/gpt-oss-20b` for natural-language
-  understanding and reply generation. A strict JSON schema keeps the boundary
-  between model output and application state explicit.
+- **Cloud work:** Groq runs `whisper-large-v3-turbo` for transcription and
+  `openai/gpt-oss-20b` for natural-language understanding and reply generation.
+  A strict JSON schema keeps the boundary between model output and application
+  state explicit.
 
 The CM4 has no accelerator and is not a practical host for a conversational
 model. It is a good host for the responsive physical loop and a small local
@@ -76,7 +79,7 @@ one of the allowed moods. Code maps that mood to bounded SDK targets.
 
 ## Next Extensions
 
-Browser dictation is the simplest first microphone path. Later work can move
-speech recognition onto the robot, add a visible push-to-talk or wake-word
-policy, and add camera turns. Those changes should preserve the current rule
-that one native app owns the physical loop.
+The microphone button now records a short clip through Reachy's onboard media
+API. Later work can add local speech recognition for offline privacy, a wake-word
+policy, and camera turns. Those changes should preserve the current rule that
+one native app owns the physical loop.

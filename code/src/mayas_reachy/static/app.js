@@ -15,6 +15,7 @@ const greetButton = document.querySelector("#greet");
 let state = "starting";
 let mode = "robot";
 let cloudConfigured = false;
+let supportsRobotListening = false;
 let busy = false;
 
 function setPill(kind, text) {
@@ -32,12 +33,15 @@ function renderStatus(data) {
   state = data.state || (data.mode === "simulation" ? "simulation" : "ready");
   mode = data.mode || mode;
   cloudConfigured = Boolean(data.cloud_configured);
+  supportsRobotListening = Boolean(data.supports_robot_listening);
 
   robot.classList.toggle("is-talking", state === "speaking");
   robot.classList.toggle("is-thinking", state === "thinking");
-  if (greetButton) greetButton.disabled = ["queued", "speaking", "thinking"].includes(state);
+  if (greetButton) greetButton.disabled = ["queued", "listening", "speaking", "thinking"].includes(state);
 
-  if (state === "thinking") {
+  if (state === "listening") {
+    setPill("is-live", "Listening… speak to your robot");
+  } else if (state === "thinking") {
     setPill("is-think", "Cloud brain is thinking…");
   } else if (state === "speaking" || state === "queued") {
     setPill("is-live", "Speaking on Reachy");
@@ -159,6 +163,46 @@ async function send(text) {
   }
 }
 
+async function listenOnRobot() {
+  if (busy) return;
+  busy = true;
+  sendButton.disabled = true;
+  micButton.disabled = true;
+  micButton.classList.add("is-listening");
+  clearSeed();
+  const listening = addBubble("Listening…", "bot", "is-pending");
+  setPill("is-live", "Listening… speak to your robot");
+
+  try {
+    const response = await fetch("/api/listen", { method: "POST" });
+    const data = await response.json();
+    listening.remove();
+    if (!data.ok) {
+      addBubble(data.error || "I couldn't hear that. Please try again.", "bot");
+      return;
+    }
+    addBubble(data.transcript, "kid");
+    addBubble(data.reply, "bot");
+    addMeta(data);
+    if (data.speech_mode === "browser") {
+      simulateVoice(data.reply, data.duration_seconds || 2, data.mood);
+    } else {
+      robot.classList.add("is-talking");
+      setTimeout(() => robot.classList.remove("is-talking"),
+        (data.duration_seconds || 2) * 1000 + 700);
+    }
+  } catch (error) {
+    listening.remove();
+    addBubble("I couldn't reach my microphone. Please try again.", "bot");
+  } finally {
+    busy = false;
+    sendButton.disabled = false;
+    micButton.disabled = false;
+    micButton.classList.remove("is-listening");
+    input.focus();
+  }
+}
+
 async function playGreeting() {
   if (busy) return;
   try {
@@ -182,12 +226,10 @@ form.addEventListener("submit", (event) => {
 exampleButton?.addEventListener("click", () => send(exampleButton.textContent));
 greetButton?.addEventListener("click", playGreeting);
 
-// Browser speech-to-text keeps the first version simple. The transcript then
-// follows the exact same LLM and memory path as typed text.
+// The installed app records through Reachy's onboard microphone. Browser speech
+// recognition remains a development fallback when the robot backend is absent.
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) {
-  micButton.hidden = true;
-} else {
+if (SpeechRecognition) {
   const recognition = new SpeechRecognition();
   recognition.lang = "en-US";
   recognition.interimResults = true;
@@ -195,7 +237,8 @@ if (!SpeechRecognition) {
   let listening = false;
 
   micButton.addEventListener("click", () => {
-    if (listening) recognition.stop();
+    if (supportsRobotListening) listenOnRobot();
+    else if (listening) recognition.stop();
     else try { recognition.start(); } catch (_) { /* already starting */ }
   });
   recognition.onstart = () => {
@@ -214,6 +257,8 @@ if (!SpeechRecognition) {
     input.placeholder = "Teach your robot something…";
     if (input.value.trim()) send(input.value);
   };
+} else {
+  micButton.addEventListener("click", listenOnRobot);
 }
 
 getStatus().catch(() => setPill("", "Starting app…"));

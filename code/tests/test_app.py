@@ -2,7 +2,11 @@ import tempfile
 import threading
 import types
 import unittest
+import wave
+from io import BytesIO
 from pathlib import Path
+
+import numpy as np
 
 try:
     import reachy_mini  # noqa: F401
@@ -41,9 +45,23 @@ from mayas_reachy.voice import PiperVoiceSynthesizer
 class FakeMedia:
     def __init__(self):
         self.played = []
+        self.recording = False
+        self.samples = [np.array([[0.2, 0.1], [-0.2, -0.1]], dtype=np.float32)]
 
     def play_sound(self, path):
         self.played.append(path)
+
+    def start_recording(self):
+        self.recording = True
+
+    def get_audio_sample(self):
+        return self.samples.pop(0) if self.samples else None
+
+    def get_input_audio_samplerate(self):
+        return 16_000
+
+    def stop_recording(self):
+        self.recording = False
 
 
 class FakeMini:
@@ -94,7 +112,22 @@ class NativeAppTest(unittest.TestCase):
             self.assertEqual(status["robot_name"], "Pixel")
             self.assertFalse(status["cloud_configured"])
             self.assertEqual(status["speech_provider"], "browser")
+            self.assertTrue(status["supports_robot_listening"])
             self.assertNotIn("history", status)
+
+    def test_microphone_capture_returns_mono_pcm_wav(self):
+        mini = FakeMini()
+
+        audio = MayasReachyApp.capture_microphone(
+            mini, threading.Event(), duration=0.03
+        )
+
+        self.assertFalse(mini.media.recording)
+        with wave.open(BytesIO(audio), "rb") as recording:
+            self.assertEqual(recording.getnchannels(), 1)
+            self.assertEqual(recording.getsampwidth(), 2)
+            self.assertEqual(recording.getframerate(), 16_000)
+            self.assertGreater(recording.getnframes(), 0)
 
     def test_piper_is_configured_only_with_model_and_config(self):
         with tempfile.TemporaryDirectory() as directory:

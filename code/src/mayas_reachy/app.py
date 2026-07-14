@@ -6,6 +6,7 @@ owner of the physical control loop.
 """
 from __future__ import annotations
 
+import io
 import logging
 import queue
 import threading
@@ -20,7 +21,7 @@ from pydantic import BaseModel, Field
 from reachy_mini import ReachyMini, ReachyMiniApp
 from reachy_mini.utils import create_head_pose
 
-from .cloud import GroqCloud
+from .cloud import CloudUnavailable, GroqCloud
 from .constants import GREETING_TEXT
 from .conversation import Conversation
 from .memory import MemoryStore
@@ -42,7 +43,7 @@ class ChatIn(BaseModel):
 
 @dataclass
 class ChatJob:
-    text: str
+    text: str | None
     ready: threading.Event = field(default_factory=threading.Event)
     result: dict[str, Any] | None = None
 
@@ -95,6 +96,10 @@ class MayasReachyApp(ReachyMiniApp):
         def chat(inp: ChatIn) -> dict[str, Any]:
             return self.submit_chat(inp.text)
 
+        @self.settings_app.post("/api/listen")
+        def listen() -> dict[str, Any]:
+            return self.submit_listen()
+
     def status_snapshot(self) -> dict[str, Any]:
         """Return thread-safe state for the robot-hosted interface."""
         with self._state_lock:
@@ -109,13 +114,19 @@ class MayasReachyApp(ReachyMiniApp):
                 "cloud_provider": "groq",
                 "cloud_configured": self.cloud.configured,
                 "speech_provider": "piper" if self.voice.configured else "browser",
+                "supports_robot_listening": True,
                 "robot_name": self.memory.robot_name(),
             }
 
     def request_greeting(self) -> bool:
         """Queue one greeting unless one is already queued or playing."""
         with self._state_lock:
-            if not self._robot_ready or self._state in {"queued", "thinking", "speaking"}:
+            if not self._robot_ready or self._state in {
+                "queued",
+                "listening",
+                "thinking",
+                "speaking",
+            }:
                 return False
             self._state = "queued"
             self._last_error = None
@@ -130,7 +141,16 @@ class MayasReachyApp(ReachyMiniApp):
         with self._state_lock:
             if not self._robot_ready:
                 return {"ok": False, "error": "The robot is still waking up."}
-        job = ChatJob(text=cleaned[:500])
+        return self._submit_job(ChatJob(text=cleaned[:500]), timeout=timeout)
+
+    def submit_listen(self, *, timeout: float = 45.0) -> dict[str, Any]:
+        """Queue one short onboard-microphone turn."""
+        with self._state_lock:
+            if not self._robot_ready:
+                return {"ok": False, "error": "The robot is still waking up."}
+        return self._submit_job(ChatJob(text=None), timeout=timeout)
+
+    def _submit_job(self, job: ChatJob, *, timeout: float) -> dict[str, Any]:
         try:
             self._chat_queue.put_nowait(job)
         except queue.Full:
@@ -215,9 +235,25 @@ class MayasReachyApp(ReachyMiniApp):
         stop_event: threading.Event,
     ) -> None:
         """Understand one turn, publish its reply, then voice and embody it."""
-        self._set_state("thinking")
         try:
-            plan = self.conversation.respond(job.text)
+            transcript: str | None = None
+            if job.text is None:
+                self._set_state("listening")
+                try:
+                    audio = self.capture_microphone(reachy_mini, stop_event)
+                    self._set_state("thinking")
+                    transcript = self.cloud.transcribe(audio)
+                except CloudUnavailable as exc:
+                    job.result = {"ok": False, "error": str(exc)}
+                    job.ready.set()
+                    self._set_state("ready")
+                    return
+                text = transcript
+            else:
+                self._set_state("thinking")
+                text = job.text
+
+            plan = self.conversation.respond(text)
             audio_path: Path | None = None
             speech_mode = "browser"
             if self.voice.configured:
@@ -243,6 +279,8 @@ class MayasReachyApp(ReachyMiniApp):
                 "duration_seconds": round(duration, 3),
                 "robot_name": self.memory.robot_name(),
             }
+            if transcript is not None:
+                job.result["transcript"] = transcript
             job.ready.set()
 
             self._set_state("speaking")
@@ -264,6 +302,45 @@ class MayasReachyApp(ReachyMiniApp):
             job.ready.set()
             self._set_state("error", error=str(exc))
             self._reset_robot(reachy_mini)
+
+    @staticmethod
+    def capture_microphone(
+        reachy_mini: ReachyMini,
+        stop_event: threading.Event,
+        *,
+        duration: float = 5.0,
+    ) -> bytes:
+        """Capture a short onboard-microphone clip as 16-bit PCM WAV."""
+        chunks: list[np.ndarray] = []
+        reachy_mini.media.start_recording()
+        started = time.monotonic()
+        try:
+            while not stop_event.is_set() and time.monotonic() - started < duration:
+                sample = reachy_mini.media.get_audio_sample()
+                if sample is not None and np.size(sample):
+                    chunks.append(np.asarray(sample, dtype=np.float32))
+                stop_event.wait(0.02)
+        finally:
+            reachy_mini.media.stop_recording()
+
+        if not chunks:
+            raise CloudUnavailable("I could not hear the microphone. Please try again.")
+        samples = np.concatenate(chunks, axis=0)
+        if samples.ndim > 1:
+            samples = samples.mean(axis=1)
+        samples = np.clip(samples.reshape(-1), -1.0, 1.0)
+        pcm = (samples * 32767.0).astype("<i2").tobytes()
+        sample_rate = reachy_mini.media.get_input_audio_samplerate()
+        if not isinstance(sample_rate, int) or sample_rate <= 0:
+            sample_rate = 16_000
+
+        output = io.BytesIO()
+        with wave.open(output, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm)
+        return output.getvalue()
 
     def perform_response(
         self,

@@ -151,6 +151,7 @@ def chat(inp: SayIn):
         "source": plan.source,
         "learned": plan.learned,
         "speech_mode": "browser" if mode == "simulation" else "robot",
+        "supports_robot_listening": False,
         "duration_seconds": max(1.2, min(8.0, len(plan.text.split()) * 0.34)),
         "robot_name": _memory.robot_name(),
         "mode": mode,

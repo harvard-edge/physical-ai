@@ -7,12 +7,13 @@ memory, speech, and physical control in one process.
 
 ## Current Teaching Loop
 
-1. Maya or Alexander types or dictates a message in the website.
-2. The robot sends the text to Groq with a strict response schema.
-3. The LLM returns an intent, a candidate fact, a reply, and a mood.
-4. Application code validates the candidate before memory can change.
-5. The fact is stored locally and included in later LLM context.
-6. Piper speaks the reply while the Reachy SDK moves the robot safely.
+1. Maya or Alexander types a message or taps the microphone in the website.
+2. Reachy's onboard microphone records the child and Groq Whisper transcribes it.
+3. The robot sends the text to Groq with a strict response schema.
+4. The LLM returns an intent, a candidate fact, a reply, and a mood.
+5. Application code validates the candidate before memory can change.
+6. The fact is stored locally and included in later LLM context.
+7. Piper speaks the reply while the Reachy SDK moves the robot safely.
 
 There is no hardcoded phrase parser. The LLM interprets the language, while
 ordinary code owns validation, persistence, and physical safety.

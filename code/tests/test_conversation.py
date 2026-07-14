@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from mayas_reachy.cloud import GroqCloud, configured_api_key
+from mayas_reachy.cloud import CloudUnavailable, GroqCloud, configured_api_key
 from mayas_reachy.conversation import Conversation
 from mayas_reachy.memory import MemoryStore
 
@@ -131,6 +131,27 @@ class ConversationTest(unittest.TestCase):
         response_format = captured["payload"]["response_format"]
         self.assertEqual(response_format["type"], "json_schema")
         self.assertTrue(response_format["json_schema"]["strict"])
+
+    def test_groq_transcription_sends_wav_as_multipart(self):
+        cloud = GroqCloud(api_key="test-key")
+        captured = {}
+
+        def fake_request(path, data, *, content_type):
+            captured.update(path=path, data=data, content_type=content_type)
+            return b'{"text":"Your name is Comet."}'
+
+        with patch.object(cloud, "_request_raw", side_effect=fake_request):
+            transcript = cloud.transcribe(b"RIFF-test-wav")
+
+        self.assertEqual(transcript, "Your name is Comet.")
+        self.assertEqual(captured["path"], "/audio/transcriptions")
+        self.assertIn("multipart/form-data", captured["content_type"])
+        self.assertIn(b"whisper-large-v3-turbo", captured["data"])
+        self.assertIn(b"RIFF-test-wav", captured["data"])
+
+    def test_groq_transcription_rejects_empty_audio(self):
+        with self.assertRaises(CloudUnavailable):
+            GroqCloud(api_key="test-key").transcribe(b"")
 
 
 if __name__ == "__main__":
