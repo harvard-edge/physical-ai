@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mayas_reachy.memory import MemoryStore
+from robot_app.memory import MemoryStore
 
 
 class MemoryStoreTest(unittest.TestCase):

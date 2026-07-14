@@ -2,7 +2,7 @@
 
 `code/` is one installable Python project. Its wheel is installed into Reachy
 Mini's app environment, where the official app manager starts the
-`mayas_reachy` entry point. The robot then hosts the website, conversation loop,
+`mayas_reachy` entry point from the neutral `robot_app` package. The robot then hosts the website, conversation loop,
 memory, speech, and physical control in one process.
 
 ## Current Teaching Loop
@@ -26,7 +26,7 @@ ordinary code owns validation, persistence, and physical safety.
 ```text
 code/
   pyproject.toml              package metadata and robot app entry point
-  mayas_reachy/
+  robot_app/
     app.py                    lifecycle, HTTP routes, queue, and robot loop
     conversation.py           teaching policy and memory-write boundary
     cloud.py                  Groq structured-output adapter

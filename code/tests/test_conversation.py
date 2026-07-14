@@ -3,9 +3,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from mayas_reachy.cloud import CloudUnavailable, GroqCloud, configured_api_key
-from mayas_reachy.conversation import Conversation
-from mayas_reachy.memory import MemoryStore
+from robot_app.cloud import CloudUnavailable, GroqCloud, configured_api_key
+from robot_app.conversation import Conversation
+from robot_app.memory import MemoryStore
 
 
 class FakeUnderstandingCloud:
@@ -24,7 +24,7 @@ class FailingCloud:
     configured = True
 
     def analyze_turn(self, user_text, *, robot_name, history, memory_context=None):
-        from mayas_reachy.cloud import CloudUnavailable
+        from robot_app.cloud import CloudUnavailable
 
         raise CloudUnavailable("temporary failure")
 
@@ -95,7 +95,7 @@ class ConversationTest(unittest.TestCase):
     def test_configured_cloud_failure_does_not_claim_key_is_missing(self):
         with tempfile.TemporaryDirectory() as directory:
             memory = MemoryStore(Path(directory) / "memory.json")
-            with self.assertLogs("mayas_reachy.conversation", level="WARNING"):
+            with self.assertLogs("robot_app.conversation", level="WARNING"):
                 plan = Conversation(memory, FailingCloud()).respond(
                     "Your name is Pixel."
                 )

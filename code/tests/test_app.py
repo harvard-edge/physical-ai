@@ -37,10 +37,10 @@ except ModuleNotFoundError:
     sys.modules["reachy_mini"] = sdk
     sys.modules["reachy_mini.utils"] = sdk_utils
 
-from mayas_reachy.app import MayasReachyApp
-from mayas_reachy.cloud import GroqCloud
-from mayas_reachy.memory import MemoryStore
-from mayas_reachy.voice import PiperVoiceSynthesizer
+from robot_app.app import MayasReachyApp
+from robot_app.cloud import GroqCloud
+from robot_app.memory import MemoryStore
+from robot_app.voice import PiperVoiceSynthesizer
 
 
 class FakeMedia:
@@ -90,7 +90,7 @@ class NativeAppTest(unittest.TestCase):
                 mini,
                 threading.Event(),
                 audio_path=Path(__file__).parents[1]
-                / "mayas_reachy"
+                / "robot_app"
                 / "assets"
                 / "hello_alexander_and_maya.wav",
                 duration=0.04,
