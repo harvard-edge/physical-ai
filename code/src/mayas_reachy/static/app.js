@@ -18,6 +18,7 @@ let cloudConfigured = false;
 let supportsRobotListening = false;
 let busy = false;
 let robotListening = false;
+let listenJobId = null;
 
 function setPill(kind, text) {
   pill.className = `pill ${kind}`;
@@ -40,7 +41,14 @@ function renderStatus(data) {
   robot.classList.toggle("is-thinking", state === "thinking");
   if (greetButton) greetButton.disabled = ["queued", "listening", "speaking", "thinking"].includes(state);
 
-  if (state === "listening") {
+  if (robotListening && ["thinking", "speaking", "ready"].includes(state)) {
+    robotListening = false;
+    micButton.classList.remove("is-listening");
+    micButton.setAttribute("aria-label", "Tap to talk");
+    micButton.title = "Tap to talk";
+  }
+
+  if (state === "listening" || state === "listen_queued") {
     setPill("is-live", "Listening… speak to your robot");
   } else if (state === "thinking") {
     setPill("is-think", "Cloud brain is thinking…");
@@ -169,8 +177,12 @@ async function send(text) {
 
 async function listenOnRobot() {
   if (robotListening) {
-    await fetch("/api/listen/stop", { method: "POST" }).catch(() => {});
+    robotListening = false;
+    micButton.classList.remove("is-listening");
+    micButton.setAttribute("aria-label", "Tap to talk");
+    micButton.title = "Tap to talk";
     setPill("is-think", "Finishing what I heard…");
+    fetch("/api/listen/stop", { method: "POST" }).catch(() => {});
     return;
   }
   if (busy) return;
@@ -185,9 +197,40 @@ async function listenOnRobot() {
   setPill("is-live", "Listening… speak to your robot");
 
   try {
-    const response = await fetch("/api/listen", { method: "POST" });
+    const response = await fetch("/api/listen/start", { method: "POST" });
     const data = await response.json();
+    if (!data.ok) {
+      listening.remove();
+      addBubble(data.error || "I couldn't hear that. Please try again.", "bot");
+      return;
+    }
+    listenJobId = data.job_id;
+    await pollListeningResult(listenJobId, listening);
+  } catch (error) {
     listening.remove();
+    addBubble("I couldn't reach my microphone. Please try again.", "bot");
+  } finally {
+    busy = false;
+    robotListening = false;
+    listenJobId = null;
+    sendButton.disabled = false;
+    micButton.classList.remove("is-listening");
+    micButton.setAttribute("aria-label", "Tap to talk");
+    micButton.title = "Tap to talk";
+    input.focus();
+  }
+}
+
+async function pollListeningResult(jobId, pendingBubble) {
+  while (listenJobId === jobId) {
+    const response = await fetch(`/api/listen/result/${jobId}`, { cache: "no-store" });
+    const data = await response.json();
+    if (!data.complete) {
+      if (data.state === "thinking") pendingBubble.textContent = "Thinking…";
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      continue;
+    }
+    pendingBubble.remove();
     if (!data.ok) {
       addBubble(data.error || "I couldn't hear that. Please try again.", "bot");
       return;
@@ -202,17 +245,7 @@ async function listenOnRobot() {
       setTimeout(() => robot.classList.remove("is-talking"),
         (data.duration_seconds || 2) * 1000 + 700);
     }
-  } catch (error) {
-    listening.remove();
-    addBubble("I couldn't reach my microphone. Please try again.", "bot");
-  } finally {
-    busy = false;
-    robotListening = false;
-    sendButton.disabled = false;
-    micButton.classList.remove("is-listening");
-    micButton.setAttribute("aria-label", "Tap to talk");
-    micButton.title = "Tap to talk";
-    input.focus();
+    return;
   }
 }
 

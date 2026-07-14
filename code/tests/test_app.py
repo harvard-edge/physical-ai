@@ -116,6 +116,22 @@ class NativeAppTest(unittest.TestCase):
             self.assertTrue(status["supports_robot_listening"])
             self.assertNotIn("history", status)
 
+    def test_listening_session_starts_without_waiting_for_completion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = MayasReachyApp(
+                memory=MemoryStore(Path(directory) / "memory.sqlite3"),
+                cloud=GroqCloud(api_key=None),
+            )
+            app._robot_ready = True
+            app._state = "ready"
+
+            started = app.start_listening()
+            pending = app.listening_result(started["job_id"])
+
+            self.assertTrue(started["accepted"])
+            self.assertEqual(app._state, "listen_queued")
+            self.assertFalse(pending["complete"])
+
     def test_microphone_capture_returns_mono_pcm_wav(self):
         mini = FakeMini()
 

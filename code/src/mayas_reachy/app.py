@@ -12,6 +12,7 @@ import queue
 import threading
 import time
 import wave
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,8 @@ class MemoryResetIn(BaseModel):
 @dataclass
 class ChatJob:
     text: str | None
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: float = field(default_factory=time.monotonic)
     ready: threading.Event = field(default_factory=threading.Event)
     result: dict[str, Any] | None = None
 
@@ -79,6 +82,8 @@ class MayasReachyApp(ReachyMiniApp):
         self._listen_stop = threading.Event()
         self._listening_started_at: float | None = None
         self._chat_queue: queue.Queue[ChatJob] = queue.Queue(maxsize=4)
+        self._jobs_lock = threading.Lock()
+        self._listen_jobs: dict[str, ChatJob] = {}
         self._state = "starting"
         self._robot_ready = False
         self._last_error: str | None = None
@@ -108,6 +113,14 @@ class MayasReachyApp(ReachyMiniApp):
         @self.settings_app.post("/api/listen")
         def listen() -> dict[str, Any]:
             return self.submit_listen()
+
+        @self.settings_app.post("/api/listen/start")
+        def start_listening() -> dict[str, Any]:
+            return self.start_listening()
+
+        @self.settings_app.get("/api/listen/result/{job_id}")
+        def listening_result(job_id: str) -> dict[str, Any]:
+            return self.listening_result(job_id)
 
         @self.settings_app.post("/api/listen/stop")
         def stop_listening() -> dict[str, Any]:
@@ -153,6 +166,7 @@ class MayasReachyApp(ReachyMiniApp):
         with self._state_lock:
             if not self._robot_ready or self._state in {
                 "queued",
+                "listen_queued",
                 "listening",
                 "thinking",
                 "speaking",
@@ -178,7 +192,48 @@ class MayasReachyApp(ReachyMiniApp):
         with self._state_lock:
             if not self._robot_ready:
                 return {"ok": False, "error": "The robot is still waking up."}
+        self._listen_stop.clear()
         return self._submit_job(ChatJob(text=None), timeout=timeout)
+
+    def start_listening(self) -> dict[str, Any]:
+        """Queue a microphone turn and return immediately for a responsive UI."""
+        with self._state_lock:
+            if not self._robot_ready:
+                return {"ok": False, "error": "The robot is still waking up."}
+            if self._state not in {"ready"}:
+                return {"ok": False, "error": "The robot is busy right now."}
+            self._state = "listen_queued"
+            self._last_error = None
+            self._listen_stop.clear()
+        job = ChatJob(text=None)
+        try:
+            self._chat_queue.put_nowait(job)
+        except queue.Full:
+            self._set_state("ready")
+            return {"ok": False, "error": "I am still thinking about the last message."}
+        with self._jobs_lock:
+            cutoff = time.monotonic() - 300
+            self._listen_jobs = {
+                key: value
+                for key, value in self._listen_jobs.items()
+                if not value.ready.is_set() or value.created_at >= cutoff
+            }
+            self._listen_jobs[job.id] = job
+        return {"ok": True, "accepted": True, "job_id": job.id}
+
+    def listening_result(self, job_id: str) -> dict[str, Any]:
+        """Poll a queued microphone turn without holding an HTTP request open."""
+        with self._jobs_lock:
+            job = self._listen_jobs.get(job_id)
+            if job is None:
+                return {"ok": False, "error": "That listening session was not found."}
+            if not job.ready.is_set():
+                with self._state_lock:
+                    current_state = self._state
+                return {"ok": True, "complete": False, "state": current_state}
+            result = dict(job.result or {"ok": False, "error": "No response was produced."})
+        result["complete"] = True
+        return result
 
     def _submit_job(self, job: ChatJob, *, timeout: float) -> dict[str, Any]:
         try:
@@ -269,7 +324,6 @@ class MayasReachyApp(ReachyMiniApp):
             transcript: str | None = None
             if job.text is None:
                 self._set_state("listening")
-                self._listen_stop.clear()
                 self._listening_started_at = time.monotonic()
                 try:
                     audio = self.capture_microphone(

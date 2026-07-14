@@ -111,3 +111,6 @@ one of the allowed moods. Code maps that mood to bounded SDK targets.
 
 The adoption rule is: reuse directly, wrap behind an adapter, borrow a proven
 pattern, and only then build the smallest missing component.
+
+The phased implementation and verification plan lives in
+[`SYSTEM-ROADMAP.md`](SYSTEM-ROADMAP.md).
