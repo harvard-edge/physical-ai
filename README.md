@@ -38,12 +38,17 @@ always-on reflexes (wake word, simple motion, local voice) but not a full
 conversational model, so the thinking runs in the cloud. That split is the
 architecture, not a compromise.
 
+All of the software lives in `code/` (the way the book lives in `book/`). Start
+with `code/README.md`; the fastest way to see it is `./code/web/run.sh`, the
+chat website you talk to the robot through.
+
 ## Status
 
 - **Phase 0 (foundation) is proven on the real robot**: it speaks, moves, knows
   a name, and sang Happy Birthday. See `docs/ROADMAP.md`.
-- Existing prototypes to fold in: a happy-birthday app and a skills playground
-  (currently in sibling folders, to be integrated here).
+- The skills playground is now folded into `code/body/`. The chat website in
+  `code/web/` is the current entry point: type or speak, and the robot says it
+  with a gesture (Milestone 1, no cloud or memory yet).
 
 ## Docs
 
