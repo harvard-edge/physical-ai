@@ -5,6 +5,7 @@ from mios_controller.council import (
     CouncilTask,
     new_handoff_id,
 )
+from mios_controller.council_workers import deterministic_workers
 
 
 def test_council_persists_handoffs_and_routes_context(tmp_path):
@@ -53,3 +54,17 @@ def test_coordinator_requires_matching_terminal_handoff(tmp_path):
         assert "does not match" in str(error)
     else:
         raise AssertionError("mismatched handoff was accepted")
+
+
+def test_deterministic_council_runs_multiple_specialists(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    coordinator = CouncilCoordinator(store)
+    for role, worker in deterministic_workers().items():
+        coordinator.register(role, worker)
+        store.enqueue(CouncilTask(f"MIOS-TASK-{role.upper()}-001", role, "Design the memory lifecycle"))
+
+    results = coordinator.run_until_idle(tuple(deterministic_workers()), max_steps=2)
+
+    assert len(results) == 7
+    assert {result.role for result in results} == set(deterministic_workers())
+    assert all(result.status == "COMPLETED" for result in results)
