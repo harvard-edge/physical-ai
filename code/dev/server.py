@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 HERE = Path(__file__).resolve().parent
 CODE = HERE.parent
-STATIC = CODE / "src" / "mayas_reachy" / "static"
+STATIC = CODE / "mayas_reachy" / "static"
 
 from mayas_reachy.cloud import GroqCloud
 from mayas_reachy.constants import GREETING_TEXT

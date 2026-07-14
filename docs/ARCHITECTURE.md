@@ -32,7 +32,7 @@ FastAPI routes, a single action queue, the SDK connection, and the packaged web
 interface. The browser requests actions but never controls motors directly.
 
 The implementation is one wheel built from `code/`. Production modules live in
-`code/src/mayas_reachy/`; Mac-only adapters live in `code/dev/`; behavioral
+`code/mayas_reachy/`; Mac-only adapters live in `code/dev/`; behavioral
 tests live in `code/tests/`.
 
 ## Two-Speed Brain

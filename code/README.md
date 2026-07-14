@@ -26,7 +26,7 @@ ordinary code owns validation, persistence, and physical safety.
 ```text
 code/
   pyproject.toml              package metadata and robot app entry point
-  src/mayas_reachy/
+  mayas_reachy/
     app.py                    lifecycle, HTTP routes, queue, and robot loop
     conversation.py           teaching policy and memory-write boundary
     cloud.py                  Groq structured-output adapter

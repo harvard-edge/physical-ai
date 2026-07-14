@@ -90,7 +90,6 @@ class NativeAppTest(unittest.TestCase):
                 mini,
                 threading.Event(),
                 audio_path=Path(__file__).parents[1]
-                / "src"
                 / "mayas_reachy"
                 / "assets"
                 / "hello_alexander_and_maya.wav",
