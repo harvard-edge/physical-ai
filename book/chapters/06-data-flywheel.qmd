@@ -1,38 +1,143 @@
-# The data flywheel
+# The Data Flywheel
 
-> **Question:** how does the system get better from its own experience?
+::: {.callout-question}
 
-## The margin
+How does the system get better from its own experience?
 
-Data quality versus quantity; the cost of labels; the privacy of whatever you
-collect.
+:::
 
-**Properties in tension**: adaptivity against privacy, paid for in data and observability.
+Until now the robot has been fixed. It senses, decides, and acts with whatever
+model it shipped with, and it is exactly as capable on its thousandth day as on
+its first. That changes here: the system stops being automation and starts being
+AI, because it gets better at the job by doing the job.
 
-## Components you use
+The mechanism is a loop, and it is the same loop that keeps a child coming back.
+When the child corrects the robot, praises it, or teaches it something new, she is
+not just interacting. She is labeling data. What makes the robot engaging to teach
+is exactly what makes it improve. The engagement loop and the data loop are one
+loop, and seeing that is the whole chapter.
 
-- Storage and connectivity.
-- An on-device curator that decides what is worth keeping.
+## The flywheel
 
-## What you build
+The loop has four stages (@fig-flywheel). The robot collects
+experience as it runs. A curator keeps the small fraction of it that is worth
+learning from. That kept data trains an improved model, off the device, where
+there is room and power to do it. The improved model deploys back to the robot,
+which now collects better experience than before. Each turn makes the next turn
+richer, which is what makes it a flywheel and not just a pipeline.
 
-An episode logger plus an interestingness curator, with a human in the loop
-(the child's reactions are the labels).
+::: {#fig-flywheel fig-cap="**The data flywheel**: the robot collects experience, a curator keeps the informative fraction, an improved model is trained off-device and deployed back, and the better behavior collects better experience on the next turn." fig-alt="A four-stage cycle running clockwise: collect the robot's experience, curate to keep the informative few, adapt by training off-device, and deploy the improved model, which collects again. The center notes that engagement is collection and the loop spins only if each round's gain beats its cost."}
+![](../assets/diagrams/flywheel.svg)
+:::
 
-## What you measure
+::: {.column-margin}
+**Properties in tension**: adaptivity against privacy. The data that improves the
+system is the same private data you were careful to keep.
+:::
 
-Data yield, the fraction kept, and downstream improvement after retraining.
+## Quality, not quantity
+
+The instinct is to log everything and sort it out later. It is the wrong instinct,
+and the memory chapter already said why: storage is bounded, recall slows, and
+every kept episode of a child's life is a privacy liability. The flywheel does not
+run on volume. It runs on the informativeness of what you keep, and that is the
+curator's whole job. Call the fraction it keeps the data yield:
+
+$$\text{data yield} = \frac{\text{episodes kept}}{\text{episodes collected}}$$
+
+The yield is not free to choose. The bytes shipped each round have to fit the
+upload link and the privacy budget:
+
+$$(\text{episodes kept}) \times (\text{bytes per episode}) \le \text{egress budget}$$
+
+That budget is the ceiling, and the curator's job is to spend it on the most
+informative episodes it can find.
+
+A good curator has a low data yield and a high hit rate: it discards the
+thousandth ordinary success, which teaches nothing, and keeps the surprising
+failure and the moment the child had to correct it, which teach a great deal. This
+is active learning by another name, with a constraint: the curator runs on the
+device and cannot see what the off-device model already knows, so it judges by
+signals that need no such insight, a human correction, a surprise, a failure, the
+marks of an episode at the edge of competence. Keeping the informative two percent beats
+keeping all of it, because the model learns from the edges of its competence, not
+from the middle where it was already right. The edges alone are a trap, though:
+train on failures and corrections only and the model forgets what it already did
+well. So the curated slice is mixed back with a representative sample of ordinary
+experience, an anchor that holds the base distribution in place, and the model
+sharpens at the edges without drifting in the middle.
+
+## The cost of a turn
+
+A flywheel is only worth spinning if each turn pays. A turn costs a round trip:
+collect, curate, ship the kept data off the device, train, and deploy the result
+back. That round trip is slow, measured in days, and it spends the privacy budget
+every time data leaves, which is why what leaves is the curated minimum, derived
+or featurized where it can be and consent-gated when it is a child's, never the
+raw firehose the deployment chapter keeps on the device. Forgetting is coarser
+here than in memory, too: once an episode has trained a model, removing it takes a
+retrain, because weights do not forget on command, so a deletion request reaches
+the training set and the next model, not the one already shipped. So the turn has to buy more than it costs: the improvement it buys has to be
+worth what the round costs. There is no
+clean inequality here, because the terms do not share units: the gain is a change
+in the model's competence, while the cost is days of latency, dollars of compute,
+bytes of privacy, and the bandwidth and energy to ship the improved model back. Weighing them is a judgment, and the honest version of it
+names them all rather than hiding behind the accuracy number. When the gain
+clears that bar the flywheel compounds and the robot pulls away from where it
+started; when it does not, you have built an expensive data pipeline that drains
+privacy for a model that barely moves. The curator is what tips that balance, because it raises the
+improvement per byte shipped, which is the only term you fully control.
+
+## Build
+
+::: {.callout-build title="Log, curate, and measure the yield"}
+
+Build the logger first: record episodes as the robot runs, each with whatever
+signal stands in for a label, the child's correction or reaction. Then build the
+curator: a rule or small model that scores each episode for how much it would
+teach, and keeps only the top slice. Measure the data yield, the fraction kept,
+and look at what it chose. Did it keep the informative episodes and drop the
+repetitive ones?
+
+The improvement half of the loop is slow and off-device, and it may not show
+within a session, which is the real constraint. Use the provided logged episodes
+and the offline retrain they came with: measure the improvement delta from
+training on the curated slice versus the full log. If the curated slice does
+nearly as well on a fraction of the data, you have measured the curator's worth.
+
+:::
+
+## What the number says
+
+The first surprise is how low a good data yield is: a curator earning its keep
+throws away the overwhelming majority of what the robot sees, because most of
+experience is unremarkable. The second is that the small curated slice often
+trains a model nearly as good as the full log would, sometimes better, because the
+full log drowns the informative episodes in routine ones. The flywheel rewards
+selectivity, not collection. And the moment you see that the episodes worth
+keeping are the ones richest in detail about the child, you see why adaptivity and
+privacy are the same decision wearing two hats.
 
 ## Read
 
-Active learning; DAgger and imitation learning; data-centric AI; RLHF.
+The curator is active learning: choose the most informative examples to label and
+learn from, rather than all of them. When the labels come from watching an expert,
+the loop is imitation learning, and DAgger (Ross, Gordon, and Bagnell, 2011) is
+the version that closes it by collecting data on the learner's own mistakes. The
+broader stance, that curating and cleaning the data beats scaling it, is
+data-centric AI; and learning from human reactions rather than fixed labels is the
+idea behind RLHF.
 
-## Teaching notes
+::: {.callout-teaching}
 
-*Work in progress.*
+- **Hook**: the engagement loop and the data loop are the same loop. Open with
+  that, because it reframes every interaction in the book as data collection and
+  makes the flywheel feel inevitable rather than bolted on.
+- **Open question**: this may be too ambitious for a first kit. Decide whether to
+  build the full loop or teach it as a concept plus a logging-only exercise with
+  the retrain provided.
+- **Watch**: keep quality ahead of quantity. The seductive wrong lesson is "collect
+  more data"; the right one is "keep better data," and the data-yield number is how
+  you keep students honest about it.
 
-- This is the chapter where it becomes AI, not automation.
-- Hook: the engagement loop and the data loop are the same loop. What keeps the
-  child engaged is what improves the system.
-- Open question: this may be too ambitious for a first kit. Decide whether to
-  build it or teach it as concept plus a logging-only exercise.
+:::

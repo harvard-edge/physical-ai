@@ -1,39 +1,137 @@
-# Action and control
+# Action and Control
 
-> **Question:** how do decisions become safe, smooth motion?
+::: {.callout-question}
 
-## The margin
+How do decisions become safe, smooth motion?
 
-Control latency and smoothness versus compute; real time versus best effort; the
-safety envelope around every motion.
+:::
 
-**Properties in tension**: timeliness and safety, bounded by reliability.
+The robot reaches for the cup on the table by the child's hand. A jerky reach
+overshoots and knocks it. A reach that starts a beat late arrives where the cup
+was, not where it is. Neither failure is a number on a chart. One spills water on
+a child, and the other is the difference between help and a hazard.
 
-## Components you use
+Action is where every property the book has traded becomes physical at the same
+moment. The decision was made; now it has to move a body, in real time, without
+crossing a line that must not be crossed. And here the book's sharpest claim comes
+due: an AI choice is a control choice. The model you picked for speed back in the
+perception chapter can decide whether this reach is safe.
 
-- Servos or smart actuators.
-- The MCU real-time loop.
+## The dual brain, made physical
 
-## What you build
+A control loop wants two things a learned model cannot promise: a fixed rate and
+low jitter. A servo held to a smooth path needs its commands on a steady beat,
+every few milliseconds, with little variation, or the motion judders and can go
+unstable. A perception or deliberation model delivers answers on its own
+schedule, tens to hundreds of milliseconds apart, and never exactly on time.
 
-Smooth trajectories with limits (on the reference robot, `goto_target` and
-`set_target`).
+So you do not put the model in the control loop. The MCU runs the control loop at
+a fixed rate and keeps the motion smooth, interpolating between targets. The MPU
+decides what the target should be and hands it down when it is ready. Intent
+flows from the cognitive side; the real-time side turns it into steady motion.
+That is the boundary the board makes physical: hard real-time control on the MCU,
+cognition on the MPU. It is worth being exact that this is not the same line as
+the reflex-and-deliberation cascade of the earlier chapters. That cascade, the
+fast model and the slow one, lives on the cognitive side, above the MCU; the
+hardware split is real-time versus not, and the cascade rides on top of it.
 
-## What you measure
+::: {.column-margin}
+**Properties in tension**: timeliness and safety, bounded by reliability. A wrong
+move here is physical, not a label.
+:::
 
-Jitter, overshoot, and time to a safe stop.
+## The safety envelope
+
+Every motion keeps a margin between where it stops and where it would do harm.
+That margin is not slack; it is a budget, and it has to cover every way the system
+could be wrong. @fig-safety-envelope draws it. The margin must be at least the sum
+of the errors that push the body past where it meant to stop:
+
+$$\text{margin} \ge e_\text{sense} + e_\text{overshoot} + \underbrace{v\,t_\text{recover} + \frac{v^2}{2a}}_{\text{stopping distance}}$$
+
+::: {#fig-safety-envelope fig-cap="**The safety envelope**: the margin from the commanded stop to the harm boundary must cover sensing error, overshoot, and the distance the body travels before a watchdog can stop it; quantizing the model grows the sensing error until the same margin no longer holds." fig-alt="A distance axis from a commanded stop to a harm boundary, with the gap labeled margin. Two stacked error bars start at the commanded stop, each made of sensing error, overshoot, and latency times speed. The 32-bit model's bar ends within the margin; the 8-bit model's bar has a much larger sensing-error segment and extends past the harm boundary."}
+![](../assets/diagrams/safety-envelope.svg)
+:::
+
+Sensing error is how wrong the perception was about where things are. Overshoot
+is how far the controller sails past its target, and it grows with timing jitter.
+Sensing error and overshoot are the normal-operation terms: how wrong the
+perception was about where things are, and how far a planned stop sails past its
+target. The case that sizes the margin, though, is the failure. If the loop
+hangs, the body keeps moving at speed $v$ not for one cycle but until the watchdog, the monitor that
+trips a safe stop when the loop stops responding, catches it, the recovery time
+$t_\text{recover}$ that a later chapter measures,
+and only then covers the braking distance $v^2/2a$ as it decelerates at rate $a$.
+That recovery time is far longer than a nominal cycle, and the braking term grows
+with the square of the speed, which is why a slow watchdog and a fast body are
+each dangerous, and why slowing the body down buys back margin faster than almost
+anything else. Size the margin for that worst case, the conservative sum above,
+and normal operation is covered for free.
+
+## Why an AI choice is a control choice
+
+Now the coupling. Look at the sensing-error term, and remember the knee from the
+perception chapter. Quantizing the model from 32-bit floats to 8-bit integers was
+how you bought latency and energy back. But quantization also lowers accuracy,
+which means it raises $e_\text{sense}$. The second row of @fig-safety-envelope is
+the same robot with the quantized model: the sensing-error segment grows, the
+total error pushes past the harm boundary, and a margin that was safe at full
+precision no longer is.
+
+This is the claim that makes physical AI its own discipline rather than embedded
+programming with a model attached. An optimization made for one property,
+latency, silently spent another, safety, through a chain that crosses from
+statistics into physics. The fix is not to refuse to quantize. It is to carry the
+whole chain in one budget: if you shrink the model, you either widen the margin or
+slow the body down, and you say which, with the number.
+
+## Build
+
+::: {.callout-build title="Make it smooth, then make it unsafe"}
+
+Render one gesture two ways: a naive command straight to the target, and a smooth
+interpolated trajectory between targets. Feel the difference, then measure it:
+the jitter of the control loop and the overshoot of each version. Add a safe-stop
+triggered by a bound, and measure the time to reach it.
+
+Then close the loop on the chapter's claim. Take the perception model from the
+knee lab and quantize it. Measure how much the sensing error grew, and feed that
+into the margin inequality. Did the envelope still hold? If the body's speed is
+fixed, how much wider does the margin have to be to absorb the new error?
+
+A real safe-stop is unsafe to provoke on loaded hardware. Run it in simulation or
+on an unloaded bench rig, plot the trajectory and the envelope, and treat the
+crossing as the result whether or not a motor was turning.
+
+:::
+
+## What the number says
+
+Smoothness is mostly free and overshoot is mostly not: interpolating a trajectory
+costs almost nothing, while holding overshoot down under a tight deadline is where
+the control effort goes. The coupling result is the one that tends to land. People
+quantize a model for a latency win, see the accuracy drop as a small number on a
+benchmark, and miss that the same drop is centimeters of sensing error in a room
+with a child in it. Measuring the envelope before and after turns that abstract
+accuracy loss into the distance it really is.
 
 ## Read
 
-PID and impedance control; trajectory interpolation (min-jerk).
+Keep the control operational, not a course. Smooth motion here is trajectory
+interpolation, the minimum-jerk profiles of Flash and Hogan (1985); holding a
+target against disturbance is PID and, where contact matters, impedance control.
+The deeper point is not the controller. It is the budget the controller lives
+inside, and the chain that connects a model's precision to a body's safety.
 
-## Teaching notes
+::: {.callout-teaching}
 
-*Work in progress.*
+- **Hook**: the same gesture rendered jerky and then min-jerk; let students feel
+  the difference before measuring it. The felt difference earns the math.
+- **Watch**: how much control theory for an engineer audience? Keep it
+  operational. The chapter's job is the coupling between model and motion, not a
+  derivation of PID.
+- **Open question**: this is the clearest place to make the MCU and MPU split
+  concrete, control on one, intent on the other. Introduce the shared-memory
+  handoff here, or assume the harness from the foundations lab?
 
-- The MCU and MPU split is most obvious here: control on the MCU, intent on the
-  MPU. Good place to make the dual brain concrete.
-- Hook: the same gesture rendered jerky (naive) versus min-jerk; let them feel
-  the difference.
-- Open question: how much control theory for an engineer audience? Keep it
-  operational, not a controls course.
+:::

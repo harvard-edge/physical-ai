@@ -1,39 +1,126 @@
-# Pixels to meaning: VLMs and VLAs
+# Pixels to Meaning: VLMs and VLAs
 
-> **Question:** what does the scene mean, and who should decide, the device or
-> the cloud?
+::: {.callout-question}
 
-## The margin
+What does the scene mean, and who should decide, the device or the cloud?
 
-Capability versus latency, cost, and privacy; the grounding gap between what a
-model can describe and what it can physically do.
+:::
 
-**Properties in tension**: timeliness and cost against privacy, with observability limited by the grounding gap.
+Detection tells you there is a mug and a hand. Meaning tells you the child is
+reaching for the mug, the mug is the hot one, and the robot should say something
+now. That leap, from objects to what they imply, is what a vision-language model
+buys you, and it is the most expensive thing the robot does.
 
-## Components you use
+It is expensive enough that for the first time the placement is genuinely
+contested. The reflex loop obviously belonged on the device. Meaning does not,
+because the model good enough to read a scene may be too big to run on the robot
+at all, which makes the cloud tempting in a way it never was before.
 
-- Camera.
-- A small on-device VLM (the MPU's NPU) or a cloud VLM.
+## Meaning is the expensive step
 
-## What you build
+A model that names objects can be small. A model that understands a scene, that
+grounds language in pixels well enough to say what is happening and what to do
+about it, is large, because it has to carry a great deal of the world to do it.
+That size is the whole tension. Run it on the device and you are limited to a
+tiny model with rough judgment. Send the scene to the cloud and you can use a
+model that reasons well, but the frame has to leave the room and an answer has to
+return, and both legs of that round trip cost you.
 
-Show-and-tell: the robot looks at an object and reacts to it.
+::: {.column-margin}
+**Properties in tension**: capability against latency, cost, and privacy. The
+cloud buys the first by spending the rest.
+:::
 
-## What you measure
+A useful way to keep the family straight: a VLM maps pixels and words to an
+answer, and a vision-language-action model, a VLA, is a VLM whose output
+vocabulary includes actions. The placement question is the same for both. Only
+the stakes of a wrong answer change, because a VLA's answer moves the body. And
+that answer is intent, not a motor command: like any decision it sets a target the
+real-time control layer, the microcontroller, turns into safe motion, never driving the actuators
+directly.
 
-Latency and cost for the same task, local versus cloud.
+## The cost of asking the cloud
+
+The placement turns on a comparison you can write down. Running meaning in the
+cloud costs a round trip, not just an inference:
+
+$$t_\text{cloud} = t_\text{upload} + t_\text{infer} + t_\text{download}$$
+
+You weigh that against $t_\text{local}$, the single inference of whatever model
+fits on the device. @fig-meaning-placement draws the two paths. The cloud path is
+almost always slower, often by enough to miss a loop deadline, and it carries a
+second cost the local path does not: every frame you upload is bytes leaving the
+device, the same egress that the deployment chapter audits. In a child's room
+that privacy cost can decide the placement on its own, before latency even enters
+the argument.
+
+::: {#fig-meaning-placement fig-cap="**Placing meaning**: the same frame can go to a tiny model on the device for rough meaning with nothing leaving, or to a large model in the cloud for rich meaning at the cost of a round trip and the frame itself." fig-alt="One frame feeds two paths. The top path sends it to a tiny VLM on the device, returning rough meaning in about 150 milliseconds with nothing leaving. The bottom path uploads it to a big VLM in the cloud, returning rich meaning in about 600 milliseconds, with the frame leaving the device."}
+![](../assets/diagrams/meaning-placement.svg)
+:::
+
+## The grounding gap
+
+Capability has a failure mode that latency and bytes do not capture. A VLM can be
+fluent and confidently wrong, describing a scene it did not actually read, or
+naming an object that is not there. The gap between what the model can say and
+what is really in front of the camera is the grounding gap, and it is an
+observability problem: the model gives you an answer but not its evidence, so you
+cannot easily see when it has drifted from the scene. A bigger model narrows the
+gap but never closes it, which is why a VLA's action always needs a safety floor
+underneath it: not a simple safety cut-off that only catches a hung or garbled call, but
+the control envelope that clips even a fluent, well-formed command to safe limits
+before the body executes it. Capability is not the same as trust.
+
+## Build
+
+::: {.callout-build title="Ask both, then place the answer"}
+
+Take one frame and one question about it, the kind the robot would actually ask,
+such as "is the child reaching for something hot." Send it to a small model you
+can run locally and to a capable cloud model. Compare three things: the quality
+of the two answers, the latency of each, and the bytes that left the device for
+the cloud call.
+
+Before you measure, predict. Estimate $t_\text{local}$ from the model size and
+$t_\text{cloud}$ from your upload bandwidth and a typical inference time. Then
+defend a placement in one sentence, naming the budget that decided it.
+
+A capable on-device VLM may be too heavy for the board you have, which is the
+real constraint, not a gap in the exercise. If so, use the provided local-model
+latency numbers and run only the cloud call live; the decision is still yours to
+make and defend.
+
+:::
+
+## What the number says
+
+Two surprises are common. The local model is often good enough: the question the
+robot actually needs answered is narrower than the open-ended one the big model
+was built for, and a small model aimed at that narrow question can clear the bar.
+And the cloud answer's latency is dominated by the round trip, not the inference,
+so a faster model in the cloud barely helps while a closer one would. The lesson
+is the placement, not the leaderboard. You put meaning where the binding budget,
+usually privacy or latency, says it belongs, and you reach for the cloud only when
+the task truly needs a capability the device cannot hold.
 
 ## Read
 
-RT-2, OpenVLA, pi-zero; SmolVLM and moondream at the tiny end.
+The grounding of language in images traces to CLIP (Radford et al., 2021), and
+the action-output models this chapter folds in include RT-2 (Brohan et al., 2023)
+and the open OpenVLA; at the tiny end, models like SmolVLM and moondream are what
+make the on-device path plausible at all. On-device execution runs through
+runtimes such as ExecuTorch. The literature moves fast, but the placement question
+it raises does not.
 
-## Teaching notes
+::: {.callout-teaching}
 
-*Work in progress.*
+- **Hook**: ask the same image question of a tiny local VLM and a cloud VLM, and
+  compare the answers and the latency side by side before any theory. The gap in
+  both is the chapter.
+- **Open question**: does a VLA deserve its own chapter, or is it a thread woven
+  through chapters 2 to 4? For now the one-line framing ("a VLM whose outputs
+  include actions") carries it.
+- **Watch**: keep capability honest. It is easy to let the cloud model's fluency
+  read as competence; the grounding gap is the reminder that it is not.
 
-- Frame a VLA as "a VLM whose output vocabulary includes actions." That one line
-  connects this chapter to the language models the audience already knows.
-- Hook: ask the same image question to a tiny local VLM and a cloud VLM; compare
-  the answers and the latency side by side.
-- Open question: does VLA deserve its own chapter, or is it a thread woven
-  through chapters 2 to 4?
+:::

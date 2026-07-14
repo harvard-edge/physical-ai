@@ -1,45 +1,129 @@
-# Perception on the edge
+# Perception on the Edge
 
-> **Question:** how do raw signals become something a model can use, on a tight
-> budget?
+::: {.callout-question}
 
-## The margin
+How good does edge perception have to be, when every gain in accuracy costs
+latency and energy?
 
-Accuracy versus latency versus energy, and what quantization actually costs you.
+:::
 
-:::: {.column-margin}
-**Properties in tension**: timeliness, energy, and robustness, traded against the accuracy you want.
+The robot has to notice the child walk in. A large detector spots her every
+time, in any light, but runs at two frames a second and warms the board. A tiny
+detector runs at thirty frames a second on almost no power, and loses her the
+moment she steps out of the lamplight. Same task, same camera, two perception
+systems that fail in opposite ways.
 
-The trade has a knee: accuracy climbs with compute, then flattens. The job is to sit at the knee (@fig-knee).
-::::
+Which one ships? Neither, until you know what binds. The answer is a number, not
+a preference.
 
-::: {#fig-knee fig-cap="**The tradeoff knee**: quality rises with cost, then flattens; the operating point worth choosing is the knee, not the peak." fig-alt="A curve of quality against cost that rises steeply, then levels off, with the knee marked."}
+## Accuracy is not free
+
+On the edge, accuracy has a price, and it is paid in latency and energy. A bigger
+model sees better. It also runs longer and draws more power, the two budgets a
+body has least of. The reflex loop from [the loop chapter](00-from-tinyml-to-physical-ai.qmd)
+sets a hard deadline, and a slower model misses it. The battery sets a hard
+ceiling, and a hungrier model drains it.
+
+::: {.column-margin}
+**Properties in tension**: timeliness and energy, traded against accuracy. On the
+edge, the first two usually bind first.
+:::
+
+So the question is never how accurate the model can be. It is how accurate it can
+be inside the latency and energy budgets. And those budgets, as
+[the elements](the-elements.qmd) showed, are usually where the binding constraint
+sits.
+
+## The cost before the model
+
+Some of that cost is spent before the model runs at all. Raw signal has a size,
+and moving it is not free. For a camera the rate is simple:
+
+$$\text{data rate} = \text{pixels per frame} \times \text{framerate} \times \text{bytes per pixel}$$
+
+A 640 by 480 feed at 30 frames a second, three bytes a pixel, is about 28
+megabytes a second off the sensor before a single layer of the network has
+touched it. Double the width and height for a sharper read and you quadruple the pixels, and
+the rate.
+Across the bus, into memory, and in the energy it takes to move each byte, that
+raw rate often binds before the model's compute does. Predict it first. The
+cheapest way to make perception fit is sometimes to sense less, not to shrink the
+model.
+
+## The knee
+
+Accuracy against cost is not a straight line. @fig-knee draws its shape. While the
+model is small, each bit of extra compute buys a lot of accuracy and the curve
+climbs steeply. Past a point it flattens, and more compute buys almost nothing.
+That bend is the knee, and it is the operating point worth choosing. Sit past it
+and you spend latency and energy on accuracy you cannot use. Sit well before it
+and you leave accuracy on the table that was nearly free.
+
+::: {#fig-knee fig-cap="**The tradeoff knee**: accuracy rises steeply with cost, then flattens; the operating point worth choosing is the knee, not the peak." fig-alt="A curve of accuracy against cost that rises steeply, then levels off, with the knee marked as the operating point and the flat region beyond it labeled diminishing returns."}
 ![](../assets/diagrams/tradeoff-knee.svg)
 :::
 
-## Components you use
+The knee is where you would sit if you could. The binding constraint decides
+whether you can. If the latency or energy budget caps you to the left of the
+knee, you live below it and accept the accuracy that fits. If the budget reaches
+past the knee, you stop at the knee and bank the headroom. Either way the
+operating point is a defended choice, named against a budget, not a model picked
+because it was the newest.
 
-- Camera, MEMS microphone, IMU.
-- A small model running on the MPU.
+Quantization is how you move along the curve cheaply. Dropping a model from
+32-bit floats to 8-bit integers cuts its memory and speeds its arithmetic, often
+by three to four times, for a small accuracy loss. It is the most common single
+step from "too slow" to "fits." The lab measures what it actually costs you,
+rather than trusting the rule of thumb.
 
-## What you build
+## Build
 
-An on-device perception task: a wake word, or a simple detector.
+::: {.callout-build title="Find your knee"}
 
-## What you measure
+Take one detector and run it at three operating points: a big model in the cloud,
+a medium one on a laptop, and a small or quantized one on the device. Feed all
+three the same inputs. At each point, measure three numbers: accuracy on your own
+test clips, inferences per second, and milliwatts.
 
-Inferences per second, milliwatts, accuracy, and the curve that connects them.
+Plot accuracy against latency, and against energy. The knee will show itself.
+Mark where your loop's deadline and your power budget fall, and pick the operating
+point that sits at the knee, or at the budget, whichever comes first. Write one
+sentence defending the choice by the budget that bound it.
+
+If you cannot instrument power on your board, use the figures provided and reason
+from them. The decision is the lesson, not the wattmeter.
+
+:::
+
+## What the number says
+
+The quantized model rarely loses exactly the accuracy the datasheet implies, and
+sometimes loses more, because your inputs are not the benchmark's. The cloud
+model is the most accurate and almost never the right placement: its round trip
+blows the loop deadline, just as [the loop chapter](00-from-tinyml-to-physical-ai.qmd)
+predicted, and it ships the room's images off the device, which the privacy
+budget may forbid outright. The three-point sweep is not there to crown the best
+model. It is there to show you the curve, find its knee, and place perception
+where the binding budget says it belongs.
 
 ## Read
 
-MLPerf Tiny; quantization and distillation.
+The efficient-model literature is the toolbox for moving along this curve:
+MobileNets (Howard et al., 2017) for architectures built to be cheap, and integer
+quantization (Jacob et al., 2018) for running them in 8 bits with little loss.
+MLPerf Tiny (Banbury et al., 2021) is the benchmark that reports accuracy,
+latency, and energy together, which is the exact shape of the decision this
+chapter asks you to make.
 
-## Teaching notes
+::: {.callout-teaching}
 
-*Work in progress.*
+- **Hook**: run the same model at three operating points (cloud GPU, laptop, MCU)
+  and have students watch accuracy, latency, and energy trade against one another
+  before any theory. The curve convinces faster than the claim.
+- **Open question**: how much TinyML do we assume versus reteach? This is the
+  bridge chapter; students arrive on familiar ground, which buys goodwill before
+  the harder closed-loop material.
+- **Watch**: keep the chapter on the knee, not on quantization mechanics.
+  Quantization is one way to move along the curve, not the subject.
 
-- This is the TinyML bridge: students arrive on familiar ground, which buys us
-  goodwill before the harder closed-loop material.
-- Hook: run the same model at three operating points (cloud GPU, laptop, MCU)
-  and watch accuracy, latency, and energy trade against each other.
-- Open question: how much TinyML do we assume versus reteach?
+:::

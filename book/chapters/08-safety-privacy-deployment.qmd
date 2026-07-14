@@ -1,36 +1,130 @@
-# Safety, privacy, and deployment
+# Safety, Privacy, and Deployment
 
-> **Question:** what does it take to put this in a home, responsibly?
+::: {.callout-question}
 
-## The margin
+What does it take to put this in a home, responsibly?
 
-Always-on sensing risk; reliability; failure modes. This one is sharp because
-the home in question is a child's room.
+:::
 
-**Properties in tension**: reliability, safety, and privacy, treated head-on here after running as threads throughout.
+In the lab a failure is a number that dips. In a home it is an arm left mid
+motion when the loop hangs, or a week of a child's living room sitting on a
+server somewhere. The robot does not get more capable when you ship it. It gets
+more exposed, and so does the family.
 
-## Components you use
+Two questions decide whether it is ready, and neither is about accuracy. What
+happens when it fails? And what leaves the device? This chapter is how you answer
+both with a number, and refuse to ship until the numbers pass.
 
-- Status indicators, capture gating, a physical on and off, a watchdog.
+## Deployment is a gate, not a launch
 
-## What you build
+Safety, privacy, and reliability have run as threads through every chapter. Here
+they bind at once, and they bind the way [the elements](the-elements.qmd) said
+budgets do: you ship only if every one of them closes. A fast, accurate,
+power-thrifty robot that cannot reach a safe state when it hangs is not ready. A
+flawless one that streams the nursery to the cloud is not ready either. There is
+no average to hide in. Deployment is the budget identity again, with the stakes
+raised from a missed frame to a child's safety and a family's privacy.
 
-Privacy-gated capture, auto-restart on failure, and a visible mute.
+::: {.column-margin}
+**Properties in tension**: safety, privacy, and reliability, all binding at once.
+No average to hide in.
+:::
 
-## What you measure
+Two gates decide it, each with a number you measure and defend before shipping.
 
-Failure recovery time; a data-egress audit (what actually leaves the device).
+## The fail-safe: a number for "what happens when it fails"
+
+A wrong or late prediction in a body moves something. The defense is not a better
+model; it is a path to a safe state that does not depend on the model being
+right. A watchdog watches the loop, and when the loop stops meeting its deadline
+or returns garbage, the watchdog takes over and drives the system somewhere safe:
+motors to zero torque, the head to neutral, capture off. The number that matters
+is how long that takes:
+
+$$\underbrace{t_\text{detect} + t_\text{act}}_{t_\text{recover}} + t_\text{brake} \le t_\text{harm}$$
+
+The body has to come to rest before it can do harm. That budget on the right, the
+time from a fault to the first harm, is what functional-safety standards call the
+process safety time, and the whole sequence has to fit inside it: detecting the
+fault, commanding the stop, and the full braking time the body needs to come to
+rest, because safety means stopped before the hazard, not merely slowing, a
+deliberately conservative bound. The
+distance the body covers over that time is the action chapter's margin; time and
+distance are the same constraint in two units. A stuck arm that
+reaches a safe stop in 80 milliseconds is safe at speeds where one that takes a
+full second is not. You design the watchdog to that process safety time, the same
+way the loop was designed to the world's timescale, and you measure the recovery
+time rather than assume it.
+
+## The privacy gate: a number for "what leaves the device"
+
+The second gate is the device boundary, and the number is bytes. @fig-egress
+draws it. Most of what the robot senses is a firehose, raw audio and video at tens
+of megabytes a second, and almost none of it should ever leave the device. What
+crosses the boundary is a deliberate, audited trickle: a derived event, a count, a
+preference, measured in bytes, never the raw signal it came from.
+
+::: {#fig-egress fig-cap="**The privacy gate**: the raw sensor firehose stays on the device, and only small derived events cross the boundary; the egress audit is the count of what actually crosses, in bytes." fig-alt="Three nested boxes, device inside home network inside cloud. The device holds raw audio and video at about 28 megabytes a second, which stays in. A single arrow crosses a marked privacy gate and carries only a small derived event of about 40 bytes out toward the cloud."}
+![](../assets/diagrams/data-egress.svg)
+:::
+
+The egress audit is the practice of proving this rather than claiming it: you
+watch the device's network boundary and account for every byte that crosses, then
+ask of each whether it had to. The default is that raw signal never leaves, and
+every exception is a decision someone made and can defend. Privacy by design is
+not a policy document. It is a number you can show a parent.
+
+## Build
+
+::: {.callout-build title="Run the ship or no-ship gate"}
+
+Two measurements, both against a threshold you set in advance.
+
+First, the fail-safe. Inject the failure you cannot allow: kill the model
+mid-loop, or feed it garbage, and time how long until the system reaches its safe
+state. Real failure is unsafe to stage on hardware, so do it in simulation or on a
+bench rig with the motors unloaded, and treat the result as your recovery budget.
+
+Second, the egress audit. Run the robot for an hour and capture everything it
+sends past the device boundary. Total the bytes, sort them by kind, and mark any
+raw signal that escaped. The target for raw signal is zero.
+
+Ship only if recovery time is under the harm threshold and the egress audit holds
+no surprises. Write the two numbers and the decision down; that record is the
+deployment gate.
+
+:::
+
+## What the number says
+
+The recovery time is almost always longer than the watchdog's own latency,
+because detection is the slow part: deciding the loop has truly failed, rather
+than merely paused, takes evidence, and evidence takes time. The egress audit
+almost always finds something you did not expect leaving, a debug log, a crash
+report, a thumbnail, which is exactly why you audit rather than trust the design.
+Neither result is a verdict on the robot's intelligence. Both are the price of
+putting it in a room with a person, and paying it is what makes the deployment
+responsible rather than merely working.
 
 ## Read
 
-Safety engineering; privacy by design; federated and local-first systems.
+The fail-safe is the watchdog and safe-state pattern from functional safety, where
+a system is designed to fail into a defined safe condition rather than an
+undefined one. The privacy gate is data minimization and local-first design: keep
+computation and raw data on the device, and let only the smallest necessary
+derivative leave. Both are old disciplines; what physical AI adds is that the
+failure moves a body and the data is gathered in a home, so the cost of skipping
+either is no longer abstract.
 
-## Teaching notes
+::: {.callout-teaching}
 
-*Work in progress.*
+- **Hook**: the egress audit. Have students prove what does and does not leave the
+  device, and watch the surprise when something unexpected shows up in the
+  capture.
+- **Open question**: place this chapter last, or thread privacy and safety from
+  the first chapter onward? They are constraints on earlier design, not a
+  bolt-on, so at minimum they must be foreshadowed throughout.
+- **Watch**: keep both gates quantitative. "We take safety seriously" is not a
+  number; time to safe state and bytes egressed are.
 
-- Not a bolt-on. Privacy and safety constrain earlier design decisions, so they
-  should be foreshadowed, not just appended.
-- Hook: the data-egress audit. Have students prove what does and does not leave
-  the device.
-- Open question: place this last, or thread privacy from chapter 1 onward?
+:::
