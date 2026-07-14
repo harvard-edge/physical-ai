@@ -15,15 +15,15 @@ class FakeUnderstandingCloud:
         self.result = result
         self.calls = []
 
-    def analyze_turn(self, user_text, *, robot_name, history):
-        self.calls.append((user_text, robot_name, list(history)))
+    def analyze_turn(self, user_text, *, robot_name, history, memory_context=None):
+        self.calls.append((user_text, robot_name, list(history), memory_context))
         return dict(self.result)
 
 
 class FailingCloud:
     configured = True
 
-    def analyze_turn(self, user_text, *, robot_name, history):
+    def analyze_turn(self, user_text, *, robot_name, history, memory_context=None):
         from mayas_reachy.cloud import CloudUnavailable
 
         raise CloudUnavailable("temporary failure")
@@ -50,6 +50,8 @@ class ConversationTest(unittest.TestCase):
                     "robot_name": "pixel",
                     "reply": "Pixel? I love it!",
                     "mood": "excited",
+                    "entities": [],
+                    "claims": [],
                 }
             )
 
@@ -69,6 +71,8 @@ class ConversationTest(unittest.TestCase):
                     "robot_name": "GuessedName",
                     "reply": "That sounds fun!",
                     "mood": "warm",
+                    "entities": [],
+                    "claims": [],
                 }
             )
 
@@ -114,6 +118,7 @@ class ConversationTest(unittest.TestCase):
                             "content": (
                                 '{"intent":"greeting","robot_name":null,'
                                 '"reply":"Hello!","mood":"friendly"}'
+                                .replace('}', ',"entities":[],"claims":[]}')
                             )
                         }
                     }
@@ -131,6 +136,34 @@ class ConversationTest(unittest.TestCase):
         response_format = captured["payload"]["response_format"]
         self.assertEqual(response_format["type"], "json_schema")
         self.assertTrue(response_format["json_schema"]["strict"])
+        required = set(response_format["json_schema"]["schema"]["required"])
+        self.assertIn("entities", required)
+        self.assertIn("claims", required)
+
+    def test_explicit_relationship_is_stored_with_episode_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            memory = MemoryStore(Path(directory) / "memory.sqlite3")
+            cloud = FakeUnderstandingCloud(
+                {
+                    "intent": "conversation",
+                    "robot_name": None,
+                    "reply": "I will remember that Maya likes dinosaurs.",
+                    "mood": "warm",
+                    "entities": [
+                        {"id": "maya", "name": "Maya", "kind": "person"},
+                        {"id": "dino", "name": "dinosaurs", "kind": "concept"},
+                    ],
+                    "claims": [
+                        {"subject": "maya", "predicate": "likes", "object": "dino", "confidence": 0.98}
+                    ],
+                }
+            )
+
+            plan = Conversation(memory, cloud).respond("Maya likes dinosaurs.")
+
+            self.assertEqual(plan.learned["claims"][0]["predicate"], "likes")
+            self.assertEqual(memory.snapshot()["counts"]["episodes"], 1)
+            self.assertEqual(memory.relevant_context("What does Maya like?")[0]["object"], "dinosaurs")
 
     def test_groq_transcription_sends_wav_as_multipart(self):
         cloud = GroqCloud(api_key="test-key")

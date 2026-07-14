@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
-from .cloud import CloudUnavailable, GroqCloud
+from .cloud import CloudUnavailable
 from .memory import MemoryStore
+from .policies import ReasoningPolicy
 
 
 @dataclass(frozen=True)
@@ -13,13 +15,13 @@ class ResponsePlan:
     text: str
     mood: str
     source: str
-    learned: dict[str, str] | None = None
+    learned: dict[str, Any] | None = None
 
 
 class Conversation:
     """Let the LLM understand language, then validate what may be persisted."""
 
-    def __init__(self, memory: MemoryStore, cloud: GroqCloud) -> None:
+    def __init__(self, memory: MemoryStore, cloud: ReasoningPolicy) -> None:
         self.memory = memory
         self.cloud = cloud
         self.history: list[dict[str, str]] = []
@@ -27,6 +29,7 @@ class Conversation:
     def respond(self, user_text: str) -> ResponsePlan:
         text = user_text.strip()
         robot_name = self.memory.robot_name()
+        episode_id = self.memory.record_episode("child", text)
         if not self.cloud.configured:
             response = self._offline_response(robot_name, configured=False)
             self._remember_turn(text, response)
@@ -37,6 +40,7 @@ class Conversation:
                 text,
                 robot_name=robot_name,
                 history=self.history,
+                memory_context=self.memory.relevant_context(text),
             )
         except CloudUnavailable as exc:
             logging.getLogger(__name__).warning("Cloud turn unavailable: %s", exc)
@@ -44,12 +48,41 @@ class Conversation:
             self._remember_turn(text, response)
             return ResponsePlan(response, "warm", "offline-fallback")
 
-        learned = None
+        learned: dict[str, Any] = {}
         if result.get("intent") == "teach_robot_name":
             taught_name = self._valid_robot_name(result.get("robot_name"))
             if taught_name is not None:
-                self.memory.remember_robot_name(taught_name)
-                learned = {"robot_name": taught_name}
+                self.memory.remember_robot_name(taught_name, episode_id=episode_id)
+                learned["robot_name"] = taught_name
+
+        entities = {
+            entity.get("id"): entity
+            for entity in result.get("entities", [])
+            if isinstance(entity, dict) and isinstance(entity.get("id"), str)
+        }
+        stored_claims = []
+        for candidate in result.get("claims", []):
+            if not isinstance(candidate, dict):
+                continue
+            subject = entities.get(candidate.get("subject"))
+            object_entity = entities.get(candidate.get("object"))
+            confidence = candidate.get("confidence")
+            if not subject or not object_entity or not isinstance(confidence, (int, float)):
+                continue
+            if float(confidence) < 0.75:
+                continue
+            try:
+                claim = self.memory.remember_claim(
+                    subject["name"], candidate.get("predicate", ""),
+                    object_name=object_entity["name"], subject_kind=subject["kind"],
+                    object_kind=object_entity["kind"], confidence=float(confidence),
+                    origin="asserted", episode_id=episode_id,
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            stored_claims.append(claim)
+        if stored_claims:
+            learned["claims"] = stored_claims
 
         response = result["reply"]
         self._remember_turn(text, response)
@@ -57,7 +90,7 @@ class Conversation:
             response,
             result["mood"],
             "groq-cloud",
-            learned=learned,
+            learned=learned or None,
         )
 
     def _remember_turn(self, user_text: str, response: str) -> None:

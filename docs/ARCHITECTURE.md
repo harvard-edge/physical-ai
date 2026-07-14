@@ -4,17 +4,21 @@
 
 ```text
 Maya or Alexander
-       │ type or tap the microphone
+       │ type or tap the microphone (up to 30 seconds)
        ▼
 robot-hosted web interface on port 8042
        │
        ├──► Reachy onboard mic ──► Groq Whisper transcription
        │
        ▼
-Groq LLM ──► structured intent, candidate fact, reply, and mood
+Groq LLM ──► structured intent, entities, claims, reply, and mood
        │
        ▼
-validation ──► local JSON memory
+validation ──► embedded SQLite cognitive memory
+                 ├── episodes and evidence
+                 ├── entities and temporal claims
+                 ├── FTS5 hybrid retrieval
+                 └── registered safe skills
        │
        ▼
 Piper speech + Reachy Mini SDK motion
@@ -47,16 +51,34 @@ The CM4 has no accelerator and is not a practical host for a conversational
 model. It is a good host for the responsive physical loop and a small local
 speech model. A larger local LLM would need a separate edge computer later.
 
-## Safety and Memory Boundary
+## Cognitive Memory
 
-The LLM interprets language, but it cannot write arbitrary data. The application
-persists a name only when the structured intent is `teach_robot_name` and the
-candidate passes local length and character checks. Conversation history stays
-in RAM and only explicit facts survive a restart.
+The LLM interprets language and proposes entities and relationships, but it
+cannot write arbitrary data. Application code permits a small relationship
+vocabulary, resolves entities, validates values, and attaches each accepted
+claim to the episode that supports it.
 
-The first store is an atomic JSON file at
-`~/.local/share/mayas-reachy/memory.json`. A knowledge graph can extend this
-validated-write pattern when the children begin teaching more kinds of facts.
+The embedded store is `~/.local/share/mayas-reachy/memory.sqlite3`. Episodic
+memory records what happened. Semantic memory stores entities, claims,
+confidence, origin, and validity periods. Procedural memory registers the safe
+skills the runtime can execute. SQLite FTS5 complements structured graph lookup;
+an optional embedding index can be added later without becoming the source of
+truth.
+
+Soft reset archives active beliefs while retaining episodes. Hard reset creates
+a recoverable database backup, then starts with an empty memory. Raw microphone
+audio remains transient and is not stored.
+
+## Event and Policy Boundaries
+
+Typed cognitive events describe observations, transcriptions, memory updates,
+plans, skill requests, and actions. They currently use a small in-process
+journal. The same event contracts can later feed ROS 2, Zenoh, debugging tools,
+or LeRobot dataset recording without changing the child-facing interface.
+
+Reasoning providers remain interchangeable. The current Groq adapter can later
+sit beside a local model or remote VLA policy. Every policy produces a bounded
+plan; only deterministic application code may invoke physical capabilities.
 
 ## Physical Control Boundary
 
@@ -77,9 +99,15 @@ one of the allowed moods. Code maps that mood to bounded SDK targets.
   `~/.local/share/mayas-reachy/voices/en_US-lessac-low.onnx` and its matching
   `.onnx.json` configuration.
 
-## Next Extensions
+## Framework Adoption Boundary
 
-The microphone button now records a short clip through Reachy's onboard media
-API. Later work can add local speech recognition for offline privacy, a wake-word
-policy, and camera turns. Those changes should preserve the current rule that
-one native app owns the physical loop.
+- Reachy Mini SDK owns current hardware access.
+- Arduino Bridge/RPC is the intended UNO Q hardware boundary.
+- SQLite, FTS5, and later `sqlite-vec` provide embedded retrieval.
+- LeRobot is the target format for future sensor-action datasets.
+- ROS 2 or Zenoh adapters become useful when components leave this process.
+- OpenVLA or NVIDIA GR00T run as remote policy providers, not on the CM4.
+- LangGraph is reserved for genuinely branching, resumable reasoning workflows.
+
+The adoption rule is: reuse directly, wrap behind an adapter, borrow a proven
+pattern, and only then build the smallest missing component.

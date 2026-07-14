@@ -3,6 +3,7 @@ import threading
 import types
 import unittest
 import wave
+import time
 from io import BytesIO
 from pathlib import Path
 
@@ -128,6 +129,22 @@ class NativeAppTest(unittest.TestCase):
             self.assertEqual(recording.getsampwidth(), 2)
             self.assertEqual(recording.getframerate(), 16_000)
             self.assertGreater(recording.getnframes(), 0)
+
+    def test_microphone_capture_can_be_stopped_before_maximum(self):
+        mini = FakeMini()
+        stop_requested = threading.Event()
+        timer = threading.Timer(0.04, stop_requested.set)
+        started = time.monotonic()
+        timer.start()
+        try:
+            audio = MayasReachyApp.capture_microphone(
+                mini, threading.Event(), duration=1.0, stop_requested=stop_requested
+            )
+        finally:
+            timer.cancel()
+
+        self.assertLess(time.monotonic() - started, 0.3)
+        self.assertGreater(len(audio), 44)
 
     def test_piper_is_configured_only_with_model_and_config(self):
         with tempfile.TemporaryDirectory() as directory:

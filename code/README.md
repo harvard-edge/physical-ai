@@ -8,12 +8,15 @@ memory, speech, and physical control in one process.
 ## Current Teaching Loop
 
 1. Maya or Alexander types a message or taps the microphone in the website.
-2. Reachy's onboard microphone records the child and Groq Whisper transcribes it.
-3. The robot sends the text to Groq with a strict response schema.
-4. The LLM returns an intent, a candidate fact, a reply, and a mood.
-5. Application code validates the candidate before memory can change.
-6. The fact is stored locally and included in later LLM context.
-7. Piper speaks the reply while the Reachy SDK moves the robot safely.
+2. Reachy's onboard microphone records for up to 30 seconds; another tap or
+   sustained silence ends the turn before the maximum.
+3. Groq Whisper transcribes the transient audio, which is then discarded.
+4. The robot sends the text and relevant memory to Groq with a strict schema.
+5. The LLM proposes entities, claims, a reply, and a mood.
+6. Application code validates relationships and attaches evidence.
+7. SQLite stores episodes, entities, temporal claims, and registered skills.
+8. Structured and full-text retrieval supply relevant context on later turns.
+9. Piper speaks the reply while the Reachy SDK moves the robot safely.
 
 There is no hardcoded phrase parser. The LLM interprets the language, while
 ordinary code owns validation, persistence, and physical safety.
@@ -27,7 +30,9 @@ code/
     app.py                    lifecycle, HTTP routes, queue, and robot loop
     conversation.py           teaching policy and memory-write boundary
     cloud.py                  Groq structured-output adapter
-    memory.py                 local persistent memory interface
+    memory.py                 SQLite episodic and semantic memory
+    events.py                 typed cognitive event contracts
+    policies.py               interchangeable reasoning and action contracts
     voice.py                  offline Piper adapter
     static/                   child-facing website
     assets/                   packaged greeting audio
@@ -39,19 +44,22 @@ This is intentionally small. When the domain grows beyond a few modules,
 `cloud.py`, `memory.py`, and the physical adapters can become subpackages
 without changing the website or the app entry point.
 
-## Memory Direction
+## Cognitive Memory
 
-The current JSON store is enough for teaching one robot name and proving that
-the fact survives restarts. The next storage implementation should be SQLite on
-the robot behind the same memory interface. SQLite provides transactions,
-structured facts, provenance, and migrations without operating a database
-server on a small CM4.
+SQLite is the source of truth on the robot. Episodes preserve what was said;
+entities and claims form an inspectable semantic graph; evidence links each
+claim back to its episode. Claims carry confidence, origin, and temporal status,
+so corrected knowledge can supersede old beliefs without destroying history.
 
 The LLM should not receive raw database access. A retrieval layer selects the
 relevant facts for each turn and adds them to the model context. A validated
-write layer accepts only explicit, schema-conforming facts. A hosted database or
-vector index becomes useful only if the project later needs multi-device sync,
-large documents, or semantic search across many memories.
+write layer accepts only explicit, schema-conforming facts. FTS5 supplies text
+retrieval now. Embeddings can later be added as a disposable `sqlite-vec` index,
+while the graph and evidence remain authoritative.
+
+Adult memory operations are available through `/api/memory` and
+`/api/memory/reset`. A hard reset requires the exact confirmation phrase and
+creates a backup before recreating the database.
 
 ## Run the Development Interface
 

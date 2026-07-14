@@ -1,4 +1,3 @@
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,12 +12,37 @@ class MemoryStoreTest(unittest.TestCase):
             MemoryStore(path).remember_robot_name("Pixel")
 
             self.assertEqual(MemoryStore(path).robot_name(), "Pixel")
-            data = json.loads(path.read_text())
-            self.assertEqual(data["robot"]["source"], "family web chat")
+            self.assertTrue(path.with_suffix(".sqlite3").exists())
+            self.assertEqual(MemoryStore(path).snapshot()["counts"]["claims"], 1)
 
     def test_missing_memory_is_empty(self):
         with tempfile.TemporaryDirectory() as directory:
             store = MemoryStore(Path(directory) / "missing.json")
+            self.assertIsNone(store.robot_name())
+
+    def test_soft_reset_forgets_claims_but_preserves_episodes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = MemoryStore(Path(directory) / "memory.sqlite3")
+            episode = store.record_episode("Maya", "I like dinosaurs")
+            store.remember_claim(
+                "Maya", "likes", object_name="dinosaurs", subject_kind="person",
+                episode_id=episode,
+            )
+
+            store.reset(hard=False)
+
+            self.assertEqual(store.relevant_context("Maya"), [])
+            self.assertEqual(store.snapshot()["counts"]["episodes"], 1)
+
+    def test_hard_reset_creates_backup_and_starts_empty(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = MemoryStore(Path(directory) / "memory.sqlite3")
+            store.remember_robot_name("Pixel")
+
+            backup = store.reset(hard=True)
+
+            self.assertIsNotNone(backup)
+            self.assertTrue(backup.exists())
             self.assertIsNone(store.robot_name())
 
 

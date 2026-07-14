@@ -54,6 +54,7 @@ class GroqCloud:
         *,
         robot_name: str | None,
         history: list[dict[str, str]],
+        memory_context: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Use one LLM turn to understand, extract memory, and write the reply."""
         name_context = (
@@ -64,13 +65,18 @@ class GroqCloud:
         system = (
             "You are the language-understanding layer for a small Reachy Mini robot "
             "that children Maya and Alexander teach. Analyze the child's natural language, "
-            "extract any explicitly taught robot name, and write the robot's reply. "
+            "extract explicitly taught knowledge, and write the robot's reply. "
             f"{name_context} Set intent to teach_robot_name only when the child clearly "
             "assigns the robot a name. Never infer a name from a greeting, a person's name, "
-            "or an example. Otherwise set robot_name to null. Be warm, playful, truthful, "
+            "or an example. Otherwise set robot_name to null. Extract only claims directly "
+            "stated by the child; do not turn guesses into facts. Use only the allowed "
+            "predicates. Do not duplicate the robot-name assignment in claims. Resolve "
+            "pronouns conservatively. Be warm, playful, truthful, "
             "and brief. The reply must use at most two short sentences and 45 words. "
             "Never ask for private information or invent a memory."
         )
+        if memory_context:
+            system += " Relevant validated memories: " + json.dumps(memory_context[:8])
         messages: list[dict[str, str]] = [{"role": "system", "content": system}]
         messages.extend(history[-6:])
         messages.append({"role": "user", "content": user_text[:500]})
@@ -92,8 +98,41 @@ class GroqCloud:
                     "type": "string",
                     "enum": ["curious", "excited", "friendly", "warm"],
                 },
+                "entities": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "kind": {"type": "string", "enum": ["person", "robot", "animal", "place", "object", "concept"]},
+                        },
+                        "required": ["id", "name", "kind"],
+                        "additionalProperties": False,
+                    },
+                },
+                "claims": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "subject": {"type": "string"},
+                            "predicate": {"type": "string", "enum": [
+                                "is_a", "part_of", "has_property", "likes", "dislikes",
+                                "knows", "named", "located_in", "created_by", "related_to",
+                                "can_do", "interested_in"
+                            ]},
+                            "object": {"type": "string"},
+                            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        },
+                        "required": ["subject", "predicate", "object", "confidence"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["intent", "robot_name", "reply", "mood"],
+            "required": ["intent", "robot_name", "reply", "mood", "entities", "claims"],
             "additionalProperties": False,
         }
         data = self._request_json(
@@ -125,7 +164,7 @@ class GroqCloud:
 
         if not isinstance(result, dict):
             raise CloudUnavailable("Groq returned an unexpected structured output")
-        required = {"intent", "robot_name", "reply", "mood"}
+        required = {"intent", "robot_name", "reply", "mood", "entities", "claims"}
         if set(result) != required or not isinstance(result.get("reply"), str):
             raise CloudUnavailable("Groq output did not match the turn schema")
         result["reply"] = result["reply"].strip()[:200]

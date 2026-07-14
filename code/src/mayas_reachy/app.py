@@ -24,6 +24,7 @@ from reachy_mini.utils import create_head_pose
 from .cloud import CloudUnavailable, GroqCloud
 from .constants import GREETING_TEXT
 from .conversation import Conversation
+from .events import EventJournal
 from .memory import MemoryStore
 from .voice import PiperVoiceSynthesizer, VoiceUnavailable
 
@@ -39,6 +40,11 @@ def wav_duration(path: Path) -> float:
 
 class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=500)
+
+
+class MemoryResetIn(BaseModel):
+    mode: str = Field(pattern="^(soft|hard)$")
+    confirmation: str
 
 
 @dataclass
@@ -70,6 +76,8 @@ class MayasReachyApp(ReachyMiniApp):
 
         self._state_lock = threading.Lock()
         self._greet_requested = threading.Event()
+        self._listen_stop = threading.Event()
+        self._listening_started_at: float | None = None
         self._chat_queue: queue.Queue[ChatJob] = queue.Queue(maxsize=4)
         self._state = "starting"
         self._robot_ready = False
@@ -80,6 +88,7 @@ class MayasReachyApp(ReachyMiniApp):
         self.cloud = cloud or GroqCloud()
         self.voice = voice or PiperVoiceSynthesizer()
         self.conversation = Conversation(self.memory, self.cloud)
+        self.events = EventJournal()
 
         @self.settings_app.get("/api/status")
         def status() -> dict[str, Any]:
@@ -100,6 +109,22 @@ class MayasReachyApp(ReachyMiniApp):
         def listen() -> dict[str, Any]:
             return self.submit_listen()
 
+        @self.settings_app.post("/api/listen/stop")
+        def stop_listening() -> dict[str, Any]:
+            self._listen_stop.set()
+            return {"ok": True}
+
+        @self.settings_app.get("/api/memory")
+        def memory_snapshot() -> dict[str, Any]:
+            return self.memory.snapshot()
+
+        @self.settings_app.post("/api/memory/reset")
+        def reset_memory(inp: MemoryResetIn) -> dict[str, Any]:
+            if inp.confirmation != "RESET MAYA'S REACHY":
+                return {"ok": False, "error": "Adult confirmation did not match."}
+            backup = self.memory.reset(hard=inp.mode == "hard")
+            return {"ok": True, "mode": inp.mode, "backup_created": backup is not None}
+
     def status_snapshot(self) -> dict[str, Any]:
         """Return thread-safe state for the robot-hosted interface."""
         with self._state_lock:
@@ -115,6 +140,11 @@ class MayasReachyApp(ReachyMiniApp):
                 "cloud_configured": self.cloud.configured,
                 "speech_provider": "piper" if self.voice.configured else "browser",
                 "supports_robot_listening": True,
+                "listening_max_seconds": 30,
+                "listening_elapsed_seconds": (
+                    round(time.monotonic() - self._listening_started_at, 1)
+                    if self._listening_started_at is not None else None
+                ),
                 "robot_name": self.memory.robot_name(),
             }
 
@@ -143,7 +173,7 @@ class MayasReachyApp(ReachyMiniApp):
                 return {"ok": False, "error": "The robot is still waking up."}
         return self._submit_job(ChatJob(text=cleaned[:500]), timeout=timeout)
 
-    def submit_listen(self, *, timeout: float = 45.0) -> dict[str, Any]:
+    def submit_listen(self, *, timeout: float = 60.0) -> dict[str, Any]:
         """Queue one short onboard-microphone turn."""
         with self._state_lock:
             if not self._robot_ready:
@@ -239,21 +269,36 @@ class MayasReachyApp(ReachyMiniApp):
             transcript: str | None = None
             if job.text is None:
                 self._set_state("listening")
+                self._listen_stop.clear()
+                self._listening_started_at = time.monotonic()
                 try:
-                    audio = self.capture_microphone(reachy_mini, stop_event)
+                    audio = self.capture_microphone(
+                        reachy_mini, stop_event, stop_requested=self._listen_stop
+                    )
                     self._set_state("thinking")
                     transcript = self.cloud.transcribe(audio)
+                    self.events.publish("speech_transcribed", text=transcript)
                 except CloudUnavailable as exc:
                     job.result = {"ok": False, "error": str(exc)}
                     job.ready.set()
                     self._set_state("ready")
                     return
+                finally:
+                    self._listening_started_at = None
                 text = transcript
             else:
                 self._set_state("thinking")
                 text = job.text
 
+            self.events.publish(
+                "observation_recorded",
+                modality="speech" if transcript is not None else "text",
+                text=text,
+            )
             plan = self.conversation.respond(text)
+            if plan.learned:
+                self.events.publish("memory_updated", learned=plan.learned)
+            self.events.publish("plan_created", reply=plan.text, mood=plan.mood)
             audio_path: Path | None = None
             speech_mode = "browser"
             if self.voice.configured:
@@ -284,6 +329,7 @@ class MayasReachyApp(ReachyMiniApp):
             job.ready.set()
 
             self._set_state("speaking")
+            self.events.publish("skill_requested", capability="speak_and_gesture", mood=plan.mood)
             try:
                 self.perform_response(
                     reachy_mini,
@@ -295,6 +341,7 @@ class MayasReachyApp(ReachyMiniApp):
             finally:
                 if audio_path is not None:
                     audio_path.unlink(missing_ok=True)
+            self.events.publish("action_executed", capability="speak_and_gesture")
             self._set_state("ready")
         except Exception as exc:
             logging.getLogger(__name__).exception("Chat turn failed")
@@ -308,17 +355,42 @@ class MayasReachyApp(ReachyMiniApp):
         reachy_mini: ReachyMini,
         stop_event: threading.Event,
         *,
-        duration: float = 5.0,
+        duration: float = 30.0,
+        stop_requested: threading.Event | None = None,
+        silence_seconds: float = 1.8,
     ) -> bytes:
-        """Capture a short onboard-microphone clip as 16-bit PCM WAV."""
+        """Capture until stopped, sustained silence follows speech, or 30 seconds pass."""
         chunks: list[np.ndarray] = []
         reachy_mini.media.start_recording()
         started = time.monotonic()
+        speech_started = False
+        last_voice_at: float | None = None
+        noise_levels: list[float] = []
         try:
-            while not stop_event.is_set() and time.monotonic() - started < duration:
+            while (
+                not stop_event.is_set()
+                and not (stop_requested and stop_requested.is_set())
+                and time.monotonic() - started < duration
+            ):
                 sample = reachy_mini.media.get_audio_sample()
                 if sample is not None and np.size(sample):
-                    chunks.append(np.asarray(sample, dtype=np.float32))
+                    chunk = np.asarray(sample, dtype=np.float32)
+                    chunks.append(chunk)
+                    level = float(np.sqrt(np.mean(np.square(chunk))))
+                    elapsed = time.monotonic() - started
+                    if elapsed < 0.6:
+                        noise_levels.append(level)
+                    baseline = float(np.median(noise_levels)) if noise_levels else 0.0
+                    voice_threshold = max(0.012, min(0.05, baseline * 2.5))
+                    if level >= voice_threshold:
+                        speech_started = True
+                        last_voice_at = time.monotonic()
+                    elif (
+                        speech_started
+                        and last_voice_at is not None
+                        and time.monotonic() - last_voice_at >= silence_seconds
+                    ):
+                        break
                 stop_event.wait(0.02)
         finally:
             reachy_mini.media.stop_recording()

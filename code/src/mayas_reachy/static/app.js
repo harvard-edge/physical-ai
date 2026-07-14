@@ -17,6 +17,7 @@ let mode = "robot";
 let cloudConfigured = false;
 let supportsRobotListening = false;
 let busy = false;
+let robotListening = false;
 
 function setPill(kind, text) {
   pill.className = `pill ${kind}`;
@@ -80,6 +81,9 @@ function addMeta(data) {
   if (data.source === "offline-fallback") labels.push("cloud unavailable");
   if (data.learned && data.learned.robot_name) {
     labels.push(`remembered name: ${data.learned.robot_name}`);
+  }
+  if (data.learned && data.learned.claims) {
+    labels.push(`remembered ${data.learned.claims.length} connection${data.learned.claims.length === 1 ? "" : "s"}`);
   }
   labels.push(data.speech_mode === "robot" ? "voice on robot" : "browser voice");
 
@@ -164,11 +168,18 @@ async function send(text) {
 }
 
 async function listenOnRobot() {
+  if (robotListening) {
+    await fetch("/api/listen/stop", { method: "POST" }).catch(() => {});
+    setPill("is-think", "Finishing what I heard…");
+    return;
+  }
   if (busy) return;
   busy = true;
+  robotListening = true;
   sendButton.disabled = true;
-  micButton.disabled = true;
   micButton.classList.add("is-listening");
+  micButton.setAttribute("aria-label", "Stop listening");
+  micButton.title = "Stop listening";
   clearSeed();
   const listening = addBubble("Listening…", "bot", "is-pending");
   setPill("is-live", "Listening… speak to your robot");
@@ -196,9 +207,11 @@ async function listenOnRobot() {
     addBubble("I couldn't reach my microphone. Please try again.", "bot");
   } finally {
     busy = false;
+    robotListening = false;
     sendButton.disabled = false;
-    micButton.disabled = false;
     micButton.classList.remove("is-listening");
+    micButton.setAttribute("aria-label", "Tap to talk");
+    micButton.title = "Tap to talk";
     input.focus();
   }
 }
