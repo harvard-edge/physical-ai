@@ -1,6 +1,6 @@
-# MiOS Phase 0 Threat Model
+# MiOS Phase 1A Threat Model
 
-**Status:** Proposed
+**Status:** Active for the local synthetic controller
 **Scope:** Reachy runtime, Evolution Controller, assurance plane, data providers,
 Git forge, release path, and household network
 
@@ -28,25 +28,26 @@ candidate worktree ──deny──► assurance store, secrets, robot, deployme
 Evolution Controller ──attestations──► release authority
 ```
 
-The current prototype does not yet enforce these boundaries. They are target
-requirements, not descriptions of present protection.
+The Phase 1A controller enforces the candidate boundary for its synthetic
+fixture. The browser, memory, cloud-provider, release-signing, and physical
+runtime boundaries remain target requirements.
 
 ## Principal Threats
 
 | **Threat** | **Current exposure** | **Required control** |
 | --- | --- | --- |
 | LAN caller records, reads, or resets memory | Routes have no demonstrated authentication | Adult and child roles, origin protection, CSRF defense, rate limits, audit |
-| Child or bystander data leaves the home unexpectedly | Groq receives audio or conversational context | Guardian consent, visible activation, provider allowlist, minimization, retention review |
+| Child or bystander data leaves the home unexpectedly | The product prototype can send conversational context to a configured provider | Guardian consent, visible activation, provider allowlist, minimization, retention review |
 | Model emits unsafe or stale action | App directly invokes SDK methods | Typed proposal, local authorization envelope, deadline, watchdog, neutral recovery |
-| Candidate steals credentials or contacts robot | No candidate sandbox exists | Clean environment, network deny, external secret store, isolated disposable worker |
-| Candidate reads credentials from user configuration | A scrubbed environment can still inherit a real home directory | Empty ephemeral home and denial outside the pinned worktree |
-| Candidate changes its evaluator | Tests and governance are not protected | External protected suite, pinned manifest, deny candidate writes, independent custodian |
+| Candidate steals credentials or contacts robot | The synthetic worker has no credentials, external adapters, or network, but the trusted controller host is not OS-network-confined | Keep the container network denied, use an external secret store for future adapters, and confine controller egress before model access |
+| Candidate reads credentials from user configuration | The pinned nonroot container receives an empty temporary home and one fixture mount | Retain the read-only root, stripped environment, narrow mount, and hostile-output tests |
+| Candidate changes its evaluator | The worker can return only a validated source artifact; the supervisor rejects other paths and verifies the frozen test digest | Move protected suites to a separately administered evaluator before real-repository authority |
 | Agent inflates improvement claims | No preregistration or metric service | Fixed denominators, missing-as-failure, raw attestations, paired/repeated evaluation |
-| Ledger is rewritten after failure | No durable ledger exists | Hash chain, append API, reconciliation, external backup and verification |
-| Dependency or workflow expands authority | No provenance or protected workflow | Locked dependencies, SBOM, ownership, policy classification, signed release |
+| Ledger is rewritten after failure | The hash chain and trusted head detect partial corruption, but one host identity can rewrite both | Separate or sign the head before consequential autonomy |
+| Dependency or workflow expands authority | A frozen lock, SBOM, license policy, release manifests, and upgrade tests exist; artifact signing does not | Require reviewed lock changes and signed releases before distribution |
 | Rollback restores deleted child data | Backup lifecycle is unspecified | Consent-aware snapshots, deletion tombstones, recovery point and retention policy |
-| Autonomous loop consumes unbounded resources | No active budget exists | Atomic reservations, per-task and monthly caps, fail-closed exhaustion |
-| Candidate compromises a persistent hardware runner | Untrusted code can persist or steal robot access | Hosted or clean ephemeral candidate runner and separate pull-based hardware evaluator |
+| Autonomous loop consumes unbounded resources | Durable controller-time, attempt, storage, and WIP budgets stop the local loop | Retain atomic reservations and add provider-specific budgets before Phase 1B |
+| Candidate compromises a persistent hardware runner | Phase 1A has no hardware adapter or robot credentials | Use a clean ephemeral candidate runner and separate pull-based hardware evaluator |
 | Model upgrade is credited as MiOS improvement | Hosted model behavior changes outside the experiment | Freeze resolved model per comparison block and restart comparisons after change |
 
 ## Misuse and Metric Gaming
@@ -75,10 +76,12 @@ revokes affected credentials, restores the last-known-good runtime when safe,
 and notifies the principal investigator. No agent may resume the experiment or
 publish incident details without human authorization.
 
-## Residual Phase 0 Risk
+## Residual Phase 1A Risk
 
-The policies are documents only. Authentication, sandboxing, protected
-evaluation custody, action authorization, signing, and rollback are not yet
-implemented. Until enforcement tests pass, the controller must have no paid
-provider, GitHub-write, child-data, robot-network, signing, or deployment
-credentials.
+The synthetic candidate sandbox, durable workflow, budgets, stop switch,
+artifact checks, review identities, and release-manifest checks are implemented.
+LAN authentication, child-data consent, external protected-evaluation custody,
+trusted-controller egress confinement, artifact signing, rollback, and physical
+action authorization are not. The controller therefore retains zero authority
+for model providers, GitHub writes, child data, robot networking, signing, and
+deployment.

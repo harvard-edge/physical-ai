@@ -1,7 +1,7 @@
 # MiOS Constitution
 
 **Version:** 0.2.0
-**Status:** Proposed for Phase 0 approval
+**Status:** Active for the local-only Phase 1A proof
 **Constitutional authority:** Professor Vijay Janapa Reddi
 
 ## Purpose
