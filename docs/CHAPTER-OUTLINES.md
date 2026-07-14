@@ -4,8 +4,9 @@
 Reconciles and supersedes the chapter list in OUTLINE.md. Round-5 north-star
 decisions applied: graduate promise made explicit, labs end in an engineering
 decision rather than placement alone, the growing runtime restored as the course
-artifact, `loopbench` made a coequal deliverable, audience locked to the serious
-learner and practicing engineer, and the Reachy/UNO Q boundary made honest.
+artifact, measurement embedded in every lab rather than spun out as a separate
+product, audience locked to the serious learner and practicing engineer, and the
+Reachy/UNO Q boundary made honest.
 13 chapters.
 
 ## How to Use This
@@ -42,13 +43,13 @@ Seven verbs carry that promise: **frame, design, ground, measure and place,
 assure, supervise, diagnose**. Each chapter must build one of those capabilities,
 and the capstone must require evidence for all seven.
 
-Three artifacts divide the work cleanly. **Reachy makes the consequence felt.**
+Two artifacts divide the work cleanly. **Reachy makes the consequence felt.**
 The hero supplies the real scene, real stakes, and honest system limits. **The
 UNO Q makes the mechanism reproducible.** Its MPU/MCU boundary lets a learner
-measure and defend the architecture on one board. **`loopbench` makes the
-discipline portable.** The versioned instrument carries the measurement protocol
-across vendors and embodiments. The book teaches the discipline around all three;
-none is a substitute for the others.
+measure and defend the architecture on one board. The measurement method lives
+inside the labs and the growing runtime. Each lab emits an evidence record with
+the operational definition, setup, uncertainty, result, and decision, without
+creating a third product that must be maintained and validated independently.
 
 The primary reader is a serious learner or practicing engineer. Makers can ride
 along through the visible demonstrations, but rigor is not removed to make the
@@ -101,7 +102,7 @@ Naming both honestly beats forcing one to explain the other.
 8. **Diagnosis is a taught method** (hypothesis → bisect → confirm, introduced in Ch3, reinforced every "break it").
 9. **Scope discipline** (models are black-box components; we measure the loop, including endogeneity's effects, we do not teach model internals).
 10. **One runtime grows across the book** (Ch4 creates the measured skeleton; Ch5-Ch12 add services, placements, gates, and human authority to that same continuous system).
-11. **The instrument is a product, not back matter** (`loopbench` is released, versioned software; Ch3 teaches it and Appendix A records its normative protocol).
+11. **Measurement is embedded, not separately branded** (Ch3 teaches the method, the runtime carries the reusable instrumentation, and Appendix A records the common evidence format).
 
 ## The Structure (13 Chapters)
 
@@ -133,7 +134,6 @@ Part V    Into a Home
 Part VI   Capstone
   Ch13  Defend the Whole System
 
-Artifact  loopbench: versioned measurement instrument and reference cards
 App A  Normative Measurement Protocol · App B  UNO Q Kit · App C  Hero and Home
 (Memory dissolved: state → Ch6/Ch4, retention/egress → Ch11, forgetting → Ch12.)
 ```
@@ -218,15 +218,16 @@ makes a measurement valid.
 - **What to Measure.** Tail latency (not mean), joules per decision (energy, first-class here), egress bytes per hour, time-to-safe-state, drift, recovery frequency (endogeneity's fingerprint), and η_loop as the summary ratio.
 - **Metrology, Not a Branded Checklist** (Codex's bar). Operational definitions, calibration, uncertainty intervals, repeatability, reference tasks, comparison rules, negative controls. A measurement earns its place only if it *predicts an engineering outcome*.
 - **Measure Externally, Never on the Hot Path.** GPIO to a logic analyzer, an external power rail; self-timing on a shared-Linux MPU perturbs what it measures. Borrow MLPerf Tiny's discipline.
-- **Two Tiers, Enforced in the Output.** Deterministic *replay* = BENCHMARK (frozen log, error bars, a task-efficacy floor scored against ground truth so a do-nothing system cannot win). Live closed loop = CHARACTERIZATION, relative A-vs-B on a fixed rig, never absolute cross-lab numbers. The tool prints the banner.
+- **Two Tiers, Enforced in the Evidence Record.** Deterministic *replay* = BENCHMARK (frozen log, error bars, a task-efficacy floor scored against ground truth so a do-nothing system cannot win). Live closed loop = CHARACTERIZATION, relative A-vs-B on a fixed rig, never absolute cross-lab numbers. Every lab report names the tier explicitly.
 - **The Diagnostic Method.** Hypothesis → bisect → confirm; the reusable procedure every later "break it" reinforces.
 
 **Scene:** the first honest numbers for Robby's face-tracking loop.
 **Figure:** the loop's measured properties, replay tier, with η_loop and its error bars.
 **Lab (Your First Measurement):** replay-tier measurements for one capability with the
 task-efficacy floor → accept or reject the measurement and the engineering claim it
-supports. The seed of `loopbench`. (Because this chapter precedes the runtime, the
-reader measures requirements *before* being handed an architecture.)
+supports. This establishes the evidence format reused by every later lab. (Because
+this chapter precedes the runtime, the reader measures requirements *before* being
+handed an architecture.)
 
 ### Ch4 — The Runtime
 
@@ -439,7 +440,7 @@ architect a greenfield runtime for an unfamiliar embodiment and defend one failu
 
 ## Appendices
 
-- **A. Normative Measurement Protocol.** The book-facing specification for the separately released, versioned `loopbench` instrument: operational definitions, the two tiers, per-property recipes, uncertainty and negative-control protocols, and the validation study (≥3 systems with different dynamics).
+- **A. Normative Measurement Protocol.** The common evidence format used by the labs: operational definitions, the two tiers, per-property recipes, uncertainty and negative-control protocols, and the validation study (≥3 systems with different dynamics).
 - **B. The UNO Q Kit.** The two chips, the bridge, placement-by-chip, the propose/dispose demo, bring-up.
 - **C. The Hero and the Home.** Reachy as hero *and* honest "no-enforcer" case study; Maya as the ground-floor context.
 
