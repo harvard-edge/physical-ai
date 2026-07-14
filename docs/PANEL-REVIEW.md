@@ -186,9 +186,9 @@ educators at it.
 on SmolVLA / lerobot-rollout / Reachy, downstream of the LeRobot course) pulls partly
 against the Arduino/Qualcomm commission (the UNO Q and its MCU/MPU coupling are the
 point). These reconcile cleanly *if* the UNO Q stays the coupling-teaching rig and
-the propose/dispose hook demo while the measurement instrument is vendor-neutral and
-spans everything. But how tightly to couple to the HF ecosystem versus stay
-Arduino-native is a real decision only you can make.
+the propose/dispose hook demo while the common measurement method remains
+vendor-neutral and spans everything. But how tightly to couple to the HF ecosystem
+versus stay Arduino-native is a real decision only you can make.
 
 **Reachy-as-hero, resolved** (Pollen): Reachy Mini has *no* propose/dispose boundary
 (one CM4 brain; the peripheral MCUs in the servos and audio DSP are smart peripherals,
@@ -253,13 +253,18 @@ yet cite:
 - **Learning scientist:** three faces, time / irreversibility / persistence-and-exposure. Governance chapters (Ch6, 9, 12, 13) do NOT descend from "time"; forcing them teaches students privacy is a latency problem.
 - **Consensus:** don't crown time alone. Name the distribution axis honestly, scope it out, signpost where it's taught (LeRobot). Broaden the spine to its real faces so governance chapters are children, not hostages.
 
-### The instrument: ship it FIRST, before the book (unanimous, urgent)
+### Measurement Before the Book (Insight Retained, Product Rejected)
 
-- **Promote it out of the appendix, position it early** (after Ch2/Ch3, not Ch10). Every lab needs the number defined before it can make a property "visible."
-- **Only the replay tier is a real benchmark.** Frozen sensor log through the stack, metric vector measured with *external* timing/power (never self-timed on the hot path). The task-efficacy floor (null-system-wins fix) is solvable *only* in replay, because the log carries ground truth.
-- **The closed-loop tier is characterization, never a benchmark.** Adopt RoboArena-style *relative A-vs-B ranking on a fixed rig*. Enforce the two tiers in the tool's *output* (BENCHMARK vs NOT-A-BENCHMARK), or the distinction is worthless.
-- **MVP = `loopbench replay v0.1`:** one CLI, one metric to MLPerf rigor, vendor-neutral policy I/O contract, one frozen reference log, a task-efficacy floor, reference cards on two boards. Versioned, arXiv + DOI, permissive. "One metric measured rigorously beats five measured hand-wavily. Ship date beats book quality."
-- **Why first:** SRE (error budgets), Software Engineering, TinyML (MLPerf Tiny) all shipped the instrument first and were *named* in retrospect. Naming the discipline in Ch1 while the instrument is Appendix A "(TBD)" and every lab links to "(TBD)" is "the tell that it is still an essay." Wiener coined "cybernetics" himself and it still dissolved.
+The reviewers were right that the measurement method must precede strong claims,
+but the later product decision rejects a separately named instrument. It would add
+another product before repeated labs have demonstrated a stable common substrate.
+The retained requirements are narrower and more useful:
+
+- **Define the number before the chapter uses it.** Every lab needs an operational definition before it can make a property visible.
+- **Only the replay tier is a benchmark.** A frozen sensor log carries ground truth and supports a task-efficacy floor so a do-nothing system cannot win.
+- **Treat live closed-loop results as characterization.** Compare A versus B on a fixed rig rather than publishing absolute cross-lab claims.
+- **Measure externally when instrumentation perturbs the hot path.** Use GPIO timing, an external power rail, or another independent reference when self-measurement would distort the result.
+- **Embed the reusable harness in the reference runtime.** Each lab emits the same evidence record, while a standalone tool remains deferred until real repetition earns it.
 
 ### Structure and tightening (partly contested)
 
@@ -315,4 +320,11 @@ Both externals independently say the beloved triad's first two parts overlap, an
 
 ### Biggest risk, sharpened: metrology, not just shipping
 
-Codex raises the instrument bar above "ship it." A discipline needs operational definitions, calibration, uncertainty intervals, repeatability, reference tasks, comparison rules, negative controls, and *evidence the measurements predict engineering outcomes*, loopbench must show a placement chosen from its numbers beats plausible alternatives under controlled perturbation, reproducibly across ≥3 systems with different dynamics. Otherwise η_loop is "vocabulary from a compelling book, not an engineering standard." If it doesn't validate, narrow the "new discipline" claim before publishing.
+Codex raises the measurement bar above "ship it." A discipline needs operational
+definitions, calibration, uncertainty intervals, repeatability, reference tasks,
+comparison rules, negative controls, and *evidence the measurements predict
+engineering outcomes*. The reference implementation and labs must show that a
+placement chosen from their numbers beats plausible alternatives under controlled
+perturbation, reproducibly across ≥3 systems with different dynamics. Otherwise
+η_loop is "vocabulary from a compelling book, not an engineering standard." If the
+method does not validate, narrow the "new discipline" claim before publishing.
