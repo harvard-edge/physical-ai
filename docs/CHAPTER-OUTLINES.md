@@ -444,11 +444,9 @@ architect a greenfield runtime for an unfamiliar embodiment and defend one failu
 - **B. The UNO Q Kit.** The two chips, the bridge, placement-by-chip, the propose/dispose demo, bring-up.
 - **C. The Hero and the Home.** Reachy as hero *and* honest "no-enforcer" case study; Maya as the ground-floor context.
 
-## Open Decisions (Remaining)
+## Locked Decisions
 
-- **The name on the cover:** "Physical AI Engineering: The Discipline of Closed-Loop AI," or lead with "Closed-Loop AI" and let "physical AI engineering" be the descriptor.
-
-**Locked:** endogeneity stays threaded rather than becoming a chapter. Energy
-stays a first-class measured property rather than a co-fundamental. The book is
-designed for the serious learner and practicing engineer, with maker-accessible
-manifestations rather than reduced rigor.
+- **The title is final.** *Physical AI: Machine Learning Systems That Sense and Act.*
+- **Endogeneity stays threaded.** It is a property of the running loop rather than a separate chapter.
+- **Energy stays first class.** It remains a measured property rather than a co-fundamental.
+- **The primary reader is the engineer.** Makers receive accessible manifestations rather than reduced rigor.

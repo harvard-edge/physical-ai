@@ -2,7 +2,9 @@
 
 **Status:** working synthesis for review. Round 1 (8 experts) complete. Round 2
 (3 ecosystem incumbents: Pollen Robotics, Hugging Face LeRobot, Nvidia Physical
-AI) is running and will be appended.
+AI) complete. The later naming decision adopts *Physical AI: Machine Learning
+Systems That Sense and Act*. References to the earlier working title remain
+below as part of the review record.
 
 ## Bottom Line
 

@@ -1,4 +1,4 @@
-# Physical AI Engineering: a hands-on systems course
+# Physical AI: A Hands-On Systems Course
 
 A short course that teaches how physical AI systems are actually built, for
 engineers, through one real artifact (a robot). Each chapter adds one component

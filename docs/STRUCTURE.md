@@ -1,4 +1,4 @@
-# Physical AI Engineering: how the book and labs are structured
+# Physical AI: How the Book and Labs Are Structured
 
 This is the meta-design: how the material is organized so it reads as a
 *discipline*, not a kit walkthrough. It refines the chapter content in
@@ -198,8 +198,7 @@ day-one primitive, so the dependency holds either way.
 - **Two tracks**: the *concept* (properties + placement method, platform-neutral)
   is the durable asset the author owns and that courses adopt; the *lab* (UNO Q,
   ExecuTorch) is co-branded and swappable as hardware evolves. Keep it "the
-  Physical AI Engineering book that uses the UNO Q for labs," never "the UNO Q
-  book."
+  *Physical AI* book that uses the UNO Q for labs," never "the UNO Q book."
 
 ---
 
