@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.2.0
 status: proposed
 default_release_decision: deny
 
@@ -10,7 +10,13 @@ promotion_stages:
   - ordinary_operation
 
 required_attestations:
-  replay: [build_provenance, public_tests, protected_tests, privacy_scan]
+  replay:
+    - build_provenance
+    - dependency_lock
+    - sbom
+    - public_tests
+    - protected_tests
+    - privacy_scan
   simulation: [replay, safety_envelope, resource_budget]
   shadow: [simulation, hardware_compatibility, rollback_rehearsal]
   supervised_physical_canary:
@@ -24,6 +30,8 @@ required_attestations:
 
 trust:
   artifact_signature_required: true
+  github_artifact_attestation_when_available: true
+  local_hash_manifest_before_remote: true
   trust_root: pending_pi_key_custody_decision
   key_storage: external_protected_store
   revocation_process: pending
@@ -41,7 +49,7 @@ canary:
   automatic_abort_on:
     - protected_metric_regression
     - action_envelope_violation
-    - stop_deadline_violation
+    - protective_stop_deadline_violation
     - privacy_policy_violation
     - unknown_runtime_state
   maximum_canaries_before_new_approval: 1
@@ -52,3 +60,10 @@ current_authority:
   merge: disabled
   deploy_simulation: disabled_pending_phase0_approval
   deploy_physical: disabled
+
+runner_policy:
+  untrusted_candidate_code: github_hosted_or_clean_ephemeral_only
+  persistent_self_hosted_candidate_runner: forbidden
+  robot_as_github_runner: forbidden
+  hardware_worker_mode: pull_attested_artifact_and_bounded_manifest
+  github_authentication: least_privilege_github_app

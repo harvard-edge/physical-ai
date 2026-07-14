@@ -1,6 +1,6 @@
 # MiOS Constitution
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Status:** Proposed for Phase 0 approval
 **Constitutional authority:** Professor Vijay Janapa Reddi
 
@@ -17,8 +17,9 @@ The absence of an explicit permission is a denial.
 2. **SAF-002.** Every action proposal carries a capability identifier, bounded
    parameters, source, correlation identifier, deadline, and authorization
    decision. Unknown capabilities or fields are rejected.
-3. **SAF-003.** Local stop preempts recording, playback, queued actions, and
-   motion. Stop acknowledgment and neutral recovery have measured deadlines.
+3. **SAF-003.** Interaction cancellation, protective stopping, and any required
+   hardware emergency stop are distinct controls with measured response and
+   recovery requirements.
 4. **SAF-004.** Loss, delay, or corruption of cloud, network, model, controller,
    or agent services grants no new authority and leaves the robot locally safe.
 5. **AUT-001.** A consequential change has different proposing, implementing,
@@ -55,6 +56,15 @@ The absence of an explicit permission is a denial.
     authenticated role, origin protection, rate limits, and audit events.
 18. **PRI-005.** Public engineering records use synthetic or privacy-filtered
     evidence and never contain a child's verbatim private interaction.
+19. **SCI-001.** Hypotheses, primary metrics, comparison conditions, and
+    acceptance rules are frozen before candidate evaluation. Revision creates a
+    linked experiment rather than editing the original record.
+20. **SCI-002.** Failed, rejected, rolled-back, and inconclusive experiments
+    remain in the denominator and the ledger.
+21. **SCI-003.** Product memory, admitted research data, operational telemetry,
+    protected evaluation, and engineering lineage remain separate stores.
+22. **SCI-004.** A model change begins a new comparison block. MiOS does not
+    attribute a provider model upgrade to its own organizational improvement.
 
 ## Learning Authority
 
@@ -69,6 +79,7 @@ human approval.
 Insufficient evidence, ambiguous authority, corruption, evaluator disagreement,
 budget exhaustion, or failure of a protected check causes a safe pause. Failure
 to improve is an admissible result and must remain in the evolution record.
+A model review cannot authorize physical safety or change the constitution.
 
 ## Amendment
 

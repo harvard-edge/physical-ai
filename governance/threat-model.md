@@ -39,12 +39,15 @@ requirements, not descriptions of present protection.
 | Child or bystander data leaves the home unexpectedly | Groq receives audio or conversational context | Guardian consent, visible activation, provider allowlist, minimization, retention review |
 | Model emits unsafe or stale action | App directly invokes SDK methods | Typed proposal, local authorization envelope, deadline, watchdog, neutral recovery |
 | Candidate steals credentials or contacts robot | No candidate sandbox exists | Clean environment, network deny, external secret store, isolated disposable worker |
+| Candidate reads credentials from user configuration | A scrubbed environment can still inherit a real home directory | Empty ephemeral home and denial outside the pinned worktree |
 | Candidate changes its evaluator | Tests and governance are not protected | External protected suite, pinned manifest, deny candidate writes, independent custodian |
 | Agent inflates improvement claims | No preregistration or metric service | Fixed denominators, missing-as-failure, raw attestations, paired/repeated evaluation |
 | Ledger is rewritten after failure | No durable ledger exists | Hash chain, append API, reconciliation, external backup and verification |
 | Dependency or workflow expands authority | No provenance or protected workflow | Locked dependencies, SBOM, ownership, policy classification, signed release |
 | Rollback restores deleted child data | Backup lifecycle is unspecified | Consent-aware snapshots, deletion tombstones, recovery point and retention policy |
 | Autonomous loop consumes unbounded resources | No active budget exists | Atomic reservations, per-task and monthly caps, fail-closed exhaustion |
+| Candidate compromises a persistent hardware runner | Untrusted code can persist or steal robot access | Hosted or clean ephemeral candidate runner and separate pull-based hardware evaluator |
+| Model upgrade is credited as MiOS improvement | Hosted model behavior changes outside the experiment | Freeze resolved model per comparison block and restart comparisons after change |
 
 ## Misuse and Metric Gaming
 
@@ -58,6 +61,11 @@ Repeated protected-evaluation queries are limited. Evaluator dependencies,
 workflow changes, and threshold changes receive the same protection as evaluator
 source. A candidate that modifies its public acceptance test is rejected even
 when all visible checks pass.
+
+Fixed single-agent and fixed-team controls receive matched model, tool, token,
+call, and time budgets. Failed and inconclusive runs remain registered. A
+revision creates a child experiment so post hoc changes cannot overwrite the
+original hypothesis or denominator.
 
 ## Incident Response
 

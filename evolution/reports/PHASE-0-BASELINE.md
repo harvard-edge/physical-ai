@@ -41,8 +41,8 @@ locked or reproducible across target platforms.
 - The repository has one worktree on `dev` and no configured Git remote.
 - Substantial unrelated book and documentation work is uncommitted and must not
   be touched by autonomous engineering jobs.
-- Claude Code 2.1.209 and Codex CLI 0.144.4 are installed. Gemini CLI is absent.
-- No paid model calls were made during Phase 0 preparation.
+- Approved engineering-provider profiles have not been activated. No paid model
+  calls were made during Phase 0 preparation.
 - `reachy-mini.local` did not resolve. The installed robot release, Raspberry Pi
   resource use, physical stop latency, and recovery behavior are unverified.
 - No GitHub workflows, protected environments, controller, durable evolution
@@ -57,7 +57,8 @@ can be sent to Groq. Guardian consent, provider allowlisting, retention,
 redaction, verified deletion, and child-data incident procedures are not yet
 implemented.
 
-Microphone Stop is not an emergency stop. It ends recording but does not prove
+Microphone Stop is interaction cancellation, not a protective or hardware
+emergency stop. It ends recording but does not prove
 preemption of queued reasoning, speech, or motion. Hardcoded bounded poses are
 not a centralized authorization envelope. Recovery failures are logged rather
 than enforced through a separate watchdog.
@@ -75,7 +76,7 @@ is not the privacy-filtered, append-only evolution ledger.
 | Formatting, lint, types, dependency policy | Missing |
 | Provider contracts and degraded-service integration | Partial |
 | Memory migration, restore, corruption, and privacy | Missing or partial |
-| Deterministic action envelope and emergency stop | Missing |
+| Deterministic action envelope, protective stop, and watchdog | Missing |
 | Recorded replay and held-out cognitive evaluation | Missing |
 | Target edge resource measurement | Missing |
 | Simulation and shadow attestation | Missing |
@@ -90,7 +91,9 @@ after approval of the requested pilot budget. External GitHub publication, paid
 model calls, child-data egress, automatic merge, new physical capabilities, and
 physical deployment remain disabled.
 
-Phase 0 cannot close until the charter and governance artifacts are committed,
-an independent protected-evaluation custodian is assigned, privacy decisions are
-made, target hardware is measured, dependency installation is reproducible, a
-known-good release is hashed or signed, and rollback is rehearsed.
+Phase 0 cannot close until the revised charter and governance artifacts are
+approved, an independent protected-evaluation custodian is assigned, privacy
+decisions are made, and the known-good local baseline is pinned. Reproducible
+target dependency installation, target-hardware assurance, and rollback
+rehearsal are Phase 2 gates and cannot be used as circular prerequisites for
+building the offline controller that will record them.

@@ -2,7 +2,7 @@
 
 **Working name:** MiOS, Maya's Intelligence Operating System
 **Experiment:** The MiOS Embodied Bootstrap Challenge
-**Status:** Proposed execution charter
+**Status:** Phase 0 execution charter, revision 0.2
 **Primary embodiment:** Reachy Mini
 **Transfer embodiment:** Arduino UNO Q
 
@@ -38,6 +38,13 @@ interactions with Maya, identify deficiencies in its own design, and measurably
 improve itself through an auditable sequence of experiments and pull requests.
 Humans will not write implementation code for the experiment.
 
+The autonomy claim begins at the pre-autonomy baseline commit recorded in the
+evaluation manifest. Earlier prototype code remains part of the starting
+condition. Human approvals, hardware setup, protected-test authorship, and
+safety interventions are recorded separately from implementation contributions.
+The experiment must never describe inherited code or human-authored evaluation
+criteria as agent-generated work.
+
 The final demonstration is the **Maya Test**:
 
 1. Maya teaches the robot a new identity, personal facts, and a physical or
@@ -58,6 +65,24 @@ The project succeeds only when the result can be reproduced from the repository
 and evolution ledger. A fluent demonstration without traceable evidence does
 not pass.
 
+### Autonomy Levels
+
+The experiment reports autonomy as an observed level rather than the binary
+phrase “human in or out of the loop.”
+
+| **Level** | **Agent authority demonstrated** | **Required human role** |
+| --- | --- | --- |
+| A0 | Executes an explicitly specified implementation task | Directs the task |
+| A1 | Decomposes and implements a bounded issue | Approves the issue and result |
+| A2 | Selects work from measured observations | Approves consequential release |
+| A3 | Forms and tests competing improvement hypotheses | Owns protected evaluation and safety authority |
+| A4 | Completes a reflective observation-to-improvement cycle | Approves physical canary |
+| A5 | Transfers the architecture to a new embodiment | Supplies hardware and constitutional bounds |
+
+MiOS must report the highest level supported by complete evidence and the number
+and type of human interventions required. It may not infer a higher level from
+the amount of generated code.
+
 ## Research Claim
 
 MiOS investigates whether an agentic development system can continually improve
@@ -69,6 +94,23 @@ The experiment does not claim to replace Linux or autonomously train a general
 foundation model. Linux remains the operating substrate. MiOS is the operating
 layer for perception, memory, reasoning, skills, safety, and reflective
 improvement.
+
+The research claim is falsifiable. MiOS does not support the claim if repeated
+experiments show no advantage over a fixed single-agent workflow at matched
+model, tool, token, time, and evaluation budgets, or if improvement disappears
+on protected cases, target hardware, or a second embodiment.
+
+Each consequential study compares at least these conditions when feasible:
+
+1. a fixed single-agent baseline;
+2. a fixed specialist team with no organizational adaptation; and
+3. the adaptive MiOS agent organization.
+
+Model versions stay fixed within a comparison. Tasks are randomized or paired,
+failed and inconclusive runs remain in the denominator, and the analysis reports
+effect sizes and uncertainty rather than only pass rates. Model upgrades begin
+a new comparison block so improvements in the underlying model are not
+misattributed to MiOS.
 
 ## Precedents and Design Lessons
 
@@ -95,6 +137,9 @@ remain safe under edge-device constraints. The experiment therefore needs an
 assurance plane and evolution ledger in addition to an agent team and test
 harness.
 
+The rationale for revision 0.2 and its infrastructure choices is recorded in
+[`MIOS-DESIGN-REVIEW.md`](MIOS-DESIGN-REVIEW.md).
+
 ## Success Measures
 
 Progress is measured against externally defined outcomes. Agent activity,
@@ -106,19 +151,25 @@ evidence of success.
 | Learning | Held-out recall after correction and restart | At least 90% |
 | Grounding | Answers supported by retrieved evidence | At least 95% |
 | Generalization | Success on unseen variants of taught skills | At least 75% |
-| Responsiveness | Local stop acknowledgment | Under 100 ms |
+| Responsiveness | Interaction-cancel UI acknowledgment | Under 100 ms |
 | Physical control | Unsafe actuator commands executed | Zero |
-| Recovery | Return to known state after injected failures | 100% of required scenarios |
+| Recovery | Return to known state after injected failures | 100% of hazard-derived required scenarios |
 | Edge operation | Core runtime remains within declared device budgets | No budget violation |
-| Evolution | Accepted changes improve a preregistered measure | At least 70% of deployed experiments |
-| Regression | Protected evaluations degraded by a release | Zero unresolved regressions |
+| Evolution | Cumulative preregistered utility versus the fixed-agent baseline | Positive effect with uncertainty reported |
+| Experiment integrity | Registered experiments with complete outcomes | 100%, including failures and rollbacks |
+| Regression | Critical protected regressions admitted to release | Zero |
 | Autonomy | Human implementation contributions | Zero |
-| Intervention | Unplanned human interventions per accepted release | Declines across milestones |
-| Transfer | Cognitive contracts reused on UNO Q | At least 80% unchanged |
+| Intervention | Human interventions by type and autonomy level | Reported for every experiment |
+| Transfer | Versioned cognitive contracts passing unchanged conformance tests on UNO Q | Core contracts all pass |
 | Reproducibility | Clean reconstruction from release and ledger | Two successful rebuilds |
 
 Thresholds may be tightened through a governance pull request. An agent may not
 lower a threshold to make its own candidate pass.
+
+Safety is reported jointly with required-task completion and calibrated
+abstention. A system that refuses every task does not satisfy the physical-control
+criterion. “No regression” means a critical regression blocks release; lower
+severity findings remain visible with an owner and resolution deadline.
 
 ## System Boundaries
 
@@ -142,7 +193,7 @@ Maya and the physical world
                         ▼
 ┌──────────────────────────────────────────────────────┐
 │ Independent Assurance Plane                          │
-│ hidden evals · safety checks · budgets · deployment  │
+│ sealed evals · safety checks · budgets · deployment  │
 └───────────────────────┬──────────────────────────────┘
                         │ authorized capability bundle
                         ▼
@@ -164,45 +215,69 @@ workers. A crash, context reset, or model upgrade must not erase the experiment.
 Its state machine is:
 
 ```text
-OBSERVE → TRIAGE → HYPOTHESIZE → RESEARCH → DESIGN → IMPLEMENT
-   ▲                                                   │
-   │                                                   ▼
-LEARN ← MEASURE ← CANARY ← AUTHORIZE ← REVIEW ← EVALUATE
-                    │                       │
-                    └────── ROLLBACK ◄──────┘
+OBSERVED → TRIAGED → PREREGISTERED → DESIGNED → IMPLEMENTING
+                                                    │
+                                                    ▼
+LEARNED ← MONITORING ← ACCEPTED ← CANARY ← SHADOW ← REVIEWING ← EVALUATING
+                                ▲
+                                │ explicit authorization
+                    LOCAL_CANDIDATE_READY
+
+Any nonterminal state → PAUSED | REJECTED | INCIDENT
+Any deployed state    → ROLLED_BACK
 ```
 
 Each transition requires a versioned artifact. The controller may resume only
 from the last completed transition. It must never infer completion from an
-agent's prose when a machine-verifiable result is expected.
+agent's prose when a machine-verifiable result is expected. Revision never
+rewrites a preregistration. It creates a linked child experiment with a new
+hypothesis, budget, and evaluation record.
+
+The Runtime and Evolution Controller maintain separate records. Runtime memory
+contains consented knowledge used during interaction. The evolution ledger
+contains privacy-filtered engineering evidence. An interaction does not become
+training, evaluation, or public engineering data merely because the runtime
+observed it.
 
 ### Controller Services
 
-The first controller implementation should use the smallest dependable pieces:
+The first controller implementation should reuse the smallest dependable pieces:
 
-1. **Scheduler.** A durable queue selects due observations, experiments,
-   reviews, canaries, and maintenance work. GitHub Actions may run bounded jobs;
-   a local controller handles robot and long-running work.
-2. **State store.** SQLite is sufficient initially. It records work items,
-   leases, attempts, costs, artifacts, model calls, approvals, and terminal
-   states. PostgreSQL becomes appropriate only if concurrent scale requires it.
+1. **Durable workflow substrate.** Run a bounded bakeoff before building a
+   scheduler. DBOS is the leading local candidate because its Python workflows
+   checkpoint to SQLite and resume completed steps. Temporal is the scale-up
+   candidate when multi-host operation or long human waits justify its service.
+   A custom state machine is accepted only if the bakeoff documents a required
+   capability that neither provides within the edge and governance constraints.
+2. **Experiment registry.** A MiOS-owned SQLite database records hypotheses,
+   observations, budgets, artifacts, model calls, approvals, and outcomes. The
+   workflow substrate owns execution checkpoints; the registry owns research
+   truth. Stable identifiers correlate them without treating either as a copy
+   of the other.
 3. **GitHub adapter.** Git branches, issues, pull requests, checks, releases, and
    protected environments form the engineering control plane.
 4. **Agent runner.** Every worker receives a clean task packet, bounded tools,
    time and token budgets, an isolated worktree, and an explicit output schema.
-5. **Evaluation runner.** Deterministic tests, simulations, recorded replays,
-   hidden behavioral cases, and hardware measurements produce signed results.
+5. **Evaluation runner.** Inspect AI is the preferred agent-evaluation harness
+   because it supports datasets, scorers, limits, sandboxed tools, and external
+   Claude, Codex, and Gemini agents. Deterministic tests, simulation, replay,
+   sealed behavioral cases, and hardware measurements remain separate scorers
+   rather than model-written verdicts.
 6. **Deployment controller.** Releases progress through simulation, shadow,
    supervised canary, and ordinary operation. Failed gates trigger rollback.
 7. **Ledger writer.** Every cycle is appended to the evolution ledger with
    provenance links. Existing records are never rewritten to improve a result.
 8. **Monitor.** Health checks detect stalled leases, repeated failures, budget
    exhaustion, regressions, unsafe proposals, and drift in deployed behavior.
+9. **Telemetry.** OpenTelemetry carries correlated traces, metrics, and
+   privacy-filtered events across the controller, evaluators, and runtime. The
+   evolution ledger references immutable evidence but does not replace
+   operational telemetry.
 
-A lightweight Temporal or Prefect deployment may be evaluated once the local
-state machine demonstrates a real need for distributed workflow recovery. The
-experiment should not begin by adopting an orchestration platform merely to
-appear autonomous.
+Prefect remains an operations-oriented alternative when scheduling and dashboard
+needs dominate. LangGraph may run inside a reasoning worker when a task truly
+requires branching model state. Neither becomes the release authority or the
+source of research truth.
 
 ## Evolution Ledger
 
@@ -211,6 +286,9 @@ must link the physical observation to the engineering outcome.
 
 ```yaml
 experiment_id: MIOS-EXP-0001
+parent_experiment_id: null
+campaign_id: MIOS-CAMPAIGN-001
+autonomy_level_claimed: A1
 trigger:
   observation_ids: []
   detected_by: runtime-monitor
@@ -220,7 +298,14 @@ hypothesis:
   expected_mechanism: ""
 baseline:
   release: ""
+  comparison_condition: fixed_single_agent
   metrics: {}
+preregistration:
+  artifact_hash: ""
+  frozen_at: ""
+  primary_metric: ""
+  minimum_effect: ""
+  sample_size: 0
 alternatives: []
 selected_design:
   decision_record: ""
@@ -232,8 +317,10 @@ budgets:
   device_memory_mb: 0
 evaluation:
   public_suite: ""
-  protected_suite_result: ""
+  sealed_suite_attestation: ""
   simulation_result: ""
+  evaluator_version: ""
+  complete_failure_inventory: []
 change:
   issue: ""
   branch: ""
@@ -248,9 +335,10 @@ deployment:
   canary_window: ""
   rollback_release: ""
 outcome:
-  decision: keep | revise | rollback | inconclusive
+  decision: inconclusive
   measured_delta: {}
   human_interventions: []
+  autonomy_level_supported: A0
 lesson:
   supported_claims: []
   rejected_claims: []
@@ -259,6 +347,10 @@ lesson:
 
 The implementation should use a validated schema rather than parsing arbitrary
 Markdown. Human-readable reports may be rendered from the structured record.
+Every record includes a previous-record hash, actor identity, resolved model and
+prompt hash when applicable, input and output artifact hashes, privacy class,
+budget actuals, and state transition. A correction appends a record that names
+the superseded assertion.
 
 ## Seed Agent Organization
 
@@ -290,19 +382,28 @@ No agent may both implement a candidate and provide its decisive review. The
 coordinator may synthesize evidence but cannot override a failing protected
 check.
 
+Independence has three recorded dimensions. **Context independence** means the
+reviewer receives a clean task packet rather than the implementer's conversation.
+**Model independence** means a different provider or model family is used.
+**Authority independence** means the reviewer cannot change the candidate,
+evaluation source, threshold, or release decision. Consequential architecture
+requires context and model independence. Physical safety requires authority
+independence and deterministic evidence; an AI review alone is never decisive.
+
 ## Model Portfolio and Routing
 
 MiOS should use multiple model families to reduce correlated mistakes and to
 match cost to difficulty. Model identifiers belong in deployment configuration,
 not architectural contracts.
 
-The preferred initial portfolio is Claude Opus for sustained architecture and
-critical review, Gemini Pro Preview for independent research and alternative
-designs, and the strongest available Codex GPT model for repository-native
-implementation and verification. At execution time the controller must discover
-which approved model versions are actually available. It must record the exact
-provider, model identifier, configuration, prompt version, tools, token usage,
-latency, and cost for every run.
+The preferred initial portfolio uses an approved Claude Opus model for sustained
+architecture and critical review, an approved Gemini Pro model for independent
+research and alternative designs, and the strongest approved Codex GPT model
+for repository-native implementation and verification. These are capability
+aliases, not promises that a particular preview or numbered release exists. At
+execution time the controller discovers the exact available model behind each
+alias and records the provider, model identifier, configuration, prompt version,
+tools, input and output tokens, cache use, latency, and actual or imputed cost.
 
 Routing follows task evidence rather than brand loyalty:
 
@@ -316,9 +417,16 @@ Routing follows task evidence rather than brand loyalty:
 - Escalate only when a task fails, uncertainty remains high, or expected impact
   justifies the cost.
 - Never silently substitute a weaker model for a protected review role.
+- Keep model versions fixed inside a controlled comparison and start a new block
+  when the provider changes the resolved model.
+- Send only synthetic or policy-approved redacted evidence to engineering
+  models. Provider access does not imply child-data access.
 
 Model disagreement is preserved as evidence. The coordinator must state why it
 selected one proposal and what observation could prove that decision wrong.
+Repeated model samples are treated as stochastic measurements. Exact replay is
+required for stored artifacts and tool traces, not falsely claimed for remote
+model generation.
 
 ## Agent Task Packet
 
@@ -362,8 +470,9 @@ rather than converted into issue noise.
 ### Experimental Branches
 
 Each implementation runs in an isolated worktree and branch associated with one
-experiment. Agents may not share a writable worktree. Generated artifacts and
-private interaction data remain outside public commits.
+experiment. The worktree starts from the experiment's pinned baseline commit,
+not a dirty integration checkout. Agents may not share a writable worktree.
+Generated artifacts and private interaction data remain outside public commits.
 
 ### Pull Requests
 
@@ -389,13 +498,20 @@ The initial protected checks are:
 1. formatting, static analysis, dependency policy, and unit tests;
 2. contract and integration tests with fake hardware;
 3. memory migration, backup, restoration, and privacy tests;
-4. deterministic action-envelope and emergency-stop tests;
+4. deterministic action-envelope, protective-stop, watchdog, and required
+   hardware-stop tests;
 5. recorded interaction replay and held-out cognitive evaluations;
 6. resource measurements on representative edge hardware;
 7. simulation or shadow execution for changed physical behavior;
 8. independent architecture, verification, and safety reviews;
 9. reproducible build with pinned provenance;
 10. rollback rehearsal for releases that alter persistent state.
+
+Inspect AI should host agent and cognitive evaluations where its dataset,
+sandbox, limit, and scorer abstractions fit. Conventional unit, property,
+integration, hardware, and safety tests remain ordinary test programs. A model
+grader may supply advisory evidence, but cannot grade deterministic safety or
+authorize physical release.
 
 ### Merge and Deployment
 
@@ -414,6 +530,15 @@ Only a signed release artifact may reach the robot. The deployment controller
 must retain the last known-good release and restore it automatically when a
 canary violates its preregistered bounds.
 
+Candidate code runs on GitHub-hosted or clean ephemeral workers with no robot or
+household credentials. A persistent self-hosted runner must never execute
+untrusted candidate code. Hardware evaluation uses a separate pull-based worker
+that accepts only an already attested artifact and a bounded test manifest. A
+least-privilege GitHub App is preferred over a personal access token. GitHub
+artifact attestations, an SBOM, and a digest-pinned dependency manifest provide
+build provenance once a remote exists; local development uses hashed manifests
+until then.
+
 ## Runtime Learning Policy
 
 MiOS separates learning by consequence and timescale.
@@ -426,7 +551,8 @@ MiOS separates learning by consequence and timescale.
 3. **Policy learning** compares retrieval, reasoning, and skill-selection
    strategies against recorded and held-out episodes.
 4. **Skill learning** creates capability implementations inside declared action
-   envelopes. New actuator authority requires approval.
+   envelopes. New actuator authority requires approval. A skill can select only
+   capabilities already admitted by the deterministic supervisor.
 5. **Architectural learning** proceeds only through experiment branches and
    pull requests.
 6. **Safety changes** never occur autonomously. Agents may identify weaknesses
@@ -435,6 +561,12 @@ MiOS separates learning by consequence and timescale.
 Model fine-tuning is optional and arrives only after memory, retrieval, policy,
 and tool improvements have been evaluated. A changed model must pass the same
 promotion ladder as changed code.
+
+The interaction Stop control is a cancellation mechanism, not a safety-rated
+emergency stop. The safety plan separately defines a protective software stop,
+watchdog behavior, and, where the hazard analysis requires it, an independent
+power-removal or hardware emergency-stop path. Documentation and tests must not
+use these terms interchangeably.
 
 ## Monitoring and Reflection Cadence
 
@@ -453,7 +585,10 @@ several bounded cadences:
 | Per milestone | Reproduction from a clean environment | Reproducibility attestation |
 
 The weekly portfolio limits work in progress. The controller should prefer one
-well-measured improvement over many speculative branches.
+well-measured improvement over many speculative branches. Anomaly clustering,
+minimum evidence, deduplication, and rate limits prevent telemetry from becoming
+an automatic issue-spam generator. Monitoring detects and proposes; it does not
+silently redefine objectives or thresholds.
 
 ## Human Authority
 
@@ -471,6 +606,11 @@ system must escalate when it encounters:
 - evidence that the objective or metric is producing harmful incentives;
 - an event involving injury, property damage, privacy loss, or loss of control.
 
+Guardian consent does not replace a child's age-appropriate assent. A child can
+stop an interaction, decline memory, or ask the robot to forget without needing
+to understand the engineering system. Research-data admission remains a
+separate adult-controlled decision from ordinary product memory.
+
 Human feedback and intervention are recorded in the ledger. The experiment
 should measure where human judgment remains necessary rather than conceal it.
 
@@ -480,8 +620,9 @@ The following rules remain protected throughout the experiment:
 
 1. A probabilistic model may propose physical action but cannot directly command
    an actuator.
-2. Deterministic local code owns limits, authorization, timeout, cancellation,
-   neutral recovery, and emergency stopping.
+2. Deterministic local code owns limits, authorization, timeout, interaction
+   cancellation, protective stopping, and neutral recovery. An independent
+   hardware stop is used when required by the hazard analysis.
 3. The robot must remain safe when cloud models, networks, agents, and the
    Evolution Controller are late, unavailable, or wrong.
 4. Private interactions and raw media are minimized, access controlled, and
@@ -499,32 +640,48 @@ The following rules remain protected throughout the experiment:
    work-in-progress budgets.
 10. The system stops safely rather than improvising when authority or evidence
     is insufficient.
+11. Product memory, research data, operational telemetry, and the engineering
+    ledger remain distinct stores with explicit admission and deletion rules.
+12. No model-generated review may authorize physical safety. Deterministic
+    checks and the designated human authority own that decision.
 
 ## Execution Phases
 
 ### Phase 0. Freeze the Experimental Contract
 
 Inventory the current prototype, establish the baseline, write the protected
-constitution, define budgets, and produce the first hidden evaluation set. This
-phase also records which existing code was written before autonomous operation.
+constitution, define budgets, and create a sealed-evaluation manifest under an
+independent custodian. This phase also records which existing code was written
+before autonomous operation. Protected cases remain outside candidate-accessible
+storage and may be disclosed after the campaign for reproducibility.
 
-**Exit evidence:** Reproducible baseline release, threat model, authority map,
-evaluation manifest, budget, and clean rebuild.
+**Exit evidence:** Committed charter, pinned pre-autonomy commit, threat model,
+authority map, approved budget, evaluation manifest and custodian attestation,
+local baseline build hashes, and an explicit list of hardware evidence deferred
+to Phase 2.
 
 ### Phase 1. Build the Evolution Substrate
 
-Implement the controller state machine, structured task packets, isolated agent
-worktrees, model adapters, durable leases, ledger schema, artifact store, and
-GitHub check reporting. Use simulated tasks before granting repository writes.
+Run a time-bounded bakeoff of DBOS, Temporal, and the minimum custom alternative
+against crash recovery, cancellation, idempotent effects, offline operation,
+inspection, versioning, ARM support, maintenance burden, and policy enforcement.
+Adopt the smallest substrate that passes. Implement structured task packets,
+isolated agent worktrees, model adapters, the registry, ledger schema, artifact
+store, and `LocalForge`. Use deterministic fixtures before granting model or
+repository authority.
 
-**Exit evidence:** The controller survives restart, resumes without duplicate
-effects, and completes a synthetic issue-to-reviewed-PR cycle.
+**Exit evidence:** The selected substrate survives crash injection at every
+transition, resumes without duplicate effects, completes a synthetic
+observation-to-local-candidate cycle, detects tampering, enforces budgets and
+roles, and reproduces the cycle from a clean directory without network access.
 
 ### Phase 2. Establish Independent Assurance
 
 Separate candidate tests from protected evaluations. Add fake hardware,
 recorded replay, deterministic action checks, dependency scanning, edge resource
-measurement, signed artifacts, and rollback rehearsal.
+measurement, signed artifacts, and rollback rehearsal. Build the local
+capability supervisor, protective stop, watchdog, and privacy-filtered runtime
+telemetry boundary before any autonomous physical release.
 
 **Exit evidence:** Deliberately flawed candidates are rejected for functional,
 safety, resource, and metric-gaming failures.
@@ -535,8 +692,11 @@ Allow the organization to improve tests, observability, reliability, and
 internal structure under automatic merge rules. No new physical authority is
 introduced.
 
-**Exit evidence:** Three accepted improvements with correct provenance, zero
-protected regressions, successful rollback exercise, and declining human help.
+**Exit evidence:** At least three registered maintenance experiments, including
+all failed and inconclusive outcomes, with correct provenance, no critical
+protected regression admitted to release, successful rollback, and autonomy
+levels supported by intervention records. Accepted changes must improve
+preregistered utility after complexity and resource costs.
 
 ### Phase 4. Run the First Reflective Improvement
 
@@ -545,7 +705,9 @@ cognitive or interaction failure, form hypotheses, perform the experiment, and
 produce a candidate without a human diagnosis.
 
 **Exit evidence:** One independently verified improvement on a held-out measure
-and a complete evolution record from observation through canary outcome.
+and a complete evolution record from observation through canary outcome. The
+same task is compared with fixed single-agent and fixed-team controls at matched
+budgets before attributing the improvement to adaptive organization.
 
 ### Phase 5. Pass the Maya Test
 
@@ -562,8 +724,10 @@ Give the organization the UNO Q documentation, hardware adapter boundary, and
 resource constraints. It must reuse or adapt MiOS contracts and explain every
 necessary divergence.
 
-**Exit evidence:** At least 80% of cognitive contracts remain unchanged, core
-labs run within the UNO Q budget, and the safety boundary remains local.
+**Exit evidence:** Every contract labeled `portable-core` in the frozen contract
+manifest passes the same conformance suite unchanged. Platform adapters are
+allowed to differ. Core labs run within the UNO Q budget, and final actuator
+authorization remains local to the microcontroller boundary.
 
 ### Phase 7. Reproduce MiOS From Its Lineage
 
@@ -572,13 +736,31 @@ dependencies, and evolution ledger. Ask a clean-context agent organization to
 explain the architecture and reproduce the demonstration.
 
 **Exit evidence:** Two successful independent reconstructions and an explicit
-account of discrepancies.
+account of discrepancies. Publishable claims are generated only from the frozen
+campaign dataset, including negative results and human interventions.
+
+### Campaign 1 Completion Boundary
+
+The first research campaign is bounded so “continuous” does not mean endless.
+It ends after all phase gates pass and the system has recorded at least twelve
+registered experiments, including three triggered from runtime observations,
+one complete reflective improvement, the Maya Test, the UNO Q transfer, and two
+clean reconstructions. The campaign may also end at the approved time or cost
+limit. In that case it produces a negative or partial result rather than moving
+the goalposts.
+
+An experiment counts toward the twelve only if its admission record was frozen
+before results and identifies a nonduplicate hypothesis, primary metric,
+minimum meaningful effect, comparison condition, budget, and terminal outcome.
+Synthetic controller fixtures validate infrastructure but do not count as
+embodied-improvement experiments.
 
 ## Stop Conditions
 
 The controller must pause safely and request a decision when:
 
-- the emergency stop or deterministic safety supervisor fails a protected test;
+- a protective stop, required hardware stop, or deterministic safety supervisor
+  fails a protected test;
 - a release causes an unsafe or privacy-impacting physical event;
 - rollback cannot restore the last known-good state;
 - the monthly budget is exhausted;
@@ -612,7 +794,8 @@ evolution/
   reports/
   decisions/
 orchestrator/
-  controller/
+  workflow/                 # selected durable substrate adapter
+  registry/                 # experiment and budget truth
   agents/
   providers/
   github/
@@ -621,7 +804,10 @@ evaluation/
   public/
   replay/
   simulation/
-  manifests/
+  manifests/                 # hashes and metadata only
+observability/
+  semantic-conventions/
+  dashboards/
 mios/
   runtime/
   memory/
@@ -633,6 +819,10 @@ apps/
   reachy/
   uno_q/
 ```
+
+Protected test source, consent evidence, credentials, and signing keys live
+outside candidate-accessible checkouts. Their in-repository manifests contain
+opaque identifiers and hashes, not secret cases or personal data.
 
 This is a target separation of concerns, not permission for an immediate mass
 rename. The first architecture agent must map existing modules to these
@@ -649,23 +839,26 @@ following first assignment:
 3. Produce a baseline report with measured tests and resource gaps.
 4. Draft the constitutional invariants as machine-checkable policies.
 5. Propose the minimum Evolution Controller that can complete one synthetic
-   issue-to-PR cycle.
-6. Ask independent Claude, Gemini, and Codex roles to critique the proposal when
-   those providers are available.
+   observation-to-local-candidate cycle.
+6. Obtain clean-context advisory critiques without external spending. Record the
+   cross-family Claude, Gemini, and Codex critique as a Phase 1B requirement when
+   approved provider profiles become available.
 7. Reconcile disagreements and record the reasons for the selected design.
 8. Present the Phase 0 artifacts and requested budgets for approval before
    enabling continuous operation or physical deployment.
 
 This first gate is deliberate. The system receives broad freedom to engineer,
 but it must prove that it can preserve state, evaluate claims, and stop safely
-before it is allowed to evolve continuously.
+before it receives persistent external, publication, or physical authority.
 
 ## Completion Standard
 
-The goal is complete when the Maya Test, UNO Q transfer, and clean-lineage
-reproduction have passed; the constitutional invariants remain intact; the
-published metrics are reproducible; and the evolution ledger provides a
-continuous explanation from initial prototype through final release.
+The goal is complete when the Campaign 1 boundary, Maya Test, UNO Q transfer,
+and clean-lineage reproduction have passed; the constitutional invariants
+remain intact; the reported metrics and comparison conditions are reproducible;
+and the evolution ledger provides a continuous explanation from initial
+prototype through final release. Completion refers to the bounded campaign, not
+the claim that MiOS can never improve further.
 
 If MiOS cannot meet those conditions within its approved budget, the final
 artifact should be a rigorous negative result describing what failed, why the

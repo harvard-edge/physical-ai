@@ -11,11 +11,9 @@ test and deployment gaps. A Governor and Safety Reviewer derived protected
 invariants and threat controls. A Systems Architect and Framework Scout compared
 controller designs and local tooling.
 
-All three roles were executed within the current Codex environment. Claude Code
-is installed, but the active model-call budget is zero. Gemini CLI is not
-installed. No Claude, Gemini, or other paid external model call was made. The
-cross-family critique required by the charter remains pending budget approval
-and Gemini installation or another approved Gemini access method.
+The three roles provided clean-context but same-family advisory reviews. No paid
+external model call was made. The cross-family critique required by the charter
+remains pending separate provider-profile and budget approval.
 
 ## Reconciled Decisions
 
@@ -34,8 +32,8 @@ authorized.
 The reviewers rejected the assumption that the current app already has a
 deterministic physical-safety boundary. Direct Reachy SDK calls remain in the
 application process. Physical authority therefore stays disabled until a
-separate capability supervisor, emergency stop, watchdog, and target-hardware
-tests exist.
+separate capability supervisor, protective stop, watchdog, any required hardware
+stop, and target-hardware tests exist.
 
 The reviewers also rejected treating the current event journal as an evolution
 ledger. It is in memory, bounded, and may contain verbatim interactions. The
@@ -60,12 +58,14 @@ The principal investigator is asked to decide the following items before Phase
 
 1. Approve the proposed constitution, authority policy, protected paths, threat
    model, privacy direction, and local-only controller decision.
-2. Approve or revise the 30-day pilot limits of $200, 10 million model tokens,
-   200 provider calls, 100 controller hours, 10 GiB storage, two concurrent
-   experiments, and three protected-evaluation queries per experiment.
-3. Approve Claude and Codex subscription-backed tools as engineering providers
-   and authorize installation and authentication of Gemini CLI. Exact model
-   identifiers will be discovered and recorded at runtime.
+2. Approve or revise Phase 1A, a 14-day offline proof with no model spending,
+   40 controller hours, 2 GiB storage, and one experiment in progress. Phase 1B
+   separately requests up to $200, 10 million model tokens, 200 provider calls,
+   100 controller hours, 10 GiB storage, two concurrent experiments, and three
+   protected-evaluation queries per experiment after Phase 1A passes.
+3. Approve project-level Claude, Codex, and Gemini engineering-provider profiles.
+   Exact model identifiers will be discovered and recorded at runtime without
+   documenting personal tooling or authentication configuration in the repo.
 4. Assign an independent custodian for the protected Maya Test cases. Candidate
    agents must not have access to the source cases.
 5. Decide retention periods for verbatim interactions and personal semantic
@@ -77,8 +77,8 @@ child-data egress are not requested at this gate.
 
 ## Authorized Next Work After Approval
 
-Phase 1 will implement only the deterministic offline controller and synthetic
-issue-to-local-PR cycle described in ADR-0001. It will begin with fixture workers
-that consume no model budget. Claude, Gemini, and Codex critique will follow once
-provider access and budgets are active. The milestone ends at
-`READY_FOR_PUBLICATION` and cannot deploy to Reachy.
+Phase 1A will run the workflow-substrate bakeoff and implement only the
+deterministic offline controller and synthetic issue-to-local-candidate cycle
+described in ADR-0001. Fixture workers consume no model budget. Claude, Gemini,
+and Codex critique belongs to separately approved Phase 1B. Phase 1A ends at
+`LOCAL_CANDIDATE_READY` and cannot publish or deploy to Reachy.

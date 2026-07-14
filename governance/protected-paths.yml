@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.2.0
 status: proposed
 default_candidate_access: deny
 deny_symlink_escape: true
@@ -6,6 +6,11 @@ deny_submodule_escape: true
 
 paths:
   - glob: governance/**
+    confidentiality: internal
+    candidate_read: true
+    candidate_write: false
+    write_authority: principal_investigator
+  - glob: docs/MIOS-EMBODIED-BOOTSTRAP-GOAL.md
     confidentiality: internal
     candidate_read: true
     candidate_write: false
@@ -28,14 +33,38 @@ paths:
   - glob: mios/safety/**
     confidentiality: internal
     candidate_read: true
-    candidate_write: false
-    write_authority: safety_maintainer
+    candidate_write: role_restricted
+    candidate_write_roles: [safety_implementation_engineer]
+    write_authority: principal_investigator_approved_safety_change
+  - glob: code/app/app.py
+    confidentiality: internal
+    candidate_read: true
+    candidate_write: role_restricted
+    candidate_write_roles: [safety_implementation_engineer]
+    write_authority: principal_investigator_approved_safety_change
+  - glob: code/app/policies.py
+    confidentiality: internal
+    candidate_read: true
+    candidate_write: role_restricted
+    candidate_write_roles: [safety_implementation_engineer]
+    write_authority: principal_investigator_approved_safety_change
+  - glob: code/app/voice.py
+    confidentiality: internal
+    candidate_read: true
+    candidate_write: role_restricted
+    candidate_write_roles: [safety_implementation_engineer]
+    write_authority: principal_investigator_approved_safety_change
   - glob: evolution/ledger/**
     confidentiality: internal
     candidate_read: true
     candidate_write: append_api_only
     write_authority: ledger_service
   - glob: .github/workflows/**
+    confidentiality: public
+    candidate_read: true
+    candidate_write: false
+    write_authority: principal_investigator
+  - glob: .github/CODEOWNERS
     confidentiality: public
     candidate_read: true
     candidate_write: false
@@ -51,11 +80,16 @@ external_protected_stores:
 
 candidate_environment:
   inherit_parent_environment: false
-  allowed_variables: [PATH, HOME, TMPDIR, LANG]
+  allowed_variables: [PATH, TMPDIR, LANG, LC_ALL]
+  home_mode: ephemeral_empty
+  working_directory: isolated_pinned_worktree
+  filesystem_outside_worktree: deny
   denied_variable_patterns: ["*_KEY", "*_TOKEN", "*_SECRET", "*_PASSWORD"]
   network_default: deny
   robot_network: deny
   github_write: deny
+  subprocess_shell_interpolation: deny
+  output_secret_scan: required
 
 enforcement_status:
   policy_document: drafted
