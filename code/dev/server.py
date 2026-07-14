@@ -1,6 +1,6 @@
 """Development and simulation server for the native app interface.
 
-The production app is ``robot_app.app.MayasReachyApp`` and runs on the
+The production app is ``app.app.MayasReachyApp`` and runs on the
 robot. This server reuses the same packaged interface, Groq language layer, and
 memory store while allowing simulation or development from a Mac.
 
@@ -23,12 +23,12 @@ from pydantic import BaseModel
 
 HERE = Path(__file__).resolve().parent
 CODE = HERE.parent
-STATIC = CODE / "robot_app" / "static"
+STATIC = CODE / "app" / "static"
 
-from robot_app.cloud import GroqCloud
-from robot_app.constants import GREETING_TEXT
-from robot_app.conversation import Conversation
-from robot_app.memory import MemoryStore
+from app.cloud import GroqCloud
+from app.constants import GREETING_TEXT
+from app.conversation import Conversation
+from app.memory import MemoryStore
 
 FORCE_FAKE = os.environ.get("REACHY_FAKE") == "1"
 
