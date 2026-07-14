@@ -1,0 +1,54 @@
+version: 0.1.0
+status: proposed
+default_release_decision: deny
+
+promotion_stages:
+  - replay
+  - simulation
+  - shadow
+  - supervised_physical_canary
+  - ordinary_operation
+
+required_attestations:
+  replay: [build_provenance, public_tests, protected_tests, privacy_scan]
+  simulation: [replay, safety_envelope, resource_budget]
+  shadow: [simulation, hardware_compatibility, rollback_rehearsal]
+  supervised_physical_canary:
+    - shadow
+    - independent_safety_review
+    - principal_investigator_approval
+  ordinary_operation:
+    - canary_outcome
+    - regression_review
+    - principal_investigator_approval
+
+trust:
+  artifact_signature_required: true
+  trust_root: pending_pi_key_custody_decision
+  key_storage: external_protected_store
+  revocation_process: pending
+
+rollback:
+  last_known_good_required: true
+  source_and_artifact_hash_required: true
+  schema_compatibility: pending_design
+  consent_aware_memory_restore: required
+  recovery_time_objective_seconds: pending_hardware_measurement
+  recovery_point_objective_seconds: pending_privacy_decision
+
+canary:
+  physical_human_supervision: required
+  automatic_abort_on:
+    - protected_metric_regression
+    - action_envelope_violation
+    - stop_deadline_violation
+    - privacy_policy_violation
+    - unknown_runtime_state
+  maximum_canaries_before_new_approval: 1
+
+current_authority:
+  build: local_only
+  publish: disabled
+  merge: disabled
+  deploy_simulation: disabled_pending_phase0_approval
+  deploy_physical: disabled

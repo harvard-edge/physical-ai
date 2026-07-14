@@ -1,0 +1,96 @@
+version: 0.1.0
+status: proposed
+default_decision: deny
+constitutional_authority: vijay_janapa_reddi
+
+roles:
+  - id: coordinator
+    may_propose: [experiment, architecture, task]
+    may_implement: false
+    may_decisively_review: false
+    may_authorize: []
+  - id: implementation_engineer
+    may_propose: [implementation]
+    may_implement: true
+    may_decisively_review: false
+    may_authorize: []
+  - id: verification_engineer
+    may_propose: [test, evaluation]
+    may_implement: false
+    may_decisively_review: true
+    may_authorize: []
+  - id: safety_reviewer
+    may_propose: [stronger_control]
+    may_implement: false
+    may_decisively_review: true
+    may_authorize: []
+  - id: release_manager
+    may_propose: [release]
+    may_implement: false
+    may_decisively_review: false
+    may_authorize: [simulation]
+  - id: principal_investigator
+    may_propose: [any]
+    may_implement: false
+    may_decisively_review: false
+    may_authorize:
+      - governance
+      - external_publication
+      - paid_service
+      - child_data_egress
+      - physical_canary
+      - expanded_capability
+
+change_classes:
+  - id: synthetic_local
+    risk: low
+    path_globs: ["evolution/fixtures/**"]
+    required_checks: [schema, public_tests, protected_tests]
+    required_reviews: [verification_engineer]
+    human_approval: false
+    auto_merge: false
+  - id: ordinary_runtime
+    risk: medium
+    path_globs: ["code/app/**", "code/tests/**"]
+    required_checks: [unit, contract, privacy, action_envelope, replay, resources]
+    required_reviews: [verification_engineer, safety_reviewer]
+    human_approval: false
+    auto_merge: false
+  - id: protected_or_physical
+    risk: critical
+    path_globs:
+      - "governance/**"
+      - "evaluation/protected/**"
+      - "orchestrator/assurance/**"
+      - "orchestrator/deployment/**"
+      - "mios/safety/**"
+      - ".github/workflows/**"
+    required_checks: [all_protected]
+    required_reviews: [verification_engineer, safety_reviewer]
+    human_approval: true
+    auto_merge: false
+
+separation_rules:
+  - proposer_cannot_be: [decisive_evaluator, authorizer]
+  - implementer_cannot_be: [decisive_evaluator, authorizer]
+  - coordinator_cannot_override: [failed_protected_check, missing_human_approval]
+
+external_effects:
+  github_publication: human_approval
+  paid_model_call: budget_and_provider_approval
+  physical_deployment: human_approval
+  new_data_destination: human_approval
+
+escalations:
+  - condition: protected_check_failed
+    recipient: principal_investigator
+    controller_state: paused
+  - condition: budget_exhausted
+    recipient: principal_investigator
+    controller_state: paused
+  - condition: reviewer_disagreement
+    recipient: principal_investigator
+    controller_state: paused
+  - condition: privacy_or_safety_incident
+    recipient: principal_investigator
+    controller_state: emergency_stop

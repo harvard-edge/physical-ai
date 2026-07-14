@@ -1,0 +1,63 @@
+version: 0.1.0
+status: proposed
+public_export: derived_redacted_only
+default_cloud_egress: deny
+
+guardian_consent:
+  required_for_minor_interactions: true
+  evidence_store: external_protected_store
+  versioned: true
+  revocable: true
+  revocation_behavior: stop_new_processing_and_schedule_verified_deletion
+
+data_classes:
+  - id: raw_audio
+    examples: [microphone_samples]
+    allowed_purposes: [live_transcription]
+    allowed_destinations: [approved_transcription_provider]
+    retention_seconds: 0
+    public_export: never
+  - id: verbatim_interaction
+    examples: [typed_message, transcript, robot_reply]
+    allowed_purposes: [current_interaction, consented_memory]
+    allowed_destinations: [local_runtime, approved_reasoning_provider]
+    retention_seconds: pending_pi_decision
+    public_export: never
+  - id: personal_semantic_memory
+    examples: [name, preference, relationship]
+    allowed_purposes: [consented_personalization]
+    allowed_destinations: [local_memory, approved_reasoning_provider]
+    retention_seconds: pending_pi_decision
+    public_export: never
+  - id: derived_redacted_evidence
+    examples: [latency, error_class, synthetic_replay]
+    allowed_purposes: [evaluation, engineering]
+    allowed_destinations: [local_controller, approved_model_provider, github]
+    retention_seconds: 31536000
+    public_export: allowed_after_scan
+
+provider_allowlist: []
+
+bystander_policy:
+  visible_recording_indicator: required
+  activation: explicit
+  continuous_recording: forbidden
+  maximum_session_seconds: 30
+
+deletion_scope:
+  - sqlite_tables_and_indexes
+  - sqlite_wal_and_shm
+  - backups
+  - logs_and_event_journals
+  - artifacts_and_evaluation_caches
+  - provider_copies_when_supported
+  - derived_indexes
+
+required_before_child_use:
+  - guardian_consent_flow
+  - authenticated_roles
+  - origin_and_csrf_protection
+  - retention_period_decision
+  - provider_data_use_and_retention_review
+  - verified_delete_and_restore_semantics
+  - incident_response_owner
