@@ -1,11 +1,4 @@
-"""The robot ENGINE: connection + low-level movement and speech primitives.
-
-Kids usually do NOT need to edit this file. New behaviors go in skills.py,
-which is built out of the simple primitives defined here.
-
-Speech is synthesized on this Mac with the built-in `say` command and streamed
-to the robot's speaker, so the robot itself needs no speech software.
-"""
+"""Optional Mac-to-robot adapter for development outside the native app."""
 from __future__ import annotations
 
 import atexit
@@ -22,8 +15,9 @@ from pathlib import Path
 import numpy as np
 
 HOST = os.environ.get("REACHY_HOST", "reachy-mini.local")
-SAMPLE_RATE = 16_000
-CACHE = Path(__file__).resolve().parent.parent / "assets" / "cache"
+CACHE = Path(
+    os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
+) / "mayas-reachy" / "speech"
 CACHE.mkdir(parents=True, exist_ok=True)
 
 
@@ -33,8 +27,8 @@ def _fix_dyld():
     if os.environ.get("DYLD_FALLBACK_LIBRARY_PATH"):
         return
     for pat in (
-        "/opt/homebrew/Cellar/python@3.11/*/Frameworks/Python.framework/Versions/3.11/lib",
-        "/opt/homebrew/opt/python@3.11/Frameworks/Python.framework/Versions/3.11/lib",
+        "/opt/homebrew/Cellar/python@*/*/Frameworks/Python.framework/Versions/*/lib",
+        "/opt/homebrew/opt/python@*/Frameworks/Python.framework/Versions/*/lib",
     ):
         hits = glob.glob(pat)
         if hits:

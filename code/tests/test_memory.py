@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from reachy_playground.memory import MemoryStore
+from mayas_reachy.memory import MemoryStore
 
 
 class MemoryStoreTest(unittest.TestCase):

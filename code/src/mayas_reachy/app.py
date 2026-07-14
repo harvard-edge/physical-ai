@@ -21,13 +21,10 @@ from reachy_mini import ReachyMini, ReachyMiniApp
 from reachy_mini.utils import create_head_pose
 
 from .cloud import GroqCloud
+from .constants import GREETING_TEXT
 from .conversation import Conversation
 from .memory import MemoryStore
 from .voice import PiperVoiceSynthesizer, VoiceUnavailable
-
-GREETING_TEXT = (
-    "Hello, Alexander and Maya! I would love it if you could bring me to life."
-)
 
 HERE = Path(__file__).resolve().parent
 GREETING_WAV = HERE / "assets" / "hello_alexander_and_maya.wav"

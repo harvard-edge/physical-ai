@@ -1,53 +1,76 @@
-# Code
+# Robot App
 
-The working Maya's Reachy app lives in `body/reachy_playground/`. It is a native
-Reachy Mini SDK app, so the robot hosts both the physical control loop and the
-web interface.
+`code/` is one installable Python project. Its wheel is installed into Reachy
+Mini's app environment, where the official app manager starts the
+`mayas_reachy` entry point. The robot then hosts the website, conversation loop,
+memory, speech, and physical control in one process.
 
-## Use the Native App
+## Current Teaching Loop
 
-Start `mayas_reachy` from the Reachy app manager, then open
-`http://reachy-mini.local:8042`. Maya and Alexander can type a message or use
-the microphone button.
+1. Maya or Alexander types or dictates a message in the website.
+2. The robot sends the text to Groq with a strict response schema.
+3. The LLM returns an intent, a candidate fact, a reply, and a mood.
+4. Application code validates the candidate before memory can change.
+5. The fact is stored locally and included in later LLM context.
+6. Piper speaks the reply while the Reachy SDK moves the robot safely.
 
-The turn follows one path.
+There is no hardcoded phrase parser. The LLM interprets the language, while
+ordinary code owns validation, persistence, and physical safety.
 
-1. The browser sends the transcript to the robot-hosted `/api/chat` route.
-2. Groq interprets the natural language and returns a strict structured result
-   containing the intent, possible robot name, reply, and mood.
-3. The app validates any extracted name before writing it to local memory.
-4. Piper creates speech on the robot. The SDK plays it while a safe motion loop
-   animates the head and antennas.
-5. The robot returns to a neutral pose and waits for the next turn.
-
-There is no hardcoded language parser. Code maps the model's structured mood to
-safe physical motions, but the LLM decides what the child meant.
-
-## Develop or Simulate on a Mac
-
-```sh
-./web/run.sh
-REACHY_FAKE=1 ./web/run.sh
-```
-
-Open `http://127.0.0.1:8080`. The simulation uses the same UI, Groq adapter, and
-memory logic. Browser speech replaces robot audio when no robot is connected.
-
-Set `GROQ_API_KEY` before starting the development server. The native app also
-looks for a private key file at `~/.config/mayas-reachy/groq_api_key`.
-
-## Layout
+## Project Hierarchy
 
 ```text
 code/
-  body/      native app, SDK control, LLM adapter, memory, voice, UI, and tests
-  web/       development and simulation server for the packaged UI
-  brain/     earlier Claude and MCP experiment, retained as a future option
-  memory/    notes for the larger knowledge-graph phase
-  voice/     notes for local speech
-  senses/    wake word, on-robot speech recognition, and vision in later phases
+  pyproject.toml              package metadata and robot app entry point
+  src/mayas_reachy/
+    app.py                    lifecycle, HTTP routes, queue, and robot loop
+    conversation.py           teaching policy and memory-write boundary
+    cloud.py                  Groq structured-output adapter
+    memory.py                 local persistent memory interface
+    voice.py                  offline Piper adapter
+    static/                   child-facing website
+    assets/                   packaged greeting audio
+  tests/                      behavior and boundary tests
+  dev/                        Mac development and simulation adapters
 ```
 
-The current memory deliberately stores only the taught robot name. The next
-memory phase can generalize the same validated-write pattern to family facts and
-a human-readable knowledge graph.
+This is intentionally small. When the domain grows beyond a few modules,
+`cloud.py`, `memory.py`, and the physical adapters can become subpackages
+without changing the website or the app entry point.
+
+## Memory Direction
+
+The current JSON store is enough for teaching one robot name and proving that
+the fact survives restarts. The next storage implementation should be SQLite on
+the robot behind the same memory interface. SQLite provides transactions,
+structured facts, provenance, and migrations without operating a database
+server on a small CM4.
+
+The LLM should not receive raw database access. A retrieval layer selects the
+relevant facts for each turn and adds them to the model context. A validated
+write layer accepts only explicit, schema-conforming facts. A hosted database or
+vector index becomes useful only if the project later needs multi-device sync,
+large documents, or semantic search across many memories.
+
+## Run the Development Interface
+
+```sh
+./code/dev/run.sh
+REACHY_FAKE=1 ./code/dev/run.sh
+```
+
+Open `http://127.0.0.1:8080`. `uv` resolves a current-platform development
+environment without pulling the robot's Linux-only media stack onto the Mac.
+Set `GROQ_API_KEY` for LLM turns. The installed robot app also looks for its
+private key at `~/.config/mayas-reachy/groq_api_key`.
+
+## Build the Robot Wheel
+
+```sh
+cd code
+uv build
+```
+
+The resulting `dist/mayas_reachy-*.whl` contains the Python package, website,
+and greeting audio. The Piper voice model and private credentials remain in the
+robot's data and configuration directories so upgrades do not overwrite them.

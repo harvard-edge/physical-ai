@@ -42,7 +42,7 @@ architecture, not a compromise.
 
 All of the software lives in `code/` (the way the book lives in `book/`). Start
 with `code/README.md`. The robot-hosted interface is available at
-`http://reachy-mini.local:8042` while the app is running. `./code/web/run.sh`
+`http://reachy-mini.local:8042` while the app is running. `./code/dev/run.sh`
 provides the Mac development and simulation path.
 
 ## Status

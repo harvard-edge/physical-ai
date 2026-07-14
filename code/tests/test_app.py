@@ -1,12 +1,41 @@
 import tempfile
 import threading
+import types
 import unittest
 from pathlib import Path
 
-from reachy_playground.app import MayasReachyApp
-from reachy_playground.cloud import GroqCloud
-from reachy_playground.memory import MemoryStore
-from reachy_playground.voice import PiperVoiceSynthesizer
+try:
+    import reachy_mini  # noqa: F401
+except ModuleNotFoundError:
+    import sys
+
+    from fastapi import FastAPI
+
+    sdk = types.ModuleType("reachy_mini")
+    sdk_utils = types.ModuleType("reachy_mini.utils")
+
+    class ReachyMini:
+        pass
+
+    class ReachyMiniApp:
+        custom_app_url = None
+
+        def __init__(self, running_on_wireless=False):
+            self.settings_app = FastAPI() if self.custom_app_url else None
+
+    def create_head_pose(**kwargs):
+        return kwargs
+
+    sdk.ReachyMini = ReachyMini
+    sdk.ReachyMiniApp = ReachyMiniApp
+    sdk_utils.create_head_pose = create_head_pose
+    sys.modules["reachy_mini"] = sdk
+    sys.modules["reachy_mini.utils"] = sdk_utils
+
+from mayas_reachy.app import MayasReachyApp
+from mayas_reachy.cloud import GroqCloud
+from mayas_reachy.memory import MemoryStore
+from mayas_reachy.voice import PiperVoiceSynthesizer
 
 
 class FakeMedia:
@@ -42,7 +71,8 @@ class NativeAppTest(unittest.TestCase):
                 mini,
                 threading.Event(),
                 audio_path=Path(__file__).parents[1]
-                / "reachy_playground"
+                / "src"
+                / "mayas_reachy"
                 / "assets"
                 / "hello_alexander_and_maya.wav",
                 duration=0.04,

@@ -1,6 +1,6 @@
-"""Development server for the Maya's Reachy native app interface.
+"""Development and simulation server for the native app interface.
 
-The production app is ``reachy_playground.app.MayasReachyApp`` and runs on the
+The production app is ``mayas_reachy.app.MayasReachyApp`` and runs on the
 robot. This server reuses the same packaged interface, Groq language layer, and
 memory store while allowing simulation or development from a Mac.
 
@@ -8,9 +8,7 @@ If the robot is not reachable (or REACHY_FAKE=1), every action degrades to
 "simulation": the backend reports what it would have done and the browser voices
 it, so the site is fully usable without hardware.
 
-Run it with code/web/run.sh, or directly:
-
-    PYTHONPATH=code/body uvicorn web.server:app --port 8000   # from the code/ dir
+Run it with ``code/dev/run.sh``.
 """
 from __future__ import annotations
 
@@ -23,18 +21,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-HERE = Path(__file__).resolve().parent      # code/web
-CODE = HERE.parent                          # code
-BODY = CODE / "body"                        # code/body (the robot package lives here)
-STATIC = BODY / "reachy_playground" / "static"
+HERE = Path(__file__).resolve().parent
+CODE = HERE.parent
+STATIC = CODE / "src" / "mayas_reachy" / "static"
 
-# Make the folded-in robot package importable: code/body/reachy_playground/...
-sys.path.insert(0, str(BODY))
-
-from reachy_playground.app import GREETING_TEXT  # noqa: E402
-from reachy_playground.cloud import GroqCloud  # noqa: E402
-from reachy_playground.conversation import Conversation  # noqa: E402
-from reachy_playground.memory import MemoryStore  # noqa: E402
+from mayas_reachy.cloud import GroqCloud
+from mayas_reachy.constants import GREETING_TEXT
+from mayas_reachy.conversation import Conversation
+from mayas_reachy.memory import MemoryStore
 
 FORCE_FAKE = os.environ.get("REACHY_FAKE") == "1"
 
@@ -60,7 +54,7 @@ def robot():
         return None
     if _robot is None:
         try:
-            from reachy_playground.robot import get_robot
+            from dev.robot import get_robot
             _robot = get_robot()
         except Exception as exc:  # robot unreachable; keep the website working
             print(f"[maya] robot unavailable, simulating: {exc}", file=sys.stderr)
@@ -161,6 +155,8 @@ def chat(inp: SayIn):
         "robot_name": _memory.robot_name(),
         "mode": mode,
     }
+
+
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")
