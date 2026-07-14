@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-HOST = os.environ.get("REACHY_HOST", "10.174.1.60")
+HOST = os.environ.get("REACHY_HOST", "reachy-mini.local")
 SAMPLE_RATE = 16_000
 CACHE = Path(__file__).resolve().parent.parent / "assets" / "cache"
 CACHE.mkdir(parents=True, exist_ok=True)

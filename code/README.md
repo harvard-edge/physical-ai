@@ -1,57 +1,53 @@
-# code
+# Code
 
-All of Maya's Reachy software lives here, the way the book lives in `../book/`.
-The design and the phases are in `../docs/` (`ARCHITECTURE.md`, `ROADMAP.md`,
-`DECISIONS.md`); this file is the map of the code and how to run it.
+The working Maya's Reachy app lives in `body/reachy_playground/`. It is a native
+Reachy Mini SDK app, so the robot hosts both the physical control loop and the
+web interface.
 
-## Start here: the website
+## Use the Native App
 
-The interface comes first. A local web page is how Maya and Alexander talk to the
-robot; the engineering happens behind it.
+Start `mayas_reachy` from the Reachy app manager, then open
+`http://reachy-mini.local:8042`. Maya and Alexander can type a message or use
+the microphone button.
 
+The turn follows one path.
+
+1. The browser sends the transcript to the robot-hosted `/api/chat` route.
+2. Groq interprets the natural language and returns a strict structured result
+   containing the intent, possible robot name, reply, and mood.
+3. The app validates any extracted name before writing it to local memory.
+4. Piper creates speech on the robot. The SDK plays it while a safe motion loop
+   animates the head and antennas.
+5. The robot returns to a neutral pose and waits for the next turn.
+
+There is no hardcoded language parser. Code maps the model's structured mood to
+safe physical motions, but the LLM decides what the child meant.
+
+## Develop or Simulate on a Mac
+
+```sh
+./web/run.sh
+REACHY_FAKE=1 ./web/run.sh
 ```
-./web/run.sh                 # drive the robot if it's on the LAN, else simulate
-REACHY_FAKE=1 ./web/run.sh    # no robot needed (the browser voices the reply)
-```
 
-Open http://127.0.0.1:8080, then type or tap the mic and speak. Milestone 1 is
-the honest hello-world: your words come out of the robot with an expressive
-gesture. No cloud, no memory yet.
+Open `http://127.0.0.1:8080`. The simulation uses the same UI, Groq adapter, and
+memory logic. Browser speech replaces robot audio when no robot is connected.
 
-## The layers
+Set `GROQ_API_KEY` before starting the development server. The native app also
+looks for a private key file at `~/.config/mayas-reachy/groq_api_key`.
 
-```
+## Layout
+
+```text
 code/
-  web/       the chat website (text + mic → the robot speaks & moves)   ← today
-  body/      the robot's skills and driver (reachy_mini SDK)  [folded in, proven]
-  brain/     the cloud mind: Claude + memory, via MCP         [scaffolded]
-  memory/    the knowledge graph Maya teaches into            [scaffolded]
-  voice/     on-robot text-to-speech (Piper)                  [later phase]
-  senses/    wake word, camera vision, identity               [later phase]
+  body/      native app, SDK control, LLM adapter, memory, voice, UI, and tests
+  web/       development and simulation server for the packaged UI
+  brain/     earlier Claude and MCP experiment, retained as a future option
+  memory/    notes for the larger knowledge-graph phase
+  voice/     notes for local speech
+  senses/    wake word, on-robot speech recognition, and vision in later phases
 ```
 
-## How it grows (one seam at a time)
-
-Today the website calls the body directly through a small **local reflex**
-(`web/server.py` → `pick_reaction()`): a rule picks the gesture. That one
-function is the seam. Replace it with the **brain** (`brain/orchestrator.py`, or
-Claude Desktop via `brain/claude_desktop_config.example.json`) and the same page
-gets a robot that chooses its own words, its own gestures, and what to remember
-in `memory/`. Nothing above the seam changes.
-
-- **Milestone 1 (now):** website → reflex → body. Say + gesture.
-- **Milestone 2:** website → brain (Claude) → body. Claude picks the reaction.
-- **Milestone 3:** brain writes/reads `memory/`. Teach it its name; it remembers.
-- **Later:** mic and voice move onto the robot; wake word; camera show-and-tell.
-
-## One-time setup
-
-The robot SDK is already in the shared venv. The website needs `fastapi` +
-`uvicorn` (present). The memory server (Milestone 3) needs Node's `npx` (present).
-
-```
-MAYA_VENV=/Users/VJ/GitHub/PhysicalAI/reachy_mini_happy_birthday/.venv
-"$MAYA_VENV/bin/pip" install mcp        # for body/server.py as an MCP tool server
-```
-
-Robot address defaults to `10.174.1.60` (override with `REACHY_HOST`).
+The current memory deliberately stores only the taught robot name. The next
+memory phase can generalize the same validated-write pattern to family facts and
+a human-readable knowledge graph.

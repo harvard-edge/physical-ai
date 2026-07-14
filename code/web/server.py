@@ -1,15 +1,8 @@
-"""Maya's Reachy - web chat backend (Milestone 1: the honest hello-world).
+"""Development server for the Maya's Reachy native app interface.
 
-Serves a small chat website and drives the robot. Right now this is the LOCAL
-REFLEX layer: text comes in, the robot says it out loud and performs one
-expressive gesture chosen by a simple rule. No cloud, no memory. Its only job is
-to prove the whole interface pipe end to end: a kid types or speaks, the metal
-moves and talks.
-
-The seam for later: `pick_reaction()` is the single function the brain replaces.
-Instead of a rule choosing the gesture, Claude (brain/orchestrator.py) will
-choose the words, the gestures, and what to remember, then call the same body
-skills. The website above this file does not change when that happens.
+The production app is ``reachy_playground.app.MayasReachyApp`` and runs on the
+robot. This server reuses the same packaged interface, Groq language layer, and
+memory store while allowing simulation or development from a Mac.
 
 If the robot is not reachable (or REACHY_FAKE=1), every action degrades to
 "simulation": the backend reports what it would have done and the browser voices
@@ -33,10 +26,15 @@ from pydantic import BaseModel
 HERE = Path(__file__).resolve().parent      # code/web
 CODE = HERE.parent                          # code
 BODY = CODE / "body"                        # code/body (the robot package lives here)
-STATIC = HERE / "static"
+STATIC = BODY / "reachy_playground" / "static"
 
 # Make the folded-in robot package importable: code/body/reachy_playground/...
 sys.path.insert(0, str(BODY))
+
+from reachy_playground.app import GREETING_TEXT  # noqa: E402
+from reachy_playground.cloud import GroqCloud  # noqa: E402
+from reachy_playground.conversation import Conversation  # noqa: E402
+from reachy_playground.memory import MemoryStore  # noqa: E402
 
 FORCE_FAKE = os.environ.get("REACHY_FAKE") == "1"
 
@@ -46,6 +44,9 @@ FORCE_FAKE = os.environ.get("REACHY_FAKE") == "1"
 
 _robot = None
 _simulating = FORCE_FAKE
+_cloud = GroqCloud()
+_memory = MemoryStore()
+_conversation = Conversation(_memory, _cloud)
 
 
 def robot():
@@ -68,30 +69,6 @@ def robot():
     return _robot
 
 
-# ---------------------------------------------------------------------------
-# The local reflex: text -> one expressive gesture.
-# This is the seam the cloud brain replaces later.
-# ---------------------------------------------------------------------------
-
-GREETINGS = ("hi", "hello", "hey", "hiya", "hola", "yo")
-
-
-def pick_reaction(text: str) -> dict:
-    """Choose how the robot reacts to a line of text. A tiny rule, for now.
-
-    The mood drives the on-screen robot animation; `skills` is the list of body
-    skills we report to the UI so the engineering is visible.
-    """
-    t = text.strip().lower()
-    if t.endswith("?"):
-        return {"mood": "curious", "closer": "tilt", "skills": ["look_up", "say", "tilt"]}
-    if t.endswith("!"):
-        return {"mood": "excited", "closer": "wiggle", "skills": ["look_up", "say", "wiggle"]}
-    if any(t.startswith(g + " ") or t == g for g in GREETINGS):
-        return {"mood": "friendly", "closer": "wiggle", "skills": ["look_up", "say", "wiggle"]}
-    return {"mood": "warm", "closer": "nod", "skills": ["look_up", "say", "nod"]}
-
-
 def perform(text: str, reaction: dict) -> str:
     """Drive the robot (or simulate). Returns 'robot' or 'simulation'."""
     r = robot()
@@ -109,6 +86,20 @@ def perform(text: str, reaction: dict) -> str:
     return "robot"
 
 
+def reaction_for_mood(mood: str) -> dict:
+    closer = {
+        "curious": "tilt",
+        "excited": "wiggle",
+        "friendly": "wiggle",
+        "warm": "nod",
+    }.get(mood, "nod")
+    return {
+        "mood": mood,
+        "closer": closer,
+        "skills": ["look_up", "say", closer],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Web app
 # ---------------------------------------------------------------------------
@@ -123,28 +114,53 @@ class SayIn(BaseModel):
 @app.get("/api/status")
 def status():
     """Tell the UI whether we are wired to the robot or simulating."""
+    mode = "simulation" if _simulating else "robot"
     return {
-        "mode": "simulation" if _simulating else "ready",
-        "host": os.environ.get("REACHY_HOST", "10.174.1.60"),
+        "state": "simulation" if _simulating else "ready",
+        "mode": mode,
+        "host": os.environ.get("REACHY_HOST", "reachy-mini.local"),
+        "phrase": GREETING_TEXT,
+        "duration_seconds": 4.2,
+        "runtime": "development-server",
+        "cloud_provider": "groq",
+        "cloud_configured": _cloud.configured,
+        "robot_name": _memory.robot_name(),
     }
 
 
-@app.post("/api/say")
-def say(inp: SayIn):
+@app.post("/api/greet")
+def greet():
+    reaction = reaction_for_mood("excited")
+    mode = perform(GREETING_TEXT, reaction)
+    return {
+        "ok": True,
+        "accepted": True,
+        "state": "simulation" if mode == "simulation" else "ready",
+        "mode": mode,
+        "phrase": GREETING_TEXT,
+        "duration_seconds": 4.2,
+    }
+
+
+@app.post("/api/chat")
+def chat(inp: SayIn):
     text = (inp.text or "").strip()
     if not text:
         return {"ok": False, "error": "Type or say something first."}
-    reaction = pick_reaction(text)
-    mode = perform(text, reaction)
+    plan = _conversation.respond(text)
+    reaction = reaction_for_mood(plan.mood)
+    mode = perform(plan.text, reaction)
     return {
         "ok": True,
-        "spoken": text,
-        "mood": reaction["mood"],
-        "skills": reaction["skills"],
+        "reply": plan.text,
+        "mood": plan.mood,
+        "source": plan.source,
+        "learned": plan.learned,
+        "speech_mode": "browser" if mode == "simulation" else "robot",
+        "duration_seconds": max(1.2, min(8.0, len(plan.text.split()) * 0.34)),
+        "robot_name": _memory.robot_name(),
         "mode": mode,
     }
-
-
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")

@@ -1,9 +1,9 @@
 """brain/orchestrator.py - the cloud brain loop (Phase 2 on-ramp, SKELETON).
 
-This is NOT wired up yet. Milestone 1 talks to the robot through the local
-reflex in web/server.py. This file is the shape of what replaces that reflex:
-Claude, holding the conversation, with the body skills and the memory graph as
-tools, deciding words + gestures + what to remember.
+This is an earlier Claude and MCP experiment and is not in the working request
+path. The native app currently uses Groq structured output, validated JSON
+memory, and the Reachy SDK directly. This scaffold remains as an option for a
+larger tool-using brain later.
 
 Two ways to run the brain, both using brain/system-prompt.md:
   1. Claude Desktop  - zero code; see claude_desktop_config.example.json.
@@ -58,7 +58,7 @@ async def turn(user_text: str) -> str:
 
 
 if __name__ == "__main__":
-    print("The brain is a skeleton. Milestone 1 runs through web/ + the reflex.")
+    print("This Claude + MCP brain is an optional, unwired future scaffold.")
     print(f"System prompt: {len(SYSTEM_PROMPT)} chars")
     print(f"Memory file:   {MEMORY_FILE}")
     print(f"MCP servers:   {', '.join(MCP_SERVERS)}")

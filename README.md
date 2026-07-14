@@ -4,8 +4,9 @@ A Reachy Mini robot that Maya teaches. The act of teaching it is what keeps her
 engaged and what helps her learn, and the system underneath is a small, honest
 example of edge plus cloud AI.
 
-This repository is the home for the robot's software and its design. We are
-architecting first, then building in phases.
+This repository is the home for the robot's software and its design. The first
+native teach-and-talk app now runs on Reachy Mini, with later capabilities still
+arriving in phases.
 
 ## The idea in one line
 
@@ -24,14 +25,15 @@ spine.
 
 ## How it is put together
 
-Three layers (full detail in `docs/ARCHITECTURE.md`):
+Three layers work together. `docs/ARCHITECTURE.md` has the full design.
 
-- **Body**: the robot's motors, speaker, mic, and camera, driven by the
-  `reachy_mini` SDK and wrapped as simple "skills."
-- **Brain**: Claude, which reasons, talks, and decides which skills to call,
-  connected through MCP.
-- **Memory**: a knowledge graph that stores what Maya teaches, so the robot
-  remembers across days.
+- **Body:** The native `ReachyMiniApp` owns the web interface, motors, and
+  speaker on the robot.
+- **Brain:** Groq runs an LLM that understands each child's natural language,
+  returns a structured intent, and writes the reply. There is no phrase-matching
+  parser for teaching the robot its name.
+- **Memory:** A small local JSON store records only facts the LLM marks as
+  explicitly taught. Conversation history stays in memory and is not persisted.
 
 The robot is a Raspberry Pi Compute Module 4. It is strong enough to host
 always-on reflexes (wake word, simple motion, local voice) but not a full
@@ -39,16 +41,18 @@ conversational model, so the thinking runs in the cloud. That split is the
 architecture, not a compromise.
 
 All of the software lives in `code/` (the way the book lives in `book/`). Start
-with `code/README.md`; the fastest way to see it is `./code/web/run.sh`, the
-chat website you talk to the robot through.
+with `code/README.md`. The robot-hosted interface is available at
+`http://reachy-mini.local:8042` while the app is running. `./code/web/run.sh`
+provides the Mac development and simulation path.
 
 ## Status
 
 - **Phase 0 (foundation) is proven on the real robot**: it speaks, moves, knows
   a name, and sang Happy Birthday. See `docs/ROADMAP.md`.
-- The skills playground is now folded into `code/body/`. The chat website in
-  `code/web/` is the current entry point: type or speak, and the robot says it
-  with a gesture (Milestone 1, no cloud or memory yet).
+- **The native teach-and-talk loop is running on the real robot.** Children can
+  type or dictate in the web interface. Groq understands the turn, explicit
+  name teaching is saved locally, and Piper speaks the answer offline through
+  Reachy's speaker while the body moves.
 
 ## Docs
 
@@ -64,5 +68,6 @@ chat website you talk to the robot through.
 3. Privacy by design: gated mic and camera, visible on and off, local first.
 4. The two-speed boundary is sacred: cheap and instant stays local, expensive
    and occasional goes to the cloud.
-5. Compose, do not reinvent: skills plus MCP plus Claude.
+5. Compose, do not reinvent: the Reachy SDK, an LLM, local memory, and readable
+   body skills.
 6. It is a triad: Maya, parent, and robot, building together.

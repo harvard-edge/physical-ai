@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # code/web
 CODE="$(dirname "$HERE")"                               # code
 
 VENV="${MAYA_VENV:-/Users/VJ/GitHub/PhysicalAI/reachy_mini_happy_birthday/.venv}"
-export REACHY_HOST="${REACHY_HOST:-10.174.1.60}"
+export REACHY_HOST="${REACHY_HOST:-reachy-mini.local}"
 # GStreamer/WebRTC audio needs libpython on its path when we drive the robot.
 export DYLD_FALLBACK_LIBRARY_PATH="${DYLD_FALLBACK_LIBRARY_PATH:-/opt/homebrew/Cellar/python@3.11/3.11.15/Frameworks/Python.framework/Versions/3.11/lib}"
 
