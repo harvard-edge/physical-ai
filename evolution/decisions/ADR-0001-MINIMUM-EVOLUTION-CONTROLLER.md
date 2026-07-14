@@ -1,6 +1,6 @@
 # ADR-0001: Select the Minimum Durable Evolution Substrate
 
-**Status:** Revised proposal, supersedes the custom-first assumption
+**Status:** Accepted for Phase 1A
 **Decision owner:** MiOS Systems Architect
 **Approval required:** Professor Vijay Janapa Reddi
 
@@ -106,7 +106,7 @@ Every candidate must meet these mandatory criteria:
 | Offline operation | Complete the fixture with outbound network denied |
 | Inspection | Query state, attempts, errors, and pending work without modifying them |
 | Workflow upgrade | Resume an in-flight version-one fixture under a compatible version-two worker |
-| Platform | Support Python 3.10+ and macOS and Linux ARM64 development targets |
+| Platform | Support the declared Python range, execute on macOS ARM64, resolve for Linux ARM64, and require native target execution before deployment |
 | Resource use | Stay within the approved Phase 1A storage and controller-time budget |
 | Licensing | Use a license compatible with an open research implementation |
 | Policy boundary | Keep candidate credentials, filesystem, and network authority denied |
@@ -128,7 +128,9 @@ The synthetic cycle must prove:
 4. changes to protected paths or acceptance tests are rejected;
 5. ledger or artifact tampering is detected;
 6. commands avoid shell interpolation and strip secrets;
-7. network, GitHub, paid providers, and robot access are absent;
+7. candidate and reviewer network authority is denied; trusted-controller model,
+   GitHub, and robot adapters are absent; and host egress confinement remains a
+   gate before any external provider is enabled;
 8. a clean directory reconstructs and verifies the cycle; and
 9. the existing 19 Reachy tests continue to pass with `code/` unchanged.
 10. the substrate can be upgraded without replaying completed external effects;
@@ -142,3 +144,35 @@ The synthetic cycle must prove:
 This decision adds a short bakeoff but avoids committing the research program to
 homegrown workflow machinery. It keeps model, forge, evaluation, observability,
 and robot adapters replaceable while assigning each durable fact to one owner.
+
+## Phase 1A Selection Record
+
+The July 14, 2026 bakeoff selected DBOS 2.26.0 with a local SQLite checkpoint
+database. DBOS and the minimum custom control executed the same seven-effect
+semantic sequence, recovered from an injected process exit, produced zero
+duplicate effects, and reached the same normalized semantic digest. The custom
+runner remains a comparison fixture rather than a MiOS implementation. Temporal
+was not runnable because Phase 1A did not provision its separate local service
+and forbids remote substitution.
+
+Timing remains observational and is excluded from the decision digest. Active
+process-group termination is covered by separate controller tests. The bakeoff
+itself proves persistent pause before another effect and does not claim a DBOS
+active-cancellation latency measurement.
+
+DBOS owns only workflow execution checkpoints. The MiOS registry, budgets,
+policies, artifacts, local forge, reviews, and hash-chained ledger remain
+substrate-neutral. SQLite remains limited to this single-host proof. A move to
+multiple hosts requires a new measurement and either DBOS with PostgreSQL or a
+reconsideration of Temporal.
+
+The frozen controller lock resolves for Linux ARM64 with CPython 3.12. Native
+Linux ARM64 controller execution remains unproven until a target host is
+available. The project requires Python 3.11 or newer, correcting the earlier
+Python 3.10 statement. The Phase 1A dependency policy fails closed on unknown
+licenses and records distribution obligations. It admits dependencies only for
+local research and does not select a MiOS project license or authorize public
+distribution.
+
+The measured evidence and reconsideration triggers are recorded in
+[`PHASE-1A-SUBSTRATE-BAKEOFF.md`](../reports/PHASE-1A-SUBSTRATE-BAKEOFF.md).

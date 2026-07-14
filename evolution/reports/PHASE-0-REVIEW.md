@@ -75,6 +75,15 @@ The principal investigator is asked to decide the following items before Phase
 Physical canaries, public GitHub publication, automatic merge, and ordinary
 child-data egress are not requested at this gate.
 
+## Phase 1A Authorization Addendum
+
+Professor Vijay Janapa Reddi authorized the local deterministic Phase 1A proof
+on July 14, 2026. The attestation is recorded in
+[`PHASE-1A.yml`](../approvals/PHASE-1A.yml). This authorization activates the
+40-hour, 2 GiB, one-experiment local budget. It does not resolve protected-test
+custody, child-data retention, provider approval, publication, robot access, or
+physical deployment.
+
 ## Authorized Next Work After Approval
 
 Phase 1A will run the workflow-substrate bakeoff and implement only the

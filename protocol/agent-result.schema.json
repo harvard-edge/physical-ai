@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mios.local/schema/agent-result-1.1.0.json",
+  "title": "MiOS Agent Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version", "task_id", "experiment_id", "attempt_id", "nonce",
+    "status", "summary", "outputs", "claims", "commands_executed",
+    "resource_actuals", "policy_events", "errors", "assumptions", "unresolved",
+    "started_at", "finished_at", "worker"
+  ],
+  "properties": {
+    "protocol_version": {"const": "1.1.0"},
+    "task_id": {"type": "string"},
+    "experiment_id": {"type": "string"},
+    "attempt_id": {"type": "string"},
+    "nonce": {"type": "string"},
+    "status": {"enum": ["succeeded", "failed", "declined", "timed_out", "policy_blocked"]},
+    "summary": {"type": "string", "maxLength": 4096},
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["logical_name", "relative_path", "sha256", "size", "media_type"],
+        "properties": {
+          "logical_name": {"type": "string"},
+          "relative_path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+          "sha256": {"$ref": "#/$defs/sha256"},
+          "size": {"type": "integer", "minimum": 0},
+          "media_type": {"type": "string"}
+        }
+      },
+      "maxItems": 128
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "evidence_artifact_ids"],
+        "properties": {
+          "statement": {"type": "string"},
+          "evidence_artifact_ids": {"type": "array", "items": {"$ref": "#/$defs/sha256"}}
+        }
+      },
+      "maxItems": 128
+    },
+    "commands_executed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "argv_digest", "exit_code", "duration_ms"],
+        "properties": {
+          "command_id": {"type": "string"},
+          "argv_digest": {"$ref": "#/$defs/sha256"},
+          "exit_code": {"type": "integer"},
+          "duration_ms": {"type": "integer", "minimum": 0}
+        }
+      },
+      "maxItems": 128
+    },
+    "resource_actuals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_ms", "cpu_ms", "peak_memory_bytes", "output_bytes", "files", "processes"],
+      "properties": {
+        "wall_ms": {"type": "integer", "minimum": 0},
+        "cpu_ms": {"type": "integer", "minimum": 0},
+        "peak_memory_bytes": {"type": "integer", "minimum": 0},
+        "output_bytes": {"type": "integer", "minimum": 0},
+        "files": {"type": "integer", "minimum": 0},
+        "processes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "policy_events": {"type": "array", "items": {"type": "string"}, "maxItems": 128},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["class", "message", "artifact_ref"],
+        "properties": {
+          "class": {"type": "string"},
+          "message": {"type": "string"},
+          "artifact_ref": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+        }
+      },
+      "maxItems": 128
+    },
+    "assumptions": {"type": "array", "items": {"type": "string"}, "maxItems": 128},
+    "unresolved": {"type": "array", "items": {"type": "string"}, "maxItems": 128},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version"],
+      "properties": {
+        "implementation": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

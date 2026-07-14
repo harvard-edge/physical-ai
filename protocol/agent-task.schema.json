@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mios.local/schema/agent-task-1.1.0.json",
+  "title": "MiOS Agent Task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version", "task_id", "experiment_id", "attempt_id", "role",
+    "objective", "input_artifacts", "capabilities", "prohibited_effects",
+    "acceptance_checks", "budgets", "not_before", "deadline", "output_contract",
+    "escalation_conditions", "policy_digest", "nonce"
+  ],
+  "properties": {
+    "protocol_version": {"const": "1.1.0"},
+    "task_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9._-]{2,127}$"},
+    "experiment_id": {"type": "string", "pattern": "^MIOS-EXP-[0-9]{4,}$"},
+    "attempt_id": {"type": "string", "pattern": "^MIOS-ATT-[0-9]{4,}$"},
+    "role": {"type": "string", "minLength": 1, "maxLength": 64},
+    "objective": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "input_artifacts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/artifact"},
+      "maxItems": 128
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_scopes", "write_scopes", "commands", "network", "external_services"],
+      "properties": {
+        "read_scopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "maxItems": 128},
+        "write_scopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "maxItems": 128},
+        "commands": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "maxItems": 128},
+        "network": {"type": "boolean"},
+        "external_services": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "maxItems": 32}
+      }
+    },
+    "prohibited_effects": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "maxItems": 128},
+    "acceptance_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "command_id", "expected"],
+        "properties": {
+          "id": {"type": "string"},
+          "command_id": {"type": "string"},
+          "expected": {"type": "string"}
+        }
+      },
+      "maxItems": 128
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_ms", "cpu_ms", "memory_bytes", "output_bytes", "file_count", "processes"],
+      "properties": {
+        "wall_ms": {"type": "integer", "minimum": 1},
+        "cpu_ms": {"type": "integer", "minimum": 1},
+        "memory_bytes": {"type": "integer", "minimum": 1048576},
+        "output_bytes": {"type": "integer", "minimum": 1},
+        "file_count": {"type": "integer", "minimum": 1},
+        "processes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "not_before": {"type": "string", "format": "date-time"},
+    "deadline": {"type": "string", "format": "date-time"},
+    "output_contract": {"type": "string", "minLength": 1},
+    "escalation_conditions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "policy_digest": {"$ref": "#/$defs/sha256"},
+    "nonce": {"type": "string", "minLength": 16, "maxLength": 128}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_name", "uri", "sha256", "media_type", "privacy_class"],
+      "properties": {
+        "logical_name": {"type": "string"},
+        "uri": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "media_type": {"type": "string"},
+        "privacy_class": {"enum": ["synthetic", "derived-redacted", "internal", "restricted"]}
+      }
+    }
+  }
+}
