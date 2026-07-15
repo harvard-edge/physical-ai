@@ -51,6 +51,7 @@ access the robot without explicit approval.
 - [x] Native Reachy app gateway contract with bounded gestures and protective stop.
 - [x] Wire native Reachy response path through the gateway authorization check.
 - [x] Add control-loop watchdog with protective-stop escalation.
+- [x] Add bounded trace and metric observability store.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -337,3 +338,4 @@ gated behind human authority.
 | 2026-07-15 | Reachy response-path gateway integration | Completed | `7743976` |
 | 2026-07-15 | Native memory connection cleanup | Completed | `a7b5ee3` |
 | 2026-07-15 | Reachy control watchdog | Completed | `d4faddb` |
+| 2026-07-15 | Observability store | Completed | `37b96f4` |
