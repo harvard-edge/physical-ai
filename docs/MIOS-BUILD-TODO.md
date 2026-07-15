@@ -376,3 +376,4 @@ gated behind human authority.
 | 2026-07-15 | Include ledger evidence in reconstruction check | Completed | Two clean runs compare normalized event kinds and payloads, excluding nondeterministic hashes/timestamps |
 | 2026-07-15 | Expose reconstruction CLI | Completed | `mios-controller reconstruct-campaign` compares two campaign-plus-ledger runs |
 | 2026-07-15 | Document operator evidence workflows | Completed | README explains Maya, reconstruction, lineage, and authority boundaries |
+| 2026-07-15 | Record reconstruction CLI evidence | Completed | `evaluation/results/reconstruction-cli.json`; two normalized ledgers match |
