@@ -352,3 +352,4 @@ gated behind human authority.
 | 2026-07-15 | Local Ollama provider adapter | Completed | `2a1ee4e` |
 | 2026-07-15 | Provider benchmark harness | Completed | `ae60344` |
 | 2026-07-15 | Maintenance/memory integration | Completed | `b393b9d` |
+| 2026-07-15 | Machine-readable experiment record contract | Completed | `ExperimentRecord` in `orchestrator/mios_controller/experiment.py`; unit and full-suite verification |

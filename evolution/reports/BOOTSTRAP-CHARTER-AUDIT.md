@@ -1,6 +1,6 @@
 # MiOS Bootstrap Charter Audit
 
-**Date:** 2026-07-15 (updated after runtime, safety, portability, and replay work)
+**Date:** 2026-07-15 (updated after experiment-contract and verification work)
 **Charter:** `docs/MIOS-EMBODIED-BOOTSTRAP-GOAL.md` revision 0.2
 **Auditor:** MiOS coordinator
 
@@ -14,7 +14,7 @@ bootstrap experiment.
 | Durable evolution substrate | Phase 1A controller, crash matrix, upgrade evidence | complete for synthetic local cycle | integrate council workflow and runtime events |
 | Specialist agent organization | role contracts, council queue, dependency graph, deterministic replay campaign | complete for offline substrate | model-backed workers and long-running cloud operation |
 | Independent assurance | assurance roles, release verdict gate, protected candidate evaluator | complete for local deterministic scope | protected custodian-backed suite and flawed-candidate campaign |
-| Evolution ledger | hash-chain ledger and Phase 1A evidence | partial | full experiment schema and observation-to-PR lineage |
+| Evolution ledger | hash-chain ledger, Phase 1A evidence, and validated `ExperimentRecord` contract | partial | persist records through every controller transition and prove observation-to-PR lineage |
 | Runtime memory | episodic/semantic/procedural store with evidence-gated promotion | partial | integration with native Reachy memory and held-out recall |
 | Local/cloud intelligence | deterministic provider and loopback Ollama adapter with benchmark harness | partial | ARM64 model benchmark and approved cloud adapters |
 | Maintenance mode | drain, consolidation, runtime event, checkpoint, and recovery cycle | partial | unattended scheduler and repeated overnight operation |
