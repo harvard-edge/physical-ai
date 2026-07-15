@@ -385,6 +385,9 @@ gated behind human authority.
 | 2026-07-15 | Record flawed-candidate assurance evidence | Completed | `evaluation/results/flawed-candidate-assurance.json` shows safety rejection blocks release |
 | 2026-07-15 | Add Reachy physical-validation handoff | Completed | Readiness checklist defines authorization, Maya Test, safety, rollback, and resource evidence |
 | 2026-07-15 | Add UNO Q transfer handoff | Completed | Transfer checklist separates unchanged contracts from target-device resource evidence |
+| 2026-07-15 | Add persisted doctor lifecycle | Completed | Doctor phases and atomic reports cover local setup/readiness without hardware authority |
+| 2026-07-15 | Add privacy-safe observability projection | Completed | Versioned snapshots expose redacted activity, concepts, counts, safety, and ledger state |
+| 2026-07-15 | Add native operator dashboard projections | Completed | Robot app exposes read-only doctor/activity/brain/maintenance APIs and operator view |
 | 2026-07-15 | Record controller doctor evidence | Completed | Sandbox and candidate isolation are active; external adapters remain explicitly absent |
 | 2026-07-15 | Consolidate local bootstrap evidence | Completed | `evaluation/results/local-bootstrap-summary.json` separates verified local results from unproven external requirements |
 | 2026-07-15 | Verify robot wheel packaging | Completed | Wheel builds with app package, entry point, static website, and greeting asset |

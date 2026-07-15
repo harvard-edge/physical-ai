@@ -115,6 +115,18 @@ class NativeAppTest(unittest.TestCase):
             self.assertTrue(status["supports_robot_listening"])
             self.assertNotIn("history", status)
 
+    def test_operator_snapshots_are_redacted_and_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = MayasReachyApp(
+                memory=MemoryStore(Path(directory) / "memory.json"),
+                cloud=GroqCloud(api_key=None),
+            )
+            doctor = app.doctor_snapshot()
+            brain = app.memory.snapshot()
+            self.assertIn(doctor["state"], {"READY", "DEGRADED"})
+            self.assertTrue(all("remediation" in check for check in doctor["checks"]))
+            self.assertNotIn("history", brain)
+
     def test_listening_session_starts_without_waiting_for_completion(self):
         with tempfile.TemporaryDirectory() as directory:
             app = MayasReachyApp(

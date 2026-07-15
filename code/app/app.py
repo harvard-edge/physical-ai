@@ -101,6 +101,32 @@ class MayasReachyApp(ReachyMiniApp):
         def status() -> dict[str, Any]:
             return self.status_snapshot()
 
+        @self.settings_app.get("/api/doctor")
+        def doctor() -> dict[str, Any]:
+            return self.doctor_snapshot()
+
+        @self.settings_app.get("/api/activity")
+        def activity(limit: int = 20) -> dict[str, Any]:
+            return {"events": self.events.recent(max(1, min(limit, 100)))}
+
+        @self.settings_app.get("/api/brain")
+        def brain() -> dict[str, Any]:
+            snapshot = self.memory.snapshot()
+            return {
+                "version": snapshot["version"],
+                "robot": snapshot["robot"],
+                "counts": snapshot["counts"],
+                "concepts": [
+                    {"subject": fact.get("subject"), "predicate": fact.get("predicate"), "evidence": fact.get("episode_id")}
+                    for fact in snapshot.get("facts", [])
+                ],
+                "redacted": True,
+            }
+
+        @self.settings_app.get("/api/maintenance")
+        def maintenance() -> dict[str, Any]:
+            return {"mode": "INTERACTION", "scheduler": "native-app", "maintenance_supported": True}
+
         @self.settings_app.post("/api/greet")
         def greet() -> dict[str, Any]:
             accepted = self.request_greeting()
@@ -162,6 +188,42 @@ class MayasReachyApp(ReachyMiniApp):
                 ),
                 "robot_name": self.memory.robot_name(),
             }
+
+    def doctor_snapshot(self) -> dict[str, Any]:
+        """Return redacted readiness checks for the operator dashboard."""
+        status = self.status_snapshot()
+        checks = [
+            {
+                "id": "memory",
+                "status": "pass",
+                "severity": "info",
+                "observed": "sqlite available",
+                "remediation": None,
+            },
+            {
+                "id": "safety-gateway",
+                "status": "pass" if not self.robot_gateway.stopped else "degraded",
+                "severity": "critical",
+                "observed": "stopped" if self.robot_gateway.stopped else "armed-boundary",
+                "remediation": "operator authorization required" if self.robot_gateway.stopped else None,
+            },
+            {
+                "id": "robot",
+                "status": "pass" if status["ready"] else "degraded",
+                "severity": "warning",
+                "observed": status["state"],
+                "remediation": "wait for robot startup" if not status["ready"] else None,
+            },
+            {
+                "id": "cloud",
+                "status": "pass" if status["cloud_configured"] else "degraded",
+                "severity": "info",
+                "observed": "configured" if status["cloud_configured"] else "offline",
+                "remediation": "configure approved provider or use local fallback" if not status["cloud_configured"] else None,
+            },
+        ]
+        state = "READY" if all(check["status"] == "pass" for check in checks) else "DEGRADED"
+        return {"schema_version": "1.0.0", "state": state, "checks": checks, "redacted": True}
 
     def request_greeting(self) -> bool:
         """Queue one greeting unless one is already queued or playing."""

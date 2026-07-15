@@ -83,6 +83,12 @@ Service activation and physical authorization remain explicit operator actions.
 Host CI intentionally installs the package without Linux-only Reachy/Piper
 dependencies; the robot image owns those system dependencies.
 
+The operator view is available at `/static/operator.html`. It reads the
+redacted `/api/doctor`, `/api/activity`, `/api/brain`, and `/api/maintenance`
+projections and refreshes periodically. It is an inspection surface, not a
+child-facing control panel; memory reset remains a separate adult-confirmed
+operation.
+
 ## Build the Robot Wheel
 
 ```sh
