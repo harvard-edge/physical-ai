@@ -102,6 +102,32 @@ charge.
 - [ ] Evaluate ExecuTorch or another embedded runtime if the hardware benefits
       from ahead-of-time edge deployment rather than a general LLM server.
 
+## Open MiOS platform architecture
+
+The public system should be a packageable platform rather than a single robot
+application. Reuse existing infrastructure wherever it gives us a tested
+primitive; MiOS owns the contracts, authority, memory lifecycle, and evidence.
+
+- [ ] Define the public package boundaries and minimal installation profile.
+- [ ] Use ExecuTorch as the north-star edge inference runtime; keep Ollama or
+      llama.cpp as development and fallback adapters.
+- [ ] Define isolated nodes for perception, speech, cognition, memory, behavior,
+      safety, and hardware adapters.
+- [ ] Evaluate ROS 2 lifecycle nodes for robot-facing integration, without making
+      ROS 2 a requirement for the core cloud or desktop runtime.
+- [ ] Define typed event, task, artifact, memory, capability, and release schemas.
+- [ ] Build a curated skills library with versioned metadata, tests, permissions,
+      provenance, examples, and deprecation policy.
+- [ ] Separate raw episodic storage, curated semantic knowledge, procedural
+      skills, and derived embeddings.
+- [ ] Start with SQLite for local single-device operation and PostgreSQL for
+      multi-user/cloud operation; evaluate Kùzu or Apache AGE only when graph
+      workload tests justify a dedicated graph layer.
+- [ ] Make every memory and skill promotion traceable to source evidence and an
+      assurance verdict.
+- [ ] Publish an open-source contributor guide, extension API, compatibility
+      policy, and security reporting process.
+
 ## Build-time track — bootstrap MiOS itself
 
 These items are completed while the system is being created. They produce the
