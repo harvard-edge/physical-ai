@@ -334,3 +334,4 @@ gated behind human authority.
 | 2026-07-15 | Embodied safety gateway | Completed | `0926965` |
 | 2026-07-15 | Native Reachy app gateway contract | Completed | `fa43b61` |
 | 2026-07-15 | Reachy response-path gateway integration | Completed | `7743976` |
+| 2026-07-15 | Native memory connection cleanup | Completed | `a7b5ee3` |
