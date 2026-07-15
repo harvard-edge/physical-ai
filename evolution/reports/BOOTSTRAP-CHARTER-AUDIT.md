@@ -16,7 +16,7 @@ bootstrap experiment.
 | Independent assurance | assurance roles, release verdict gate, protected candidate evaluator | complete for local deterministic scope | protected custodian-backed suite and flawed-candidate campaign |
 | Evolution ledger | hash-chain ledger, validated records, replay binding, final-state integration, deployment events, and lineage inspector | partial | complete observation-to-PR lineage across real change artifacts |
 | Runtime memory | episodic/semantic/procedural store with evidence-gated promotion | partial | integration with native Reachy memory and held-out recall |
-| Local/cloud intelligence | deterministic provider, loopback Ollama adapter, benchmark harness, and allowlisted hosted-compatible adapter | partial | ARM64 model benchmark and provider-specific approval/credential integration |
+| Local/cloud intelligence | deterministic provider, loopback Ollama adapter, benchmark harness, allowlisted hosted adapter, and privacy-class gate | partial | ARM64 model benchmark and provider-specific approval/credential integration |
 | Maintenance mode | drain, consolidation, runtime event, recovery cycle, bounded due scheduler, persisted state, and finite supervisor-tick runner | partial | real supervisor-backed unattended operation and overnight evidence |
 | GitHub evolution | no external GitHub adapter or PR workflow | deferred | approval-gated local forge, then authorized adapter |
 | Physical safety gateway | deterministic action envelope, native gateway, watchdog, fake hardware tests | partial | real Reachy stop latency and hazard-derived evidence |

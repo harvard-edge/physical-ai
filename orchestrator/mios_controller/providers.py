@@ -133,6 +133,8 @@ class HostedCompatibleProvider:
     def complete(self, request: ModelRequest) -> ModelResponse:
         if request.max_tokens < 1 or not request.prompt.strip():
             raise ValueError("model requests require a bounded prompt and token budget")
+        if request.privacy_class not in {"synthetic", "derived-redacted", "approved"}:
+            raise ValueError("hosted provider cannot receive restricted data")
         if len(request.prompt) > 32_000:
             raise ValueError("hosted provider prompt exceeds privacy/size bound")
         payload = json.dumps(

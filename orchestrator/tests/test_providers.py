@@ -69,3 +69,20 @@ def test_hosted_adapter_rejects_unapproved_endpoint():
             endpoint="http://127.0.0.1:11434/api",
             allowed_hosts=frozenset({"127.0.0.1"}),
         )
+
+
+def test_hosted_adapter_rejects_restricted_data():
+    import pytest
+
+    provider = HostedCompatibleProvider(
+        "cloud-model",
+        endpoint="https://llm.example.test/v1/chat/completions",
+        allowed_hosts=frozenset({"llm.example.test"}),
+        transport=lambda endpoint, payload, timeout: (
+            b'{"choices":[{"message":{"content":"no"}}]}'
+        ),
+    )
+    with pytest.raises(ValueError):
+        provider.complete(
+            ModelRequest("MIOS-REQ-005", "memory", "secret", 16, "restricted")
+        )
