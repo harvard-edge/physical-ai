@@ -14,7 +14,7 @@ bootstrap experiment.
 | Durable evolution substrate | Phase 1A controller, crash matrix, upgrade evidence | complete for synthetic local cycle | integrate council workflow and runtime events |
 | Specialist agent organization | role contracts, council queue, dependency graph, deterministic replay campaign | complete for offline substrate | model-backed workers and long-running cloud operation |
 | Independent assurance | assurance roles, release verdict gate, protected candidate evaluator | complete for local deterministic scope | protected custodian-backed suite and flawed-candidate campaign |
-| Evolution ledger | hash-chain ledger, validated records, replay binding, final-state integration, and deployment decision events | partial | persist records through every controller transition and prove observation-to-PR lineage |
+| Evolution ledger | hash-chain ledger, validated records, replay binding, final-state integration, deployment events, and lineage inspector | partial | complete observation-to-PR lineage across real change artifacts |
 | Runtime memory | episodic/semantic/procedural store with evidence-gated promotion | partial | integration with native Reachy memory and held-out recall |
 | Local/cloud intelligence | deterministic provider, loopback Ollama adapter, benchmark harness, and allowlisted hosted-compatible adapter | partial | ARM64 model benchmark and provider-specific approval/credential integration |
 | Maintenance mode | drain, consolidation, runtime event, recovery cycle, bounded due scheduler, persisted state, and finite supervisor-tick runner | partial | real supervisor-backed unattended operation and overnight evidence |
