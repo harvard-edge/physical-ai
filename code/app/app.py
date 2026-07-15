@@ -27,6 +27,7 @@ from .constants import GREETING_TEXT
 from .conversation import Conversation
 from .events import EventJournal
 from .memory import MemoryStore
+from .robot_gateway import SafeRobotGateway
 from .voice import PiperVoiceSynthesizer, VoiceUnavailable
 
 HERE = Path(__file__).resolve().parent
@@ -92,6 +93,7 @@ class MayasReachyApp(ReachyMiniApp):
         self.memory = memory or MemoryStore()
         self.cloud = cloud or GroqCloud()
         self.voice = voice or PiperVoiceSynthesizer()
+        self.robot_gateway = SafeRobotGateway()
         self.conversation = Conversation(self.memory, self.cloud)
         self.events = EventJournal()
 
@@ -478,6 +480,10 @@ class MayasReachyApp(ReachyMiniApp):
         mood: str,
     ) -> None:
         """Synchronize optional robot audio with a safe expressive gesture."""
+
+        authorization = self.robot_gateway.gesture(mood, duration)
+        if authorization.status != "AUTHORIZED":
+            raise RuntimeError(f"robot gateway rejected response: {authorization.reason}")
 
         # First make eye contact. The voice starts only after the robot is looking up.
         reachy_mini.goto_target(

@@ -15,3 +15,6 @@ class RobotGatewayTests(unittest.TestCase):
         self.assertEqual(gateway.protective_stop().status, "STOPPED")
         self.assertEqual(gateway.speak("hello.wav").status, "STOPPED")
 
+    def test_app_response_contract_is_executable(self):
+        gateway = SafeRobotGateway()
+        self.assertEqual(gateway.gesture("excited", 8.0).status, "AUTHORIZED")
