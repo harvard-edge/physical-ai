@@ -345,3 +345,4 @@ gated behind human authority.
 | 2026-07-15 | Portable-core conformance | Completed | `5183344` |
 | 2026-07-15 | Campaign ledger and report binding | Completed | `3488ad5` |
 | 2026-07-15 | Replay campaign CLI | Completed | `e7492f8` |
+| 2026-07-15 | Live replay CLI execution evidence | Completed | `evaluation/results/replay-campaign-cli.json` |
