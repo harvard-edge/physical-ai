@@ -23,6 +23,15 @@ def test_scheduler_force_and_budget_are_explicit() -> None:
     assert calls == [1, 1]
 
 
+def test_scheduler_state_survives_restart(tmp_path) -> None:
+    state = tmp_path / "maintenance.json"
+    first = MaintenanceScheduler(60, max_cycles=2, state_path=state)
+    assert first.run_if_due(100, lambda: None).ran
+    restarted = MaintenanceScheduler(60, max_cycles=2, state_path=state)
+    assert not restarted.run_if_due(120, lambda: None).ran
+    assert restarted.run_if_due(160, lambda: None).ran
+
+
 @pytest.mark.parametrize("interval", [0, -1])
 def test_scheduler_rejects_unbounded_interval(interval: float) -> None:
     with pytest.raises(ValueError):
