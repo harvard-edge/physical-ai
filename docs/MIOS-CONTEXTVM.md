@@ -1,10 +1,10 @@
-# MiOS ContextVM
+# MiOS Cognitive Runtime Primitives
 
-The ContextVM is MiOS's LLM-first execution model. It manages context, memory,
+The MiOS cognitive runtime manages context, memory,
 goals, skills, capabilities, uncertainty, attention, and evidence. Models are
 schedulable workers inside this machine, not the machine itself.
 
-ContextVM is one useful design metaphor, not a constraint on the whole OS. MiOS
+“ContextVM” is one useful design metaphor, not a constraint on the whole OS. MiOS
 should combine several native abstractions where each is strongest.
 
 ## Broader LLM-first primitives
@@ -65,9 +65,9 @@ Every step has explicit token, latency, memory, tool, and effect budgets. Contex
 is summarized or retrieved by policy when it is too large; it is never silently
 truncated.
 
-## Virtual-memory analogy
+## Context and virtual-memory analogy
 
-| Conventional OS | ContextVM |
+| Conventional OS | Cognitive runtime analogy |
 |---|---|
 | process | goal/campaign |
 | address space | assembled context |
