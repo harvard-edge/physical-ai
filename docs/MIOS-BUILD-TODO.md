@@ -47,6 +47,7 @@ access the robot without explicit approval.
 - [x] Provider-neutral model adapter with deterministic fallback.
 - [x] Protected candidate evaluation runner bound to an immutable suite digest.
 - [x] Local staged release manifest, inactive slot, health check, and rollback.
+- [x] Deterministic action envelope, fake hardware gateway, and protective stop.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -328,3 +329,4 @@ gated behind human authority.
 | 2026-07-15 | Runtime boundary and provider fallback | Completed | `6cf2e58` |
 | 2026-07-15 | Protected evaluation runner | Completed | `f9e6854` |
 | 2026-07-15 | Staged release and rollback boundary | Completed | `a0ad2d9` |
+| 2026-07-15 | Embodied safety gateway | Completed | `0926965` |
