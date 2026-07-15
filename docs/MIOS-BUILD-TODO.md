@@ -152,6 +152,14 @@ robotics components remain implementation choices, not architectural laws.
       measurably better, while retaining standard adapters for interoperability.
 - [ ] Keep the deterministic safety kernel below the LLM layer; no model may
       directly own irreversible authority.
+- [ ] Implement the ContextVM primitive contracts in `docs/MIOS-CONTEXTVM.md`.
+- [ ] Define schemas for goals, contexts, beliefs, skills, capabilities,
+      observations, proposals, checkpoints, and evidence.
+- [ ] Build context assembly with explicit budgets, leases, provenance, and
+      reproducible retrieval.
+- [ ] Build deterministic promotion gates from episodic to semantic and
+      procedural memory.
+- [ ] Add checkpoint and resume semantics for cognitive execution.
 
 ## Build-time track — bootstrap MiOS itself
 
