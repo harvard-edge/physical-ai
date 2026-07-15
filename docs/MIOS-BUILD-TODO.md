@@ -358,3 +358,4 @@ gated behind human authority.
 | 2026-07-15 | Bind controller candidate state to experiment record | Completed | `LOCAL_CANDIDATE_READY` transition persists validated record with observation and evidence digest |
 | 2026-07-15 | Record staged deployment and rollback decisions | Completed | Two-slot controller appends idempotent `DEPLOYMENT_DECISION` events |
 | 2026-07-15 | Add bounded maintenance scheduler | Completed | Explicit due-time, force, and cycle-budget semantics with tests |
+| 2026-07-15 | Exercise scheduler with real maintenance cycle | Completed | Two due cycles promote memory once, emit runtime events, and return to interaction |
