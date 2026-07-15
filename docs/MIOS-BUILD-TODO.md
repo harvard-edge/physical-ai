@@ -50,6 +50,7 @@ access the robot without explicit approval.
 - [x] Deterministic action envelope, fake hardware gateway, and protective stop.
 - [x] Native Reachy app gateway contract with bounded gestures and protective stop.
 - [x] Wire native Reachy response path through the gateway authorization check.
+- [x] Add control-loop watchdog with protective-stop escalation.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -335,3 +336,4 @@ gated behind human authority.
 | 2026-07-15 | Native Reachy app gateway contract | Completed | `fa43b61` |
 | 2026-07-15 | Reachy response-path gateway integration | Completed | `7743976` |
 | 2026-07-15 | Native memory connection cleanup | Completed | `a7b5ee3` |
+| 2026-07-15 | Reachy control watchdog | Completed | `d4faddb` |
