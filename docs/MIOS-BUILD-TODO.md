@@ -378,3 +378,4 @@ gated behind human authority.
 | 2026-07-15 | Document operator evidence workflows | Completed | README explains Maya, reconstruction, lineage, and authority boundaries |
 | 2026-07-15 | Record reconstruction CLI evidence | Completed | `evaluation/results/reconstruction-cli.json`; two normalized ledgers match |
 | 2026-07-15 | Add bounded agent task-packet schema | Completed | Validates role, scope, acceptance tests, outputs, escalation, and time/token/cost budgets |
+| 2026-07-15 | Enforce task packets at council enqueue | Completed | Council converts validated packets into bounded durable worker tasks |

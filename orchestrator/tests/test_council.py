@@ -6,6 +6,7 @@ from mios_controller.council import (
     new_handoff_id,
 )
 from mios_controller.council_workers import deterministic_workers
+from mios_controller.task_packet import AgentTaskPacket
 
 
 def test_council_persists_handoffs_and_routes_context(tmp_path):
@@ -34,6 +35,25 @@ def test_council_persists_handoffs_and_routes_context(tmp_path):
     assert result is not None
     assert seen == [("Define memory lifecycle", 0)]
     assert store.recent_handoffs()[0].summary == "design ready"
+
+
+def test_packet_enqueue_preserves_bounded_worker_task(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    store.enqueue_packet(
+        AgentTaskPacket(
+            task_id="MIOS-TASK-PACKET-001",
+            experiment_id="MIOS-EXP-0001",
+            role="verifier",
+            objective="Verify candidate",
+            acceptance_tests=["pytest"],
+            budgets={"wall_clock_minutes": 5, "tokens": 100, "money_usd": 0},
+            required_outputs=["report"],
+        )
+    )
+    task = store.claim("verifier")
+    assert task is not None
+    assert task.objective == "Verify candidate"
+    assert task.budget == 100
 
 
 def test_coordinator_requires_matching_terminal_handoff(tmp_path):

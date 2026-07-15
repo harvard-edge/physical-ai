@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from .task_packet import AgentTaskPacket
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -98,6 +100,17 @@ class CouncilStore:
                     _now(),
                 ),
             )
+
+    def enqueue_packet(self, packet: AgentTaskPacket) -> None:
+        """Validate and enqueue a worker task from the shared packet contract."""
+        self.enqueue(
+            CouncilTask(
+                task_id=packet.task_id,
+                role=packet.role,
+                objective=packet.objective,
+                budget=packet.budgets.tokens,
+            )
+        )
 
     def claim(self, role: str) -> CouncilTask | None:
         with self._connect() as db:
