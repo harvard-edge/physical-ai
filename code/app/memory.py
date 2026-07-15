@@ -27,6 +27,16 @@ ALLOWED_PREDICATES = {
 }
 
 
+class _ManagedConnection(sqlite3.Connection):
+    """Close SQLite connections when used as context managers."""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def default_memory_path() -> Path:
     """Choose persistent app data outside the installed Python package."""
     override = os.environ.get("MAYAS_REACHY_MEMORY_FILE")
@@ -58,7 +68,7 @@ class MemoryStore:
         self._migrate_legacy_json()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=5)
+        connection = sqlite3.connect(self.path, timeout=5, factory=_ManagedConnection)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
@@ -325,7 +335,7 @@ class MemoryStore:
                 return None
             backup = self.path.with_name(f"memory-backup-{int(time.time())}.sqlite3")
             if self.path.exists():
-                with self._connect() as source, sqlite3.connect(backup) as target:
+                with self._connect() as source, sqlite3.connect(backup, factory=_ManagedConnection) as target:
                     source.backup(target)
                 self.path.unlink()
             for suffix in ("-wal", "-shm"):
