@@ -122,6 +122,49 @@ def status():
     }
 
 
+@app.get("/api/doctor")
+def doctor():
+    current = status()
+    return {
+        "schema_version": "1.0.0",
+        "state": "DEGRADED" if _simulating else "READY",
+        "redacted": True,
+        "checks": [
+            {"id": "runtime", "status": "pass", "severity": "info", "observed": "development server", "remediation": None},
+            {"id": "robot", "status": "degraded" if _simulating else "pass", "severity": "warning", "observed": current["mode"], "remediation": "connect approved Reachy host" if _simulating else None},
+            {"id": "memory", "status": "pass", "severity": "info", "observed": "sqlite available", "remediation": None},
+            {"id": "cloud", "status": "pass" if current["cloud_configured"] else "degraded", "severity": "info", "observed": "configured" if current["cloud_configured"] else "offline", "remediation": "use deterministic/local fallback" if not current["cloud_configured"] else None},
+        ],
+    }
+
+
+@app.get("/api/activity")
+def activity(limit: int = 20):
+    # The development server has no persistent event journal yet; return a
+    # bounded, honest projection rather than inventing activity.
+    return {"events": [], "limit": max(1, min(limit, 100)), "redacted": True}
+
+
+@app.get("/api/brain")
+def brain():
+    snapshot = _memory.snapshot()
+    return {
+        "version": snapshot["version"],
+        "robot": snapshot["robot"],
+        "counts": snapshot["counts"],
+        "concepts": [
+            {"subject": "redacted", "evidence": "redacted"}
+            for _ in snapshot.get("facts", [])
+        ],
+        "redacted": True,
+    }
+
+
+@app.get("/api/maintenance")
+def maintenance():
+    return {"mode": "INTERACTION", "scheduler": "development-server", "maintenance_supported": False}
+
+
 @app.post("/api/greet")
 def greet():
     reaction = reaction_for_mood("excited")
