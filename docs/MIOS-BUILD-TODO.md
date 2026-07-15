@@ -42,6 +42,9 @@ access the robot without explicit approval.
 - [x] Dependency-aware council routing and replayable campaign.
 - [x] Evidence-gated episodic/semantic/procedural memory foundation.
 - [x] Explicit maintenance-mode transition state machine.
+- [x] Runtime event boundary with privacy-classified digests.
+- [x] Cognitive checkpoint persistence and restart recovery.
+- [x] Provider-neutral model adapter with deterministic fallback.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -320,3 +323,4 @@ gated behind human authority.
 | 2026-07-15 | Charter audit and cognitive contracts | Completed | `b1eb3dd` |
 | 2026-07-15 | Dependency routing and replay campaign | Completed | `38cce3c` |
 | 2026-07-15 | Memory and maintenance foundation | Completed | `5cd3bcc` |
+| 2026-07-15 | Runtime boundary and provider fallback | Completed | `6cf2e58` |
