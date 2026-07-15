@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
+
+if TYPE_CHECKING:
+    from .ledger import Ledger
 
 
 @dataclass(frozen=True)
@@ -31,12 +34,13 @@ HealthCheck = Callable[[ReleaseManifest], bool]
 class LocalDeploymentController:
     """Two-slot release controller; physical installation is deliberately absent."""
 
-    def __init__(self, initial_release: str) -> None:
+    def __init__(self, initial_release: str, ledger: "Ledger | None" = None) -> None:
         if not initial_release:
             raise ValueError("an initial known-good release is required")
         self.active_release = initial_release
         self.slots: dict[str, str] = {"A": initial_release, "B": ""}
         self.history: list[DeploymentResult] = []
+        self.ledger = ledger
 
     def stage(
         self, manifest: ReleaseManifest, health_check: HealthCheck
@@ -52,6 +56,7 @@ class LocalDeploymentController:
             "artifact staged",
         )
         self.history.append(result)
+        self._record(result, manifest)
         if health_check(manifest):
             self.active_release = manifest.release_id
             promoted = DeploymentResult(
@@ -62,6 +67,7 @@ class LocalDeploymentController:
                 "health checks passed",
             )
             self.history.append(promoted)
+            self._record(promoted, manifest)
             return promoted
         self.slots[inactive] = manifest.rollback_release
         rolled_back = DeploymentResult(
@@ -72,7 +78,27 @@ class LocalDeploymentController:
             "health checks failed",
         )
         self.history.append(rolled_back)
+        self._record(rolled_back, manifest)
         return rolled_back
+
+    def _record(self, result: DeploymentResult, manifest: ReleaseManifest) -> None:
+        if self.ledger is None:
+            return
+        self.ledger.append_once(
+            f"deployment:{manifest.release_id}:{result.status}",
+            "DEPLOYMENT_DECISION",
+            {
+                "release_id": result.release_id,
+                "source_experiment": manifest.source_experiment,
+                "artifact_digest": manifest.artifact_digest,
+                "rollback_release": manifest.rollback_release,
+                "slot": result.slot,
+                "status": result.status,
+                "active_release": result.active_release,
+                "reason": result.reason,
+            },
+            actor="mios-release-controller",
+        )
 
 
 def sign_manifest(
