@@ -54,6 +54,7 @@ access the robot without explicit approval.
 - [x] Add bounded trace and metric observability store.
 - [x] Define portable-core contracts and UNO Q-style conformance checker.
 - [x] Bind replay campaign outcomes to the append-only ledger and report.
+- [x] Expose the deterministic replay campaign through the controller CLI.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -343,3 +344,4 @@ gated behind human authority.
 | 2026-07-15 | Observability store | Completed | `37b96f4` |
 | 2026-07-15 | Portable-core conformance | Completed | `5183344` |
 | 2026-07-15 | Campaign ledger and report binding | Completed | `3488ad5` |
+| 2026-07-15 | Replay campaign CLI | Completed | `e7492f8` |
