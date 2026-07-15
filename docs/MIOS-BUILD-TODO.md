@@ -368,3 +368,4 @@ gated behind human authority.
 | 2026-07-15 | Cross-layer verification pass | Completed | Native app 23 tests and full orchestrator suite plus lint pass |
 | 2026-07-15 | Add allowlisted hosted model adapter | Completed | HTTPS host allowlist, bounded prompts, malformed-response checks, and offline transport tests |
 | 2026-07-15 | Add observation-to-deployment lineage inspector | Completed | Hash-chain inspection reports observations, transitions, and release evidence |
+| 2026-07-15 | Expose Maya Test and lineage CLI commands | Completed | Synthetic metrics and ledger lineage are inspectable without Python imports |

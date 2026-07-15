@@ -22,3 +22,8 @@ def test_replay_campaign_cli_writes_report(tmp_path, capsys):
     )
     assert '"release_verdict": "approved"' in capsys.readouterr().out
     assert Path(tmp_path / "report.json").exists()
+
+
+def test_maya_test_cli_reports_thresholds(tmp_path, capsys):
+    assert main(["maya-test", "--state", str(tmp_path / "memory.sqlite")]) == 0
+    assert '"meets_charter_thresholds": true' in capsys.readouterr().out

@@ -37,7 +37,7 @@ def run_synthetic_maya_test(path: str | Path) -> MayaTestResult:
             "maya",
             "My name is Maya and I like robots.",
             0.99,
-            ("maya-teaching-identity",),
+            ("maya-teaching-identity", "maya-confirmed-identity"),
         )
     )
     store.promote("MIOS-MAYA-IDENTITY", "semantic", ("maya-confirmed-identity",))

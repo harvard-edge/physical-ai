@@ -60,6 +60,12 @@ def parser() -> argparse.ArgumentParser:
     )
     replay.add_argument("--head", type=Path, default=Path(".mios/replay-head.json"))
     replay.add_argument("--report", type=Path, default=Path(".mios/replay-report.json"))
+    maya = subcommands.add_parser("maya-test")
+    maya.add_argument("--state", type=Path, default=Path(".mios/maya-memory.sqlite"))
+    lineage = subcommands.add_parser("inspect-lineage")
+    lineage.add_argument("experiment_id")
+    lineage.add_argument("--ledger", type=Path, required=True)
+    lineage.add_argument("--head", type=Path, required=True)
     return result
 
 
@@ -85,6 +91,24 @@ def main(argv: list[str] | None = None) -> int:
                 "report": str(arguments.report),
             }
         )
+        return 0
+    if arguments.command == "maya-test":
+        from .maya_test import run_synthetic_maya_test
+
+        result = run_synthetic_maya_test(arguments.state)
+        print_json(
+            result.__dict__
+            | {"meets_charter_thresholds": result.meets_charter_thresholds}
+        )
+        return 0
+    if arguments.command == "inspect-lineage":
+        from .ledger import Ledger
+        from .lineage import inspect_lineage
+
+        result = inspect_lineage(
+            Ledger(arguments.ledger, arguments.head), arguments.experiment_id
+        )
+        print_json(result.__dict__)
         return 0
     if arguments.command == "status":
         paths = ControllerPaths.create(arguments.root)
