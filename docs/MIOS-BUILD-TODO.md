@@ -379,5 +379,6 @@ gated behind human authority.
 | 2026-07-15 | Record reconstruction CLI evidence | Completed | `evaluation/results/reconstruction-cli.json`; two normalized ledgers match |
 | 2026-07-15 | Add bounded agent task-packet schema | Completed | Validates role, scope, acceptance tests, outputs, escalation, and time/token/cost budgets |
 | 2026-07-15 | Enforce task packets at council enqueue | Completed | Council converts validated packets into bounded durable worker tasks |
+| 2026-07-15 | Publish task-packet protocol schema | Completed | JSON Schema validates the cross-language contract for edge and cloud workers |
 | 2026-07-15 | Refresh bootstrap evidence audit | Completed | Audit distinguishes current local proof from hardware and external-authority gaps |
 | 2026-07-15 | Record flawed-candidate assurance evidence | Completed | `evaluation/results/flawed-candidate-assurance.json` shows safety rejection blocks release |
