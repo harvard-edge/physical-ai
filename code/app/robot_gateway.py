@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Protocol
 
 
@@ -48,3 +49,20 @@ class SafeRobotGateway:
     def protective_stop(self) -> GatewayResult:
         self.stopped = True
         return GatewayResult("protective_stop", "STOPPED", "future operations are rejected")
+
+
+class ControlWatchdog:
+    """Monotonic heartbeat watchdog for the native control loop."""
+
+    def __init__(self, timeout_seconds: float = 0.25) -> None:
+        if timeout_seconds <= 0:
+            raise ValueError("watchdog timeout must be positive")
+        self.timeout_seconds = timeout_seconds
+        self._last_heartbeat = time.monotonic()
+
+    def heartbeat(self) -> None:
+        self._last_heartbeat = time.monotonic()
+
+    def expired(self, now: float | None = None) -> bool:
+        current = time.monotonic() if now is None else now
+        return current - self._last_heartbeat > self.timeout_seconds

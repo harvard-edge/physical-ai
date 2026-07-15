@@ -27,7 +27,7 @@ from .constants import GREETING_TEXT
 from .conversation import Conversation
 from .events import EventJournal
 from .memory import MemoryStore
-from .robot_gateway import SafeRobotGateway
+from .robot_gateway import ControlWatchdog, SafeRobotGateway
 from .voice import PiperVoiceSynthesizer, VoiceUnavailable
 
 HERE = Path(__file__).resolve().parent
@@ -484,6 +484,7 @@ class MayasReachyApp(ReachyMiniApp):
         authorization = self.robot_gateway.gesture(mood, duration)
         if authorization.status != "AUTHORIZED":
             raise RuntimeError(f"robot gateway rejected response: {authorization.reason}")
+        watchdog = ControlWatchdog(timeout_seconds=max(0.25, self.CONTROL_PERIOD * 12))
 
         # First make eye contact. The voice starts only after the robot is looking up.
         reachy_mini.goto_target(
@@ -506,6 +507,9 @@ class MayasReachyApp(ReachyMiniApp):
 
         started = time.monotonic()
         while not stop_event.is_set():
+            if watchdog.expired():
+                self.robot_gateway.protective_stop()
+                raise RuntimeError("robot control watchdog expired")
             elapsed = time.monotonic() - started
             if elapsed >= duration:
                 break
@@ -524,6 +528,7 @@ class MayasReachyApp(ReachyMiniApp):
             )
             antenna = np.deg2rad(10.0 + 8.0 * talk)
             reachy_mini.set_target(head=head, antennas=np.array([antenna, -antenna]))
+            watchdog.heartbeat()
             stop_event.wait(self.CONTROL_PERIOD)
 
         player.join(timeout=1.5)

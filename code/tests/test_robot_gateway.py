@@ -1,6 +1,6 @@
 import unittest
 
-from app.robot_gateway import SafeRobotGateway
+from app.robot_gateway import ControlWatchdog, SafeRobotGateway
 
 
 class RobotGatewayTests(unittest.TestCase):
@@ -18,3 +18,11 @@ class RobotGatewayTests(unittest.TestCase):
     def test_app_response_contract_is_executable(self):
         gateway = SafeRobotGateway()
         self.assertEqual(gateway.gesture("excited", 8.0).status, "AUTHORIZED")
+
+    def test_watchdog_requires_periodic_heartbeat(self):
+        watchdog = ControlWatchdog(timeout_seconds=0.25)
+        baseline = watchdog._last_heartbeat
+        self.assertFalse(watchdog.expired(baseline + 0.2))
+        self.assertTrue(watchdog.expired(baseline + 0.3))
+        watchdog.heartbeat()
+        self.assertFalse(watchdog.expired(watchdog._last_heartbeat + 0.1))
