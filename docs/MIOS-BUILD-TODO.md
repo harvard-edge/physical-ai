@@ -392,3 +392,4 @@ gated behind human authority.
 | 2026-07-15 | Add CI workflows | Completed | Native package tests/build and orchestrator tests/lint/format run in GitHub Actions |
 | 2026-07-15 | Add closed-loop software simulator | Completed | Interaction, memory, deterministic model, fake action gateway, observation, and reset run without hardware |
 | 2026-07-15 | Add independent software QA runner | Completed | Scenario findings cover recall, safe action, protective stop, and reset isolation |
+| 2026-07-15 | Exercise closed-loop simulator with simulated LLM | Completed | QA, Maya, reconstruction, provider, safety, and native app behavior pass; host dependency issue isolated from robot image |

@@ -80,6 +80,8 @@ private key at `~/.config/mayas-reachy/groq_api_key`.
 `deploy/upgrade.sh` verifies a SHA-256 sidecar, switches the release pointer,
 performs a package health check, and restores the previous pointer on failure.
 Service activation and physical authorization remain explicit operator actions.
+Host CI intentionally installs the package without Linux-only Reachy/Piper
+dependencies; the robot image owns those system dependencies.
 
 ## Build the Robot Wheel
 
