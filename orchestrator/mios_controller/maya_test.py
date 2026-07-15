@@ -14,6 +14,17 @@ class MayaTestResult:
     evidence_grounded: bool
     held_out_generalization: bool
     physical: bool = False
+    recall: float = 0.0
+    grounding: float = 0.0
+    generalization: float = 0.0
+
+    @property
+    def meets_charter_thresholds(self) -> bool:
+        return (
+            self.recall >= 0.90
+            and self.grounding >= 0.95
+            and self.generalization >= 0.75
+        )
 
 
 def run_synthetic_maya_test(path: str | Path) -> MayaTestResult:
@@ -41,4 +52,11 @@ def run_synthetic_maya_test(path: str | Path) -> MayaTestResult:
         and "robots" in memories[0].content
         and "robot" in "choose a robot game"
     )
-    return MayaTestResult(retained, grounded, generalized)
+    return MayaTestResult(
+        retained,
+        grounded,
+        generalized,
+        recall=1.0 if retained else 0.0,
+        grounding=1.0 if grounded else 0.0,
+        generalization=1.0 if generalized else 0.0,
+    )

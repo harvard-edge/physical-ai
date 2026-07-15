@@ -7,3 +7,4 @@ def test_synthetic_maya_test_retains_grounded_fact_across_restart(tmp_path):
     assert result.evidence_grounded
     assert result.held_out_generalization
     assert not result.physical
+    assert result.meets_charter_thresholds
