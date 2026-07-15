@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 
 from .canonical import atomic_write
+from .campaign import run_replay_campaign
 from .engine import ControllerPaths, EvolutionEngine, directory_bytes, path_digest
 from .registry import Registry
 from .sandbox import PINNED_IMAGE
@@ -52,6 +53,13 @@ def parser() -> argparse.ArgumentParser:
         help="explicitly authorize this process to resume",
     )
     supervise.add_argument("--allow-cooperative-fixture", action="store_true")
+    replay = subcommands.add_parser("replay-campaign")
+    replay.add_argument("--state", type=Path, default=Path(".mios/replay.sqlite"))
+    replay.add_argument(
+        "--ledger", type=Path, default=Path(".mios/replay-ledger.jsonl")
+    )
+    replay.add_argument("--head", type=Path, default=Path(".mios/replay-head.json"))
+    replay.add_argument("--report", type=Path, default=Path(".mios/replay-report.json"))
     return result
 
 
@@ -61,6 +69,23 @@ def print_json(value) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
+    if arguments.command == "replay-campaign":
+        from .ledger import Ledger
+
+        result = run_replay_campaign(
+            arguments.state,
+            ledger=Ledger(arguments.ledger, arguments.head),
+            report_path=arguments.report,
+        )
+        print_json(
+            {
+                "campaign_id": result.campaign_id,
+                "handoffs": len(result.handoffs),
+                "release_verdict": result.release.verdict,
+                "report": str(arguments.report),
+            }
+        )
+        return 0
     if arguments.command == "status":
         paths = ControllerPaths.create(arguments.root)
         status = Registry(paths.registry, create_parent=False).status()
