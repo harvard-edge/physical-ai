@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -16,6 +19,156 @@ class MetricSample:
     value: float
     unit: str
     labels: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class ActivityItem:
+    """Privacy-safe activity projection; never contains raw payload text."""
+
+    event_id: str
+    kind: str
+    privacy_class: str
+    summary: str
+    payload_digest: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class BrainConcept:
+    """Redacted semantic-memory projection with provenance identifiers only."""
+
+    memory_id: str
+    tier: str
+    subject_digest: str
+    content_digest: str
+    confidence: float
+    source_ids: tuple[str, ...]
+    status: str
+
+
+@dataclass(frozen=True)
+class ObservabilitySnapshot:
+    schema_version: str
+    generated_at: str
+    mode: str
+    activity: tuple[ActivityItem, ...]
+    concepts: tuple[BrainConcept, ...]
+    memory_counts: tuple[tuple[str, int], ...]
+    runtime_event_count: int
+    ledger_record_count: int
+    safety: dict[str, Any]
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "generated_at": self.generated_at,
+            "mode": self.mode,
+            "activity": [item.__dict__ for item in self.activity],
+            "concepts": [
+                {**concept.__dict__, "source_ids": list(concept.source_ids)}
+                for concept in self.concepts
+            ],
+            "memory_counts": {key: value for key, value in self.memory_counts},
+            "runtime_event_count": self.runtime_event_count,
+            "ledger_record_count": self.ledger_record_count,
+            "safety": self.safety,
+        }
+
+
+class ObservabilityProjection:
+    """Read-only, bounded projection for the operator dashboard.
+
+    It reads existing stores without granting the dashboard write access. Raw
+    memory content is deliberately never returned; concepts expose stable
+    digests and provenance IDs so an authorized operator can correlate records
+    without leaking child conversations.
+    """
+
+    SCHEMA_VERSION = "mios.observability.v1"
+
+    def __init__(
+        self,
+        *,
+        runtime_path: str | Path,
+        memory_path: str | Path,
+        ledger: Any | None = None,
+        maintenance: Any | None = None,
+        safety: dict[str, Any] | None = None,
+        max_items: int = 100,
+    ) -> None:
+        if max_items < 1 or max_items > 1000:
+            raise ValueError("max_items must be between 1 and 1000")
+        self.runtime_path = str(runtime_path)
+        self.memory_path = str(memory_path)
+        self.ledger = ledger
+        self.maintenance = maintenance
+        self.safety = dict(safety or {})
+        self.max_items = max_items
+
+    def snapshot(self) -> ObservabilitySnapshot:
+        activity = self._activity()
+        concepts, counts = self._memory()
+        ledger_count = 0
+        if self.ledger is not None:
+            ledger_count = len(self.ledger.verify())
+        mode = getattr(self.maintenance, "mode", "UNKNOWN")
+        return ObservabilitySnapshot(
+            schema_version=self.SCHEMA_VERSION,
+            generated_at=_now(),
+            mode=str(mode),
+            activity=tuple(activity),
+            concepts=tuple(concepts),
+            memory_counts=tuple(sorted(counts.items())),
+            runtime_event_count=self._runtime_count(),
+            ledger_record_count=ledger_count,
+            safety={"state": "unknown", **self.safety},
+        )
+
+    def _activity(self) -> list[ActivityItem]:
+        path = Path(self.runtime_path)
+        if not path.exists():
+            return []
+        with sqlite3.connect(path) as db:
+            rows = db.execute(
+                "SELECT event_id, kind, summary, privacy_class, payload_digest, created_at "
+                "FROM runtime_events ORDER BY created_at DESC LIMIT ?",
+                (self.max_items,),
+            ).fetchall()
+        return [ActivityItem(*row) for row in rows]
+
+    def _runtime_count(self) -> int:
+        path = Path(self.runtime_path)
+        if not path.exists():
+            return 0
+        with sqlite3.connect(path) as db:
+            return int(db.execute("SELECT count(*) FROM runtime_events").fetchone()[0])
+
+    def _memory(self) -> tuple[list[BrainConcept], dict[str, int]]:
+        path = Path(self.memory_path)
+        if not path.exists():
+            return [], {}
+        with sqlite3.connect(path) as db:
+            rows = db.execute(
+                "SELECT memory_id, tier, subject, content, confidence, source_ids, status "
+                "FROM memory_records ORDER BY created_at DESC LIMIT ?",
+                (self.max_items,),
+            ).fetchall()
+            count_rows = db.execute(
+                "SELECT tier, count(*) FROM memory_records GROUP BY tier"
+            ).fetchall()
+        concepts = [
+            BrainConcept(
+                memory_id=row[0],
+                tier=row[1],
+                subject_digest=_digest_text(row[2]),
+                content_digest=_digest_text(row[3]),
+                confidence=float(row[4]),
+                source_ids=tuple(json.loads(row[5])),
+                status=row[6],
+            )
+            for row in rows
+        ]
+        return concepts, {str(tier): int(count) for tier, count in count_rows}
 
 
 class ObservabilityStore:
@@ -79,3 +232,7 @@ class ObservabilityStore:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _digest_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
