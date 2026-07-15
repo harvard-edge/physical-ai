@@ -52,6 +52,7 @@ access the robot without explicit approval.
 - [x] Wire native Reachy response path through the gateway authorization check.
 - [x] Add control-loop watchdog with protective-stop escalation.
 - [x] Add bounded trace and metric observability store.
+- [x] Define portable-core contracts and UNO Q-style conformance checker.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -339,3 +340,4 @@ gated behind human authority.
 | 2026-07-15 | Native memory connection cleanup | Completed | `a7b5ee3` |
 | 2026-07-15 | Reachy control watchdog | Completed | `d4faddb` |
 | 2026-07-15 | Observability store | Completed | `37b96f4` |
+| 2026-07-15 | Portable-core conformance | Completed | `5183344` |
