@@ -34,3 +34,10 @@ def test_reconstruction_cli_compares_two_runs(tmp_path, capsys):
     output = capsys.readouterr().out
     assert '"identical": true' in output
     assert '"reconstructions": 2' in output
+
+
+def test_qa_sim_cli_reports_scenarios(tmp_path, capsys):
+    assert main(["qa-sim", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert '"passed": true' in output
+    assert '"physical": false' in output

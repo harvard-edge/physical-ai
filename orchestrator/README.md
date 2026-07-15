@@ -36,6 +36,7 @@ mios-controller maya-test --state .mios/maya-memory.sqlite
 mios-controller reconstruct-campaign --root .mios/reconstructions
 mios-controller inspect-lineage MIOS-EXP-0001 \
   --ledger .mios/replay-ledger.jsonl --head .mios/replay-head.json
+mios-controller qa-sim --root .mios/qa-simulation
 ```
 
 `supervise` is bounded unless the operator explicitly supplies `--continuous`.
@@ -56,3 +57,8 @@ evidence. `reconstruct-campaign` runs two clean campaign-plus-ledger builds and
 compares normalized evidence. `inspect-lineage` reports whether an experiment
 has observation, transition, and deployment events in one verified ledger.
 None of these commands grants hardware, cloud, or GitHub authority.
+
+`qa-sim` runs the closed-loop software simulator and independent scenario QA.
+It exercises teaching, memory retention, deterministic model response, fake
+hardware safety, protective stop, and disposable-state reset. Its report is
+software evidence only.

@@ -390,3 +390,5 @@ gated behind human authority.
 | 2026-07-15 | Verify robot wheel packaging | Completed | Wheel builds with app package, entry point, static website, and greeting asset |
 | 2026-07-15 | Add robot service and upgrade bundle | Completed | Systemd unit, checksum-verified install/upgrade scripts, and pointer rollback |
 | 2026-07-15 | Add CI workflows | Completed | Native package tests/build and orchestrator tests/lint/format run in GitHub Actions |
+| 2026-07-15 | Add closed-loop software simulator | Completed | Interaction, memory, deterministic model, fake action gateway, observation, and reset run without hardware |
+| 2026-07-15 | Add independent software QA runner | Completed | Scenario findings cover recall, safe action, protective stop, and reset isolation |

@@ -155,6 +155,21 @@ class MemoryStore:
             for r in rows
         ]
 
+    def reset(self, backup_path: str | Path | None = None) -> None:
+        """Reset disposable memory, optionally preserving a SQLite backup."""
+        target = Path(self.path)
+        if backup_path is not None and target.exists():
+            backup = sqlite3.connect(backup_path)
+            source = sqlite3.connect(self.path)
+            try:
+                source.backup(backup)
+            finally:
+                backup.close()
+                source.close()
+        with self._connect() as db:
+            db.execute("DELETE FROM memory_events")
+            db.execute("DELETE FROM memory_records")
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()

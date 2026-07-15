@@ -68,6 +68,8 @@ def parser() -> argparse.ArgumentParser:
     lineage.add_argument("--head", type=Path, required=True)
     reconstruct = subcommands.add_parser("reconstruct-campaign")
     reconstruct.add_argument("--root", type=Path, default=Path(".mios/reconstructions"))
+    qa = subcommands.add_parser("qa-sim")
+    qa.add_argument("--root", type=Path, default=Path(".mios/qa-simulation"))
     return result
 
 
@@ -116,6 +118,18 @@ def main(argv: list[str] | None = None) -> int:
         from .reproducibility import reconstruct_campaign_twice
 
         print_json(reconstruct_campaign_twice(arguments.root).__dict__)
+        return 0
+    if arguments.command == "qa-sim":
+        from .qa import run_software_qa
+
+        report = run_software_qa(arguments.root)
+        print_json(
+            {
+                "passed": report.passed,
+                "physical": report.physical,
+                "findings": [finding.__dict__ for finding in report.findings],
+            }
+        )
         return 0
     if arguments.command == "status":
         paths = ControllerPaths.create(arguments.root)
