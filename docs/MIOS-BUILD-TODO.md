@@ -84,6 +84,24 @@ procedures, and verified release candidates under the same authority boundary.
 Mode transitions must be durable, observable, resumable, and denied when the
 required drain, evidence, approval, or rollback conditions are not satisfied.
 
+## Two-level intelligence architecture
+
+MiOS should use a small local model as an optional runtime copilot and a larger
+cloud model for heavy design work. The local model is never the safety boundary
+and never directly controls actuators; deterministic policy code remains in
+charge.
+
+- [ ] Define a local-model interface for summarization, intent classification,
+      memory tagging, uncertainty reporting, and maintenance triage.
+- [ ] Benchmark Ollama ARM64 and llama.cpp-style runtimes on the target hardware.
+- [ ] Compare a small quantized model against a deterministic no-model fallback.
+- [ ] Keep local inference bounded by CPU, memory, latency, and thermal budgets.
+- [ ] Define cloud escalation for complex planning, code generation, and research.
+- [ ] Record local/cloud provenance, model version, confidence, and fallback path.
+- [ ] Ensure the robot remains safe and useful when both model tiers are offline.
+- [ ] Evaluate ExecuTorch or another embedded runtime if the hardware benefits
+      from ahead-of-time edge deployment rather than a general LLM server.
+
 ## Build-time track — bootstrap MiOS itself
 
 These items are completed while the system is being created. They produce the
