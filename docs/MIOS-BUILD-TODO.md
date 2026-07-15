@@ -137,6 +137,19 @@ as an untrusted draft until it passes the same review as hand-written code.
       release.
 - [ ] Each iteration records what was simplified or deliberately left unchanged.
 
+## Complete lifecycle team
+
+- [ ] Bootstrap engineer completes first-release installation and recovery.
+- [ ] Memory engineer owns schemas, retrieval, consolidation, and integrity.
+- [ ] Evaluation scientist defines improvement metrics and comparison protocols.
+- [ ] Maintenance scheduler owns drain, sleep, replay, and resume transitions.
+- [ ] Observability engineer owns metrics, traces, alerts, and operator health.
+- [ ] Incident commander owns containment, pause, recovery, and postmortems.
+- [ ] Deployment engineer owns staging, health checks, and rollback exercises.
+- [ ] Robot integration engineer owns simulation and the physical gateway boundary.
+- [ ] Documentation engineer keeps code and architecture readable and traceable.
+- [ ] Human authority role handles irreversible approvals and escalations.
+
 ## Loop 1 — Council execution
 
 - [ ] Add dependency-aware task graphs and automatic handoff routing.
