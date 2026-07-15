@@ -38,6 +38,30 @@ access the robot without explicit approval.
 - [x] Deterministic workers for council replay.
 - [x] Source-bound Phase 1A evidence and exit attestation.
 
+## Flagship milestone — MiOS autonomous build demonstration
+
+This is the near-term north-star demonstration: MiOS receives a bounded software
+goal, coordinates specialized agents, tests and audits their work, records what
+was learned, and starts another measured iteration. It is inspired by ambitious
+autonomous engineering demonstrations, but remains local, replayable, and
+evidence-bound until external authority is approved.
+
+- [ ] Accept a natural-language build goal and create a durable campaign.
+- [ ] Decompose the goal into a dependency-aware task graph.
+- [ ] Route architect → researcher → implementer → verifier automatically.
+- [ ] Run QA, security, safety, reliability, and release assurance in parallel.
+- [ ] Produce a candidate artifact and an evidence-backed release decision.
+- [ ] Store episodic events, semantic facts, and procedural lessons.
+- [ ] Generate the next improvement task from failures or open questions.
+- [ ] Run at least three bounded iterations without duplicate effects.
+- [ ] Demonstrate pause, crash recovery, resume, and rollback.
+- [ ] Produce a human-readable campaign report showing every handoff and result.
+
+**Acceptance test:** Given a fixed local repository goal, a fresh MiOS instance
+can execute the complete campaign offline using deterministic workers, reject an
+injected unsafe candidate, accept a verified candidate, persist the lessons, and
+schedule the next iteration with a complete provenance trail.
+
 ## Loop 1 — Council execution
 
 - [ ] Add dependency-aware task graphs and automatic handoff routing.
