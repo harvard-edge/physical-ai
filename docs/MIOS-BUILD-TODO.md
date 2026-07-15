@@ -57,6 +57,7 @@ access the robot without explicit approval.
 - [x] Expose the deterministic replay campaign through the controller CLI.
 - [x] Add offline-testable local Ollama provider adapter with bounded fallback seam.
 - [x] Add provider benchmark harness for latency, token use, failure, and provenance.
+- [x] Connect maintenance mode to evidence-gated memory consolidation and runtime events.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -350,3 +351,4 @@ gated behind human authority.
 | 2026-07-15 | Live replay CLI execution evidence | Completed | `evaluation/results/replay-campaign-cli.json` |
 | 2026-07-15 | Local Ollama provider adapter | Completed | `2a1ee4e` |
 | 2026-07-15 | Provider benchmark harness | Completed | `ae60344` |
+| 2026-07-15 | Maintenance/memory integration | Completed | `b393b9d` |
