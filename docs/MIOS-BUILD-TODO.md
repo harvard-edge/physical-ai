@@ -383,3 +383,4 @@ gated behind human authority.
 | 2026-07-15 | Final local integrity verification pass | Completed | `git diff --check`, native 23 tests, full orchestrator tests, Ruff, and format checks pass |
 | 2026-07-15 | Refresh bootstrap evidence audit | Completed | Audit distinguishes current local proof from hardware and external-authority gaps |
 | 2026-07-15 | Record flawed-candidate assurance evidence | Completed | `evaluation/results/flawed-candidate-assurance.json` shows safety rejection blocks release |
+| 2026-07-15 | Add Reachy physical-validation handoff | Completed | Readiness checklist defines authorization, Maya Test, safety, rollback, and resource evidence |
