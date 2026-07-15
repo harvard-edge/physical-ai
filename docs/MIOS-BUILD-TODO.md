@@ -49,6 +49,7 @@ access the robot without explicit approval.
 - [x] Local staged release manifest, inactive slot, health check, and rollback.
 - [x] Deterministic action envelope, fake hardware gateway, and protective stop.
 - [x] Native Reachy app gateway contract with bounded gestures and protective stop.
+- [x] Wire native Reachy response path through the gateway authorization check.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -332,3 +333,4 @@ gated behind human authority.
 | 2026-07-15 | Staged release and rollback boundary | Completed | `a0ad2d9` |
 | 2026-07-15 | Embodied safety gateway | Completed | `0926965` |
 | 2026-07-15 | Native Reachy app gateway contract | Completed | `fa43b61` |
+| 2026-07-15 | Reachy response-path gateway integration | Completed | `7743976` |
