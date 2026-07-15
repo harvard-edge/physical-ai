@@ -61,10 +61,45 @@ def test_deterministic_council_runs_multiple_specialists(tmp_path):
     coordinator = CouncilCoordinator(store)
     for role, worker in deterministic_workers().items():
         coordinator.register(role, worker)
-        store.enqueue(CouncilTask(f"MIOS-TASK-{role.upper()}-001", role, "Design the memory lifecycle"))
+        store.enqueue(
+            CouncilTask(
+                f"MIOS-TASK-{role.upper()}-001", role, "Design the memory lifecycle"
+            )
+        )
 
     results = coordinator.run_until_idle(tuple(deterministic_workers()), max_steps=2)
 
     assert len(results) == 7
     assert {result.role for result in results} == set(deterministic_workers())
     assert all(result.status == "COMPLETED" for result in results)
+
+
+def test_dependencies_route_handoffs_in_order(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    coordinator = CouncilCoordinator(store)
+    order = []
+
+    def worker(role):
+        def run(task, context):
+            order.append(role)
+            return Handoff(
+                new_handoff_id(), task.task_id, role, "COMPLETED", role, (), ()
+            )
+
+        return run
+
+    coordinator.register("architect", worker("architect"))
+    coordinator.register("implementer", worker("implementer"))
+    store.enqueue(CouncilTask("MIOS-TASK-ARCH-001", "architect", "design"))
+    store.enqueue(
+        CouncilTask(
+            "MIOS-TASK-IMPL-001",
+            "implementer",
+            "build",
+            depends_on=("MIOS-TASK-ARCH-001",),
+        )
+    )
+
+    coordinator.run_until_idle(("implementer", "architect"), max_steps=4)
+
+    assert order == ["architect", "implementer"]

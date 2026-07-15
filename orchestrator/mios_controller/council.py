@@ -25,6 +25,7 @@ class CouncilTask:
     role: str
     objective: str
     input_artifacts: tuple[str, ...] = ()
+    depends_on: tuple[str, ...] = ()
     parent_task_id: str | None = None
     budget: int = 1
 
@@ -51,7 +52,8 @@ class CouncilStore:
                 """
                 CREATE TABLE IF NOT EXISTS council_tasks (
                     task_id TEXT PRIMARY KEY, role TEXT NOT NULL, objective TEXT NOT NULL,
-                    input_artifacts TEXT NOT NULL, parent_task_id TEXT, budget INTEGER NOT NULL,
+                    input_artifacts TEXT NOT NULL, depends_on TEXT NOT NULL DEFAULT '[]',
+                    parent_task_id TEXT, budget INTEGER NOT NULL,
                     status TEXT NOT NULL, created_at TEXT NOT NULL, claimed_at TEXT
                 );
                 CREATE TABLE IF NOT EXISTS council_handoffs (
@@ -61,6 +63,13 @@ class CouncilStore:
                 );
                 """
             )
+            columns = {
+                row["name"] for row in db.execute("PRAGMA table_info(council_tasks)")
+            }
+            if "depends_on" not in columns:
+                db.execute(
+                    "ALTER TABLE council_tasks ADD COLUMN depends_on TEXT NOT NULL DEFAULT '[]'"
+                )
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path)
@@ -74,12 +83,15 @@ class CouncilStore:
             raise ValueError("task budget must be positive")
         with self._connect() as db:
             db.execute(
-                "INSERT INTO council_tasks VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                "INSERT INTO council_tasks "
+                "(task_id, role, objective, input_artifacts, depends_on, parent_task_id, "
+                "budget, status, created_at, claimed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
                 (
                     task.task_id,
                     task.role,
                     task.objective,
                     json.dumps(task.input_artifacts),
+                    json.dumps(task.depends_on),
                     task.parent_task_id,
                     task.budget,
                     "QUEUED",
@@ -90,8 +102,11 @@ class CouncilStore:
     def claim(self, role: str) -> CouncilTask | None:
         with self._connect() as db:
             row = db.execute(
-                "SELECT * FROM council_tasks WHERE role=? AND status='QUEUED' "
-                "ORDER BY created_at LIMIT 1",
+                "SELECT task.* FROM council_tasks task WHERE task.role=? AND task.status='QUEUED' "
+                "AND NOT EXISTS (SELECT 1 FROM json_each(task.depends_on) dep "
+                "LEFT JOIN council_tasks prerequisite ON prerequisite.task_id=dep.value "
+                "WHERE prerequisite.task_id IS NULL OR prerequisite.status != 'COMPLETED') "
+                "ORDER BY task.created_at LIMIT 1",
                 (role,),
             ).fetchone()
             if row is None:
@@ -105,6 +120,7 @@ class CouncilStore:
                 row["role"],
                 row["objective"],
                 tuple(json.loads(row["input_artifacts"])),
+                tuple(json.loads(row["depends_on"])),
                 row["parent_task_id"],
                 row["budget"],
             )
