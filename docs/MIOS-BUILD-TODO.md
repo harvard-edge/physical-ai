@@ -128,6 +128,31 @@ primitive; MiOS owns the contracts, authority, memory lifecycle, and evidence.
 - [ ] Publish an open-source contributor guide, extension API, compatibility
       policy, and security reporting process.
 
+## LLM-first design principle
+
+MiOS is not merely a conventional robot stack with an LLM added on top. Its
+first-class abstractions are goals, context, memory, skills, uncertainty,
+delegation, evidence, and reflection. Conventional operating-system and
+robotics components remain implementation choices, not architectural laws.
+
+- [ ] Define the MiOS cognitive object model: goal, belief, memory, skill,
+      capability, obligation, observation, action proposal, and evidence.
+- [ ] Define model-native context assembly and attention budgets as explicit
+      runtime resources rather than hidden prompt construction.
+- [ ] Define structured reflection and self-critique protocols that produce
+      inspectable artifacts rather than unbounded internal conversations.
+- [ ] Define a capability negotiation protocol so agents discover tools and
+      constraints through schemas.
+- [ ] Define graceful degradation from cloud model → local model → deterministic
+      procedure → safe idle state.
+- [ ] Evaluate every reused framework against MiOS criteria: model-native state,
+      durable recovery, inspectability, edge suitability, safety boundaries,
+      extensibility, and operational cost.
+- [ ] Replace a conventional component when a simpler MiOS-native design is
+      measurably better, while retaining standard adapters for interoperability.
+- [ ] Keep the deterministic safety kernel below the LLM layer; no model may
+      directly own irreversible authority.
+
 ## Build-time track — bootstrap MiOS itself
 
 These items are completed while the system is being created. They produce the
