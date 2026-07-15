@@ -360,3 +360,4 @@ gated behind human authority.
 | 2026-07-15 | Add bounded maintenance scheduler | Completed | Explicit due-time, force, and cycle-budget semantics with tests |
 | 2026-07-15 | Exercise scheduler with real maintenance cycle | Completed | Two due cycles promote memory once, emit runtime events, and return to interaction |
 | 2026-07-15 | Persist maintenance scheduler state | Completed | Atomic state file preserves due time and cycle budget across restart |
+| 2026-07-15 | Add finite supervisor tick runner | Completed | Bounded five-tick simulation completes two cycles with explicit skips and zero failures |
