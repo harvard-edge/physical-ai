@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const text = (id, value) => { $(id).textContent = value; };
 const safe = (value, fallback = "—") => value === null || value === undefined || value === "" ? fallback : String(value);
+const terminalOutput = $("terminal-output");
+function terminalLine(kind, prefix, message) { const row = document.createElement("div"); row.className = `terminal-line ${kind}`; const mark = document.createElement("span"); mark.className = "prompt"; mark.textContent = prefix; const copy = document.createElement("span"); copy.textContent = message; row.append(mark, copy); terminalOutput.append(row); terminalOutput.scrollTop = terminalOutput.scrollHeight; }
+$("terminal-form").addEventListener("submit", async (event) => { event.preventDefault(); const input = $("terminal-input"); const button = $("terminal-send"); const value = input.value.trim(); if (!value || button.disabled) return; terminalLine("user", "you>", value); input.value = ""; button.disabled = true; terminalLine("system", "mios>", "thinking…"); const pending = terminalOutput.lastElementChild; try { const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: value }) }); const data = await response.json(); pending.remove(); terminalLine(data.ok ? "system" : "error", "mios>", data.ok ? `${data.reply}${data.learned ? " [learned]" : ""}` : safe(data.error, "The conversation route rejected that message.")); } catch (error) { pending.remove(); terminalLine("error", "mios>", "The local conversation route is unavailable."); } finally { button.disabled = false; input.focus(); refresh(); } });
 
 function checkRow(check) {
   const row = document.createElement("div"); row.className = "check-row";
