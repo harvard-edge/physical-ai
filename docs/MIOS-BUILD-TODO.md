@@ -373,3 +373,4 @@ gated behind human authority.
 | 2026-07-15 | Enforce hosted-provider privacy gate | Completed | Restricted data is rejected before transport; redacted/synthetic classes remain testable |
 | 2026-07-15 | Add simulated protective-stop measurement | Completed | Fake gateway reports zero unsafe commands and measured stop latency against 100 ms threshold |
 | 2026-07-15 | Add flawed-candidate assurance campaign | Completed | Known unsafe-authority fixture is deterministically blocked by the safety auditor |
+| 2026-07-15 | Include ledger evidence in reconstruction check | Completed | Two clean runs compare normalized event kinds and payloads, excluding nondeterministic hashes/timestamps |

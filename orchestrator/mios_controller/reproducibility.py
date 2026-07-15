@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .campaign import run_replay_campaign
 from .canonical import digest_json
+from .ledger import Ledger
 
 
 @dataclass(frozen=True)
@@ -21,12 +22,19 @@ def reconstruct_campaign_twice(root: str | Path) -> ReconstructionReport:
     root = Path(root)
     summaries: list[dict[str, object]] = []
     for index in (1, 2):
-        result = run_replay_campaign(root / f"run-{index}" / "state.sqlite")
+        run_root = root / f"run-{index}"
+        ledger = Ledger(run_root / "ledger.jsonl", run_root / "head.json")
+        result = run_replay_campaign(run_root / "state.sqlite", ledger=ledger)
+        ledger_records = [
+            {"kind": record["kind"], "payload": record["payload"]}
+            for record in ledger.verify()
+        ]
         summaries.append(
             {
                 "roles": [handoff.role for handoff in result.handoffs],
                 "statuses": [handoff.status for handoff in result.handoffs],
                 "release": result.release.verdict,
+                "ledger": ledger_records,
             }
         )
     digest = digest_json(summaries[0])

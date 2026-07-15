@@ -22,7 +22,7 @@ bootstrap experiment.
 | Physical safety gateway | deterministic action envelope, native gateway, watchdog, fake hardware tests, and simulated stop-latency measurement | partial | real Reachy stop latency and hazard-derived evidence |
 | Reachy interaction | synthetic Maya Test harness with restart, provenance, held-out check, and charter metric thresholds; no physical authority | partial | physical Maya Test campaign on Reachy |
 | UNO Q transfer | portable-core manifest, conformance checker, and target-profile budget checker | partial | target-hardware execution and measured resource evidence |
-| Reproducibility | deterministic two-clean-campaign reconstruction check | partial | full release-and-ledger reconstruction twice |
+| Reproducibility | deterministic two-clean-campaign and normalized-ledger reconstruction check | partial | full release-and-ledger reconstruction twice from clean environments |
 
 ## Audit conclusion
 
