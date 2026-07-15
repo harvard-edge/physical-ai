@@ -84,6 +84,59 @@ procedures, and verified release candidates under the same authority boundary.
 Mode transitions must be durable, observable, resumable, and denied when the
 required drain, evidence, approval, or rollback conditions are not satisfied.
 
+## Build-time track — bootstrap MiOS itself
+
+These items are completed while the system is being created. They produce the
+first installable and inspectable MiOS release.
+
+- [ ] Freeze the bootstrap specification, architecture decisions, and threat model.
+- [ ] Define component interfaces and machine-readable protocol schemas.
+- [ ] Implement the coordinator, queues, workers, assurance, memory, and release
+      components behind tested interfaces.
+- [ ] Create deterministic fixtures and replayable end-to-end campaigns.
+- [ ] Build a complete local candidate and verify its provenance.
+- [ ] Run static analysis, type checks, unit tests, integration tests, failure
+      injection, resource checks, and security scans.
+- [ ] Produce operator, developer, and architecture documentation alongside code.
+- [ ] Package a signed local release with an explicit rollback target.
+- [ ] Install the release into a disposable environment and exercise recovery.
+
+## Runtime track — operate an installed MiOS
+
+These items apply after bootstrap, when MiOS is serving users and evolving over
+time. Runtime changes must not depend on the original development session.
+
+- [ ] Start from a known-good release and verify its manifest and configuration.
+- [ ] Serve interaction workloads while recording bounded observations.
+- [ ] Monitor health, latency, resource use, queue depth, and uncertainty.
+- [ ] Enter maintenance mode only after active work drains safely.
+- [ ] Replay incidents and consolidate memory without rewriting raw history.
+- [ ] Generate improvement tasks from measured failures and unanswered questions.
+- [ ] Build candidates in isolated workspaces with immutable baselines.
+- [ ] Run independent assurance and release gates before staging.
+- [ ] Install into an inactive slot, run health checks, and roll back on failure.
+- [ ] Keep a human override, persistent STOP, incident record, and recovery path.
+- [ ] Periodically verify backups, provenance, rollback, and memory integrity.
+
+## Code quality and readability gates
+
+MiOS must remain understandable to a human engineer. Generated code is treated
+as an untrusted draft until it passes the same review as hand-written code.
+
+- [ ] Every module has a narrow responsibility and a short module docstring.
+- [ ] Public interfaces have type annotations and concise documentation.
+- [ ] Tests explain behavior and failure modes, not implementation trivia.
+- [ ] No dead code, duplicate helpers, speculative abstractions, or unexplained
+      generated boilerplate.
+- [ ] No broad exception swallowing, hidden network calls, unbounded retries, or
+      mutable global state in control paths.
+- [ ] Every non-obvious policy decision links to an ADR or governance rule.
+- [ ] Ruff, type checking, documentation checks, and test coverage run before
+      commit.
+- [ ] An independent readability review removes unnecessary complexity before
+      release.
+- [ ] Each iteration records what was simplified or deliberately left unchanged.
+
 ## Loop 1 — Council execution
 
 - [ ] Add dependency-aware task graphs and automatic handoff routing.
