@@ -380,3 +380,4 @@ gated behind human authority.
 | 2026-07-15 | Add bounded agent task-packet schema | Completed | Validates role, scope, acceptance tests, outputs, escalation, and time/token/cost budgets |
 | 2026-07-15 | Enforce task packets at council enqueue | Completed | Council converts validated packets into bounded durable worker tasks |
 | 2026-07-15 | Refresh bootstrap evidence audit | Completed | Audit distinguishes current local proof from hardware and external-authority gaps |
+| 2026-07-15 | Record flawed-candidate assurance evidence | Completed | `evaluation/results/flawed-candidate-assurance.json` shows safety rejection blocks release |
