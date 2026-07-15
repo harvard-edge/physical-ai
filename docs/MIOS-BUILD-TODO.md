@@ -37,6 +37,11 @@ access the robot without explicit approval.
 - [x] Independent assurance role contracts and release gate.
 - [x] Deterministic workers for council replay.
 - [x] Source-bound Phase 1A evidence and exit attestation.
+- [x] Bootstrap charter audit with explicit missing-evidence matrix.
+- [x] Typed cognitive runtime contracts and schema baseline.
+- [x] Dependency-aware council routing and replayable campaign.
+- [x] Evidence-gated episodic/semantic/procedural memory foundation.
+- [x] Explicit maintenance-mode transition state machine.
 
 ## Flagship milestone — MiOS autonomous build demonstration
 
@@ -312,3 +317,6 @@ gated behind human authority.
 | Date | Loop/item | Result | Evidence or commit |
 |---|---|---|---|
 | 2026-07-15 | Foundation and council | Completed | `e4776d6` |
+| 2026-07-15 | Charter audit and cognitive contracts | Completed | `b1eb3dd` |
+| 2026-07-15 | Dependency routing and replay campaign | Completed | `38cce3c` |
+| 2026-07-15 | Memory and maintenance foundation | Completed | `5cd3bcc` |
