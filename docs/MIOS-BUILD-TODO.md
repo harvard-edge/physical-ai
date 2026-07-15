@@ -364,3 +364,4 @@ gated behind human authority.
 | 2026-07-15 | Add synthetic Maya Test harness | Completed | Identity/fact retention across restart, provenance grounding, and held-out related interaction |
 | 2026-07-15 | Add UNO Q resource-budget transfer contract | Completed | Transfer requires unchanged operations plus peak-memory and p95-latency budgets |
 | 2026-07-15 | Add Maya Test metric thresholds | Completed | Synthetic harness reports recall, grounding, and generalization against charter thresholds |
+| 2026-07-15 | Add two-clean-campaign reconstruction check | Completed | Independent replay directories produce identical canonical outcome evidence |
