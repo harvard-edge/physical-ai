@@ -387,3 +387,4 @@ gated behind human authority.
 | 2026-07-15 | Add UNO Q transfer handoff | Completed | Transfer checklist separates unchanged contracts from target-device resource evidence |
 | 2026-07-15 | Record controller doctor evidence | Completed | Sandbox and candidate isolation are active; external adapters remain explicitly absent |
 | 2026-07-15 | Consolidate local bootstrap evidence | Completed | `evaluation/results/local-bootstrap-summary.json` separates verified local results from unproven external requirements |
+| 2026-07-15 | Verify robot wheel packaging | Completed | Wheel builds with app package, entry point, static website, and greeting asset |
