@@ -1,6 +1,6 @@
 # MiOS Bootstrap Charter Audit
 
-**Date:** 2026-07-15 (updated after experiment-contract and verification work)
+**Date:** 2026-07-15 (updated after evidence, safety, provider, and operator-surface work)
 **Charter:** `docs/MIOS-EMBODIED-BOOTSTRAP-GOAL.md` revision 0.2
 **Auditor:** MiOS coordinator
 
@@ -26,8 +26,10 @@ bootstrap experiment.
 
 ## Audit conclusion
 
-The current repository supports a truthful claim of a tested, bounded evolution
-substrate. It does not yet support the charter's A3–A5 autonomy claims or the
-Maya Test. The next implementation must prioritize machine-readable contracts,
-runtime memory, and a replayable council campaign before external model or robot
-authority is enabled.
+The current repository supports a truthful claim of a tested, bounded, provider-
+neutral evolution substrate with synthetic memory, assurance, maintenance,
+reconstruction, and safety evidence. It does not yet support the charter's A3–A5
+autonomy claims or the physical Maya Test. Remaining work is primarily evidence
+at external boundaries: real Reachy and UNO Q execution, target-device resource
+measurements, authorized GitHub workflow, and independent custodian-backed
+evaluation. No local result should be presented as physical capability evidence.
