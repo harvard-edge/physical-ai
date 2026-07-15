@@ -385,3 +385,4 @@ gated behind human authority.
 | 2026-07-15 | Record flawed-candidate assurance evidence | Completed | `evaluation/results/flawed-candidate-assurance.json` shows safety rejection blocks release |
 | 2026-07-15 | Add Reachy physical-validation handoff | Completed | Readiness checklist defines authorization, Maya Test, safety, rollback, and resource evidence |
 | 2026-07-15 | Add UNO Q transfer handoff | Completed | Transfer checklist separates unchanged contracts from target-device resource evidence |
+| 2026-07-15 | Record controller doctor evidence | Completed | Sandbox and candidate isolation are active; external adapters remain explicitly absent |
