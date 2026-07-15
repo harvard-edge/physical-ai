@@ -31,6 +31,7 @@ mios-controller supervise --root .mios --max-cycles 20 --resume
 mios-controller pause --root .mios
 mios-controller status --root .mios
 mios-controller verify --root .mios
+mios-controller replay-campaign --state .mios/replay.sqlite
 ```
 
 `supervise` is bounded unless the operator explicitly supplies `--continuous`.
@@ -40,3 +41,7 @@ remain active.
 The `--resume` flag on `supervise` confirms that the process was started for an
 already authorized controller. It does not clear `STOP` or grant authority. Only
 the separate `resume` command can do that.
+
+`replay-campaign` is fully offline and deterministic. It writes a campaign
+report and a separate hash-chained replay ledger; it does not call a model,
+GitHub, or a robot.
