@@ -66,6 +66,8 @@ def parser() -> argparse.ArgumentParser:
     lineage.add_argument("experiment_id")
     lineage.add_argument("--ledger", type=Path, required=True)
     lineage.add_argument("--head", type=Path, required=True)
+    reconstruct = subcommands.add_parser("reconstruct-campaign")
+    reconstruct.add_argument("--root", type=Path, default=Path(".mios/reconstructions"))
     return result
 
 
@@ -109,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
             Ledger(arguments.ledger, arguments.head), arguments.experiment_id
         )
         print_json(result.__dict__)
+        return 0
+    if arguments.command == "reconstruct-campaign":
+        from .reproducibility import reconstruct_campaign_twice
+
+        print_json(reconstruct_campaign_twice(arguments.root).__dict__)
         return 0
     if arguments.command == "status":
         paths = ControllerPaths.create(arguments.root)

@@ -10,6 +10,18 @@ from .canonical import digest_json
 from .ledger import Ledger
 
 
+def _stable(value: object) -> object:
+    if isinstance(value, dict):
+        return {
+            key: _stable(item)
+            for key, item in value.items()
+            if key not in {"handoff_id", "recorded_at"}
+        }
+    if isinstance(value, list):
+        return [_stable(item) for item in value]
+    return value
+
+
 @dataclass(frozen=True)
 class ReconstructionReport:
     campaign_id: str
@@ -26,7 +38,7 @@ def reconstruct_campaign_twice(root: str | Path) -> ReconstructionReport:
         ledger = Ledger(run_root / "ledger.jsonl", run_root / "head.json")
         result = run_replay_campaign(run_root / "state.sqlite", ledger=ledger)
         ledger_records = [
-            {"kind": record["kind"], "payload": record["payload"]}
+            {"kind": record["kind"], "payload": _stable(record["payload"])}
             for record in ledger.verify()
         ]
         summaries.append(

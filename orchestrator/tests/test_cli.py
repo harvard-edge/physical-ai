@@ -27,3 +27,10 @@ def test_replay_campaign_cli_writes_report(tmp_path, capsys):
 def test_maya_test_cli_reports_thresholds(tmp_path, capsys):
     assert main(["maya-test", "--state", str(tmp_path / "memory.sqlite")]) == 0
     assert '"meets_charter_thresholds": true' in capsys.readouterr().out
+
+
+def test_reconstruction_cli_compares_two_runs(tmp_path, capsys):
+    assert main(["reconstruct-campaign", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert '"identical": true' in output
+    assert '"reconstructions": 2' in output
