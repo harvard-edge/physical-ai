@@ -62,6 +62,28 @@ can execute the complete campaign offline using deterministic workers, reject an
 injected unsafe candidate, accept a verified candidate, persist the lessons, and
 schedule the next iteration with a complete provenance trail.
 
+## Runtime-mode architecture
+
+MiOS has one stable architecture with explicit operating modes. The system does
+not rewrite its core during maintenance; maintenance changes memories,
+procedures, and verified release candidates under the same authority boundary.
+
+- [ ] **Interaction mode:** serve users, execute approved procedures, and record
+      observations without mutating policy or installing code.
+- [ ] **Maintenance mode:** drain active work, snapshot state, replay failures,
+      consolidate memory, and generate bounded improvement tasks.
+- [ ] **Build mode:** let the cloud or local agent council create isolated
+      candidates and run evaluation and assurance.
+- [ ] **Staging mode:** install a signed candidate in an inactive slot and run
+      startup, health, and behavioral checks.
+- [ ] **Recovery mode:** preserve evidence, stop unsafe effects, restore the last
+      known-good version, and create an incident task.
+- [ ] **Human-authority mode:** accept approvals for policy, external services,
+      GitHub publication, model-provider access, and physical deployment.
+
+Mode transitions must be durable, observable, resumable, and denied when the
+required drain, evidence, approval, or rollback conditions are not satisfied.
+
 ## Loop 1 — Council execution
 
 - [ ] Add dependency-aware task graphs and automatic handoff routing.
