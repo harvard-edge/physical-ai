@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .council import (
     Handoff,
 )
 from .council_workers import deterministic_workers
+from .ledger import Ledger
 
 
 @dataclass(frozen=True)
@@ -23,7 +25,11 @@ class ReplayCampaignResult:
 
 
 def run_replay_campaign(
-    path: str | Path, *, campaign_id: str = "MIOS-CAMPAIGN-REPLAY-001"
+    path: str | Path,
+    *,
+    campaign_id: str = "MIOS-CAMPAIGN-REPLAY-001",
+    ledger: Ledger | None = None,
+    report_path: str | Path | None = None,
 ) -> ReplayCampaignResult:
     """Run a fixed design/build/verify campaign entirely offline."""
     store = CouncilStore(path)
@@ -74,4 +80,28 @@ def run_replay_campaign(
     )
     if release.verdict != "approved":
         raise RuntimeError(f"replay campaign failed release gate: {release.reasons}")
-    return ReplayCampaignResult(campaign_id, handoffs, release)
+    result = ReplayCampaignResult(campaign_id, handoffs, release)
+    if ledger is not None:
+        ledger.append_once(
+            campaign_id,
+            "REPLAY_CAMPAIGN_COMPLETED",
+            {
+                "campaign_id": campaign_id,
+                "handoffs": [handoff.__dict__ for handoff in handoffs],
+                "release": release.__dict__,
+                "mode": "offline_deterministic",
+            },
+        )
+    if report_path is not None:
+        report = {
+            "campaign_id": campaign_id,
+            "mode": "offline_deterministic",
+            "handoffs": [handoff.__dict__ for handoff in handoffs],
+            "release": release.__dict__,
+        }
+        destination = Path(report_path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    return result
