@@ -2,6 +2,7 @@ from mios_controller.providers import (
     DeterministicProvider,
     ModelRequest,
     OllamaProvider,
+    HostedCompatibleProvider,
     complete_with_fallback,
 )
 
@@ -41,3 +42,30 @@ def test_ollama_adapter_is_offline_testable():
     )
     assert response.provider == "ollama"
     assert response.fallback is False
+
+
+def test_hosted_adapter_requires_allowlisted_https_and_is_offline_testable():
+    provider = HostedCompatibleProvider(
+        "cloud-model",
+        endpoint="https://llm.example.test/v1/chat/completions",
+        allowed_hosts=frozenset({"llm.example.test"}),
+        transport=lambda endpoint, payload, timeout: (
+            b'{"choices":[{"message":{"content":"hello Maya"}}]}'
+        ),
+    )
+    response = provider.complete(
+        ModelRequest("MIOS-REQ-004", "memory", "recall", 16, "synthetic")
+    )
+    assert response.provider == "hosted-compatible"
+    assert response.fallback is False
+
+
+def test_hosted_adapter_rejects_unapproved_endpoint():
+    import pytest
+
+    with pytest.raises(ValueError):
+        HostedCompatibleProvider(
+            "cloud-model",
+            endpoint="http://127.0.0.1:11434/api",
+            allowed_hosts=frozenset({"127.0.0.1"}),
+        )

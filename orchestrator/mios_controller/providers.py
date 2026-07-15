@@ -99,6 +99,67 @@ class OllamaProvider:
         )
 
 
+class HostedCompatibleProvider:
+    """Opt-in adapter for an OpenAI-compatible hosted endpoint.
+
+    Credentials and endpoint policy stay outside this package. Callers must
+    provide an HTTPS endpoint whose host is explicitly allowlisted.
+    """
+
+    provider = "hosted-compatible"
+
+    def __init__(
+        self,
+        model: str,
+        *,
+        endpoint: str,
+        allowed_hosts: frozenset[str],
+        transport: Callable[[str, bytes, float], bytes] | None = None,
+    ) -> None:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(endpoint)
+        if (
+            not model.strip()
+            or parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.hostname not in allowed_hosts
+        ):
+            raise ValueError("hosted provider requires an allowlisted HTTPS endpoint")
+        self.model = model
+        self.endpoint = endpoint
+        self._transport = transport or _http_transport
+
+    def complete(self, request: ModelRequest) -> ModelResponse:
+        if request.max_tokens < 1 or not request.prompt.strip():
+            raise ValueError("model requests require a bounded prompt and token budget")
+        if len(request.prompt) > 32_000:
+            raise ValueError("hosted provider prompt exceeds privacy/size bound")
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "messages": [{"role": "user", "content": request.prompt}],
+                "max_tokens": request.max_tokens,
+            }
+        ).encode()
+        decoded = json.loads(self._transport(self.endpoint, payload, 10.0))
+        try:
+            text = decoded["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as error:
+            raise ValueError("hosted provider returned a malformed response") from error
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("hosted provider returned an empty response")
+        return ModelResponse(
+            request.request_id,
+            self.provider,
+            self.model,
+            text,
+            len(request.prompt.split()),
+            len(text.split()),
+            False,
+        )
+
+
 def complete_with_fallback(
     request: ModelRequest, primary: ModelProvider, fallback: ModelProvider
 ) -> ModelResponse:
