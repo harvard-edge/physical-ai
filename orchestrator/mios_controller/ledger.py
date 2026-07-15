@@ -12,6 +12,7 @@ import fcntl
 
 from .canonical import atomic_write, canonical_bytes, digest_json, utc_now
 from .domain import IntegrityViolation
+from .experiment import ExperimentRecord
 
 
 GENESIS_HASH = "0" * 64
@@ -119,6 +120,16 @@ class Ledger:
                 mode=0o600,
             )
             return record
+
+    def append_experiment_record(self, experiment: ExperimentRecord) -> dict[str, Any]:
+        """Persist a validated research record exactly once in the ledger."""
+        payload = experiment.to_payload()
+        return self.append_once(
+            event_id=experiment.experiment_id,
+            kind="EXPERIMENT_RECORD_RECORDED",
+            payload={"experiment": payload},
+            actor="mios-evolution-controller",
+        )
 
     def verify(self) -> list[dict[str, Any]]:
         records: list[dict[str, Any]] = []
