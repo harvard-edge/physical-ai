@@ -32,6 +32,10 @@ mios-controller pause --root .mios
 mios-controller status --root .mios
 mios-controller verify --root .mios
 mios-controller replay-campaign --state .mios/replay.sqlite
+mios-controller maya-test --state .mios/maya-memory.sqlite
+mios-controller reconstruct-campaign --root .mios/reconstructions
+mios-controller inspect-lineage MIOS-EXP-0001 \
+  --ledger .mios/replay-ledger.jsonl --head .mios/replay-head.json
 ```
 
 `supervise` is bounded unless the operator explicitly supplies `--continuous`.
@@ -45,3 +49,10 @@ the separate `resume` command can do that.
 `replay-campaign` is fully offline and deterministic. It writes a campaign
 report and a separate hash-chained replay ledger; it does not call a model,
 GitHub, or a robot.
+
+`maya-test` exercises memory retention, provenance grounding, and a held-out
+related interaction using synthetic data. Its output is not physical Reachy
+evidence. `reconstruct-campaign` runs two clean campaign-plus-ledger builds and
+compares normalized evidence. `inspect-lineage` reports whether an experiment
+has observation, transition, and deployment events in one verified ledger.
+None of these commands grants hardware, cloud, or GitHub authority.

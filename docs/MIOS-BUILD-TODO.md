@@ -375,3 +375,4 @@ gated behind human authority.
 | 2026-07-15 | Add flawed-candidate assurance campaign | Completed | Known unsafe-authority fixture is deterministically blocked by the safety auditor |
 | 2026-07-15 | Include ledger evidence in reconstruction check | Completed | Two clean runs compare normalized event kinds and payloads, excluding nondeterministic hashes/timestamps |
 | 2026-07-15 | Expose reconstruction CLI | Completed | `mios-controller reconstruct-campaign` compares two campaign-plus-ledger runs |
+| 2026-07-15 | Document operator evidence workflows | Completed | README explains Maya, reconstruction, lineage, and authority boundaries |
