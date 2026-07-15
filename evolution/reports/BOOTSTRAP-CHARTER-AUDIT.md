@@ -17,7 +17,7 @@ bootstrap experiment.
 | Evolution ledger | hash-chain ledger, validated records, replay binding, final-state integration, and deployment decision events | partial | persist records through every controller transition and prove observation-to-PR lineage |
 | Runtime memory | episodic/semantic/procedural store with evidence-gated promotion | partial | integration with native Reachy memory and held-out recall |
 | Local/cloud intelligence | deterministic provider and loopback Ollama adapter with benchmark harness | partial | ARM64 model benchmark and approved cloud adapters |
-| Maintenance mode | drain, consolidation, runtime event, checkpoint, and recovery cycle | partial | unattended scheduler and repeated overnight operation |
+| Maintenance mode | drain, consolidation, runtime event, recovery cycle, and bounded due scheduler | partial | supervisor-backed unattended operation and repeated overnight evidence |
 | GitHub evolution | no external GitHub adapter or PR workflow | deferred | approval-gated local forge, then authorized adapter |
 | Physical safety gateway | deterministic action envelope, native gateway, watchdog, fake hardware tests | partial | real Reachy stop latency and hazard-derived evidence |
 | Reachy interaction | inherited prototype only; no new autonomy evidence | missing | Maya Test campaign with restart and held-out variants |
