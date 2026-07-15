@@ -92,3 +92,56 @@ like virtual memory.
 5. Every worker can resume from a checkpoint.
 6. Context assembly is reproducible from references and policy.
 7. A deterministic fallback exists when no model is available.
+
+## Implementation refinement
+
+MiOS is not a replacement kernel, and the model is never placed in a
+hard-real-time or safety-critical loop. The first implementation is a cognitive
+runtime hosted as a normal service beside the Reachy Mini SDK. Its OS-like
+behavior comes from contracts and lifecycle semantics, not from pretending that
+the LLM is a privileged process.
+
+The minimum contracts are:
+
+```text
+ContextPacket       reproducible, bounded model input with provenance
+CapabilityManifest  typed operation with authority, risk, budget, and adapter
+ActionProposal      model output describing an intended effect, never execution
+PolicyDecision      deterministic approve/reject/ask-human result
+MemoryMutation      validated claim or episode with evidence and retention rule
+CognitiveEvent      immutable observation of a state transition
+Checkpoint          resumable goal state without hidden model state
+```
+
+The implementation order is deliberately reuse-first:
+
+1. Freeze these contracts as Python models and JSON schemas; validate them at
+   every boundary.
+2. Move the existing conversation and memory code behind a `CognitiveRuntime`
+   facade that emits the contracts without changing the child-facing API.
+3. Add a capability registry and proposal validator in front of the current
+   safe robot gateway. Existing Reachy actions become adapters, not new motion
+   primitives.
+4. Add a small cognition scheduler for priority, cancellation, deadlines, and
+   model routing. SQLite remains the durable store; embeddings remain an
+   optional retrieval index rather than the source of truth.
+5. Add event replay and checkpoint recovery before introducing multi-agent
+   workflows or autonomous maintenance.
+6. Add a local model only as a bounded fallback for classification, short
+   replies, and health summarization. Cloud models remain interchangeable policy
+   providers, not architectural dependencies.
+
+The first researchable MiOS milestone is a replayable
+teach–retrieve–propose–authorize–act–learn loop in which every model decision
+can be inspected, rejected, or reproduced. A model upgrade, new robot adapter,
+or new memory index must not change these contracts.
+
+### Explicit non-goals
+
+- No LLM in the motor, watchdog, emergency-stop, or collision-avoidance loop.
+- No direct model writes to durable memory or direct actuator calls.
+- No custom distributed scheduler while a single-device event loop is enough.
+- No vector database before structured claims, provenance, and deletion rules
+  work in SQLite.
+- No autonomous self-modifying release path before replay, evaluation, and
+  human-approval gates exist.
