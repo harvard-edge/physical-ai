@@ -354,3 +354,4 @@ gated behind human authority.
 | 2026-07-15 | Maintenance/memory integration | Completed | `b393b9d` |
 | 2026-07-15 | Machine-readable experiment record contract | Completed | `ExperimentRecord` in `orchestrator/mios_controller/experiment.py`; unit and full-suite verification |
 | 2026-07-15 | Idempotent experiment-record ledger append | Completed | `Ledger.append_experiment_record`; ledger idempotency test |
+| 2026-07-15 | Bind replay campaign to structured research record | Completed | Campaign emits `EXPERIMENT_RECORD_RECORDED` before completion event |

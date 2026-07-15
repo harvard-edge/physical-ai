@@ -19,6 +19,9 @@ def test_replay_campaign_completes_dependency_order(tmp_path):
         '"kind":"REPLAY_CAMPAIGN_COMPLETED"' in (tmp_path / "ledger.jsonl").read_text()
     )
     assert (
+        '"kind":"EXPERIMENT_RECORD_RECORDED"' in (tmp_path / "ledger.jsonl").read_text()
+    )
+    assert (
         '"campaign_id": "MIOS-CAMPAIGN-REPLAY-001"'
         in (tmp_path / "report.json").read_text()
     )
