@@ -1,0 +1,36 @@
+name: MiOS verification
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+
+jobs:
+  orchestrator:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+      - run: uv sync --locked --extra test
+      - run: uv run python -m pytest
+      - run: uv run ruff check mios_controller tests
+      - run: uv run ruff format --check mios_controller tests
+
+  robot-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+      - run: uv sync --extra dev
+      - run: python -W error -m unittest discover -s tests -p 'test_*.py'
+      - run: uv build

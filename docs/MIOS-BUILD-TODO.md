@@ -388,3 +388,5 @@ gated behind human authority.
 | 2026-07-15 | Record controller doctor evidence | Completed | Sandbox and candidate isolation are active; external adapters remain explicitly absent |
 | 2026-07-15 | Consolidate local bootstrap evidence | Completed | `evaluation/results/local-bootstrap-summary.json` separates verified local results from unproven external requirements |
 | 2026-07-15 | Verify robot wheel packaging | Completed | Wheel builds with app package, entry point, static website, and greeting asset |
+| 2026-07-15 | Add robot service and upgrade bundle | Completed | Systemd unit, checksum-verified install/upgrade scripts, and pointer rollback |
+| 2026-07-15 | Add CI workflows | Completed | Native package tests/build and orchestrator tests/lint/format run in GitHub Actions |

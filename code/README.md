@@ -73,6 +73,14 @@ environment without pulling the robot's Linux-only media stack onto the Mac.
 Set `GROQ_API_KEY` for LLM turns. The installed robot app also looks for its
 private key at `~/.config/mayas-reachy/groq_api_key`.
 
+## Service and upgrade bundle
+
+`deploy/mios-reachy.service` runs the installed wheel as the unprivileged
+`reachy` user. `deploy/install.sh` installs a versioned release, while
+`deploy/upgrade.sh` verifies a SHA-256 sidecar, switches the release pointer,
+performs a package health check, and restores the previous pointer on failure.
+Service activation and physical authorization remain explicit operator actions.
+
 ## Build the Robot Wheel
 
 ```sh
