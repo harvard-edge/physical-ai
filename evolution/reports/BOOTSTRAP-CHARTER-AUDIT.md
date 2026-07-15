@@ -13,7 +13,7 @@ bootstrap experiment.
 | Phase 0 contract and governance | `governance/`, Phase 0 reports, baseline manifest | complete for local Phase 0 scope | hardware and independent custodian evidence remain deferred |
 | Durable evolution substrate | Phase 1A controller, crash matrix, upgrade evidence | complete for synthetic local cycle | integrate council workflow and runtime events |
 | Specialist agent organization | role contracts, council queue, dependency graph, deterministic replay campaign | complete for offline substrate | model-backed workers and long-running cloud operation |
-| Independent assurance | assurance roles, release verdict gate, protected candidate evaluator | complete for local deterministic scope | protected custodian-backed suite and flawed-candidate campaign |
+| Independent assurance | assurance roles, release verdict gate, protected evaluator, and flawed-candidate negative fixture | complete for local deterministic scope | protected custodian-backed suite and independent model/context campaign |
 | Evolution ledger | hash-chain ledger, validated records, replay binding, final-state integration, deployment events, and lineage inspector | partial | complete observation-to-PR lineage across real change artifacts |
 | Runtime memory | episodic/semantic/procedural store with evidence-gated promotion | partial | integration with native Reachy memory and held-out recall |
 | Local/cloud intelligence | deterministic provider, loopback Ollama adapter, benchmark harness, allowlisted hosted adapter, and privacy-class gate | partial | ARM64 model benchmark and provider-specific approval/credential integration |

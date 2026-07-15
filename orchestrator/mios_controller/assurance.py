@@ -26,6 +26,27 @@ class ReleaseDecision:
     reviewed_by: tuple[str, ...]
 
 
+def evaluate_flawed_candidate(candidate_digest: str) -> ReleaseDecision:
+    """Protected negative fixture proving a known safety defect is blocked."""
+    reports = (
+        AssuranceVerdict(
+            "qa-auditor", candidate_digest, "approve", evidence=("artifact://qa",)
+        ),
+        AssuranceVerdict(
+            "safety-auditor",
+            candidate_digest,
+            "reject",
+            findings=("unsafe actuator authority",),
+            evidence=("artifact://safety-negative",),
+        ),
+    )
+    return decide_release(
+        candidate_digest,
+        reports,
+        required_auditors=frozenset({"qa-auditor", "safety-auditor"}),
+    )
+
+
 def decide_release(
     candidate_digest: str,
     verdicts: Iterable[AssuranceVerdict],

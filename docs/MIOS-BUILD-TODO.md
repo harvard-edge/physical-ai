@@ -372,3 +372,4 @@ gated behind human authority.
 | 2026-07-15 | Record synthetic Maya Test CLI evidence | Completed | `evaluation/results/synthetic-maya-test-cli.json`; explicitly nonphysical |
 | 2026-07-15 | Enforce hosted-provider privacy gate | Completed | Restricted data is rejected before transport; redacted/synthetic classes remain testable |
 | 2026-07-15 | Add simulated protective-stop measurement | Completed | Fake gateway reports zero unsafe commands and measured stop latency against 100 ms threshold |
+| 2026-07-15 | Add flawed-candidate assurance campaign | Completed | Known unsafe-authority fixture is deterministically blocked by the safety auditor |
