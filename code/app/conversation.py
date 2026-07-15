@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .cloud import CloudUnavailable
+from .cognitive import ActionProposal, ContextPacket, MemoryMutation
 from .memory import MemoryStore
 from .policies import ReasoningPolicy
 
@@ -16,6 +17,9 @@ class ResponsePlan:
     mood: str
     source: str
     learned: dict[str, Any] | None = None
+    context_id: str | None = None
+    proposal_id: str | None = None
+    memory_mutations: list[dict[str, Any]] | None = None
 
 
 class Conversation:
@@ -30,10 +34,23 @@ class Conversation:
         text = user_text.strip()
         robot_name = self.memory.robot_name()
         episode_id = self.memory.record_episode("child", text)
+        context = ContextPacket(
+            user_text=text,
+            robot_name=robot_name,
+            memory_context=self.memory.relevant_context(text),
+            history_turns=len(self.history),
+        )
+        proposal = ActionProposal(
+            context_id=context.id,
+            requested_capabilities=["speak"],
+            effect="speak_and_gesture",
+            approved=True,
+            rationale="speech and bounded gesture are validated by the robot gateway",
+        )
         if not self.cloud.configured:
             response = self._offline_response(robot_name, configured=False)
             self._remember_turn(text, response)
-            return ResponsePlan(response, "warm", "offline-fallback")
+            return ResponsePlan(response, "warm", "offline-fallback", context_id=context.id, proposal_id=proposal.id)
 
         try:
             result = self.cloud.analyze_turn(
@@ -46,14 +63,16 @@ class Conversation:
             logging.getLogger(__name__).warning("Cloud turn unavailable: %s", exc)
             response = self._offline_response(robot_name, configured=True)
             self._remember_turn(text, response)
-            return ResponsePlan(response, "warm", "offline-fallback")
+            return ResponsePlan(response, "warm", "offline-fallback", context_id=context.id, proposal_id=proposal.id)
 
         learned: dict[str, Any] = {}
+        mutations: list[dict[str, Any]] = []
         if result.get("intent") == "teach_robot_name":
             taught_name = self._valid_robot_name(result.get("robot_name"))
             if taught_name is not None:
                 self.memory.remember_robot_name(taught_name, episode_id=episode_id)
                 learned["robot_name"] = taught_name
+                mutations.append(MemoryMutation(context_id=context.id, kind="robot_name", evidence_episode_id=episode_id).model_dump(mode="json"))
 
         entities = {
             entity.get("id"): entity
@@ -81,6 +100,7 @@ class Conversation:
             except (KeyError, TypeError, ValueError):
                 continue
             stored_claims.append(claim)
+            mutations.append(MemoryMutation(context_id=context.id, kind="claim", evidence_episode_id=episode_id).model_dump(mode="json"))
         if stored_claims:
             learned["claims"] = stored_claims
 
@@ -91,6 +111,9 @@ class Conversation:
             result["mood"],
             "groq-cloud",
             learned=learned or None,
+            context_id=context.id,
+            proposal_id=proposal.id,
+            memory_mutations=mutations or None,
         )
 
     def _remember_turn(self, user_text: str, response: str) -> None:

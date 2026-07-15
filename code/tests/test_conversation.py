@@ -60,6 +60,9 @@ class ConversationTest(unittest.TestCase):
             self.assertEqual(memory.robot_name(), "Pixel")
             self.assertEqual(plan.learned, {"robot_name": "Pixel"})
             self.assertEqual(plan.source, "groq-cloud")
+            self.assertTrue(plan.context_id.startswith("ctx_"))
+            self.assertTrue(plan.proposal_id.startswith("prop_"))
+            self.assertEqual(plan.memory_mutations[0]["kind"], "robot_name")
             self.assertEqual(cloud.calls[0][0], "I think Pixel fits you perfectly.")
 
     def test_non_teaching_intent_cannot_write_a_name(self):
