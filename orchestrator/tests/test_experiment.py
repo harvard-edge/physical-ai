@@ -10,7 +10,10 @@ def record() -> ExperimentRecord:
         campaign_id="MIOS-CAMPAIGN-001",
         autonomy_level_claimed="A1",
         trigger={"detected_by": "runtime-monitor", "privacy_class": "synthetic"},
-        hypothesis={"statement": "bounded change improves recall", "expected_mechanism": "better retrieval"},
+        hypothesis={
+            "statement": "bounded change improves recall",
+            "expected_mechanism": "better retrieval",
+        },
         baseline={"release": "r0", "comparison_condition": "fixed_single_agent"},
         preregistration={
             "artifact_hash": "a" * 64,
@@ -20,9 +23,17 @@ def record() -> ExperimentRecord:
             "sample_size": 10,
         },
         selected_design="replay",
-        evaluation={"public_suite": "suite-1", "simulation_result": "pass", "evaluator_version": "1"},
+        evaluation={
+            "public_suite": "suite-1",
+            "simulation_result": "pass",
+            "evaluator_version": "1",
+        },
         change={},
-        review={"architecture": "pending", "safety": "pending", "verification": "pending"},
+        review={
+            "architecture": "pending",
+            "safety": "pending",
+            "verification": "pending",
+        },
         deployment={},
         outcome={"decision": "inconclusive", "autonomy_level_supported": "A0"},
         lesson={},

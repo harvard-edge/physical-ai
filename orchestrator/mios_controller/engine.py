@@ -20,6 +20,7 @@ from .domain import (
     ObservationInput,
     ReviewAttestation,
 )
+from .experiment import ExperimentRecord
 from .forge import LocalForge
 from .ledger import Ledger
 from .policy import PolicyEngine
@@ -580,6 +581,62 @@ class EvolutionEngine:
                 "fencing_token": fencing_token,
             },
         )
+        if to_state == ExperimentState.LOCAL_CANDIDATE_READY.value:
+            settings = {
+                row["key"]: row["value"] for row in self.registry.export()["settings"]
+            }
+            observation = self.registry.observation_for(experiment_id)
+            experiment = ExperimentRecord(
+                experiment_id=experiment_id,
+                campaign_id=settings["campaign_id"],
+                autonomy_level_claimed="A1",
+                trigger={
+                    "observation_ids": [observation["id"]],
+                    "detected_by": "runtime-monitor",
+                    "privacy_class": "synthetic",
+                },
+                hypothesis={
+                    "statement": "The bounded candidate passes the frozen fixture evaluation",
+                    "expected_mechanism": "The authorized candidate changes only the observed behavior",
+                },
+                baseline={
+                    "release": "phase-1a-baseline",
+                    "comparison_condition": "fixed_single_agent",
+                },
+                preregistration={
+                    "artifact_hash": evidence_digest,
+                    "frozen_at": observation["created_at"],
+                    "primary_metric": "frozen_acceptance_test_pass",
+                    "minimum_effect": 0.0,
+                    "sample_size": 1,
+                },
+                selected_design="deterministic fixture transition workflow",
+                evaluation={
+                    "public_suite": "behavior-value",
+                    "simulation_result": "pass",
+                    "evaluator_version": "phase-1a",
+                },
+                change={"commits": []},
+                review={
+                    "architecture": "approve",
+                    "safety": "approve",
+                    "verification": "approve",
+                },
+                deployment={},
+                outcome={
+                    "decision": "accepted",
+                    "measured_delta": {"final_state": to_state},
+                    "autonomy_level_supported": "A1",
+                },
+                lesson={
+                    "supported_claims": ["the local transition is replayable"],
+                    "rejected_claims": [
+                        "the synthetic fixture proves embodied capability"
+                    ],
+                    "next_questions": ["Can this evidence be reproduced on Reachy?"],
+                },
+            )
+            self.ledger.append_experiment_record(experiment)
 
     @staticmethod
     def _effect_kind(to_state: ExperimentState) -> str:

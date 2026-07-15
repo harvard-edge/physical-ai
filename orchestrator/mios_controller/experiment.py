@@ -22,7 +22,9 @@ class ExperimentHypothesis(StrictModel):
 
 class BaselineCondition(StrictModel):
     release: str = Field(min_length=1)
-    comparison_condition: Literal["fixed_single_agent", "fixed_specialist_team", "adaptive_mios"]
+    comparison_condition: Literal[
+        "fixed_single_agent", "fixed_specialist_team", "adaptive_mios"
+    ]
     metrics: dict[str, float | int | str] = Field(default_factory=dict)
 
 
