@@ -20,7 +20,7 @@ bootstrap experiment.
 | Maintenance mode | drain, consolidation, runtime event, recovery cycle, bounded due scheduler, persisted state, and finite supervisor-tick runner | partial | real supervisor-backed unattended operation and overnight evidence |
 | GitHub evolution | no external GitHub adapter or PR workflow | deferred | approval-gated local forge, then authorized adapter |
 | Physical safety gateway | deterministic action envelope, native gateway, watchdog, fake hardware tests | partial | real Reachy stop latency and hazard-derived evidence |
-| Reachy interaction | inherited prototype only; no new autonomy evidence | missing | Maya Test campaign with restart and held-out variants |
+| Reachy interaction | synthetic Maya Test harness with restart, provenance, and held-out check; no physical authority | partial | physical Maya Test campaign on Reachy |
 | UNO Q transfer | portable-core manifest and conformance checker | partial | target-hardware execution and resource measurements |
 | Reproducibility | Phase 1A clean reconstruction evidence | partial | two full campaign reconstructions |
 
