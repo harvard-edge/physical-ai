@@ -2,8 +2,9 @@
 
 **Working title:** *Physical AI: Machine Learning Systems That Sense and Act*
 **Status:** canonical source of truth for backward design and authoring
-**Audience:** serious learners, early-career engineers, and practicing ML systems
-engineers entering physical AI
+**Audience:** serious learners, early-career engineers, and practicing ML systems engineers entering physical AI
+
+---
 
 ## The Goal
 
@@ -48,6 +49,63 @@ The final test is transfer. A graduate should be able to apply this method to an
 embodiment and model family that never appears in the book. Successful assembly
 of the reference lab is not sufficient.
 
+---
+
+## Target Audience & Ecosystem Audit: Broad Physical AI vs. Physical AI Systems
+
+### 1. Distinguishing Broad Physical AI from Physical AI Systems
+
+A crucial positioning principle of this book is distinguishing **Broad Physical AI** (the general concept) from **Physical AI Systems** (our explicit engineering specialization):
+
+*   **Broad Physical AI (The Conceptual Field):** Encompasses generative AI on robots, text-to-video manipulation, synthetic data generation in simulation, general humanoid demonstrations, and end-to-end foundation model research. While valuable context, broad physical AI often treats physical execution as a black box or downstream simulation detail.
+*   **Physical AI Systems (Our Core Specialization):** Focuses specifically on the **systems engineering discipline** required to build, measure, constrain, place, govern, and qualify learned components acting back into the physical world. It answers how multi-rate runtimes, proposal-permission dual-brain architectures, $P_{99}$ latency tail distributions, microsecond PTP clock synchronization, zero-copy DMA memory paths, STPA hazard controls, and Claim-Argument-Evidence (CAE) release cases guarantee physical safety and operational dependability.
+
+---
+
+### 2. The 3 Primary Target Reader & Reviewer Personas
+
+This textbook is engineered to serve, be reviewed by, and be adopted across three distinct technical communities:
+
+```text
+                        THE 3 CORE TARGET AUDIENCES
+ ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐
+ │ PERSONA 1: EMBEDDED ML │ │ PERSONA 2: ROBOTICS/CPS│ │ PERSONA 3: EMBODIED AI │
+ │ & EDGE SYSTEMS (TINYML)│ │ & CONTROL ENGINEERS    │ │ & VLM/VLA RESEARCHERS  │
+ ├────────────────────────┤ ├────────────────────────┤ ├────────────────────────┤
+ │ • Transitioning from   │ │ • Integrating non-     │ │ • Moving from open-    │
+ │   passive edge model   │   deterministic learned│   loop benchmark accuracy│
+ │   inference (TinyML) to│   models into real-    │   to closed-loop spatial  │
+ │   active dual-brain    │   time safety-critical │   belief, hardware buses,│
+ │   physical runtimes.   │   control loops safely.│   and data flywheels.    │
+ └────────────────────────┘ └────────────────────────┘ └────────────────────────┘
+```
+
+#### Persona 1: Embedded ML & Edge Systems Engineers (The TinyML & Silicon Community)
+*   **Background:** Embedded systems developers, TinyML practitioners, computer architects, and mobile edge engineers.
+*   **Core Pain Points:** Transitioning from passive edge inference (keyword spotting, anomaly detection, image classification) to active physical actuation without overwhelming SRAM/DRAM, DMA memory channels, or thermal TDP.
+*   **Why This Book Spans Their Needs:** Demonstrates that the microcontroller (MCU) is not obsolete, but rather serves as the **System 1 Spinal Reflex Arc**—the zero-allocation, deterministic guardian holding physical permission while application processors (SoCs) run heavy AI workloads.
+
+#### Persona 2: Robotics & Cyber-Physical Systems (CPS) Engineers (The Controls & Safety Community)
+*   **Background:** Classical roboticists, mechatronics leads, autonomous vehicle engineers, ROS2 developers, and functional safety engineers.
+*   **Core Pain Points:** Deep skepticism of un-shielded, non-deterministic neural network proposals driving physical actuators without real-time safety guarantees or dynamic stopping bounds.
+*   **Why This Book Spans Their Needs:** Establishes rigorous system controls: independent MCU safety enforcers, dynamic stopping distance bounds ($d_{\text{stop}}$), Category 0/1/2 physical fallbacks, STPA hazard analysis (ISO 21448 / SOTIF), and Claim-Argument-Evidence (CAE/GSN) release cases.
+
+#### Persona 3: Embodied AI & ML Systems Researchers (The VLM / VLA / Foundation Model Community)
+*   **Background:** Deep learning researchers, PyTorch developers, Vision-Language-Action (VLA) architects, and multimodal foundation model deployment leads.
+*   **Core Pain Points:** Understanding how open-ended VLM/VLA models execute on physical hardware beyond static simulation benchmarks, managing multi-step action chunking ($H$), and addressing policy endogeneity/selection bias.
+*   **Why This Book Spans Their Needs:** Delivers the complete physical wrapper: 3D spatial affordance tokenization, expiring intent proposals ($t_{\text{expire}}$), $\mathcal{C}^2$ temporal ensembling, microsecond PTP trajectory logging, and governed data flywheels.
+
+---
+
+### 3. Reviewer & Educator Buy-In Strategy
+
+By explicitly structuring the manuscript around these three personas, the textbook achieves strong peer-review validation and university adoption:
+1.  **Robotics/CPS Peer Reviewers** validate the real-time safety rigor (Chapters 4, 7, 10).
+2.  **Embedded/Silicon Peer Reviewers** validate the microarchitecture and interconnect bus budgets (Chapters 2, 3, 8).
+3.  **Embodied AI Peer Reviewers** validate the generative AI proposal interfaces and dataset governance (Chapters 5, 6, 9).
+
+---
+
 ## Why the Book Exists
 
 Machine learning systems usually end at a digital output. Physical-AI systems do
@@ -68,6 +126,8 @@ The durable question is not which model is currently strongest. The book asks:
 
 > What must the surrounding system know, measure, enforce, preserve, and prove
 > before a learned proposal may produce a physical consequence?
+
+---
 
 ## What the Book Is
 
@@ -91,6 +151,8 @@ The manuscript has four simultaneous identities:
 It should remain useful when the named model families, boards, accelerators, and
 software stacks have changed.
 
+---
+
 ## What the Book Is Not
 
 The book is not a compressed robotics curriculum. It borrows frames, estimation,
@@ -111,6 +173,8 @@ decision.
 It is not a claim that physical AI, feedback, runtime assurance, state
 estimation, limits on action, or human oversight were invented here. Originality
 comes from the integration, pedagogy, and cumulative evidence structure.
+
+---
 
 ## The Backward-Designed Spine
 
@@ -139,6 +203,8 @@ The unnumbered final design review introduces no new subject matter. It asks the
 reader to defend the complete system, diagnose a deliberately introduced
 failure, and adapt the method to an unfamiliar embodiment.
 
+---
+
 ## The Cumulative Design Dossier
 
 The learner should not complete thirteen unrelated chapter assignments. Each
@@ -166,6 +232,8 @@ dossier records:
 
 This dossier is the book's final integration artifact. The physical build
 supplies evidence for it.
+
+---
 
 ## Pedagogical Commitments
 
@@ -235,6 +303,8 @@ Borrowed material is taught only as deeply as the chapter's engineering decision
 requires. This prevents the manuscript from becoming a shallow survey at one
 extreme or several compressed textbooks at the other.
 
+---
+
 ## Laboratory Contract
 
 Every end-of-chapter lab must include:
@@ -260,6 +330,8 @@ Each lab objective should support three manifestations:
 
 The manifestations may use different machinery. They must assess the same
 concept, evidence, and decision.
+
+---
 
 ## The Visual Thesis
 
@@ -382,6 +454,8 @@ A manuscript figure is complete only when:
 - its alt text explains the relationship and takeaway; and
 - the exact asset has been inspected in both rendered HTML and PDF.
 
+---
+
 ## Authoring Method
 
 One persistent steward should own each chapter's argument. Independent agents
@@ -413,6 +487,8 @@ Context should grow through accepted decisions, not raw transcripts. Every
 section-generation call receives the book goal, chapter contract, concept
 ownership, incoming dossier state, accepted preceding sections, current section
 job, required representation, and what the following section may assume.
+
+---
 
 ## Definition of Success
 
