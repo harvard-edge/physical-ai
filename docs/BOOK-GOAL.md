@@ -62,47 +62,47 @@ A crucial positioning principle of this book is distinguishing **Broad Physical 
 
 ---
 
-### 2. The 3 Primary Target Reader & Reviewer Personas
+### 2. The Core Target Audiences: Two Engineering Pillars + University Learners
 
-This textbook is engineered to serve, be reviewed by, and be adopted across three distinct technical communities:
+The audience for *Physical AI Systems* consists of two primary professional engineering pillars and the university/practitioner learner community entering the field:
 
 ```text
-                        THE 3 CORE TARGET AUDIENCES
- ┌────────────────────────┐ ┌────────────────────────┐ ┌────────────────────────┐
- │ PERSONA 1: EMBEDDED ML │ │ PERSONA 2: ROBOTICS/CPS│ │ PERSONA 3: EMBODIED AI │
- │ & EDGE SYSTEMS (TINYML)│ │ & CONTROL ENGINEERS    │ │ & VLM/VLA RESEARCHERS  │
- ├────────────────────────┤ ├────────────────────────┤ ├────────────────────────┤
- │ • Transitioning from   │ │ • Integrating non-     │ │ • Moving from open-    │
- │   passive edge model   │   deterministic learned│   loop benchmark accuracy│
- │   inference (TinyML) to│   models into real-    │   to closed-loop spatial  │
- │   active dual-brain    │   time safety-critical │   belief, hardware buses,│
- │   physical runtimes.   │   control loops safely.│   and data flywheels.    │
- └────────────────────────┘ └────────────────────────┘ └────────────────────────┘
+                        THE TWO CORE ENGINEERING PILLARS
+ ┌───────────────────────────────────────┐ ┌───────────────────────────────────────┐
+ │ PILLAR 1: ML SYSTEMS & EDGE AI        │ │ PILLAR 2: ROBOTICS & CYBER-PHYSICAL   │
+ │ ENGINEERS & RESEARCHERS               │ │ SYSTEMS (CPS) ENGINEERS & RESEARCHERS │
+ ├───────────────────────────────────────┤ ├───────────────────────────────────────┤
+ │ • Background: Computer architecture,  │ │ • Background: Classical robotics,     │
+ │   edge ML, embedded systems, TinyML,  │   control theory, ROS2, mechatronics, │
+ │   compilers, and hardware accelerators│   autonomous vehicles, and safety.    │
+ │ • Core Need: Extend ML systems into   │ │ • Core Need: Safely integrate non-    │
+ │   the physical world—learning state   │   deterministic foundation models     │
+ │   mutation ($W_{t+1}$), physical safety│   (VLMs/VLAs) into real-time physical │
+ │   vetoes, and $P_{99}$ latency bounds. │   loops without compromising safety.  │
+ └───────────────────────────────────────┘ └───────────────────────────────────────┘
 ```
 
-#### Persona 1: Embedded ML & Edge Systems Engineers (The TinyML & Silicon Community)
-*   **Background:** Embedded systems developers, TinyML practitioners, computer architects, and mobile edge engineers.
-*   **Core Pain Points:** Transitioning from passive edge inference (keyword spotting, anomaly detection, image classification) to active physical actuation without overwhelming SRAM/DRAM, DMA memory channels, or thermal TDP.
-*   **Why This Book Spans Their Needs:** Demonstrates that the microcontroller (MCU) is not obsolete, but rather serves as the **System 1 Spinal Reflex Arc**—the zero-allocation, deterministic guardian holding physical permission while application processors (SoCs) run heavy AI workloads.
+#### Pillar 1: ML Systems & Edge AI Engineers (The Systems & Silicon Community)
+*   **Background:** ML systems engineers, computer architects, edge AI developers, embedded software leads, and TinyML practitioners.
+*   **Their Mindset:** They understand neural models, hardware accelerators (GPUs, NPUs, MCUs), memory hierarchies (SRAM, DRAM), DMA engines, and execution runtimes.
+*   **What This Book Gives Them:** Shows them how to extend machine learning systems beyond digital outputs into the physical world—teaching physical causality, state mutation ($W_t \to W_{t+1}$), proposal-permission dual-brain decoupling, microsecond PTP clock sync, and real-time latency tail metrology ($P_{99}, \Delta t, d_{\text{stop}}$).
 
-#### Persona 2: Robotics & Cyber-Physical Systems (CPS) Engineers (The Controls & Safety Community)
-*   **Background:** Classical roboticists, mechatronics leads, autonomous vehicle engineers, ROS2 developers, and functional safety engineers.
-*   **Core Pain Points:** Deep skepticism of un-shielded, non-deterministic neural network proposals driving physical actuators without real-time safety guarantees or dynamic stopping bounds.
-*   **Why This Book Spans Their Needs:** Establishes rigorous system controls: independent MCU safety enforcers, dynamic stopping distance bounds ($d_{\text{stop}}$), Category 0/1/2 physical fallbacks, STPA hazard analysis (ISO 21448 / SOTIF), and Claim-Argument-Evidence (CAE/GSN) release cases.
+#### Pillar 2: Robotics & Cyber-Physical Systems Engineers (The Control & Safety Community)
+*   **Background:** Roboticists, control systems leads, mechatronics engineers, autonomous vehicle architects, ROS2 developers, and safety engineers (ISO 26262 / ISO 21448).
+*   **Their Mindset:** They understand physical dynamics, kinematics, state estimation, spatial coordinate frames ($SE(3)$), real-time determinism, and physical hazard management.
+*   **What This Book Gives Them:** Shows them how to safely harness non-deterministic learned foundation models (VLMs, VLAs, Diffusion Policies) by wrapping them in independent MCU safety enforcers, dynamic stopping bounds ($d_{\text{stop}}$), Category 0/1/2 fallbacks, STPA hazard analysis, and Claim-Argument-Evidence (CAE/GSN) release cases.
 
-#### Persona 3: Embodied AI & ML Systems Researchers (The VLM / VLA / Foundation Model Community)
-*   **Background:** Deep learning researchers, PyTorch developers, Vision-Language-Action (VLA) architects, and multimodal foundation model deployment leads.
-*   **Core Pain Points:** Understanding how open-ended VLM/VLA models execute on physical hardware beyond static simulation benchmarks, managing multi-step action chunking ($H$), and addressing policy endogeneity/selection bias.
-*   **Why This Book Spans Their Needs:** Delivers the complete physical wrapper: 3D spatial affordance tokenization, expiring intent proposals ($t_{\text{expire}}$), $\mathcal{C}^2$ temporal ensembling, microsecond PTP trajectory logging, and governed data flywheels.
+#### Pillar 3: University Students & Professional Learners
+*   **Background:** Advanced undergraduates, graduate students, and practicing software/ML engineers taking university courses or self-study in Physical AI Systems.
+*   **What This Book Gives Them:** A complete backward-designed curriculum backed by an executable hands-on lab spine (the **TinyAgents Kit**), enabling them to build, measure, and defend a physical AI system from scratch.
 
 ---
 
-### 3. Reviewer & Educator Buy-In Strategy
+### 3. Reviewer & Adoption Alignment
 
-By explicitly structuring the manuscript around these three personas, the textbook achieves strong peer-review validation and university adoption:
-1.  **Robotics/CPS Peer Reviewers** validate the real-time safety rigor (Chapters 4, 7, 10).
-2.  **Embedded/Silicon Peer Reviewers** validate the microarchitecture and interconnect bus budgets (Chapters 2, 3, 8).
-3.  **Embodied AI Peer Reviewers** validate the generative AI proposal interfaces and dataset governance (Chapters 5, 6, 9).
+This clear 2-pillar structure aligns directly with peer reviewers and course adoption:
+1.  **ML Systems Reviewers** evaluate the microarchitecture, DMA ingestion, and heterogeneous placement ledgers (Chapters 2, 3, 5, 6, 8).
+2.  **Robotics & CPS Reviewers** evaluate the physical state estimation, real-time MCU safety enforcers, and CAE release verdicts (Chapters 1, 4, 7, 9, 10).
 
 ---
 
