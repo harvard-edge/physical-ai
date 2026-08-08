@@ -1,21 +1,22 @@
 # Physical AI Chapter Outlines & Section Blueprints
 
-**Status:** Locked Canonical Blueprint (10 Chapters · 50 Sections · Sub-Bullet Outlines)
-**Book:** *Physical AI: Machine Learning Systems That Sense and Act*
-**Course:** *Physical AI Systems*
-**Backward-Design Source:** `BOOK-GOAL.md` · **Course Syllabus:** `COURSE.md` · **Manifesto:** `MANIFESTO.md` · **Part Blueprints:** `PART-BLUEPRINTS.md` · **Agent Workflows:** `AGENT-WORKFLOWS.md`
+**Status:** Locked Canonical Blueprint (10 Chapters · 50 Sections · Sub-Bullet Outlines)  
+**Book:** *Physical AI: Machine Learning Systems That Sense and Act*  
+**Author:** Vijay Janapa Reddi  
+**Course:** *Physical AI Systems*  
+**Backward-Design Source:** `BOOK-GOAL.md` · **Manifesto:** `MANIFESTO.md` · **Part Blueprints:** `PART-BLUEPRINTS.md` · **Agent Workflows:** `AGENT-WORKFLOWS.md`
 
 ---
 
-## The North Star
+## The North Star Question
 
-> **"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"**
+> **"How do we engineer a machine learning system that turns unverified neural proposals into trusted physical actions before kinetic energy hits the real world?"**
 
 ### The Graduate Endpoint
 Given an unfamiliar physical task, an unfamiliar model family (VLM/VLA/RL), an unfamiliar embodiment (arm, rover, humanoid), and an unfamiliar compute stack, the graduate can:
-1. Architect a multi-rate, fault-contained runtime that separates learned proposals (MPU) from physical permission (MCU).
-2. Quantify loop latencies, information age, and failure distributions.
-3. Construct a Claim-Argument-Evidence (CAE) case and issue a defensible **Deploy / Condition / Refuse** release verdict supported by empirical evidence.
+1. **Architect** a multi-rate, fault-contained runtime that separates learned proposals (System 2 MPU Cortex) from real-time physical permission (System 1 MCU Reflex).
+2. **Quantify** sense-to-actuation tail latencies ($P_{99}$), mutual information freshness ($\Delta t$), and dynamic stopping bounds ($d_{\text{stop}}$) across heterogeneous hardware.
+3. **Construct** a Claim-Argument-Evidence (CAE/GSN) safety case and issue a defensible **Deploy / Condition / Refuse** release verdict backed by empirical HIL/SIM test evidence.
 
 ---
 
@@ -45,13 +46,13 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 
 #### Section Blueprints
 - **1.1 Grounding in the Physical World: Matter, Energy, and State Mutation**
-  - *1.1.1 The Physical Reality vs. Digital Virtualism:* Software bits can be rolled back with try/catch; physical actions ($W_t \rightarrow W_{t+1}$) governed by mass, momentum, and energy are permanent and irreversible.
+  - *1.1.1 The Physical Reality vs. Digital Virtualism:* Software bits can be rolled back with `try/catch` or `ctrl+z`; physical actions ($W_t \rightarrow W_{t+1}$) governed by mass, momentum, and energy are permanent and irreversible.
   - *1.1.2 State Mutation & Causal Consequences:* Actions mutate physical world state ($W_t \rightarrow W_{t+1}$), altering all future observations ($O_{t+1}$). Kinetic energy compounds over time.
   - *1.1.3 Physical Constraints as Boundary Conditions:* Friction ($\mu$), gravity ($g$), thermal limits, and light speed set non-negotiable hard bounds on every algorithm.
-- **1.2 What Physical AI Is (and What It Is Not)**
+- **1.2 What Physical AI Is (and What Pre-Physical AI Is)**
   - *1.2.1 Core Definition:* Learned components generate unverified proposals that act back into the physical world under delegated physical authority.
-  - *1.2.2 What It IS NOT:* Not an ML model on a robot; not open-loop text/image generation; not offline benchmark accuracy on static datasets.
-  - *1.2.3 Delegated Authority:* Advisory AI (human acts) vs. Physical AI (system holds physical authority to energize actuators).
+  - *1.2.2 What Pre-Physical AI IS:* Human-in-the-loop advisory software (radiology assistant, coding co-pilot) where human holds physical authority to act.
+  - *1.2.3 Delegated Physical Authority:* The fundamental transition when a machine holds physical permission to energize motors and move matter autonomously.
 - **1.3 The Fundamental Paradigm Shift: Digital ML vs. Physical AI**
   - *1.3.1 Substrate Shift:* Offline accuracy ($\text{F1, BLEU}$) vs. Sense-to-actuation tail latencies ($P_{99}$), freshness ($\Delta t$), and stopping bounds ($d_{\text{stop}}$).
   - *1.3.2 Cost Shift:* Extra compute cost vs. Hardware destruction and physical collision.
@@ -118,8 +119,6 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 
 **Objective:** Given a physical machine and environment, the reader can balance sensory acquisition, pre-inference DMA ingestion overheads, edge NPU memory bandwidth, and spatial tokenization to formalize an observation contract.
 
----
-
 #### Section Blueprints
 - **3.1 Physical Sensor Modalities, Transduction & Failure Modes**
   - *3.1.1 Physical Transduction Physics:* Converting physical phenomena into digital signals across vision (RGB-D), kinematics (IMUs, encoders), range (LiDAR), and contact (tactile GelSight arrays).
@@ -156,8 +155,6 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 **Opening Question:** What must the system believe right now when every observation describes a different place and time?
 
 **Objective:** Given timestamped observations, the reader can transform discrete sensor readings into a continuous, time-indexed spatial belief, synchronize multi-sensor clocks, track proprioception/interoception health, and manage uncertainty horizons.
-
----
 
 #### Section Blueprints
 - **4.1 Sensor Samples vs. Maintained State**
@@ -333,8 +330,6 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 
 **Objective:** Given the 7 canonical stages and hardware node specifications (MCU, MPU, NPU, Cloud), the reader can map workloads, budget memory DMA and interconnect buses, enforce failure domain isolation, and construct a whole-system resource ledger.
 
----
-
 #### Section Blueprints
 - **8.1 Multi-Rate Sensing and Actuation Loop Dataflow Mapping**
   - *8.1.1 End-to-End Multi-Rate Mapping:* Mapping dataflow across all 7 stages from sensor ingress to motor drive across heterogeneous processors.
@@ -370,8 +365,6 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 **Opening Question:** Who has the right to approve, override, or change what the machine does, and how is physical experience converted to governed data?
 
 **Objective:** Given physical operational records, the reader can structure hardware-synchronized PTP log schemas, manage policy endogeneity/selection bias, engineer bumpless human override handoffs, and manage OTA rollback pipelines.
-
----
 
 #### Section Blueprints
 - **9.1 Interaction Trajectories and Hardware-Synchronized Log Schemas**
@@ -409,8 +402,6 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 **Opening Question:** What evidence is sufficient to accept responsibility for releasing this physical AI system into the physical world?
 
 **Objective:** Given the complete physical AI system and cumulative design dossier, the reader can specify target operational envelopes (ODD), execute multi-rung SIM/HIL qualification ladders, inject cross-layer hardware/software faults, build Claim-Argument-Evidence (CAE/GSN) safety cases, and render an evidence-backed release verdict.
-
----
 
 #### Section Blueprints
 - **10.1 Target Deployment Envelope (ODD) Specifications**
