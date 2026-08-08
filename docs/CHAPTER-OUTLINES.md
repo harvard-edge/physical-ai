@@ -133,6 +133,7 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *3.3.1 Spatial Tokenization for Physical Action:* Encoding visual streams into spatial affordance tokens (where can the robot grasp, step, or navigate?) rather than passive classification labels.
   - *3.3.2 NPU Memory Complexity Scaling:* Quadratic ViT self-attention memory footprint ($O(N^2)$) vs. CNN downsampling pyramids ($O(N)$) under tight edge SRAM constraints.
   - *3.3.3 Token Resolution vs. Action Latency:* Trading off spatial token resolution against downstream VLA memory footprint and ingestion cadence.
+  - *3.3.4 Action Representation Taxonomy:* Contrasting discrete action bin tokenization (RT-1/RT-2 256-bin spatial tokens) vs continuous trajectory decoders (Diffusion Policy, ACT, Flow Matching) for memory footprint vs execution responsiveness.
 - **3.4 Pareto Frontiers in Sensory-Motor Perception**
   - *3.4.1 Multi-Objective Perception Frontiers:* Formalizing trade-offs: Observation Quality ($Q$) vs. Latency ($L$), Energy ($E$), Memory ($M$), and Bus Bandwidth ($B$).
   - *3.4.2 Operating Point Selection:* Selecting perception cadences (e.g. 720p @ 60 Hz vs. 4K @ 10 Hz) tied directly to dynamic world deadlines ($\tau_{\text{world}}$).
@@ -216,18 +217,20 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *5.2.1 The VLM Execution Profile:* Characterizing VLM inference latency ($100\text{--}2000\text{ ms}$), token generation overhead, and edge accelerator power draw (50–300W).
   - *5.2.2 Untrusted Proposal Service Model:* Why VLMs must be treated as asynchronous proposal generators rather than direct motor controllers.
   - *5.2.3 Context Window Management:* Managing multimodal context windows to prevent token growth from bloating inference latency.
+  - *5.2.4 Autoregressive Memory Bandwidth Saturation:* Modeling KV-cache DRAM memory footprint and LPDDR5 memory bus saturation during multi-token VLM decoding on UMA edge SoCs.
 - **5.3 Task Goal Binding to Physical Embodiment Capabilities**
   - *5.3.1 Morphological Kinematic Validation:* Validating VLM proposals against robot morphology, reachability limits, and arm Inverse Kinematics (IK) feasibility.
   - *5.3.2 Payload & Static Equilibrium Checks:* Checking whether the embodiment can physically lift or manipulate the targeted object mass.
   - *5.3.3 Binding to Primitive Motor Skills:* Resolving high-level semantic intent into sequences of named low-level skill primitives (`Grasp`, `MoveTo`, `Place`).
 - **5.4 Asynchronous Reasoning vs. Real-Time Execution**
   - *5.4.1 Multi-Rate Decoupling Architecture:* Running deliberative VLM reasoning ($\le 1-5\text{ Hz}$) on MPU/Cloud asynchronously decoupled from fast motor execution ($100-1000\text{ Hz}$).
-  - *5.4.2 Non-Blocking Proposal Queues:* Using lock-free IPC message queues so lagging VLM inference never stalls real-time control threads.
+  - *5.4.2 Non-Blocking Proposal Queues & Speculative Intent Buffers:* Using lock-free IPC queues and speculative intent buffers to insulate downstream VLA planning from VLM tail latency jitter ($100-2000\text{ ms}$).
   - *5.4.3 Handling Mid-Task Scene Drift:* Updating or invalidating intent proposals when the physical scene changes during VLM token generation.
 - **5.5 Expiring Intent Proposal Schemas and Abstention**
   - *5.5.1 Time-Bounded Intent Leases:* Encapsulating proposals into expiring leases specifying target 3D bounding boxes, maximum velocity limits, and expiration timestamps ($t_{\text{expire}}$).
   - *5.5.2 Intent Validity Horizon Rules:* Automatically invalidating intent proposals if execution has not commenced before lease expiration.
   - *5.5.3 Explicit Model Abstention & Fallbacks:* Structuring confidence thresholds ($p_{\text{confidence}} < \gamma$) where the model explicitly abstains and requests clarification or triggers a safe hold (`Policy Interface & Intent Schema`).
+  - *5.5.4 Autoregressive Tail Latency Bounding & Token Preemption:* Decoupling Time-to-First-Token (TTFT) and Time-Per-Output-Token (TPOT) tail metrics; enforcing hard execution preemption when generation latency approaches lease expiration ($t_{\text{expire}}$).
 
 #### Chapter 5 Systems Synthesis & Decision Handoff
 1. **Executive Trade-off Table:** VLM reasoning depth vs. proposal cadence, spatial grounding precision vs. vocabulary flexibility, intent lease duration vs. replanning rate.
@@ -248,6 +251,7 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *6.1.1 VLA Model Architecture:* Mapping visual tokens and intent leases directly into multi-dimensional spatial-temporal trajectory rollouts (Diffusion Policy, ACT).
   - *6.1.2 Mid-Frequency Execution Cadence:* Operating VLA trajectory generators at mid-frequencies ($10-50\text{ Hz}$) on neural processing units (NPUs).
   - *6.1.3 Trajectory Representation:* Representing trajectories as continuous spatial curves rather than discrete step-by-step motor commands.
+  - *6.1.4 NPU SRAM vs DRAM Execution for Action Diffusion Policies:* Profiling weight-loading bandwidth vs SRAM double-buffering during $H$-step diffusion/ACT trajectory unrolling.
 - **6.2 Joint Space vs. Task Space vs. Skill Primitives**
   - *6.2.1 Task-Space Cartesian Control:* Outputting end-effector target vectors $(x, y, z, \text{roll}, \text{pitch}, \text{yaw}, F_{\text{grasp}})$; trade-offs in cross-robot transferability vs. singularity risk.
   - *6.2.2 Joint-Space Angle Control:* Outputting direct motor joint angles $(q_1, q_2, \dots, q_n)$; trade-offs in embodiment specificity vs. dynamic stability.
@@ -256,10 +260,12 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *6.3.1 Multi-Step Action Chunking ($H$-step horizons):* Predicting a sequence of $H$ future action steps per inference pass to bridge neural inference latency.
   - *6.3.2 Chunk Horizon Length ($H$) Trade-offs:* Short chunks (high responsiveness, high inference load) vs. Long chunks (open-loop execution drift risk).
   - *6.3.3 Overlapping Receding Horizon Buffers:* Maintaining receding action buffers where new chunks overlap with executing trajectories.
+  - *6.3.4 Cumulative Information Age ($\Delta t_{\text{total}}$) Formulation:* Formalizing cumulative age decay $\Delta t_{\text{total}} = \Delta t_{\text{sensing}} + \Delta t_{\text{perception}} + \Delta t_{\text{state}} + P_{99}(t_{\text{inference}})$ and quantifying its expansion of initial trajectory safety margins.
 - **6.4 Asynchronous Replanning & State Re-Anchoring Handshake**
   - *6.4.1 Temporal Ensembling & Chunk Blending:* Blending overlapping action chunks ($\alpha(t) a_k(t) + (1-\alpha(t)) a_{k-1}(t)$) to eliminate acceleration/jerk discontinuities between inference passes.
   - *6.4.2 Acceleration & Jerk Continuity ($\mathcal{C}^2$ Smoothing):* Enforcing smooth position, velocity, and acceleration profiles to prevent motor gearbox mechanical shock.
   - *6.4.3 Asynchronous State Re-Anchoring Handshake:* When an MCU safety veto occurs in Ch 7, the MPU policy buffer instantly clears stale trajectory continuation steps and re-anchors its planning horizon to the MCU's active fallback position.
+  - *6.4.4 Re-Anchoring State Machine & Buffer Flush:* Formalizing the state machine for clearing stale MPU action chunk buffers, re-synchronizing baseline PTP timestamps, and resetting VLA policy initial conditions to MCU active fallback states upon safety veto.
 - **6.5 Policy Cards and Trajectory Contract Schemas**
   - *6.5.1 Standardized Policy Cards:* Documenting policy operational bounds, trained environmental domains, maximum action derivatives, and verified workspace envelopes.
   - *6.5.2 Trajectory Contract Schemas:* Structuring trajectory payloads with explicit derivative limits (velocity $\|\dot{x}\| \le v_{\text{limit}}$, acceleration $\|\ddot{x}\| \le a_{\text{limit}}$, jerk $\|\dddot{x}\| \le j_{\text{limit}}$).
@@ -282,18 +288,19 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
 #### Section Blueprints
 - **7.1 The Proposal-Permission Split (SoC vs. MCU Boundary)**
   - *7.1.1 Decoupling Authority from Intelligence:* Establishing the fundamental safety rule: neural models (MPU/SoC) propose trajectories; independent real-time controllers (MCU) permit or veto execution.
-  - *7.1.2 Hardware Domain Isolation:* Running safety enforcers on dedicated microcontroller hardware (Cortex-M / RISC-V RTOS) isolated from Linux application processor kernel panics and GPU throttling.
+  - *7.1.2 Hardware Memory & Bus Decoupling Invariants:* Running safety enforcers on dedicated microcontroller hardware (Cortex-M / RISC-V RTOS) isolated from Linux application processor kernel panics, GPU throttling, and shared memory bus contention via hardware MPUs/PMPs and non-blocking bus queues (isolated SPI/RPMSG).
   - *7.1.3 Heartbeat & Watchdog Protocols:* Hardened IPC heartbeat monitoring ($\tau_{\text{watchdog}} \in [10\text{ms}, 50\text{ms}]$) between host SoC and MCU enforcer.
+  - *7.1.4 Zero-Copy Shared Memory IPC Substrate:* Structuring dual-port SRAM, RPMSG buffers, and PCIe Endpoint doorbell queues between host Linux MPU and RTOS MCU to transmit trajectory action chunks without CPU cache invalidation or memory copy jitter.
 - **7.2 Dynamic Stopping Bounds ($d_{\text{stop}}$) and Skill Limits**
-  - *7.2.1 Dynamic Stopping Distance Physics:* Continuous calculation of stopping bounds: $d_{\text{stop}} = v \cdot t_{\text{delay}} + \frac{v^2}{2 a_{\text{decel\_max}}}$.
+  - *7.2.1 Dynamic Stopping Distance Physics:* Continuous calculation of stopping bounds incorporating dynamic latency jitter: $d_{\text{stop}}(t) = v \cdot t_{\text{delay}}(t) + \frac{v^2}{2 a_{\text{decel\_max}}}$, where $t_{\text{delay}}(t) = t_{\text{transduce}} + \Delta t_{\text{age}}(t) + t_{\text{comm}} + t_{\text{enforce}} + t_{\text{actuator\_response}}$.
   - *7.2.2 Workspace Geofencing & Velocity Envelopes:* Dynamic workspace boundary enforcement and speed derating based on distance to physical obstacles.
   - *7.2.3 Jerk-Limited Deceleration Profiles:* Calculating maximum safe deceleration profiles without causing structural tipping or mechanical damage.
 - **7.3 Independent Real-Time Safety Enforcers on MCU**
-  - *7.3.1 Bare-Metal / RTOS Execution Architecture:* Building zero-allocation, deterministic safety check loops running at $1000\text{ Hz}$ on MCU hardware.
+  - *7.3.1 Bare-Metal / RTOS vs Time-Triggered Architecture (TTA):* Building zero-allocation, deterministic safety check loops running at $1000\text{ Hz}$ on MCU hardware; evaluating Time-Triggered static cyclic executives vs. preemptive RTOS for ASIL-D / SIL 3 safety channels.
   - *7.3.2 Safety Filter Invariants:* Checking trajectory proposals against hard physical constraints ($\|v\| \le v_{\text{max}}$, $\|a\| \le a_{\text{max}}$, joint torque limits, workspace bounds).
   - *7.3.3 Real-Time Veto Logic:* Instantly overriding or clipping candidate action vectors that violate safety invariants and triggering the asynchronous re-anchoring handshake back to Ch 6.
 - **7.4 Physical Fallbacks: Stop, Position Hold, and Retreat**
-  - *7.4.1 Deterministic Fallback State Machines:* Defining safe physical fallback modes upon proposal veto or heartbeat loss: Category 0 Stop (power cut), Category 1 Stop (controlled dynamic braking), Category 2 Stop (position hold).
+  - *7.4.1 Standardized Fallback Escalation State Machines (IEC 60204-1 / ISO 13850):* Defining safe physical fallback modes upon proposal veto or heartbeat loss: Category 0 Stop (uncontrolled power cut), Category 1 Stop (controlled dynamic braking), Category 2 Stop (position hold); enforcing deterministic thermal escalation triggers (Cat 2 position hold $\xrightarrow{T > T_{\text{limit}}}$ Cat 1 dynamic brake $\xrightarrow{\text{brake fail}}$ Cat 0 power cut).
   - *7.4.2 Active Position Hold & Impedance Control:* Holding joint positions under external disturbance forces without exceeding motor thermal limits.
   - *7.4.3 Safe Retreat Trajectories:* Executing deterministic backward retreat paths away from physical contact zones.
 - **7.5 Skill Envelopes and Safety Veto Logic**
@@ -339,10 +346,10 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *8.2.3 Neural Accelerator (NPU) & Cloud Offloading:* Matrix acceleration for vision encoders (Stage 2) and off-board VLM reasoning (Stage 4).
 - **8.3 Data Movement, Hardware DMA, and Shared Bus Arbitration**
   - *8.3.1 Bus Contention Modeling:* Analyzing AXI/PCIe memory bus saturation when high-resolution cameras stream frames alongside NPU tensor fetches.
-  - *8.3.2 Hardware DMA Channel Allocation:* Allocating dedicated DMA channels and SRAM buffers for zero-copy sensory ingestion.
+  - *8.3.2 Hardware DMA Channel & IPC Shared SRAM Allocation:* Allocating dedicated DMA channels and RPMSG shared SRAM buffers for zero-copy sensory ingestion and trajectory transfers.
   - *8.3.3 Interconnect QoS Priority Schemes:* Enforcing Quality-of-Service (QoS) priorities to ensure sensory data never starves motor control commands.
 - **8.4 Failure Isolation, Trust Boundaries, and Safe Fallback Hardware**
-  - *8.4.1 Hardware Failure Domain Isolation:* Enforcing physical and memory isolation (ARM MPU / RISC-V PMP, dual-core lockstep MCUs) between untrusted AI software and safety controllers.
+  - *8.4.1 Hardware Failure Domain Isolation:* Enforcing physical, memory, and bus isolation (ARM MPU / RISC-V PMP, dual-core lockstep MCUs) between untrusted AI software and safety controllers.
   - *8.4.2 Hardware Watchdogs & Heartbeat Relays:* Independent hardware watchdogs that automatically trigger dynamic braking when application processors hang.
   - *8.4.3 Thermal & Power Budget Distribution:* Allocating thermal TDP (Watts) and electrical current draw across heterogeneous compute nodes under battery constraints.
 - **8.5 Hardware Placement Maps and Shared Resource Budget Ledgers**
@@ -373,8 +380,9 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *9.1.3 Trajectory Episode Schemas:* Structuring full interaction episodes ($O_0, S_0, P_0, A_0, W_1, O_1, \dots, \text{Outcome}$).
 - **9.2 Policy Endogeneity, Covariate Shift, and Truncated Episode Tagging**
   - *9.2.1 Policy Endogeneity (Feedback Loops in Data):* How active policy actions dictate future state exposure, creating endogenous feedback loops in logged datasets.
-  - *9.2.2 Intervention Selection Bias & Truncated Episode Tagging:* Why naive training on human intervention logs suffers from severe covariate shift. Cryptographically tagging human/MCU intervention logs as "overridden/truncated episodes" so offline imitation learning models do not fit weights to truncated non-nominal transitions.
-  - *9.2.3 Counterfactual Trajectory Modeling:* Techniques for filtering and weighting intervention logs to prevent policy collapse during re-training.
+  - *9.2.2 Intervention Selection Bias & Truncated Episode Tagging:* Why naive training on human intervention logs suffers from severe covariate shift. Cryptographically tagging human/MCU intervention logs as "overridden/truncated episodes" so offline behavioral cloning (BC) models do not fit weights to truncated non-nominal transitions.
+  - *9.2.3 Mid-Chunk Action Truncation Slicing Protocol:* Formalizing sub-sequence slicing when an MCU safety veto or human override occurs mid-chunk ($H$-step), specifying how partially executed chunks are truncated in log headers so offline datasets stay pristine.
+  - *9.2.4 Counterfactual Trajectory Modeling:* Techniques for filtering and weighting intervention logs to prevent policy collapse during re-training.
 - **9.3 Trajectory Curation and Hardware Dataset Provenance**
   - *9.3.1 Automated Data Curation Pipelines:* Filtering redundant nominal operations; extracting high-value informative snippets (uncertainty spikes, tracking errors, human takeovers).
   - *9.3.2 Cryptographic Hardware Provenance:* Embedding immutable metadata hashes (robot serial, sensor calibration matrices, ECU firmware IDs, Git commit) into log headers.
@@ -422,14 +430,14 @@ $$\text{(1) Sensing} \longrightarrow \text{(2) Perception} \longrightarrow \text
   - *10.3.2 Unsafe Control Action (UCA) Identification:* Cataloging potential UCAs (e.g. command issued too late, stopped too early, un-shielded trajectory).
   - *10.3.3 100% Traceability Matrices:* Building bidirectional matrices linking every identified hazard directly to automated test evidence records.
 - **10.4 Physical Fault Injection and Failure Coverage Analysis**
-  - *10.4.1 Cross-Layer Fault Injection Test Suites:*
-    - *Physical/Hardware Layer:* Voltage sags, CAN packet corruption, sensor unplugging, frame dropping, memory bit flips.
+  - *10.4.1 Cross-Layer Fault Injection Test Suites & PTP Drift:*
+    - *Physical/Hardware Layer:* Voltage sags, power-rail brownout resets (BOR) under peak NPU/motor loads, PTP grandmaster clock drift/jitter injection, CAN packet corruption, sensor unplugging, frame dropping, memory bit flips.
     - *Model/Software Layer:* Adversarial noise injection, latency spikes, corrupted intent proposals, frozen MPU threads.
   - *10.4.2 Hardware Disturbance Nodes & Injection Rigs:* Building hardware test rigs that physically inject fault states into sensor buses and power rails.
   - *10.4.3 Failure Coverage & Residual Risk Metrics:* Quantifying empirical failure coverage percentages and residual risk bounds.
 - **10.5 Claim-Argument-Evidence Safety Cases and Release Verdicts**
   - *10.5.1 Goal Structuring Notation (GSN) / CAE Safety Cases:* Assembling formal safety case trees linking top-level claims (*"System X is safe for deployment within ODD Y"*) to sub-arguments backed by empirical HIL/SIM test evidence.
-  - *10.5.2 Rendering the Defensible Release Verdict:* Issuing the explicit, accountable deployment verdict: **Deploy**, **Condition** (deploy with restricted ODD bounds), or **Refuse** (reject release due to evidence gaps).
+  - *10.5.2 Rendering Defensible Release Verdicts under Quantitative Targets:* Mapping GSN/CAE release verdicts to quantitative target thresholds (e.g. Probability of Dangerous Failure per Hour $PFH \le 10^{-7}$, $MTTF_d$, SIL 3 / AgPL d/e targets) to render explicit deployment verdicts: **Deploy**, **Condition** (deploy with restricted ODD bounds), or **Refuse** (reject release due to evidence gaps).
   - *10.5.3 Completing the Cumulative Design Dossier:* Freezing the final `Integrated Deployment Case` artifact.
 
 #### Chapter 10 Systems Synthesis & Decision Handoff
