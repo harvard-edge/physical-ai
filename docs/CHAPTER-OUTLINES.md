@@ -1,452 +1,1230 @@
-# Chapter Outlines: The Canonical Drafting Scaffold
+# Physical AI Chapter Outlines
 
-**Status:** the single source of truth for structure and per-chapter content.
-Reconciles and supersedes the chapter list in OUTLINE.md. Round-5 north-star
-decisions applied: graduate promise made explicit, labs end in an engineering
-decision rather than placement alone, the growing runtime restored as the course
-artifact, measurement embedded in every lab rather than spun out as a separate
-product, audience locked to the serious learner and practicing engineer, and the
-Reachy/UNO Q boundary made honest.
-13 chapters.
+**Status:** canonical drafting scaffold
+**Book:** *Physical AI: Machine Learning Systems That Sense and Act*
+**Backward-design source:** `BOOK-GOAL.md`
 
-## How to Use This
+## How to Use This Scaffold
 
-Each chapter has: **Crux** (the one load-bearing claim), **Objective** (what a
-reader can do after), **Sections** (each with the beats to write), **Running scene**
-(the Maya-and-Reachy moment that grounds it), **Figure**, and **Lab**. Every lab
-climbs the mandatory rung: *visible signal → defensible number → engineering
-decision*. Under the feedback constraint that decision is usually a placement.
-Under the delegation constraint it may be a ship gate, authority boundary,
-retention rule, consent decision, or fallback.
+This document states what every chapter must teach before prose or lab design
+begins. A chapter steward may improve a heading, example, or explanatory route,
+but may not silently change the objective, concept ownership, engineering
+decision, dossier artifact, or dependency graph.
 
-**Bullet voice (house style).** When we list, we list like the fundamental below: a
-**bold declarative claim**, then a plain, concrete gloss with a specific physical
-image, never an abstract restatement. "Action is irreversible. You cannot
-un-knock-over the cup or un-startle the child." Claim, then a thing you can see.
+The section titles are working titles. They should become natural manuscript
+headings rather than a repeated template. The instructional sequence is binding
+because later chapters assume it.
 
-## The North Star and Graduate Promise
+Every numbered chapter contains:
 
-This book teaches the missing engineering layer between a learned policy and its
-deployment in the world. It does not claim the loop, placement, runtime assurance,
-or the system properties as inventions. It owns their integration into a
-measurable discipline for learned systems that act back into the world and receive
-authority in human spaces.
+1. one chapter-opening question;
+2. an observable objective;
+3. an entering learner and dossier state;
+4. one misconception to overturn;
+5. one load-bearing claim;
+6. concepts taught to the depth required by the decision;
+7. a quantitative or representational tool;
+8. a chapter-specific engineering decision;
+9. one update to the cumulative design dossier;
+10. a transfer task using an unfamiliar case;
+11. an end-of-chapter lab contract that realizes already-complete teaching.
 
-> A graduate can take a physical-AI problem they have never seen, architect a
-> continuous system for it, ground it in real time and space, measure the running
-> loop, place every capability against a fixed budget and defend each choice,
-> prove it reaches a safe state and keeps private data on the device, set up the
-> human teaching-and-approval loop it lives inside, and diagnose it when the world
-> makes it misbehave.
+These are editorial controls, not a visible chapter template. A finished
+chapter normally exposes a natural opening, one compact learning-objective
+callout, chapter-specific sections, a decision callout that records the dossier
+update, a transfer check woven into the argument, and the lab as the final
+element. Opening question, entering state, misconception, crux, artifact delta,
+and chapter dependency remain in the authoring packet. Their labels must not
+leak into the manuscript. A question callout is optional rather than mandatory.
 
-Seven verbs carry that promise: **frame, design, ground, measure and place,
-assure, supervise, diagnose**. Each chapter must build one of those capabilities,
-and the capstone must require evidence for all seven.
+## The Dependency
 
-Two artifacts divide the work cleanly. **Reachy makes the consequence felt.**
-The hero supplies the real scene, real stakes, and honest system limits. **The
-UNO Q makes the mechanism reproducible.** Its MPU/MCU boundary lets a learner
-measure and defend the architecture on one board. The measurement method lives
-inside the labs and the growing runtime. Each lab emits an evidence record with
-the operational definition, setup, uncertainty, result, and decision, without
-creating a third product that must be maintained and validated independently.
+> **Frame → specify → measure → architect → observe → estimate → propose →
+> enforce → place → qualify → authorize → change → deploy**
 
-The primary reader is a serious learner or practicing engineer. Makers can ride
-along through the visible demonstrations, but rigor is not removed to make the
-material look easier. Maya is the human context that keeps the engineering honest,
-not a learner tier or a lab dependency.
+| **Chapter** | **Capability Added** | **Dossier Artifact** |
+|---:|---|---|
+| 1 | Frame | Loop charter |
+| 2 | Specify | Requirements and assumptions ledger |
+| 3 | Measure | Measurement plan and evidence record |
+| 4 | Architect | Continuous runtime skeleton |
+| 5 | Observe | Observation contract |
+| 6 | Estimate | State, frames, and timing model |
+| 7 | Propose | Policy interface and intent contract |
+| 8 | Enforce | Action limits and independent checking design |
+| 9 | Place | Placement map and resource ledger |
+| 10 | Qualify | Assurance plan and promotion record |
+| 11 | Authorize | Human-authority map |
+| 12 | Change | Governed data and update record |
+| 13 | Deploy | Integrated deployment case |
 
-## The Fundamental: What Closing the Loop Costs
+The unnumbered final design review integrates these artifacts. It introduces no
+new concept.
 
-Closing the loop with the world exacts a price that decoupled AI never pays. Stated
-as it feels:
+## Part I — From ML Systems to Physical AI
 
-1. **Information is perishable.** The world moves while you compute. Its shelf life is set by the world, not by you.
-2. **Knowledge is always partial and always stale.** You act on an estimate of a state that has already changed.
-3. **Action is irreversible.** You cannot un-knock-over the cup or un-startle the child. The world keeps the consequence.
+### Chapter 1 — From ML Systems to Physical AI
 
-And the one that makes closed-loop *closed-loop*, the cost open-loop AI never faces:
+**Opening question.** When does a machine learning system become a physical-AI
+system?
 
-4. **Your action changes what you will see next.** The robot's own move becomes its next input, so a small error compounds and it drifts into states it was never ready for.
+**Objective.** Given an unfamiliar system description, the reader can tell when
+a learned system is doing more than producing information, trace how its output
+may become a physical action, and decide what belongs inside the system being
+engineered.
 
-Those four are the *experiential* framing, how it feels. Chapter 2 puts the rigor
-underneath them as a **claims hierarchy** (theorem / heuristic / metaphor), because a
-sharp reviewer will collapse #1 and #2 into one freshness claim and note that #3 is
-really path-dependence, not literal irreversibility. The fourth, **endogeneity**, is
-the uniquely-closed-loop cost. We black-box *how* to fix a policy, but we measure its
-*effects* here (distribution shift, recovery frequency, departure from the validated
-envelope). Bringing it back was the strongest external note: the book was hiding the
-one property that makes closed-loop closed-loop.
+**Entering state.** The reader understands ordinary inference pipelines,
+deployed software services, sensors, and actuators. No robotics or control theory
+is assumed.
 
-**Energy is a first-class property, not a fourth price.** Joules bound how fast you
-can compute against the freshness wall, so energy rides every measurement and every
-placement as part of the constraint vector. But open-loop TinyML is energy-bound too,
-so energy is a *physical-AI property*, prominent but not a *closed-loop* price.
+**Misconception.** Physical AI means placing a capable model on a robot or other
+physical device.
 
-**Two axes, not one spine.** The book runs on two constraints. The **feedback
-constraint** (freshness, estimation, delay, stability, placement, recovery) carries
-Parts I-IV. The **delegation constraint** (authority, safety, privacy, consent,
-inspectability) carries Part V. Governance does not descend from "the loop prices
-time"; it descends from handing an autonomous system authority in someone's home.
-Naming both honestly beats forcing one to explain the other.
+**Crux.** Begin with a learned-component premise. The component must materially
+influence the action path. The system then enters this book's scope when an
+allowed action changes task-relevant physical state and can alter a later
+observation or choice, and the system exercises delegated physical authority
+over that action.
 
-## Design Commitments (What Is Baked In)
+#### Required Sections
 
-1. **Defined by constraint, not capability** (the loop and its limit, not "physical AI" the noun).
-2. **The claims hierarchy is the rigor test** (every load-bearing statement is a theorem, a heuristic, or a metaphor, labeled).
-3. **Measurement is the discipline, and it must be metrology** (operational definitions, calibration, uncertainty, negative controls, reproducibility across ≥3 systems, and evidence the numbers predict outcomes, not a branded checklist).
-4. **Cite the lineage honestly** (Simplex/RTA, SOTIF, the "-ilities", Age of Information, control theory); claim only the integration and the loop-measurement axis.
-5. **Every lab makes one invisible property physically visible, measures it, and ends in a defensible engineering decision.**
-6. **Recruit, then discipline** (the wow before the measurement).
-7. **Kit manifests, hero realizes, Maya grounds** (Reachy is the active reference build and honest "no-enforcer" case study; the UNO Q becomes the reproducible release path, with every outcome assessable on the bare board; Maya is context, never a lab dependency).
-8. **Diagnosis is a taught method** (hypothesis → bisect → confirm, introduced in Ch3, reinforced every "break it").
-9. **Scope discipline** (models are black-box components; we measure the loop, including endogeneity's effects, we do not teach model internals).
-10. **One runtime grows across the book** (Ch4 creates the measured skeleton; Ch5-Ch12 add services, placements, gates, and human authority to that same continuous system).
-11. **Measurement is embedded, not separately branded** (Ch3 teaches the method, the runtime carries the reusable instrumentation, and Appendix A records the common evidence format).
+1. **The Endpoint Has Moved**
+   Begin with the familiar ML systems pipeline. Show why prediction is no longer
+   the endpoint after an output produces physical action.
 
-## The Structure (13 Chapters)
+2. **When an Output Becomes an Action**
+   Establish the learned-component premise, consequential-physical-feedback
+   test, and delegated-physical-authority test. Distinguish proposal from
+   allowed action without relying on the presence of a robot, sensor, or
+   actuator.
 
-```
-index.qmd     Manifesto (states both axes)
-Quickstart    Close Your First Loop            (unnumbered front matter, the recruit-hook)
+3. **Action Changes What Comes Next**
+   Introduce endogeneity. The policy influences the states it visits and the
+   observations from which it will later decide.
 
-FEEDBACK CONSTRAINT ─────────────────────────
-Part I    The Discipline
-  Ch1   Closed-Loop AI
-  Ch2   The Price of the Loop
-Part II   Measuring and Running the Loop
-  Ch3   Measuring the Loop                     (moved: before the runtime)
-  Ch4   The Runtime
-Part III  Closing the Loop
-  Ch5   Perception in the Loop
-  Ch6   The World Model                        (the estimator)
-  Ch7   The Reasoner                           (Meaning + Cognition, merged)
-  Ch8   Action and Control
-Part IV   The Whole System
-  Ch9   Placement: Filling the Map             (crown; energy first-class)
-  Ch10  Confidence Without the World
+4. **The Model Inside the System**
+   Place the model among sensing, state, runtime, enforcement, evidence, human
+   authority, and the world.
 
-DELEGATION CONSTRAINT ───────────────────────
-Part V    Into a Home
-  Ch11  Safety, Privacy, and the Ship Gate
-  Ch12  The Human Loop                         (absorbs forgetting)
+5. **Feedback Is Not Authority**
+   Introduce the two constraints that organize the book. Feedback governs how
+   the system remains coupled to a changing world. Delegation governs the
+   authority granted to it.
 
-Part VI   Capstone
-  Ch13  Defend the Whole System
+6. **What This Book Borrows**
+   Position the book honestly relative to ML systems, robotics, control,
+   embedded systems, cyber-physical systems, safety engineering, and HCI.
 
-App A  Normative Measurement Protocol · App B  UNO Q Kit · App C  Hero and Home
-(Memory dissolved: state → Ch6/Ch4, retention/egress → Ch11, forgetting → Ch12.)
-```
+7. **Draw the Boundary**
+   Preview the requirements, evidence, interfaces, limits, authority, and release
+   decision the remaining chapters will construct.
 
----
+#### Required Teaching Artifacts
 
-## index.qmd — Manifesto
+- **Primary figure:** open-loop digital output beside a two-world-state physical
+  loop, \(W_t\) to \(W_{t+1}\).
+- **Table:** neighboring disciplines, what each contributes, and what this book
+  assumes rather than reteaches.
+- **Representation:** causal loop and authority boundary.
+- **Algorithm:** none. Classification and boundary judgment are the work.
 
-**Crux:** the loop just closed, and everything changed.
-Beats: the dichotomy (open-loop perceives, closed-loop acts on the world it just
-sensed and lives with what it changed); the turn (the moment it acts, the world
-charges a price); the lineage (TinyML with the loop closed); the two axes named
-plainly (the feedback constraint and the delegation constraint); the humble claim
-("physical AI" is the crowded capability, this is the *engineering* of it). Short.
-Plants the flag, proves nothing.
+**Engineering decision.** Decide whether the problem belongs inside the book's
+scope and choose the causal and authority boundary that must be engineered.
 
-## Quickstart — Close Your First Loop (front matter, unnumbered)
+**Dossier artifact.** A loop charter containing the task, world states, learned
+component, observation, proposal, accepting person or permission check, allowed action,
+affected people, feedback path, assumptions, and chosen boundary.
 
-The recruit-hook, no theory. Get the robot to see you and react in an hour, then slow
-the loop by hand until the reaction feels wrong, and let that plant the question Ch2
-answers. An experience, not a chapter.
+**Transfer task.** Classify several systems that use identical models in
+different contexts, including one open-loop advisory system and one system whose
+accepted output changes later observations.
+
+**End-of-chapter lab handoff.** Use the same learned component in advisory and
+closed-loop modes. Make divergence visible, perturb the action path, record how
+later observations change, and defend the classification. The lab must not
+introduce causal closure for the first time.
 
 ---
 
-## Part I. The Discipline
+### Chapter 2 — What the Physical World Costs
 
-### Ch1 — Closed-Loop AI
+**Opening question.** What requirements does the world impose before the
+hardware or model has been chosen?
 
-**Crux:** learned systems acting in an open world create a demanding engineering
-regime whose deployment properties must be measured and governed as a whole loop.
-**Objective:** decide whether a system is closed-loop AI, identify the learned-
-controller/open-world coupling, and locate the engineering layer below capability.
+**Objective.** Given a task and environment, the reader can determine how
+quickly the system must observe and act, how old its information may be, what
+task performance is acceptable, and which conditions it can handle.
 
-- **Open-Loop AI Perceives, Closed-Loop AI Acts.** The clean cut is not "perceives vs acts" but *does the action change the system's own future input distribution*. Give the honest counterexamples (a TinyML wake-word gating an actuator closes a loop; a chatbot does not). Teaching device, not a field-flag.
-- **The Two Broken Assumptions.** Learned controller and open world. Neither is new; their coupling creates the deployment problem this book makes measurable. The loop itself is Maxwell, 1868.
-- **Endogeneity, the Closed-Loop Signature.** Your action changes what you see next. Name it as the first-class cost that makes this regime unique. We *measure* its effects here (distribution shift, recovery frequency, envelope departure); we do not teach how to fix the policy, that is the policy-learning course. Measure the symptom, black-box the cure.
-- **The Two Axes.** The feedback constraint (this book's engine) and the delegation constraint (Part V). Preview both so Part V does not read as a different book.
-- **An Engineering Layer Across Embodied AI, Control, and CPS.** Position, cite the lineage, and own the substrate-independence (high-frequency trading is closed-loop AI with no robot); physical AI is where the constraints bite hardest and where consequences become literal.
-- **The Engineering Layer Beneath "Physical AI."** Software Engineering : software :: this : physical AI.
+**Entering state.** The loop charter from Chapter 1.
 
-**Scene:** Robby follows Maya before she finishes turning; the same Robby drifts wrong
-after acting on its own last move. Freshness and endogeneity, felt.
-**Figure:** the open-loop → closed-loop diagram (the arrow that closes, and feeds back).
-**Experience (Quickstart tie-in):** notice the reaction lag; it plants Ch2.
+**Misconception.** Model quality is the principal requirement, and additional
+computation can compensate indefinitely for uncertainty or delay.
 
-### Ch2 — The Price of the Loop
+**Crux.** The world determines how long information remains useful and how much
+margin an action can safely consume.
 
-**Crux:** you cannot be both fully informed and fully current; the gap is measurable,
-and the world sets it.
-**Objective:** state the price as a claims hierarchy, name the world's timescale as a
-measurable quantity, compute η_loop.
+#### Required Sections
 
-- **The Four Costs, as Felt.** The house-voice bullets (perishable, partial-and-stale, irreversible, endogeneity). The intuition pump.
-- **The Claims Hierarchy** (the rigor, Codex's #1 ask). Separate what is a **theorem**, a **heuristic**, and a **metaphor**. "You cannot be both fully informed and fully current" is the demonstrable claim; "the Carnot limit" is dropped (or labeled explicitly as aspiration).
-- **The Freshness Price, as Three Theorems** (cite all three, honestly scoped):
-  - *Estimation.* Error in the current state grows with the age of your last sample; for a mean-reverting source it has a closed form whose knee names the world's decorrelation time. Value-of-information is non-monotone in age (a stale-but-correct belief costs nothing), so age is a *surrogate*, not the bound.
-  - *Information.* The data-processing inequality: delay can only lose information, not create it. But it does *not* prove intelligence cannot help, the predictor below is the counterexample. State it scoped.
-  - *Control.* Loop delay eats phase margin; past a delay the loop cannot track, dependent on plant, controller, and task.
-  - Anchor on **Age of Information** (Kaul-Yates-Gruteser, 2012).
-- **Intelligence Buys Back the Predictable Part.** A world model acts on a *prediction*; the irreducible floor is the *innovation*, not the age. Sets up the World Model and the two-speed brain.
-- **η_loop, the Diagnostic (Not a Universal Merit).** η_loop = loop-latency / world-timescale, reported **per loop and per regime**, with a stated latency percentile and a precisely defined task timescale. A single scalar hides the binding failure mode; use it as a normalized diagnostic, not a figure of merit.
+1. **The World Sets the Clock**
+   Derive deadlines from motion, process dynamics, human response, and time to
+   consequence rather than from processor speed.
 
-**Scene:** how late can Robby see Maya and still catch her turn? That age is her
-motion's timescale.
-**Figure:** the value-decay curve, quality vs information age, knee marked.
-**Lab (Measure the Wall):** drive the loop on perception of controlled age Δ; plot
-quality vs Δ; extract the knee and compute η_loop. Add a predictor and show the wall
-*moves* → decide whether prediction, a faster path, or a slower operating regime is
-the defensible response. Number: η_loop, before and after.
+2. **Information Ages**
+   Introduce observation age, freshness, and task-dependent value decay.
 
----
+3. **Partial State, Not Complete Knowledge**
+   Explain why the system often must act before perfect information is
+   available.
 
-## Part II. Measuring and Running the Loop
+4. **Action Changes What Comes Next**
+   Deepen endogeneity through path-dependent data, changing visibility, and
+   policy-induced state visitation.
 
-### Ch3 — Measuring the Loop (moved: before the runtime)
+5. **Consequences Accumulate**
+   Replace careless claims of universal irreversibility with lost options,
+   increasing recovery cost, and shrinking safety margin.
 
-**Crux:** you do not own a property until you can put a number on it, and the number
-has to be metrology, not a checklist.
-**Objective:** measure a loop's properties rigorously, defend them, and know what
-makes a measurement valid.
+6. **Prediction Buys Back the Predictable Part**
+   Show what prediction can and cannot recover from delay. Reserve estimator
+   construction for Chapter 6.
 
-- **What to Measure.** Tail latency (not mean), joules per decision (energy, first-class here), egress bytes per hour, time-to-safe-state, drift, recovery frequency (endogeneity's fingerprint), and η_loop as the summary ratio.
-- **Metrology, Not a Branded Checklist** (Codex's bar). Operational definitions, calibration, uncertainty intervals, repeatability, reference tasks, comparison rules, negative controls. A measurement earns its place only if it *predicts an engineering outcome*.
-- **Measure Externally, Never on the Hot Path.** GPIO to a logic analyzer, an external power rail; self-timing on a shared-Linux MPU perturbs what it measures. Borrow MLPerf Tiny's discipline.
-- **Two Tiers, Enforced in the Evidence Record.** Deterministic *replay* = BENCHMARK (frozen log, error bars, a task-efficacy floor scored against ground truth so a do-nothing system cannot win). Live closed loop = CHARACTERIZATION, relative A-vs-B on a fixed rig, never absolute cross-lab numbers. Every lab report names the tier explicitly.
-- **The Diagnostic Method.** Hypothesis → bisect → confirm; the reusable procedure every later "break it" reinforces.
+7. **Physical Budgets Interact**
+   Connect time, energy, bandwidth, uncertainty, action authority, and
+   consequence without prematurely solving placement.
 
-**Scene:** the first honest numbers for Robby's face-tracking loop.
-**Figure:** the loop's measured properties, replay tier, with η_loop and its error bars.
-**Lab (Your First Measurement):** replay-tier measurements for one capability with the
-task-efficacy floor → accept or reject the measurement and the engineering claim it
-supports. This establishes the evidence format reused by every later lab. (Because
-this chapter precedes the runtime, the reader measures requirements *before* being
-handed an architecture.)
+8. **From Consequence to Requirement**
+   Convert the task into a freshness limit, efficacy floor, energy and data
+   budgets, consequence threshold, and operating assumptions.
 
-### Ch4 — The Runtime
+9. **State the Claim at the Strength You Have**
+   Separate theorem-backed results, empirical relationships, engineering
+   heuristics, and explanatory metaphors.
 
-**Crux:** the loop becomes a discipline only when it is a process that pays its price
-on time, survives its own failures, and is *derived from the measurements*, not
-prescribed.
-**Objective:** architect a runtime and defend where the propose/dispose line sits.
+#### Required Teaching Artifacts
 
-- **From a Loop to a Living Process.** What runs at 3pm on a Tuesday, hour 400.
-- **The Services.** Perception, reasoner, safety gate, body, memory/state, scheduler, logger. (Persistent state lives here, absorbing part of the old Memory chapter.)
-- **Three Invariants.** State in the store, comms on the bus, reasoner proposes and safety disposes.
-- **The Action Contract.** Intents in, bounded primitives out.
-- **The Simplex and Runtime-Assurance Lineage.** Cite Sha honestly; the delta is observability and measurability at kit scale; the honest limit is that a box-clamp is a *saturation*, not a certified forward-invariant safe-set switch.
-- **The Coupling Made Silicon.** The UNO Q's MPU proposes, MCU disposes.
-- **Restart, Recovery, and Observability.**
+- **Primary figure:** task efficacy versus information age with a measured or
+  analytical knee and named operating regimes.
+- **Table:** physical cost, operational measure, consequence, and assumption.
+- **Equation:**
 
-**Scene:** the UNO Q's MCU holds the test rig still when its reasoner hangs;
-Reachy exposes the contrasting cost of having no independent enforcer.
-**Figure:** the runtime, services on the bus, propose/dispose across two chips.
-**Lab (The Chip That Says No):** the MCU physically refuses a bad MPU command → measure
-the veto latency → argue why it is the placement's binding constraint.
+  \[
+  \eta_{\mathrm{loop}} =
+  \frac{\text{specified loop-latency percentile}}
+       {\text{task-specific world timescale}}
+  \]
 
----
+  Present the ratio as a diagnostic for one loop and regime, not a universal
+  score.
+- **Representation:** requirements and assumptions ledger.
+- **Algorithm:** consequence-to-requirement derivation checklist.
 
-## Part III. Closing the Loop
+**Engineering decision.** State the conditions in which the system is expected
+to work and the requirements it must meet there.
 
-### Ch5 — Perception in the Loop
+**Dossier artifact.** Requirements ledger containing world timescale, freshness
+limit, efficacy floor, energy and data budgets, consequence horizon, allowed
+action class, and assumptions.
 
-**Crux:** sensing is a timed, budgeted action, not a free given.
-**Objective:** choose a sensing operating point from measured efficacy, latency,
-energy, and bandwidth, then defend where perception runs.
-- **Sensing Is an Action, Not a Given.**
-- **Perceive at the Knee, Not the Peak** (accuracy vs latency vs energy).
-- **The Sensor Firehose and What You Keep.**
-- **A Late Perception Is a Wrong Perception** (freshness, applied).
-- **Placement of Perception** (which chip, which box).
-**Scene:** at full res Robby misses Maya's turn; at the knee it catches it.
-**Figure:** the sensing trade curve, with the knee and missed-deadline region marked.
-**Lab (The Deadline Light):** LED reddens on a missed deadline → measure the knee →
-defend the operating point.
+**Transfer task.** Derive different requirements for the same learned capability
+used in a slow inspection process and a fast physical interception task.
 
-### Ch6 — The World Model (the estimator)
+**End-of-chapter lab handoff.** Increase information age under controlled
+conditions, measure task success, find when the information becomes too old,
+and choose among a faster path, prediction, less action authority, slower
+motion, or refusal of the task.
 
-**Crux:** the world model is a *state estimator*; belief is always stale, and the art
-is knowing how stale and buying back the predictable part.
-**Objective:** build a frames-and-timing diagram, maintain a timestamped belief
-with uncertainty, measure drift, and place the correction that binds.
-- **Coordinate Frames and Transforms.**
-- **Clocks, Timestamps, and Synchronization.**
-- **The End-to-End Latency Budget** (photon to motion).
-- **The Estimator and the Innovation Floor** (Bayes/Kalman; the buy-back machine from Ch2).
-- **Sensor Fusion Into a Belief.**
-- **Belief, Uncertainty, and Drift** (and the endogeneity check: has the robot's own action pushed belief off the world?).
-**Scene:** Robby predicts where Maya's face will be, and beats its own latency.
-**Figure:** raw observations flowing through transforms and timestamps into a
-belief with uncertainty and an innovation residual.
-**Lab (Two Frames Disagree):** transform + measure timestamp skew → the drift number →
-place the fix.
+## Part II — Measure and Run
 
-### Ch7 — The Reasoner (Meaning + Deliberation, merged)
+### Chapter 3 — Measuring a Moving System
 
-**Crux:** the slow, semantic path, deciding what the world means and whether it is
-worth the time to think; and the two-speed brain is the *resolution* of the freshness
-price, not a contradiction of it.
-**Objective:** turn a request into a grounded bounded intent, and build the policy that
-decides when to invoke the slow path.
-- **From Pixels to Meaning** (the VLM as a black-box component).
-- **The Grounding Gap** (words are not coordinates).
-- **Intent, Not Commands** (the propose side; what the model may and may not decide).
-- **Vision-Language-Action Models.**
-- **Two Speeds, Because Time Is Priced** (reflex stays current, deliberation decides well; multi-rate; cite the async-inference frontier so it reads as the answer to Ch2).
-- **When to Think Hard** (uncertainty as the escalation trigger).
-- **The Escalation Ladder, and Falling Back** (rungs; graceful degradation when the slow path fails).
-- **Placement of Meaning** (worth the freshness a round trip costs?).
-**Scene:** Robby's reflex holds his gaze on Maya while the slow brain grounds "look at
-the red one."
-**Figure:** the two-speed path, with a bounded reflex continuing beneath a slower
-semantic escalation and the intent boundary marked.
-**Lab (Meaning and the Round Trip):** request → bounded intent; meter reflex vs
-deliberation and measure how a fast rate tolerates more staleness → place it.
+**Opening question.** What evidence would make a claim about the running loop
+believable?
 
-### Ch8 — Action and Control
+**Objective.** Given a proposed system property, the reader can turn it into
+something measurable, instrument the complete path, describe typical and
+worst-case behavior with uncertainty, and accept, reject, or narrow the claim.
 
-**Crux:** a learned proposer will eventually be wrong, the consequence is
-path-dependent, and delay itself can destabilize the loop.
-**Objective:** turn bounded intent into safe motion, measure the available margin,
-and defend the enforcement boundary without mistaking it for a safety case.
-- **From Intent to Safe Motion** (the dispose side).
-- **The Safety Envelope** (bounds the model cannot cross).
-- **An AI Choice Is a Control Choice.**
-- **Path-Dependence and Margin** (the rigorous form of "irreversible", the action changes future state, options, and risk; time and distance are the same constraint).
-- **Delay Destabilizes** (the dead-time limit made physical, add too much loop delay and the envelope oscillates no matter how good the model).
-- **The MCU as Enforcer, and Its Honest Limit** (teaching instrument, not a certified safety case).
-**Scene:** Robby's head begins an over-eager turn toward Maya; the envelope clamps
-the motion before speed and delay consume the available margin.
-**Figure:** intent passing through the safety envelope, with stopping distance and
-delay margin made visible.
-**Lab (Watch the Envelope Hold):** force a violation, watch the clamp → measure stopping
-time/distance → add delay until it rings → choose the safe operating region and
-defend where enforcement must run.
+**Entering state.** Requirements, thresholds, and assumptions from Chapter 2.
+Basic descriptive statistics are helpful but not required.
+
+**Misconception.** A mean latency from an internal timer and a successful
+demonstration provide sufficient systems evidence.
+
+**Crux.** A measurement is useful only when its boundary, regime, uncertainty,
+and decision consequence match the claim.
+
+#### Required Sections
+
+1. **Turn a Property Into a Claim**
+   Define the phenomenon, quantity, unit, regime, threshold, and decision before
+   collecting data.
+
+2. **Instrument the Boundary**
+   Identify where the complete sense-to-consequence path begins and ends. Explain
+   why convenient component timing can miss transport, buffering, and actuation.
+
+3. **Measure a Distribution**
+   Teach tails, jitter, correlation, warm-up behavior, and regime changes.
+
+4. **Keep the Task Honest**
+   Pair resource or latency measurements with task efficacy so an inert or
+   degraded system cannot appear optimal.
+
+5. **Account for the Instrument**
+   Cover calibration, timebase, synchronization, observer effects, negative
+   controls, and independent references.
+
+6. **Express Uncertainty**
+   Distinguish run-to-run variation, instrument uncertainty, environmental
+   variation, and uncertainty caused by limited coverage.
+
+7. **Replay and Live Operation Are Different Evidence**
+   Separate repeatable benchmark evidence from fixed-rig and live closed-loop
+   characterization.
+
+8. **Diagnose Before Explaining**
+   Introduce hypothesis, bisect, and confirm as the book's reusable failure
+   diagnosis method.
+
+9. **The Evidence Record**
+   Define the common record containing claim, operational definition, setup,
+   versions, regime, result, uncertainty, counterevidence, and verdict.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** measurement points around the complete loop boundary.
+- **Measured figure:** distribution whose tail changes the engineering decision.
+- **Table:** claim, metric, unit, boundary, regime, uncertainty, efficacy, and
+  decision threshold.
+- **Algorithm:** hypothesis → bisect → confirm.
+- **Representation:** evidence record schema.
+
+**Engineering decision.** Accept, reject, or narrow the claim supported by the
+measurement.
+
+**Dossier artifact.** Instrumentation plan, measurement schema, and first
+evidence record.
+
+**Transfer task.** Diagnose why two teams measuring “loop latency” report
+incompatible numbers despite using the same model and hardware.
+
+**End-of-chapter lab handoff.** Produce a complete evidence record with a
+predeclared prediction, external reference where needed, negative control,
+uncertainty, minimum acceptable task performance, diagnosed discrepancy, and
+written verdict.
 
 ---
 
-## Part IV. The Whole System
+### Chapter 4 — A Runtime That Must Keep Running
 
-### Ch9 — Placement: Filling the Map (crown)
+**Opening question.** What must continue to operate when the learned component
+does not?
 
-**Crux:** every isolated placement was right; together they do not fit, and the map is
-where you see the trade whole.
-**Objective:** fill the system placement map from measured constraints, name the
-binding resource for each capability, and predict the ripple from one re-placement.
-- **The Placement Map** (every capability by loop and by box).
-- **The Placement Address.** Name the loop, box, and enforcement domain for each capability; MCU or MPU is an enforcement and timing choice, not a resource metric.
-- **The Constraint Vector.** Evaluate latency, task efficacy, energy, bandwidth, memory, privacy, recovery, and drift; latency × efficacy × energy is one useful projection, not the whole map.
-- **Placements Share a Budget** (the budget identity lands here, where it is real).
-- **Place the Tightest Constraint First** (criticality ordering).
-- **Move One Thing, Measure the Ripple** (including the endogeneity ripple, does the re-placement change what the loop drives itself into?).
-- **The Map Is the Design.**
-**Scene:** meaning, tracking, safety, and power all want the device, and cannot all have it.
-**Figure:** the complete placement map, with shared budgets and the binding
-constraint for each placement.
-**Lab (Fill the Map, Move One Thing):** measured map → one re-placement → the ripple.
+**Objective.** Given measured requirements, the reader can organize a
+continuously running system so that sensing, state, action checks, and recovery
+continue to meet their requirements when the learned component is late, stale,
+restarted, or unavailable.
 
-### Ch10 — Confidence Without the World
+**Entering state.** The requirements ledger and measurement discipline.
 
-**Crux:** you cannot replay a world that moved, so you earn trust in tiers.
-**Objective:** choose the appropriate confidence tier, identify where its evidence
-becomes invalid, and make a staged-rollout decision from measured divergence.
-- **You Cannot Replay Reality.**
-- **Simulation, and Where It Lies** (contact, sensor timing, actuator delay).
-- **Replay, and When It Goes Invalid** (the instant the policy would diverge, endogeneity again).
-- **Shadow Mode.**
-- **Earning Trust One Rung at a Time** (staged rollout).
-- **Two Tiers, Benchmark and Characterization** (the replay/live split from Ch3, plus relative ranking for the live tier).
-**Scene:** the new gaze policy vetted in shadow before it ever moves Robby's head.
-**Figure:** the confidence ladder from replay through shadow to bounded live
-operation, with each tier's invalidation boundary.
-**Lab (Run It in Shadow):** shadow the new policy → measure where it would have
-diverged → decide whether it advances, remains in shadow, or is rejected.
+**Misconception.** A physical-AI runtime is an inference call repeated inside a
+request-response application.
+
+**Crux.** A physical system is a living process whose responsibilities continue
+across late inference, missing data, restart, partial availability, and recovery.
+
+#### Required Sections
+
+1. **Beyond Request and Response**
+   Establish continuity, lifecycle, unattended operation, and state across
+   interactions.
+
+2. **Derive Services From Responsibilities**
+   Decompose by cadence, state ownership, privilege, failure containment, and
+   recovery rather than by arbitrary software modules.
+
+3. **Many Loops, Many Cadences**
+   Distinguish acquisition, estimation, policy, enforcement, actuation, logging,
+   health monitoring, and learning timescales.
+
+4. **State, Events, and Backpressure**
+   Cover event age, finite queues, latest-value semantics, overload, and stale
+   work cancellation.
+
+5. **The Proposal Boundary**
+   Establish that learned reasoning proposes while another component decides
+   whether the proposal may produce physical action.
+
+6. **Failure as an Operating Mode**
+   Treat timeout, stale input, service restart, loss of connectivity, and
+   partial availability as runtime states.
+
+7. **Recovery and Safe Continuity**
+   Distinguish restarting software from recovering physical state and authority.
+
+8. **Observability That Survives Failure**
+   Embed the Chapter 3 evidence path without making instrumentation the cause of
+   failure or losing the last useful state.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** multi-rate runtime with services, state, event paths, and
+  the proposal boundary.
+- **Supporting figure:** lifecycle state machine with degraded and recovery
+  modes.
+- **Table:** service, owner, cadence, deadline, state, input-age rule, failure,
+  and fallback.
+- **Algorithm:** runtime supervisor with freshness checks, timeouts, watchdogs,
+  and recovery transitions.
+
+**Engineering decision.** Choose service boundaries, state ownership, cadences,
+queue policies, failure behavior, and the initial propose/dispose boundary.
+
+**Dossier artifact.** Runtime skeleton, service contracts, lifecycle states, and
+instrumentation points.
+
+**Transfer task.** Redesign a synchronous model-serving application so that a
+sensor, safety monitor, and actuator continue to meet their stated timing and
+action requirements when the policy service hangs.
+
+**End-of-chapter lab handoff.** Make a learned service late, hung, and then
+unavailable. Measure event age and recovery, verify which responsibilities
+continue to be met, and use the evidence record to diagnose the observed
+failure.
+
+## Part III — Sense, Estimate, Decide, Act
+
+### Chapter 5 — Perception Under a Deadline
+
+**Opening question.** Which observations are worth acquiring before they become
+too expensive or too old to use?
+
+**Objective.** Given sensors and task requirements, the reader can choose what
+the system should sense and how often, balancing information age and quality
+against energy, data movement, and what the sensors cannot observe.
+
+**Entering state.** Runtime services, deadlines, operating assumptions, and a
+valid measurement method.
+
+**Misconception.** Sensors provide complete, neutral, and free inputs, and more
+resolution or more modalities necessarily improve the physical system.
+
+**Crux.** Perception is a timed acquisition decision whose costs begin before
+inference and whose output is evidence, not world state.
+
+#### Required Sections
+
+1. **Observation Is a Design Choice**
+   Separate the world from what the system elects and is able to observe.
+
+2. **What Each Sensor Can and Cannot See**
+   Teach complementarity, blind spots, contradiction, dropout, and visibility.
+
+3. **Sampling the World**
+   Connect sampling rate, exposure, field of view, resolution, and quantization
+   to task dynamics.
+
+4. **Active Perception**
+   Show that aiming, moving, illuminating, or querying a sensor changes later
+   observations and can spend action authority.
+
+5. **The Cost Before Inference**
+   Account for acquisition, conversion, transport, copying, buffering, and
+   preprocessing.
+
+6. **When a Model Interprets the Scene**
+   Introduce detectors and VLM-assisted perception as black-box components with
+   temporal context, latency, data-egress, uncertainty, and failure behavior.
+
+7. **Freshness, Quality, Energy, and Bandwidth**
+   Construct the measured operating frontier and identify dominated choices.
+
+8. **The Observation Contract**
+   Specify payload, source, timestamp, frame, age, quality or uncertainty,
+   validity conditions, and missing-data behavior.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** measured operating frontier showing feasible and dominated
+  sensing regimes.
+- **Supporting figure:** acquisition-to-observation path with costs before model
+  inference.
+- **Table:** modality, field, cadence, data rate, blind spot, placement
+  constraint, and failure behavior.
+- **Equation:** sensor data-rate and observation-age calculations.
+- **Representation:** observation contract.
+
+**Engineering decision.** Choose the sensing strategy and operating point.
+Whole-system compute placement remains provisional until Chapter 9.
+
+**Dossier artifact.** Observation contract and sensing-service specification.
+
+**Transfer task.** Choose observations for the same task under abundant local
+power and under a strict energy and egress budget.
+
+**End-of-chapter lab handoff.** Vary acquisition rate, resolution, preprocessing,
+or semantic path. Measure task efficacy, observation age, energy, and data
+movement, then defend an operating point rather than the highest-quality input.
 
 ---
 
-## Part V. Into a Home (the delegation constraint)
+### Chapter 6 — State, Time, and World Models
 
-### Ch11 — Safety, Privacy, and the Ship Gate
+**Opening question.** What must the system believe now when every observation
+describes a different place and time?
 
-**Crux:** shipping does not make the robot smarter; it makes it, and the family,
-more exposed, and two non-negotiable numbers can veto readiness without pretending
-to constitute a complete safety case.
-**Objective:** produce a written ship/no-ship gate from confidence-tier evidence,
-time-to-safe-state, egress, and the known boundary where certification takes over.
-- **Deployment Is a Gate, Not a Launch.**
-- **Delegation, the Second Axis** (this Part descends from handing an autonomous system authority in a home, not from "the loop prices time"; say so).
-- **The Fail-Safe** (time-to-safe-state vs the harm budget).
-- **The Privacy Gate** (egress bytes; retention limits, absorbing part of the old Memory chapter).
-- **A Child in the Room** (Maya's *actual words* as the worked egress example; the COPPA-shaped line).
-- **The Ship or No-Ship Decision, Written Down.**
-- **Where Certification Takes Over** (the honest edge of a teaching kit).
-**Scene:** the hour of Maya's living room that must never leave the device.
-**Figure:** the ship gate, with confidence evidence, harm budget, egress boundary,
-and certification handoff shown separately.
-**Lab (The Ship/No-Ship Gate):** recovery time + egress audit → the two numbers → ship
-or don't.
+**Objective.** Given timestamped observations and actions, the reader can decide
+what the system must keep track of, align measurements across space and time,
+represent uncertainty, detect when the system's estimate is wrong, and correct
+it.
 
-### Ch12 — The Human Loop
+**Entering state.** Observation contracts, runtime state ownership, and basic
+probabilistic intuition.
 
-**Crux:** the person who teaches the robot and lives with it holds the real authority.
-**Objective:** build and defend the approval, consent, inspect-and-forget, and
-offline-continuity paths through which a person retains authority over the system.
-- **The Robot Lives With Someone.**
-- **Teaching a New Skill.**
-- **The Approval Gate** (nothing new without an adult's yes).
-- **Consent and the Boundary.**
-- **Inspect, Edit, Forget** (memory governance, *forgetting as a first-class operation* moved intact from the dissolved Memory chapter, it belongs here with consent and human control).
-- **The Engagement Loop Is the Data Loop** (corrections as labels; the flywheel).
-- **The Cost of a Turn.**
-- **When the Servers Go Dark** (graceful offline degradation, portability, the robot's mortality; Moxie/Jibo as the warning).
-**Scene:** Maya teaches Robby a trick; Dad approves it; it can be forgotten.
-**Figure:** the human authority loop, separating proposed skill, adult approval,
-inspectable memory, consented learning data, and offline fallback.
-**Lab (The Authority Test):** three gated checkpoints: teach and approve; inspect
-and forget; pull the cloud and verify the bounded experience that remains. Each
-checkpoint records a number and ends in an authority, retention, or continuity
-decision.
+**Misconception.** The latest observation is the current state, or a model's
+context window is the system's world model.
+
+**Crux.** The system acts from a time-indexed belief, not directly from raw
+observations.
+
+#### Required Sections
+
+1. **Observation Is Not State**
+   Separate a sample from a maintained belief about the world and the body.
+
+2. **Frames Give Geometry Meaning**
+   Introduce world, body, sensor, actuator, and task frames to the depth required
+   for interface correctness.
+
+3. **Clocks Give State Meaning**
+   Cover timestamps, synchronization, age, delay, and out-of-order observations.
+
+4. **Predict, Observe, Correct**
+   Teach the estimator cycle using prior belief, action, new evidence, and
+   correction.
+
+5. **Belief Includes Uncertainty**
+   Make uncertainty an explicit output consumed by policy, enforcement, and
+   confidence decisions.
+
+6. **Prediction and World Models**
+   Define an operational world model as maintained belief and optional dynamics
+   used for prediction. Distinguish it from a generative scenario model.
+
+7. **The System Must Know Itself**
+   Include embodiment, actuator state, resource state, health, and available
+   skills when they constrain action.
+
+8. **Detect When the Estimate Is Wrong**
+   Use residuals to expose model-observation disagreement and trigger correction
+   or degraded operation.
+
+9. **What Must Persist Now**
+   Bound the operational history needed for estimation. Reserve retained human
+   data and training trajectories for Chapters 11 and 12.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** observation → transform and time alignment → belief →
+  prediction → residual → correction.
+- **Supporting figure:** frame graph with clock ownership.
+- **Table:** observation, operational state, model context, retained memory, and
+  training trajectory.
+- **Equation:**
+
+  \[
+  x_{t+1}=f(x_t,u_t)+w_t,
+  \qquad
+  o_t=h(x_t)+v_t
+  \]
+
+- **Algorithm:** predict → observe → correct with innovation and stale-input
+  handling.
+
+**Engineering decision.** Choose state variables, frame conventions, update
+cadence, uncertainty representation, drift threshold, and correction trigger.
+
+**Dossier artifact.** Frames-and-timing model, state schema, estimator contract,
+and uncertainty path.
+
+**Transfer task.** Explain and correct failures caused by the same observation
+arriving with a wrong frame, wrong timestamp, and underestimated uncertainty.
+
+**End-of-chapter lab handoff.** Introduce one frame, clock, or belief error. Make
+the resulting physical or simulated discrepancy visible, detect it through the
+innovation, bisect the source, and choose a correction.
 
 ---
 
-## Part VI. Capstone
+### Chapter 7 — From Meaning to Intent
 
-### Ch13 — Defend the Whole System
+**Opening question.** What must be true before a model's semantic output can
+become a proposal for physical action?
 
-**Crux:** success is not merely whether it worked once. Success is whether measured
-evidence explains where every part lives, what authority it holds, and why the
-decision being defended is warranted.
-**Objective:** defend an unfamiliar physical-AI system using evidence for all
-seven graduate verbs, including one diagnosed failure.
-- **The Deliverable** (a working loop plus an integrated defense containing the problem frame; runtime and action contract; frames, timing, and belief; measurement and placement map; assurance and ship gate; human authority and forgetting; one re-placement; and one diagnosed failure).
-- **The Gated Artifacts** (runtime design defense, ship/no-ship gate, teach/approve/forget, distributed as earlier checkpoints, not crammed here).
-- **The Greenfield Synthesis** (architect a runtime for an embodiment you have not seen, the design muscle the book must exercise).
-- **The Diagnosis** (one failure, found and explained, using the taught method).
-- **A Defended Failure Beats an Undefended Success.**
-- **The Discipline, In Your Hands.**
-**Scene:** the system succeeds once, then the defense begins; the measured failure
-reveals more engineering judgment than the polished demo.
-**Figure:** the final evidence dossier, with one artifact mapped to each graduate verb.
-**Lab (The Defense):** demonstrate the loop, present the integrated dossier, then
-architect a greenfield runtime for an unfamiliar embodiment and defend one failure.
+**Objective.** Given a task, maintained belief, and candidate VLM or VLA, the
+reader can define what the model receives and may propose, connect its proposal
+to a particular body, choose how often it updates, and decide when the model
+should decline or ask for help.
+
+**Entering state.** Runtime services, observation and state contracts,
+uncertainty, deadlines, and basic familiarity with vision and language models.
+
+**Misconception.** A fluent VLM answer or plausible VLA output is grounded,
+current, compatible with the body, and ready to execute.
+
+**Crux.** A model produces a proposal that is valid only for a stated time and
+context; it does not possess physical authority.
+
+#### Required Sections
+
+1. **From State to Task Meaning**
+   Separate physical state from the entities, relationships, affordances, and
+   goals relevant to a task.
+
+2. **VLMs as Semantic Components**
+   Teach inputs, temporal context, outputs, grounding limits, latency, egress,
+   calibration, and failure without teaching transformer internals.
+
+3. **VLAs as Policy Interfaces**
+   Explain observation-to-action policies, temporal conditioning, and how their
+   interface differs from descriptive models.
+
+4. **Grounding the Goal**
+   Bind language and task semantics to current entities, frames, capabilities,
+   authority, and belief validity.
+
+5. **Representing Action**
+   Compare discrete tokens, continuous actions, joint-space and task-space
+   commands, trajectories, action chunks, and named skills.
+
+6. **What the Model Assumes About the Body**
+   Make morphology, coordinate conventions, action normalization, available
+   skills, and adapters explicit.
+
+7. **Fast Policies and Slow Reasoning**
+   Derive multi-rate semantic and policy paths from the deadlines established
+   earlier.
+
+8. **Action Chunks and Freshness**
+   Treat chunk horizon, asynchronous inference, buffering, interruption,
+   overlap, and stale-action risk as systems decisions.
+
+9. **When the Model Should Decline or Ask for Help**
+   Define behavior outside validated coverage, under stale belief, or when fast
+   and slow paths disagree.
+
+10. **Intent as a Proposal**
+    Specify task, target, frame, skill, parameters, preconditions, validity
+    horizon, confidence or support, and requested authority.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** maintained belief feeding contrasting VLM and VLA policy
+  interfaces and producing expiring intent.
+- **Timing figure:** observation age, inference overlap, action chunks,
+  interruption, and replanning.
+- **Table:** action representations and their consequences for embodiment,
+  cadence, interruption, enforcement, and transfer.
+- **Representation:** policy-interface card and intent contract.
+- **Algorithm:** uncertainty, abstention, and escalation policy.
+
+**Engineering decision.** Choose the semantic path, policy interface, action
+abstraction, replanning cadence, validity horizon, and escalation behavior.
+
+**Dossier artifact.** Policy-interface card and enforceable intent schema.
+
+**Transfer task.** Compare two unfamiliar policies that solve the same task but
+use different temporal context, action representations, and embodiment adapters.
+
+**End-of-chapter lab handoff.** Run two meaning-to-intent paths against the same
+belief and task. Measure grounding, latency, action validity, abstention, and
+failure behavior. Choose an interface and escalation rule while keeping every
+wrong output on the proposal side of the boundary.
 
 ---
 
-## Appendices
+### Chapter 8 — Keeping Action Within Limits
 
-- **A. Normative Measurement Protocol.** The common evidence format used by the labs: operational definitions, the two tiers, per-property recipes, uncertainty and negative-control protocols, and the validation study (≥3 systems with different dynamics).
-- **B. The UNO Q Kit.** The two chips, the bridge, placement-by-chip, the propose/dispose demo, bring-up.
-- **C. The Hero and the Home.** Reachy as hero *and* honest "no-enforcer" case study; Maya as the ground-floor context.
+**Opening question.** What separates a capable proposal from permission to move
+the physical system?
 
-## Locked Decisions
+**Objective.** Given an intent contract and physical limits, the reader can give
+each skill explicit limits, calculate whether an action can stop before causing
+harm, decide where actions are checked, and specify what the system should do
+when action cannot continue.
 
-- **The title is final.** *Physical AI: Machine Learning Systems That Sense and Act.*
-- **Endogeneity stays threaded.** It is a property of the running loop rather than a separate chapter.
-- **Energy stays first class.** It remains a measured property rather than a co-fundamental.
-- **The primary reader is the engineer.** Makers receive accessible manifestations rather than reduced rigor.
+**Entering state.** Proposed intent, belief and uncertainty, deadlines, runtime
+failure behavior, and embodiment state.
+
+**Misconception.** A valid model output may be forwarded to an actuator, or
+simple command clipping constitutes a complete safety mechanism.
+
+**Crux.** Physical authority belongs to an enforceable action contract and a
+trusted boundary, not to the component that generated the proposal.
+
+#### Required Sections
+
+1. **Intent Is Not Motion**
+   Establish the semantic-to-physical boundary and the responsibilities on each
+   side.
+
+2. **Skills Need Clear Limits**
+   Define preconditions, parameters, coordinate frame, termination, timeout,
+   progress, interruption, and failure outcomes.
+
+3. **The Inner Loop**
+   Introduce tracking, feedback, cadence, error, and disturbance rejection only
+   to the depth needed for systems decisions.
+
+4. **Motion Uses Up Safety Margin**
+   Connect delay, velocity, acceleration, braking capability, uncertainty, and
+   action horizon.
+
+5. **Limits Change With the Situation**
+   Define allowed state-action regions, explicit limits, and invalid states.
+
+6. **Check Actions While the System Runs**
+   Introduce advanced proposal, trusted monitor, reversionary behavior, and safe
+   set with honest lineage.
+
+7. **Separate the Check From the Model**
+   Determine what must not share a failure domain, privilege boundary, clock, or
+   resource bottleneck with semantic reasoning.
+
+8. **Stop, Hold, Retreat, or Continue**
+   Distinguish stop, hold, retreat, release, and degraded continuation. Connect
+   software recovery to physical recovery.
+
+9. **Write Down What Each Skill May Do**
+   Complete the proposal boundary introduced in Chapter 4 and make every command
+   checkable.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** dashed learned proposal entering an independent action
+  check and becoming either an allowed command or a visible refusal.
+- **Supporting figure:** current action limits and stopping margin.
+- **Table:** skill, precondition, limit, timeout, completion, fallback, and the
+  component responsible for checking it.
+- **Equation:**
+
+  \[
+  d_{\mathrm{required}}=
+  v\,t_{\mathrm{delay}}+
+  \frac{v^2}{2a_{\mathrm{brake}}}+
+  d_{\mathrm{uncertainty}}
+  \]
+
+  Present it as an engineering bound, not a complete safety proof.
+- **Algorithm:** validate, accept or veto, execute, monitor, interrupt, and
+  recover.
+
+**Engineering decision.** Choose the skill set, the limits that apply, the
+component responsible for checking them, the safe response, and the recovery
+policy.
+
+**Dossier artifact.** Skill contracts, action limits, checking logic, and
+recovery policy.
+
+**Transfer task.** Determine how the same semantic intent requires different
+skills, limits, and fallback behavior on two embodiments.
+
+**End-of-chapter lab handoff.** Submit valid, invalid, and stale proposals,
+including proposals outside the allowed limits. Measure refusal and stopping
+behavior, diagnose one failure, and defend where the action check belongs.
+
+## Part IV — The Whole System
+
+### Chapter 9 — Where Intelligence Runs
+
+**Opening question.** Where should each capability run when every placement
+spends resources and changes a failure boundary?
+
+**Objective.** Given the complete system and fixed resources, the reader can
+decide where each part runs, identify the resources it consumes and the parts
+that must not fail together, and predict what changes when one part moves.
+
+**Entering state.** Measured contracts and cadences for sensing, estimation,
+policy, enforcement, action, logging, and recovery.
+
+**Misconception.** Components can be optimized independently, and “on device”
+describes one homogeneous compute location.
+
+**Crux.** Placement is a whole-system decision because capabilities share
+resources, move data, fail together, and carry different authority.
+
+#### Required Sections
+
+1. **See the Whole Loop at Once**
+   Assemble every prior contract into one causal and dataflow architecture.
+
+2. **Compute Domains Have Different Jobs**
+   Distinguish microcontroller, application processor, accelerator, local server,
+   edge service, and hosted compute by behavior rather than brand.
+
+3. **Measure Before Choosing Where It Runs**
+   Record cadence, latency distribution, memory, energy, bandwidth, criticality,
+   data sensitivity, and update requirements.
+
+4. **Data Movement Is Work**
+   Make acquisition, serialization, copying, synchronization, transport, and
+   egress visible.
+
+5. **Resources Are Shared**
+   Introduce contention, interference, priority inversion, thermal limits, and
+   coupled budgets.
+
+6. **What Must Not Fail Together**
+   Treat isolation, privilege, clocking, connectivity, and trusted execution as
+   placement constraints.
+
+7. **Local, Edge, and Hosted Tradeoffs**
+   Evaluate capability, freshness, energy, privacy, cost, availability,
+   maintainability, and updateability.
+
+8. **Move One Thing and Follow the Ripple**
+   Perform sensitivity analysis rather than comparing local component scores.
+
+9. **Record Where Each Part Runs**
+   Preserve alternatives, assumptions, evidence, binding constraints, and the
+   condition that would force re-placement.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** complete loop mapped across compute, trust, and enforcement
+  domains.
+- **Supporting figure:** one re-placement and its ripple through latency, energy,
+  data movement, failure, and authority.
+- **Table:** capability, cadence, resource signature, sensitivity, criticality,
+  trust requirement, candidate domain, and evidence.
+- **Equation:** shared resource constraints such as
+
+  \[
+  \sum_i r_{i,k} \leq R_k
+  \]
+
+  supplemented by deadline, privacy, connectivity, and failure-domain
+  constraints.
+- **Algorithm:** placement and ripple audit.
+
+**Engineering decision.** Choose and defend the whole-system placement map.
+
+**Dossier artifact.** Placement map, shared-budget ledger, failure-domain map,
+and sensitivity analysis.
+
+**Transfer task.** Re-place a capability after connectivity, privacy, or energy
+conditions change and explain every downstream consequence.
+
+**End-of-chapter lab handoff.** Move one capability across available compute
+domains. Measure the ripple through at least three system properties and one
+failure behavior, then accept or reject the placement.
+
+---
+
+### Chapter 10 — Building Confidence Before Deployment
+
+**Opening question.** What can each form of evidence actually justify before the
+system encounters greater consequence?
+
+**Objective.** Given a candidate system and its stated operating limits, the
+reader can choose the right test for a claim, cover the situations that matter,
+recognize when earlier evidence no longer applies, inject failures, and decide
+whether the system is ready for more realistic use.
+
+**Entering state.** Valid measurement, complete placement, operating limits,
+enforcement, and recovery behavior.
+
+**Misconception.** Offline, replay, simulation, or benchmark success proves
+closed-loop readiness.
+
+**Crux.** Evidence supports a specific claim, not the system in general. A
+candidate may advance only when the current tier supports the declared claim
+and the next exposure is controlled.
+
+#### Required Sections
+
+1. **A Candidate Needs a Specific Claim**
+   State expected behavior, task, environment, users, operating limits, and
+   exclusions before selecting tools.
+
+2. **Metrics Do Not Prove System Behavior**
+   Explain why component accuracy and fixed datasets do not establish system
+   behavior.
+
+3. **List the Situations That Matter**
+   Define environment, people, task variation, dynamics, disturbances, failures,
+   and boundary conditions.
+
+4. **Test in Increasingly Realistic Conditions**
+   Organize offline tests, simulation, replay, software-in-the-loop,
+   hardware-in-the-loop, shadow operation, limited trials, and monitored use by
+   the claims each can support.
+
+5. **Know When Earlier Evidence No Longer Applies**
+   Show how policy divergence and endogeneity limit counterfactual replay and
+   simulation conclusions.
+
+6. **Find Where Test Coverage Is Thin**
+   Identify weakly supported regions, scenario gaps, and changes that invalidate
+   prior evidence.
+
+7. **Use World Models to Generate Test Scenarios**
+   Treat generative world models and synthetic environments as tools for
+   producing candidate scenarios, not as evidence by themselves.
+
+8. **Inject Failures Deliberately**
+   Test stale observation, service loss, contention, wrong belief, malformed
+   proposal, enforcement delay, and connectivity failure.
+
+9. **Decide Before You See the Results**
+   Prevent post hoc acceptance and define what triggers hold, rejection, or
+   rollback.
+
+10. **Advance, Hold, or Reject**
+    Make the exposure decision explicit, limited, and reversible.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** increasingly realistic test conditions with the claims
+  each condition can and cannot support.
+- **Supporting figure:** replay paths diverging after the candidate changes an
+  action.
+- **Table:** evidence tier, supported claim, unsupported claim, cost, realism,
+  failure coverage, and promotion condition.
+- **Representation:** scenario coverage table and test-advancement record.
+- **Algorithm:** predeclared rules for advancing, holding, or rejecting a
+  candidate.
+
+**Engineering decision.** Advance the candidate to a more realistic test, keep
+it at the current stage, or reject it.
+
+**Dossier artifact.** Evaluation plan, scenario coverage, collected evidence,
+failure-test record, and decision.
+
+**Transfer task.** Decide whether apparently strong simulation and replay results
+justify a limited live trial when the candidate policy changes state visitation.
+
+**End-of-chapter lab handoff.** Create disagreement between offline and
+closed-loop results. Explain why replay no longer supports the claim, inject a
+relevant failure, and decide what test should come next.
+
+## Part V — Authority, Learning, and Deployment
+
+### Chapter 11 — Human Authority
+
+**Opening question.** Who may teach, approve, interrupt, inspect, revoke, and
+forget what this system does?
+
+**Objective.** Given a use case and its stakeholders, the reader can decide who
+may request, teach, approve, run, inspect, interrupt, revoke, retain, and forget,
+and verify that stopping or revoking permission works quickly enough when it
+matters.
+
+**Entering state.** Complete system behavior, failure modes, assurance limits,
+and the distinction between learned proposal and trusted enforcement.
+
+**Misconception.** A human somewhere “in the loop” guarantees meaningful
+oversight or control.
+
+**Crux.** Human authority is an explicit system interface with scope, timing,
+state, evidence, and revocation behavior.
+
+#### Required Sections
+
+1. **Authority Must Be Designed**
+   Treat decision rights as a system property rather than as policy language
+   added after implementation.
+
+2. **Who Is Affected and Who Is Responsible**
+   Identify operator, owner, developer, maintainer, bystander, data subject,
+   dependent user, and accountable organization.
+
+3. **Requesting, Teaching, and Approving Differ**
+   Separate the ability to ask, demonstrate, label, authorize, and deploy a
+   behavior.
+
+4. **People Must Understand Before They Agree**
+   Make system state, recording state, uncertainty, intent, authority, and
+   consequence understandable to the relevant person.
+
+5. **Intervene, Override, and Stop**
+   Specify reachability, latency, priority, physical effect, and behavior when
+   the human path fails.
+
+6. **Revoke What Was Granted**
+   Cover skill revocation, credential removal, model rollback, device removal,
+   authority expiry, and incomplete revocation.
+
+7. **Inspect, Correct, and Forget**
+   Place retained preferences, interaction records, and personal data under
+   inspectable and testable control.
+
+8. **Permission Has Scope and Duration**
+   Bind consent to purpose, person, place, data, action, recipient, and time.
+
+9. **When Services Disappear**
+   Address offline continuity, portability, ownership, dependency exit, and the
+   loss of a hosted capability.
+
+10. **The Authority Map**
+    Record who may perform each operation, under which conditions, with which
+    evidence, override, expiry, and audit trail.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** authority sequence from request through approval,
+  execution, inspection, intervention, revocation, and forgetting.
+- **Supporting figure:** authority lane attached to the components and data paths
+  it governs.
+- **Table:** actor, operation, notice, approval, override, expiry, revocation,
+  audit, and failure behavior.
+- **Representation:** authority map and consent boundary.
+- **Algorithm:** approval, override, revoke, and forget state machine.
+
+**Engineering decision.** Allocate authority and determine which operations
+require notice, approval, timely override, prohibition, expiry, or revocation.
+
+**Dossier artifact.** Authority map, consent boundaries, intervention path,
+retention rights, revocation behavior, and exit policy.
+
+**Transfer task.** Compare authority for the same capability used privately by
+an owner, in a shared workplace, and around bystanders who did not configure the
+system.
+
+**End-of-chapter lab handoff.** Exercise approval, override, revocation,
+inspection, and forgetting as system operations. Measure intervention or
+revocation completion where timing matters and diagnose one failed authority
+path.
+
+---
+
+### Chapter 12 — Learning From Interaction
+
+**Opening question.** When may physical experience become data that changes the
+system?
+
+**Objective.** Given interaction records and an authority policy, the reader can
+decide which records may be used, check whether the data covers the situations
+that matter, trace where the data came from and who allowed its use, test an
+updated model, and decide whether it may replace the current one.
+
+**Entering state.** Complete trajectories from the running loop, evidence and
+promotion criteria, authority, and consent.
+
+**Misconception.** Logged interaction is automatically useful training data, and
+more data necessarily produces a better physical policy.
+
+**Crux.** Interaction creates governed trajectories shaped by the current
+policy, embodiment, people, and environment; training produces a new candidate,
+not an automatic update.
+
+#### Required Sections
+
+1. **Every Action Creates an Interaction Record**
+   Define the physical interaction record across observation, belief, proposal,
+   enforcement, action, consequence, and outcome.
+
+2. **The Policy Shapes Its Own Data**
+   Revisit endogeneity as selection bias, coverage distortion, missing failures,
+   and changing state visitation.
+
+3. **Ways a System Learns From People**
+   Distinguish demonstrations, teleoperation, corrections, preferences,
+   interventions, approvals, and autonomous experience.
+
+4. **What Each Interaction Record Must Contain**
+   Specify observations, state, action, timing, frames, policy version,
+   embodiment, outcome, environment, authority, and provenance.
+
+5. **Coverage Before Quantity**
+   Examine state-action coverage, rare conditions, interventions, failures,
+   operator bias, and missing regions.
+
+6. **The Same Command Can Mean Different Things on Different Bodies**
+   Explain why similar-looking trajectories may differ in morphology, frames,
+   action normalization, dynamics, and available skills.
+
+7. **Where the Data Came From and Who Allowed Its Use**
+   Apply Chapter 11 to collection, retention, reuse, export, sharing, and
+   deletion.
+
+8. **Choose the Data Before Training**
+   Treat selection, filtering, labeling, failure inclusion, and dataset versions
+   as governed engineering choices.
+
+9. **Training Produces a Candidate**
+   Keep training mostly outside scope while making the resulting model version,
+   interface, claimed improvement, and compatibility explicit.
+
+10. **Evaluate the Updated System**
+    Reuse Chapter 10 to evaluate the candidate against prior behavior, new
+    coverage, regression, enforcement, and authority requirements.
+
+11. **Version, Roll Back, and Learn Again**
+    Close the lifecycle without uncontrolled online change.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** interaction → admission → curation → candidate →
+  evaluation → approval → deployment or rollback.
+- **Supporting figure:** provenance graph connecting person, environment,
+  embodiment, trajectory, dataset, candidate, and deployed version.
+- **Table:** trajectory field, meaning, provenance, consent, coverage role, and
+  failure if missing.
+- **Representation:** coverage map, data-admission record, and change record.
+- **Algorithm:** admit or reject experience, evaluate candidate, approve or hold,
+  deploy, monitor, and roll back.
+
+**Engineering decision.** Admit or reject experience, then promote, hold, or
+reject the candidate produced from it.
+
+**Dossier artifact.** Trajectory schema, governed dataset lineage, coverage
+report, change-control process, candidate record, and rollback path.
+
+**Transfer task.** Evaluate whether a dataset collected on one embodiment and by
+one operator can support a changed policy on another embodiment and user group.
+
+**End-of-chapter lab handoff.** Supply trajectories with missing lineage, biased
+coverage, ambiguous action semantics, or invalid consent. Detect the defect,
+decide whether the experience is admissible, and evaluate any resulting update
+before deployment or rollback.
+
+---
+
+### Chapter 13 — Ready to Deploy?
+
+**Opening question.** What evidence is sufficient to accept responsibility for
+this system in this deployment?
+
+**Objective.** Given the complete system and its evidence, the reader can state
+exactly where and how it may be used, expose unsupported assumptions, connect
+hazards to evidence and recovery, and decide whether it is ready to deploy.
+
+**Entering state.** Every previous dossier artifact.
+
+**Misconception.** A successful demonstration, safe stop, security checklist, or
+privacy statement is sufficient evidence of readiness.
+
+**Crux.** Deployment is an accountable claim about a specific system,
+population, environment, operating limits, authority structure, and change
+process.
+
+#### Required Sections
+
+1. **State What You Plan to Deploy**
+   State task, system version, users, affected people, environment, operating
+   limits, dependencies, monitoring, and exclusions.
+
+2. **Match Each Hazard With Evidence**
+   Link physical consequence to prevention, detection, mitigation, recovery,
+   ownership, and residual risk.
+
+3. **Safety Is More Than Action Limits**
+   Integrate action limits, independent checking, runtime failure,
+   confidence tiers, human intervention, and recovery.
+
+4. **Security Controls Who Can Act**
+   Cover command authentication, trust boundaries, update integrity, credentials,
+   dependency provenance, supply chain, and compromise recovery.
+
+5. **Privacy Follows the Data**
+   Audit capture, inference, egress, retention, reuse, deletion, consent, and
+   bystander exposure.
+
+6. **When Parts Fail or Recover**
+   Include lost connectivity, resource exhaustion, partial service, sensor loss,
+   stale state, bad update, rollback, and service exit.
+
+7. **Show What the Evidence Supports**
+   Connect each release claim to its operational evidence, owner, validity
+   period, and counterevidence.
+
+8. **Name the Missing Evidence**
+   Make unsupported regions, unresolved hazards, weak coverage, and assumptions
+   visible rather than hiding them in prose.
+
+9. **Know When Formal Assurance Is Required**
+   Explain the limits of a teaching system and the handoff to domain standards,
+   certification, legal review, safety specialists, and accountable institutions.
+
+10. **Write the Decision**
+    Record deploy, deploy under conditions, or do not deploy; residual risk;
+    owners; monitoring; rollback; expiry; and the evidence that would change the
+    verdict.
+
+#### Required Teaching Artifacts
+
+- **Primary figure:** claim-argument-evidence case with visible gaps and owners.
+- **Supporting figure:** deployment dataflow and authority boundaries across
+  normal, degraded, and update states.
+- **Table:** claim or hazard, prevention, detection, threshold, evidence,
+  recovery, owner, residual risk, and verdict.
+- **Quantitative comparison:** time to safe state versus time to harm where the
+  deployment makes the comparison meaningful.
+- **Algorithm:** release decision with explicit conditions and an expiry date.
+
+**Engineering decision.** Deploy, deploy under explicit conditions, or do not
+deploy.
+
+**Dossier artifact.** Integrated deployment case and accountable decision
+record.
+
+**Transfer task.** Audit an unfamiliar system whose model performs well but whose
+authority, update, recovery, or coverage evidence is incomplete.
+
+**End-of-chapter lab handoff.** Present conflicting evidence across safety,
+security, privacy, recovery, coverage, updates, and authority. Require a written
+release verdict and the exact evidence that would reverse it.
+
+## Unnumbered Final Design Review
+
+The design review is the summative transfer assessment. It does not teach a new
+topic or become a fourteenth chapter.
+
+The reader must:
+
+- assemble the complete loop and show how \(W_t\) becomes \(W_{t+1}\);
+- defend the boundary, requirements, interfaces, runtime, and placement;
+- show valid evidence for ordinary behavior, tails, failures, and recovery;
+- demonstrate proposal, independent enforcement, and safe-state behavior;
+- present authority, consent, data-admission, update, and rollback paths;
+- defend the deployment decision and name missing evidence;
+- diagnose one deliberately introduced physical-system failure through
+  hypothesis, bisect, and confirm; and
+- adapt the method to a model, embodiment, or environment not used in the
+  reference system.
+
+A defended failure can pass. An unexplained success cannot.
+
+## End-of-Chapter Lab Boundary
+
+Labs are designed after the relevant chapter passes its teaching review. Every
+lab must provide the same instructional outcome through analytical, hosted, and
+physical manifestations where feasible.
+
+The lab may make a property visible, expose a misconception, provide evidence,
+or deepen diagnosis. It may not introduce the chapter's central concept, repair
+a missing explanation, or make successful assembly the final outcome.
+
+Every lab ends with:
+
+1. a predeclared prediction;
+2. a controlled perturbation and meaningful alternative;
+3. a measurement with regime, units, uncertainty, and efficacy;
+4. a diagnosed chapter-native failure;
+5. a chapter-specific engineering decision; and
+6. an update to the cumulative design dossier.
+
+## Drafting Order
+
+The final prose should be integrated in dependency order even when research and
+review happen in parallel:
+
+1. Chapters 1 through 4 establish the language, requirements, evidence, and
+   runtime.
+2. Chapters 5 through 8 populate the loop through observation, belief, proposal,
+   and enforcement.
+3. Chapters 9 and 10 integrate placement and assurance.
+4. Chapters 11 and 12 establish authority before governed learning.
+5. Chapter 13 integrates the deployment case.
+6. The final design review is written after every chapter artifact is stable.

@@ -1,64 +1,102 @@
 # Preface {.unnumbered}
 
-This is a working book about **Physical AI: Machine Learning Systems That Sense
-and Act**. It is not a how-to manual and not a research paper. It is an outline
-and a set of teaching notes, evolving as the real thing gets built, that tries
-to say what changes when a machine learning system becomes coupled to the
-physical world and what that coupling demands of an engineer.
+Machine learning systems usually end at an output. A classifier returns a
+label. A language model returns text. The software around them can be complex,
+but the inference itself does not move the world.
 
-## Physical AI is its own discipline
+**Physical AI** begins when that endpoint moves. The system's output becomes a
+proposal for action. If the action is allowed, it changes the world that will
+produce the next observation. The system then lives with its own consequences.
 
-A physical AI system is coupled to the world in a closed loop: it senses, it
-decides, it acts, the action changes the world, and it senses again. It runs in
-real time, under embodied limits (power, heat, size, motion), usually around
-people. That coupling, not the presence of a neural network, is what makes this
-a discipline of its own rather than machine learning with a motor attached.
+That change reorganizes the engineering problem. Observations age. Belief is
+never free. A capable proposal can still be late, stale, or unsafe. Someone—or
+some independent path—must decide what may reach actuators. Evidence gathered
+offline can stop being valid once the system acts.
 
-Like any engineering discipline, it is governed by an unforgiving reality. For
-machine learning systems that reality is physical law: bandwidth, arithmetic
-intensity, energy. For physical AI the reality is the coupling itself. The world
-does not pause, actions have consequences, sensing is partial and noisy, the
-device is bounded, and it lives in someone's space.
+The durable question of this book is not which model is strongest. It is:
 
-## The elements: properties before parts
+> What must the system know, measure, enforce, preserve, and prove before a
+> learned proposal may produce a physical consequence?
 
-From that coupling fall a set of cross-cutting properties that every physical AI
-system must reckon with, whatever component you are building:
+## What Physical AI Systems Means Here
 
-- **Timeliness**: the world has deadlines, so latency is a correctness property.
-- **Reliability**: it runs unattended, and failure is physical.
-- **Safety**: actions can harm, so fail-safe behavior is mandatory.
-- **Memory and state**: it persists and accumulates; it is not stateless inference.
-- **Energy and thermal**: embodied means power-bound.
-- **Privacy and trust**: it senses private spaces (here, a child's room).
-- **Robustness**: the open world is out of distribution; it must degrade gracefully.
-- **Adaptivity**: it improves from its own experience.
-- **Observability**: you must be able to explain what it did and why.
+**Physical AI Systems** is the field and course name: systems engineering for
+learned components that sense and act under constraint.
 
-These are not a final deployment chapter. They are dimensions that recur in
-every component. Perception lives inside a latency, energy, and robustness
-budget. Cognition lives inside a latency, cost, and observability budget. Action
-lives inside a safety and reliability budget. Memory is at once a component and a
-property. The disciplinary move is to treat these properties as first class and
-thread them through, and then to see that the single recurring decision,
-**placement** (which loop and which box a capability runs in), is exactly the act
-of trading these properties against one another.
+A system is in scope only when three conditions hold:
 
-## How the book is organized
+1. a **learned component** materially influences the action path;
+2. an allowed action produces **consequential physical feedback**—it changes
+   task-relevant world state and can alter later observations or choices; and
+3. the system holds **delegated physical authority** over that action
+   (permission to move, not only to advise).
 
-The chapters walk the loop (perception, cognition, action, memory, learning),
-and each one is read through the elements above. The reference artifact is a
-robot. The kit target is the Arduino UNO Q, and despite the name it is not the
-8-bit Uno: it is a single board that pairs a Qualcomm Dragonwing Linux processor (the MPU),
-a real computer that runs the models, with an STM32 microcontroller (the MCU) that
-holds hard real-time timing for the control loops. That dual brain is not a
-convenience. It makes the book's first boundary physical, the line between what
-must run with real-time guarantees and what can take the time to think, so the
-placement decision the book turns on is wired into the hardware the reader holds.
+Placing a model on a robot is not enough. An advisory display with sensors is
+not enough. Closing the loop with authority over matter is what forces the rest
+of the book.
 
-Two axes, then: the **components** a system is made of, and the **properties** it
-must satisfy. This book is where we work out how they meet.
+## TinyAgents Kit
 
-Full framing is in `../docs/PHYSICAL_AI.md`; the system architecture is in
-`../docs/ARCHITECTURE.md`. Each chapter's collapsible **Teaching note** is where
-we collect how to actually teach it.
+The laboratory companion is the **TinyAgents Kit**: a dual-brain educational
+platform on Arduino UNO Q (Linux MPU + real-time MCU).
+
+| Term | Meaning in this book |
+| --- | --- |
+| **TinyAgent** | A complete engineered agent under resource and physical limits: sense, represent, estimate, propose, permit, act, measure, and respect human authority |
+| **Not** | A chat loop, an unconstrained tool-using LLM, or “TinyML plus a large model” |
+| **TinyML** | Deploy a model under tight compute |
+| **TinyAgents** | Build an intelligent machine whose proposals still need permission to move |
+
+> TinyML taught you to deploy a model. TinyAgents teaches you to build an
+> intelligent machine.
+
+On the kit, that permission is *made physical*:
+
+| Brain | Role |
+| --- | --- |
+| **MPU** (rich, best-effort) | Perception, state, policies, planning, tools, logs—**proposes** |
+| **MCU** (trusted real-time) | Timing-critical loops, watchdogs, limits, validation, safe fallback—**permits** |
+| **Boundary** | Typed, timestamped, **expiring intent**; the MCU may permit, refuse, interrupt, or recover |
+
+The dual-brain split is a teaching realization of proposal versus permission
+(runtime-assurance lineage). It is not a claim of industrial functional-safety
+certification. Concepts in the book stay platform-neutral; the kit is the
+reference body for the labs.
+
+## How the Book Relates to the Course
+
+**Physical AI Systems** is one open project-based course: enrolled cohorts and
+anyone following along (including kit partners) use the same schedule,
+milestones, design dossier, and TinyAgents Kit path. The book is the method
+library for that course—not a separate curriculum product.
+
+Three teaching blocks, then a capstone:
+
+| Block | Chapters | Job |
+| --- | ---: | --- |
+| **I. Foundations** | 1–4 | Scope, world requirements, metrology, continuous dual-brain runtime |
+| **II. Building a TinyAgent** | 5–10 | Observe → estimate → propose → permit → place → qualify |
+| **III. Responsibility** | 11–13 | Authority, governed learning, deploy / condition / refuse |
+| **Capstone** | Final review | Transfer and diagnosed failure—no new theory |
+
+Each chapter completes one capability, one decision, and one dossier piece.
+Primitives to click together: **loop, time, budget, permission, evidence**.
+
+## How Chapters and Labs Relate
+
+Every chapter is conceptually complete before hardware. Labs do not invent
+theory. The course project integrates kit experiences rather than assigning
+thirteen peer-weight kit nights. Analytical and hosted substitutes remain valid
+for the same decision.
+
+## The Standard
+
+The book succeeds if a graduate meets an unfamiliar embodiment and model and
+asks better questions than “Which model should I run?”
+
+What is the causal boundary? How old is the belief when action takes effect?
+What may the model only propose? What may refuse it? What continues when the
+policy is late? What does the evidence actually prove? Who may teach, stop,
+revoke, and forget? What would justify—or refuse—deployment?
+
+Models and boards will change. Those questions should not.

@@ -3,22 +3,24 @@
 
 \usepackage{microtype}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta}
+\usetikzlibrary{arrows.meta,positioning}
 \usepackage{scrlayer-scrpage}
 \usepackage{needspace}
 
-% Brand palette.
-\definecolor{reflex}{HTML}{18A999}
-\definecolor{deliberation}{HTML}{1B2A4A}
-\definecolor{learning}{HTML}{E8A33D}
+% PhysicalAI semantic palette.
+\definecolor{structural}{HTML}{1B2A4A}
+\definecolor{measured}{HTML}{168F84}
+\definecolor{proposal}{HTML}{C98218}
+\definecolor{consequence}{HTML}{BD4F2F}
+\definecolor{authority}{HTML}{6550A8}
 \definecolor{ink}{HTML}{111318}
 \definecolor{softink}{HTML}{404856}
 \definecolor{paleink}{HTML}{697386}
 
 % Links: deferred so hyperref is loaded first.
 \AtBeginDocument{%
-  \hypersetup{colorlinks=true, linkcolor=deliberation, urlcolor=reflex,
-    citecolor=reflex, filecolor=reflex}%
+  \hypersetup{colorlinks=true, linkcolor=structural, urlcolor=measured,
+    citecolor=measured, filecolor=measured}%
 }
 
 % Body rhythm.
@@ -26,17 +28,17 @@
 \setlength{\emergencystretch}{2em}
 \microtypesetup{protrusion=true, expansion=true, final}
 
-% Headings: Avenir Next (sansfont), indigo, restrained.
-\setkomafont{disposition}{\normalfont\sffamily\color{deliberation}}
-\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{26}{30}\selectfont\color{deliberation}}
-\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{16}{20}\selectfont\color{deliberation}}
-\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{12.5}{16}\selectfont\color{deliberation}}
-\setkomafont{captionlabel}{\normalfont\sffamily\bfseries\color{deliberation}}
+% Headings: Avenir Next (sansfont), structural navy, restrained.
+\setkomafont{disposition}{\normalfont\sffamily\color{structural}}
+\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{26}{30}\selectfont\color{structural}}
+\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{16}{20}\selectfont\color{structural}}
+\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{12.5}{16}\selectfont\color{structural}}
+\setkomafont{captionlabel}{\normalfont\sffamily\bfseries\color{structural}}
 \setkomafont{caption}{\normalfont\small\color{softink}}
 
-% Chapter opener: a small amber label above the title, then a subtle rule.
+% Chapter opener: a measured label above the title, then a subtle rule.
 \renewcommand*{\chapterformat}{%
-  {\normalfont\sffamily\bfseries\fontsize{11}{13}\selectfont\color{learning}CHAPTER~\thechapter}\par
+  {\normalfont\sffamily\bfseries\fontsize{11}{13}\selectfont\color{measured}CHAPTER~\thechapter}\par
   \vspace{0.45\baselineskip}}
 \renewcommand*{\chapterlinesformat}[3]{%
   \vspace*{0.2in}%
@@ -58,21 +60,27 @@
 \KOMAoptions{headsepline=0.3pt}
 \addtokomafont{headsepline}{\color{paleink}}
 
-% TOC: chapters indigo bold.
-\setkomafont{chapterentry}{\normalfont\sffamily\bfseries\color{deliberation}}
-\setkomafont{chapterentrypagenumber}{\normalfont\sffamily\bfseries\color{deliberation}}
+% TOC: chapters structural navy bold.
+\setkomafont{chapterentry}{\normalfont\sffamily\bfseries\color{structural}}
+\setkomafont{chapterentrypagenumber}{\normalfont\sffamily\bfseries\color{structural}}
 
 % Title-page fonts.
-\setkomafont{title}{\normalfont\sffamily\bfseries\fontsize{30}{34}\selectfont\color{deliberation}}
+\setkomafont{title}{\normalfont\sffamily\bfseries\fontsize{30}{34}\selectfont\color{structural}}
 \setkomafont{subtitle}{\normalfont\sffamily\fontsize{13}{17}\selectfont\color{softink}}
 \setkomafont{author}{\normalfont\large\color{ink}}
 \setkomafont{date}{\normalfont\normalsize\color{softink}}
 
-% The closed-loop motif, drawn in TikZ (no external image).
-\newcommand{\paloop}[1]{%
-  \begin{tikzpicture}
-    \draw[reflex,line width=1.4pt,-{Stealth[length=2.4mm]}] (0:#1) arc (0:312:#1);
-    \fill[learning] (312:#1) circle (0.13*#1);
+% The two-world-state motif. Proposal remains dashed until an allowed action
+% changes the world from W_t to W_{t+1}.
+\newcommand{\patransition}{%
+  \begin{tikzpicture}[baseline=-0.6ex]
+    \node[draw=white,text=white,rounded corners=1.5pt,minimum width=0.78cm,minimum height=0.46cm,font=\sffamily\bfseries\scriptsize] (wt) {$W_t$};
+    \node[right=0.34cm of wt,text=proposal,font=\sffamily\scriptsize] (p) {proposal};
+    \node[right=0.34cm of p,draw=measured,text=white,fill=measured,minimum width=0.16cm,minimum height=0.42cm] (g) {};
+    \node[right=0.34cm of g,draw=white,text=white,rounded corners=1.5pt,minimum width=0.92cm,minimum height=0.46cm,font=\sffamily\bfseries\scriptsize] (wtone) {$W_{t+1}$};
+    \draw[white,line width=0.8pt,-{Stealth[length=1.8mm]}] (wt) -- (p);
+    \draw[proposal,dashed,line width=1.1pt,-{Stealth[length=1.8mm]}] (p) -- (g);
+    \draw[measured,line width=1.2pt,-{Stealth[length=1.8mm]}] (g) -- (wtone);
   \end{tikzpicture}}
 
 % Cover page then title page, both via \maketitle (correct order under Quarto).
@@ -82,18 +90,18 @@
   \begin{titlepage}\thispagestyle{empty}%
     \newgeometry{margin=0pt}%
     \begin{tikzpicture}[remember picture,overlay]
-      \fill[deliberation] (current page.south west) rectangle (current page.north east);
-      \fill[reflex] ([yshift=3.55in]current page.west) rectangle ([yshift=3.66in]current page.east);
+      \fill[structural] (current page.south west) rectangle (current page.north east);
+      \fill[measured] ([yshift=3.55in]current page.west) rectangle ([yshift=3.66in]current page.east);
       \node[anchor=east] at ([xshift=-0.95in,yshift=-0.7in]current page.east)
-        {\paloop{1.5cm}};
+        {\patransition};
       \node[anchor=south west,text width=6.2in,align=left]
         at ([xshift=0.95in,yshift=3.9in]current page.south west)
-        {\sffamily\bfseries\fontsize{44}{48}\selectfont\color{white}Physical\hskip 0.25em AI\\Engineering\par
-         \vspace{0.2in}{\sffamily\fontsize{15}{20}\selectfont\color{reflex}A Hands-On Systems Discipline}\par};
+        {\sffamily\bfseries\fontsize{44}{48}\selectfont\color{white}Physical\hskip 0.25em AI\par
+         \vspace{0.2in}{\sffamily\fontsize{15}{20}\selectfont\color{measured}Machine Learning Systems That Sense and Act}\par};
       \node[anchor=south west,text width=6.2in,align=left]
         at ([xshift=0.95in,yshift=0.95in]current page.south west)
         {\sffamily\fontsize{13}{17}\selectfont\color{white}Vijay Janapa Reddi\par
-         \vspace{2pt}{\sffamily\fontsize{9.5}{12}\selectfont\color{paleink}Working outline \textbullet\ June 27, 2026}\par};
+         \vspace{2pt}{\sffamily\fontsize{9.5}{12}\selectfont\color{paleink}System design, evidence, and human authority}\par};
     \end{tikzpicture}%
     \restoregeometry
   \end{titlepage}%
@@ -101,7 +109,7 @@
   \begin{titlepage}\thispagestyle{empty}%
     \raggedright
     \vspace*{1.1in}
-    {\textcolor{reflex}{\rule{2.3in}{1.3pt}}\par}
+    {\textcolor{measured}{\rule{2.3in}{1.3pt}}\par}
     \vspace{0.35in}
     {\usekomafont{title}\@title\par}
     \vspace{0.16in}
@@ -111,9 +119,9 @@
     \vspace{0.12in}
     {\usekomafont{date}\@date\par}
     \vfill
-    {\paloop{0.7cm}\par}
+    {\sffamily\bfseries\color{measured}$W_t \longrightarrow W_{t+1}$\par}
     \vspace{0.28in}
-    {\sffamily\footnotesize\color{paleink}Closed-loop systems, embodied constraints, and engineering practice.\par}
+    {\sffamily\footnotesize\color{paleink}Learned proposals, bounded action, and accountable deployment.\par}
   \end{titlepage}%
 }
 \makeatother
