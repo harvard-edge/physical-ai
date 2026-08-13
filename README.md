@@ -20,6 +20,7 @@ This repository is the **course + book + kit labs**. Older prototypes live in
 | You are… | Open |
 | --- | --- |
 | Student / open learner / partner | **[`docs/COURSE.md`](docs/COURSE.md)** |
+| ETH course submission / catalogue draft | **[`course/Physical-AI-Systems.md`](course/Physical-AI-Systems.md)** |
 | Writing a chapter | [`docs/TEACHING-FLOW.md`](docs/TEACHING-FLOW.md) + [`docs/CHAPTER-OUTLINES.md`](docs/CHAPTER-OUTLINES.md) |
 | Building kit firmware | [`labs/README.md`](labs/README.md) |
 | Checking settled decisions | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
