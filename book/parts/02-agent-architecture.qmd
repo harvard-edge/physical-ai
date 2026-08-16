@@ -1,0 +1,94 @@
+# The Agent Architecture {.unnumbered}
+
+| Architectural Scope | Specification and Deliverables |
+| :--- | :--- |
+| **System Layer** | The 5 Canonical Sensory-Motor Organs Across the Proposal–Permission Boundary |
+| **Core Systems Question** | *How do we construct the complete 5-organ sensory-motor pipeline that converts raw sensor photons into safe, continuous physical movement?* |
+| **Spine Chapters** | • **Chapter 4:** Perception<br>• **Chapter 5:** Memory<br>• **Chapter 6:** Reasoning<br>• **Chapter 7:** Planning<br>• **Chapter 8:** Reflex |
+| **Accumulating Dossier Artifacts** | `OBS-01` (Observation Contract), `STATE-01` (State & Timing Model), `INTENT-01` (Policy & Intent Schema), `PLAN-01` (Planning Schema), `ENF-01` (Enforcement Design) |
+| **Bench Verification Target** | End-to-end closed-loop pick-and-place tracking with 1 kHz Control Barrier Function safety vetoes and jerk-continuous action chunking |
+
+---
+
+## The Core Systems Tension: High-Capacity Learned Models vs. Deterministic Real-Time Control
+
+A physical AI machine is not a single, monolithic neural network running on a cloud server. It is an integrated physiological system comprising five distinct sensory-motor organs operating across different temporal rates, silicon fabrics, and trust boundaries.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        THE 5 ORGANS OF THE AGENT ARCHITECTURE                          │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│  [PHOTONS] ──► 1. PERCEPTION (Chapter 4)                                               │
+│                     │ (Spatial Affordance Tokens)                                      │
+│                     ▼                                                                  │
+│                2. MEMORY (Chapter 5) ◄── (SE(3) Frame Trees & Latent Belief)           │
+│                     │                                                                  │
+│                     ▼                                                                  │
+│                3. REASONING (Chapter 6: System 2 · 1 Hz VLM Expiring Leases)           │
+│                     │                                                                  │
+│                     ▼                                                                  │
+│                4. PLANNING (Chapter 7: System 1.5 · 20–50 Hz ACT Action Chunks)        │
+│                     │                                                                  │
+│   ══════════════════╪════════════════════════════════════════════════════════════════  │
+│   THE PRIVILEGE GATE: Proposal Verification & Control Barrier Functions (CBF)          │
+│   ══════════════════╪════════════════════════════════════════════════════════════════  │
+│                     ▼                                                                  │
+│                5. REFLEX (Chapter 8: System 1 · 1 kHz Bare-Metal MCU Enforcer)         │
+│                     │                                                                  │
+│                     ▼                                                                  │
+│              [MOTOR INVERTERS / PHYSICAL WORLD]                                        │
+│                     │                                                                  │
+│                     ▼ (Endogenous Physical Mutation W_t ──► W_t+1)                     │
+│              [NEW PHOTONS / SENSOR DRIFT] ──► [PERCEPTION (Ch 4)]                      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+The fundamental systems challenge of embodied intelligence is the **Privilege and Temporal Mismatch**:
+* **The Cognitive Layer (Perception, Memory, Reasoning, Planning):** High-capacity deep learning models (ViTs, JEPAs, VLMs, Diffusion Policies) excel at unstructured perception, long-horizon task reasoning, and multi-step trajectory generation. But they are computationally heavy, require hundreds of milliseconds, experience memory bus contention, and produce stochastic outputs with long tail distributions ($P_{99}$).
+* **The Physical Layer (Reflex & Motor Control):** Physical mechanics, inertial momentum ($p=mv$), and gearbox gears require strict, deterministic, microsecond-accurate current loops ($1000\text{ Hz}$) with smooth derivative continuity ($\mathcal{C}^2$) and non-negotiable mathematical guarantees that safety invariants are never violated.
+
+Part II resolves this tension by systematically constructing, isolating, and validating each of the five sensory-motor organs across the Proposal–Permission boundary.
+
+---
+
+## The Five Sensory-Motor Organs of Part II
+
+### 1. Perception (Chapter 4)
+Ingesting high-bandwidth raw sensor streams without starving shared memory buses. We measure the pre-inference DMA bus tax during multi-camera streaming, eliminate cache thrashing through zero-copy ring buffers, and deploy Vision Transformers (ViTs) and self-supervised models (DINOv2) to extract compact **3D spatial affordance tokens** (`OBS-01`).
+
+### 2. Memory (Chapter 5)
+Bridging discrete, asynchronous sensor arrivals with continuous temporal belief. We maintain dynamic $SE(3)$ spatial frame graphs, deploy latent predictive world models (JEPAs / RSSMs) that anticipate future states in representation space without rendering heavy pixels, and enforce **State Validity TTL Leases** to revoke authority when sensory tracking is occluded (`STATE-01`).
+
+### 3. Reasoning (Chapter 6)
+Harnessing foundation Vision-Language Models (VLMs) for open-world semantic goal grounding without ceding direct actuator authority. We translate natural language commands into 3D metric bounding boxes, filter proposals through non-blocking kinematic reachability bounds ($\kappa(J)$), and emit time-bounded **Expiring Intent Leases** ($t_{\text{expire}}$) (`INTENT-01`).
+
+### 4. Planning (Chapter 7)
+Decoding high-level semantic intent into continuous, multi-step joint trajectories at $20\text{--}50\text{ Hz}$. We deploy modern Action Chunking with Transformers (ACT) and diffusion policies predicting $H$-step future waypoint horizons in parallel, applying temporal ensembling and spline interpolation to guarantee $\mathcal{C}^2$ jerk continuity and prevent gearbox gear wear (`PLAN-01`).
+
+### 5. Reflex (Chapter 8)
+The deterministic safety supervisor running at $1000\text{ Hz}$ on a dedicated bare-metal microcontroller. Grounded in formal **Control Barrier Functions (CBF)** ($h(x) \ge 0$) and dynamic stopping distance envelopes ($d_{\text{stop}} \le d_{\text{clearance}}$), the MCU intercepts all proposed action chunks, computes minimal-intervention quadratic programs, and writes safe motor currents ($u_t$) while executing deterministic emergency fallback chains upon safety vetoes (`ENF-01`).
+
+---
+
+## The Bench Reality on the TinyAgent
+
+Throughout Part II, learners construct and verify the complete closed-loop pipeline on the **Arduino UNO Q Hardware Kit**:
+
+* **DMA Ingestion & Affordance Extraction:** Capturing MIPI-CSI camera frames on the Linux MPU, executing INT8 DINOv2 feature extraction on the NPU, and publishing 3D bounding box coordinates into shared memory.
+* **Latent State & TTL Tracking:** Maintaining an $SE(3)$ transform tree while simulating optical camera occlusions, verifying that state confidence decays and triggers safe re-acquisition states.
+* **VLM Intent & Leases:** Streaming natural language goals from an edge VLM into an expiring intent register with a $1500\text{ ms}$ validity horizon.
+* **Action Chunking & Jerk Smoothing:** Running an ACT diffusion policy unrolling 16-step joint trajectories, measuring joint jerk ($\dddot{q}$) on an oscilloscope to prove temporal ensembling eliminates discontinuous torque spikes.
+* **1 kHz MCU Safety Enforcer:** Implementing a real-time Control Barrier Function loop in C++ on the Cortex-M4 MCU that successfully vetoes colliding trajectory proposals and clamps velocity within $2\text{ ms}$.
+
+---
+
+## The Accumulating Design Dossier: Exiting Part II
+
+Upon completing Part II, the engineering team locks five core operational artifacts in the **Cumulative Design Dossier**:
+
+1. `OBS-01` (**Observation Contract**): Defines camera resolutions, DMA buffer addresses, timestamp synchronization protocols, and spatial affordance token formats.
+2. `STATE-01` (**State, Frame Tree & Timing Model**): Formulates $SE(3)$ transformation chains, velocity prediction buffers, and state validity time-to-live thresholds ($\text{TTL}_{\text{state}} = 80\text{ ms}$).
+3. `INTENT-01` (**Policy Interface & Intent Schema**): Freezes VLM goal representations, 3D workspace boundaries, and intent lease expiration windows ($t_{\text{expire}} = 1500\text{ ms}$).
+4. `PLAN-01` (**Planning & Trajectory Schema**): Specifies action chunk horizons ($H=16$), inference frequencies ($30\text{ Hz}$), and maximum derivative limits ($\dot{q}_{\text{max}}, \ddot{q}_{\text{max}}, \dddot{q}_{\text{max}}$).
+5. `ENF-01` (**Enforcement Design**): Freezes the $1000\text{ Hz}$ MCU safety enforcer C++ contracts, Control Barrier Function parameters ($\gamma, \alpha$), dynamic stopping envelopes ($d_{\text{stop}}$), and Category 0/1/2 emergency stop state machines.

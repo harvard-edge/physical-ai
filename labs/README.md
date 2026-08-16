@@ -4,7 +4,7 @@ Physical realization of *Physical AI: Machine Learning Systems That Sense and
 Act* on the **TinyAgents Kit** (Arduino UNO Q: Linux MPU + real-time MCU).
 
 Brand hierarchy: field/course **Physical AI Systems** · book above · product
-**TinyAgents Kit**. See [`docs/BRAND.md`](../docs/BRAND.md).
+**TinyAgents Kit**.
 
 This folder is owned by the postdoc for kit bring-up, firmware, starter
 checkpoints, wiring, and lab write-ups. The book steward owns the learning
@@ -29,15 +29,11 @@ The dual-brain split is the technical depth of the kit—not branding fluff.
 - No peer, cloud service, or MPU process may bypass the receiving MCU enforcer.
 - Teaching instrument for proposal vs permission (runtime-assurance lineage); not a complete safety certification.
 
-## Taught formats
+## Taught Formats
 
-**Default (public):** [`docs/COURSE.md`](../docs/COURSE.md) — one project-based
+**Default (public):** [`course/syllabus.md`](../course/syllabus.md) — one project-based
 course for enrolled and open/Arduino follow-along. Kit work is the team project
 with forced experiences (measure, runtime continuity, enforcer).
-
-**Optional lecture track:** [`docs/SEMESTER-PACK.md`](../docs/SEMESTER-PACK.md).
-
-**Chapter author map:** [`docs/TEACHING-FLOW.md`](../docs/TEACHING-FLOW.md).
 
 Do not invent a second lab syllabus for partners—the course *is* the curriculum.
 
@@ -99,6 +95,5 @@ chapter-specific forks.
 
 ## Relation to the rest of the repo
 
-Canonical public offer: `docs/COURSE.md`. Kit implements that course’s project.
-Authoring detail: `docs/TEACHING-FLOW.md`, `docs/CHAPTER-OUTLINES.md`.
+Canonical public offer: `course/syllabus.md`. Kit implements that course’s project.
 This folder is firmware and lab contracts only.

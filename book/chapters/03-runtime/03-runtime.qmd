@@ -1,0 +1,206 @@
+# Multi-Rate Systems
+
+::: {.callout-question}
+How do we architect an asynchronous, lock-free runtime that bridges $1\text{ Hz}$ semantic planning with $1000\text{ Hz}$ motor reflexes while surviving application processor crashes?
+:::
+
+![Systems Organ Focus: Decoupling asynchronous multi-rate runtimes across the Proposal–Permission boundary.](figures/fig_pipeline_locator.pdf){#fig-locator-ch03 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Architect the Multi-Rate Engine:** Decouple slow deliberative planning ($1\text{ Hz}$) from intermediate trajectory decoding ($20\text{--}50\text{ Hz}$) and bare-metal motor reflexes ($1000\text{ Hz}$).
+2. **Implement Lock-Free Shared Memory IPC:** Design triple-buffered lock-free ring buffers across heterogeneous memory regions (Linux MPU to Cortex-M4 MCU).
+3. **Configure Heartbeat Leases & Watchdogs:** Isolate untrusted user-space neural models from motor electronics using hardware watchdog timers ($\tau_{\text{watchdog}}$).
+4. **Survive MPU Panics on the Bench:** Prove experimentally that the MCU executes controlled category fallbacks when the application processor crashes or freezes.
+5. **Freeze the Runtime Skeleton (`RUN-01`):** Construct the third artifact of the Cumulative Design Dossier establishing inter-core memory layouts and timing contracts.
+:::
+
+::: {.callout-autopsy}
+* **System:** Autonomous Sorting Gantry (Linear Actuator traveling at $1.2\text{ m/s}$)
+* **Incident:** Carriage rammed mechanical end-stop; stripped drive belt teeth.
+* **Telemetry Snapshot:** Application processor suffered a Linux kernel panic due to an out-of-memory (OOM) killer event in a neural vision pipeline.
+* **Root Cause:** The motor driver board received no fresh commands; motor H-bridge power switches remained in their last energized state for $850\text{ ms}$ before power was cut.
+* **Architectural Flaw:** The system lacked an independent hardware watchdog to cut actuator power upon host CPU failure.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Asynchronous trajectory proposal buffer ($20\text{ Hz}$)<br>• Periodic heartbeat ping ($\tau_{\text{heartbeat}} \le 10\text{ ms}$)<br>• Bounded execution slice per chunk |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Checks atomic IPC sequence counters<br>• Hardware watchdog timer ($\tau_{\text{watchdog}} = 50\text{ ms}$)<br>• $1000\text{ Hz}$ deterministic execution loop |
+| **Failure Escalation** | *MCU Hardware Reflex* | If heartbeat expires ($> 50\text{ ms}$) or shared buffer corrupts, trigger NMI and execute Category 1 controlled dynamic braking. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** All components step synchronously in a single thread (`env.step()`); compute takes zero real time; models never crash or leak memory.
+* **What the Bench Measures:** Multi-threading across Linux and FreeRTOS introduces race conditions; shared memory cache lines invalidate unpredictably; Linux kernel OOM killers terminate user processes mid-trajectory.
+:::
+
+---
+
+## The Multi-Rate Execution Reality: The Three Speeds of Intelligence
+
+A fundamental mistake in embodied AI systems design is attempting to run all components at a single monolithic clock rate.
+
+Consider the computational disparity across the agent:
+* Reasoning about open-vocabulary semantic goals with a Vision-Language Model requires billions of floating-point operations (FLOPs) and takes hundreds of milliseconds.
+* Generating continuous motor trajectory splines with a diffusion policy takes tens of milliseconds.
+* Enforcing dynamic stopping envelopes, reading joint encoders, and commutating motor phase currents requires sub-millisecond determinism.
+
+Forcing the entire system into a single loop creates an impossible compromise: either the high-level semantic reasoning is starved of compute, or the low-level motor safety loop is slowed down to an unsafe, jittery crawl.
+
+| Speed Layer | Compute Substrate & Frequency | Primary Systems Responsibilities |
+| :--- | :--- | :--- |
+| **System 2: Semantic Reasoning** | Linux MPU / Remote Cloud<br>$0.5\text{--}2\text{ Hz}$ *(Stochastic latency: 500–2000 ms)* | • Open-vocabulary scene parsing & affordance grounding<br>• Emits time-bounded **Expiring Intent Proposals** ($p_t$)<br>• Zero direct actuator authority |
+| **System 1.5: Motor Planning** | Linux MPU / Edge NPU<br>$10\text{--}50\text{ Hz}$ *(Bounded tail: 20–100 ms)* | • Action chunk unrolling ($H$-step horizon waypoints $a_k$)<br>• $\mathcal{C}^2$ jerk continuity & temporal ensembling<br>• Fast trajectory replanning |
+| **System 1: Real-Time Reflex** | Dedicated Real-Time MCU<br>$500\text{--}2000\text{ Hz}$ *(Hard real-time: $<1\text{ ms}$ jitter)* | • Dynamic stopping distance verification ($d_{\text{stop}}$)<br>• Control Barrier Invariant evaluation ($h(x) \ge 0$)<br>• Direct inverter gate drive: $u_t = \text{permit}(p_t)$ |
+
+We resolve this by decoupling the runtime into **The Three Speeds of Intelligence**:
+
+### System 2: Semantic Deliberation ($0.5\text{--}2\text{ Hz}$)
+Runs high-level multimodal vision-language models (VLMs) on the Linux application processor or remote cloud servers. System 2 parses high-level user commands, identifies target objects in unstructured visual scenes, and emits time-bounded **Expiring Intent Proposals** ($p_t$). It operates asynchronously, with non-deterministic execution times ranging from $500\text{ ms}$ to $2000\text{ ms}$.
+
+### System 1.5: Motor Planning and Action Chunking ($10\text{--}50\text{ Hz}$)
+Runs Vision-Language-Action (VLA) policies, diffusion trajectory generators, or receding horizon decoders on an edge NPU or Linux CPU. System 1.5 consumes the current visual affordance tokens and intent lease, unrolling a multi-step trajectory chunk of future joint waypoints spanning $0.5\text{--}1.5\text{ seconds}$ into the future. It operates with bounded tail latency ($20\text{--}50\text{ ms}$).
+
+### System 1: Real-Time Reflex and Safety Enforcement ($500\text{--}2000\text{ Hz}$)
+Runs on a dedicated bare-metal or FreeRTOS microcontroller (e.g. ARM Cortex-M4/M7). System 1 interpolates trajectory waypoints, evaluates control barrier invariants, monitors microsecond hardware clocks, checks dynamic stopping envelopes ($d_{\text{stop}}$), and directly drives motor inverters. It executes under strict, hard real-time determinism ($< 1\text{ ms}$ jitter-free loop).
+
+---
+
+## Asynchronous IPC and Lock-Free Ring Buffers
+
+To connect components operating across disparate frequencies without blocking fast control loops, communication must use **lock-free, zero-allocation shared memory ring buffers**.
+
+If a real-time microcontroller safety thread ever calls a blocking mutex or waits for an operating system semaphore owned by a Linux user-space process, a phenomenon known as **priority inversion** occurs. If the Linux process is preempted or encounters a page fault while holding the lock, the 1000 Hz motor safety loop is starved of execution, causing immediate mechanical instability.
+
+| Shared Memory Segment | Producer $\to$ Consumer | Allocation & Synchronization Protocol |
+| :--- | :--- | :--- |
+| **Trajectory Ring Buffer** | Linux MPU $\longrightarrow$ Real-Time MCU | Double-buffered SPSC slots, 64-byte aligned, atomic index pointer swap with memory barriers (`__DMB()`, `__DSB()`). |
+| **Heartbeat Lease Register** | Linux MPU $\longrightarrow$ Real-Time MCU | Monotonically incrementing 64-bit microsecond counter checked against watchdog deadline $\tau_{\text{watchdog}}$. |
+| **High-Rate Telemetry Stream** | Real-Time MCU $\longrightarrow$ Linux MPU | Lock-free circular buffer containing 1 kHz encoder positions, motor phase currents, and enforcer veto flags. |
+
+### The Lock-Free IPC Design Principles
+1. **Zero Dynamic Memory Allocation:** Memory structures (ring buffers, message queues) are statically allocated in shared dual-port SRAM at boot time. Neither processor calls `malloc()` or `free()` during runtime.
+2. **Single-Producer, Single-Consumer (SPSC) Queues:** Trajectory proposals flow unidirectionally from MPU to MCU; high-rate telemetry flows unidirectionally from MCU to MPU.
+3. **Atomic Sequence Counters and Memory Barriers:** To prevent torn reads across 32-bit and 64-bit word boundaries, updates to buffer write pointers use atomic hardware operations accompanied by explicit memory barriers (`__DMB()`, `__DSB()`).
+4. **Double-Buffered Trajectory Slots:** The MPU writes candidate trajectory chunks into an inactive memory slot and atomically flips an active index pointer once the CRC payload checksum is verified.
+
+---
+
+## Hardware Failure Domain Isolation
+
+True systems resilience requires fault containment across hardware failure domains. In computing systems design (Saltzer and Kaashoek), a system must prevent a fault in an untrusted subsystem from propagating into a trusted safety critical component.
+
+| Failure Domain | Architectural Substrate | Hardware Isolation & Containment Boundary |
+| :--- | :--- | :--- |
+| **Untrusted Proposal Domain** *(Linux MPU + Edge NPU)* | Complex OS, dynamic virtual paging, GPU drivers, user-space daemons. | **Subject to:** OOM kills, kernel panics, PyTorch segmentation faults, and scheduling jitter. Constrained by MPU/PMP memory isolation windows so DMA engines cannot write to MCU SRAM. |
+| **Trusted Permission Domain** *(Real-Time MCU)* | Static SRAM, zero dynamic memory allocation, deterministic FreeRTOS loop ($1000\text{ Hz}$). | **Exclusive ownership of:** Motor PWM timers, inverter gate drivers, CAN-FD buses, and hardware E-stop relays. The Linux processor has zero physical address routing to motor pins. |
+| **Physical Actuation Domain** *(Motors & Power Bus)* | Brushless motors, power MOSFETs, emergency brake relays. | Independent power decoupling and brownout supervisory circuits ensure MCU maintains dynamic braking authority even during battery voltage sag. |
+
+To enforce failure domain isolation on physical AI hardware:
+
+* **Memory Protection Units (MPU / PMP):** Hardware memory protection units restrict the application processor's Direct Memory Access (DMA) engines from reading or writing outside its allocated shared memory window, preventing errant Linux drivers from corrupting microcontroller SRAM.
+* **Isolated Peripheral Bus Ownership:** Motor PWM timer registers, CAN-FD transceivers, and emergency stop GPIO lines must be mapped exclusively to the microcontroller's internal peripheral bus. The Linux application processor must have zero physical address routing to motor gate driver pins.
+* **Independent Power and Brownout Supervision:** The microcontroller power supply rail is decoupled with dedicated bulk capacitance and independent brownout reset circuitry, ensuring the MCU stays alive to command dynamic braking even during transient battery voltage sag.
+
+---
+
+## Watchdog Protocols and Heartbeat Leases
+
+To detect software freezes, kernel panics, or thread deadlocks on the application processor, the runtime implements a bidirectional **hardware heartbeat lease protocol**:
+
+```text
+HEARTBEAT STATE MACHINE (Running on MCU Enforcer):
+                   Heartbeat Received & Valid (t - t_last < τ_watchdog)
+                       ┌───────────────────────────────┐
+                       │                               │
+                       ▼                               │
+              ┌──────────────────┐                     │
+              │  NOMINAL STATE   │─────────────────────┘
+              │  (Policy Active) │
+              └──────────────────┘
+                       │
+                       │ Heartbeat Timeout Expired (t - t_last >= τ_watchdog)
+                       │ or MPU Kernel Panic Detected
+                       ▼
+              ┌──────────────────┐
+              │  SAFETY FALLBACK │ ──► Category 1 Stop (Dynamic Braking)
+              │  (MCU Autonomy)  │ ──► Transition to Safe Position Hold
+              └──────────────────┘
+```
+
+1. **The MPU Heartbeat Ping:** Every $\tau_{\text{heartbeat}} = 10\text{ ms}$, the application processor's trajectory planning thread writes an incremented sequence counter and timestamp into a dedicated shared SRAM register.
+2. **The Hardware Watchdog Countdown:** The microcontroller runs a dedicated hardware countdown timer. Every 1000 Hz cycle, the MCU checks if the sequence counter has advanced.
+3. **The Non-Maskable Interrupt (NMI):** If no valid heartbeat is received within $\tau_{\text{watchdog}} = 50\text{ ms}$ (a 5-cycle missed lease), the hardware timer expires and trips a hardware Non-Maskable Interrupt (NMI).
+4. **Autonomous MCU Takeover:** The NMI interrupt service routine immediately invalidates all active trajectory chunks, revokes the MPU's motor permission, and initiates controlled physical deceleration.
+
+---
+
+## Fallback State Machines and Safe Physical Continuity
+
+When an upstream software component fails or a hardware watchdog trips, the physical machine must execute a standardized, deterministic fallback sequence:
+
+| Stop Level | Trigger Condition | Physical Mechanical Action |
+| :--- | :--- | :--- |
+| **Category 2 Stop** *(Controlled Hold)* | VLM intent lease expires; minor sensory frame dropout ($\le 2$ dropped frames). | **Controlled Position Hold:** Actuators remain energized and actively maintain spatial coordinates via closed-loop PID control. |
+| **Category 1 Stop** *(Controlled Braking)* | MPU heartbeat timeout ($> 50\text{ ms}$); workspace boundary breach; trajectory jerk spike. | **Controlled Dynamic Deceleration:** Actuators apply maximum permissible counter-torque ($a_{\text{max}}$) to bring joints to rest before cutting drive power. |
+| **Category 0 Stop** *(Immediate Interlock)* | MCU watchdog timer trip; physical emergency stop switch depressed; motor phase overcurrent. | **Immediate Power Removal:** Actuator power relays cut instantaneously; spring-actuated friction brakes lock mechanical links. |
+
+* **Category 2 Stop (Controlled Hold):** Used during transient communication delays or minor planning hiccups. The robot remains energized and holds its exact position in space, preventing gravity from sagging the arm.
+* **Category 1 Stop (Dynamic Braking):** The primary safety response for application processor crashes. The MCU uses its own internal kinematic model to bring the machine to a controlled stop at maximum safe deceleration ($a_{\text{max}}$) without tipping over or losing traction.
+* **Category 0 Stop (Hard Cut):** The ultimate physical fail-safe for hardware short-circuits or microcontroller failures. Actuator power relays are physically opened, removing all electrical energy from the motor coils.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"A multi-threaded ROS 2 node running on real-time Linux (PREEMPT_RT) provides adequate safety determinism."*  
+  *Correction:* While `PREEMPT_RT` reduces kernel preemption latency, user-space processes still suffer from DRAM bus contention, page faults, and GPU driver blocking. True fault containment requires dedicated microcontroller silicon.
+* **Fallacy 2:** *"Software timeouts inside Python scripts (`asyncio.wait_for()`) can replace hardware watchdogs."*  
+  *Correction:* If the Python interpreter hangs on a C-extension dead lock or the Linux kernel panics, all Python async tasks freeze indefinitely. Software cannot monitor its own death.
+* **Fallacy 3:** *"Shared memory mutexes (`pthread_mutex_lock()`) are safe between real-time threads."*  
+  *Correction:* If a non-real-time thread is preempted while holding a shared mutex, the real-time thread blocks, resulting in unbounded latency spikes. Real-time IPC must be strictly lock-free.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Continuous Runtime Skeleton (`RUN-01`)
+The third checkpoint of the Cumulative Design Dossier is the **Continuous Runtime Skeleton** (`RUN-01`). This artifact records the thread execution rates, shared memory IPC layouts, hardware watchdog parameters, and fallback state machine configurations.
+
+```yaml
+# DOSSIER CHECKPOINT: RUN-01
+runtime_skeleton:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  execution_rates_hz:
+    system_2_deliberation: 1.0
+    system_1_5_planning: 20.0
+    system_1_enforcement: 1000.0
+  ipc_shared_memory:
+    transport: "RPMSG / Dual-Port SRAM"
+    base_address: "0x38000000"
+    buffer_size_bytes: 65536
+    lock_free_queues: true
+    memory_barrier_enforced: true
+  watchdog_configuration:
+    heartbeat_interval_ms: 10.0
+    watchdog_timeout_ms: 50.0
+    hardware_nmi_pin: "GPIO_PA08"
+    hardware_e_stop_relay_pin: "GPIO_PB12_ESTOP"
+  fallbacks:
+    heartbeat_loss_action: "CATEGORY_1_DYNAMIC_BRAKE"
+    mcu_autonomous_hold: true
+    max_controlled_deceleration_mps2: 3.5
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 4 — Runtime Fault Containment
+Implement the multi-rate runtime skeleton on the **TinyAgents Kit (Arduino UNO Q)**. While the robot is executing an active trajectory, trigger an intentional Linux kernel panic (`kill -9` / kernel crash). Prove on the bench that the real-time MCU detects the heartbeat loss within 50 ms and brings the physical machine to a smooth, controlled stop without colliding.
+:::

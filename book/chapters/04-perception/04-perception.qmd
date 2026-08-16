@@ -1,0 +1,202 @@
+# Perception
+
+::: {.callout-question}
+What is the memory bus and throughput cost of transforming continuous analog photons into discrete neural spatial tokens without starving the accelerator?
+:::
+
+![Systems Organ Focus: Stage 1 (Sensing) and Stage 2 (Perception & Vision Encoders).](figures/fig_pipeline_locator.pdf){#fig-locator-ch04 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Quantify Pre-Inference Ingestion Taxes:** Measure memory bus bandwidth, DMA ring buffer allocation, and cache line invalidation during multi-camera streaming.
+2. **Mitigate UMA Bus Contention:** Architect zero-copy ingestion pipelines that prevent sensor writes from starving neural accelerator weight fetches.
+3. **Extract 3D Spatial Affordance Tokens:** Deploy Vision Transformer (ViT) and self-supervised encoders (DINOv2) to extract 3D grasp poses and affordances rather than passive text labels.
+4. **Evaluate Multi-Modal Sensor Trades:** Build Pareto frontiers balancing camera resolution, frame rate, sensor power, and tail-latency budgets.
+5. **Freeze the Observation Contract (`OBS-01`):** Construct the fourth artifact of the Cumulative Design Dossier establishing sensor ingestion QoS and token schemas.
+:::
+
+::: {.callout-autopsy}
+* **System:** Quadruped Inspection Robot (Dual 4K Stereo Cameras + NPU Policy)
+* **Incident:** Robot stumbled over a $15\text{ cm}$ concrete curb; fractured front titanium femur.
+* **Telemetry Snapshot:** Vision pipeline upgraded from 720p to 4K at $60\text{ FPS}$. During a rapid turning maneuver, uncompressed camera DMA transfers saturated the Unified Memory Architecture (UMA) LPDDR5 bus at $1.4\text{ GB/s}$.
+* **Root Cause:** The memory controller queued camera pixel writes ahead of NPU model weight fetches, inflating VLA policy latency from $22\text{ ms}$ to $135\text{ ms}$.
+* **Architectural Flaw:** Failed to budget memory bus bandwidth and interconnect QoS priorities.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Spatial affordance tokens: $o_t$<br>• Token extraction latency: $t_{\text{perceive}} \le 15\text{ ms}$<br>• Bounded NPU SRAM allocation |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Audits PTP hardware timestamp coherence<br>• Direct DMA channel allocation with bus QoS guard<br>• VETO / safe hold if camera frame drops $> 2$ cycles |
+| **Failure Escalation** | *MCU Hardware Reflex* | If vision drops, fall back to proprioceptive blind IMU/encoder state estimation and hold position. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Perfectly synchronized, noise-free RGB-D depth maps delivered directly to GPU memory pointers with zero transfer latency.
+* **What the Bench Measures:** Camera sensors suffer from rolling shutter distortion, motion blur, and lens glare; MIPI-CSI deserializer chips add $8\text{ ms}$ of hardware latency; zero-copy memory pipelines require careful DMA physical address alignment.
+:::
+
+---
+
+## Sensor Transduction Physics and Environmental Failure Modes
+
+Physical sensors do not output ground-truth reality; they output noisy, band-limited signals subject to physical degradation:
+
+| Sensor Modality | Physical Transduction Mechanism | Primary Environmental Failure Modes |
+| :--- | :--- | :--- |
+| **RGB-D Camera** | Photons $\to$ CMOS Photodiode wells | Motion blur, optical glare, low lux, lens dust/mud |
+| **LiDAR** | Time-of-Flight laser pulse reflection | Specular reflection, airborne dust/rain, dark surfaces |
+| **IMU (Accel/Gyro)** | Capacitive micro-cantilever deflection | Integration drift, thermal zero-bias drift, mechanical vibration |
+| **Tactile Array** | Piezoresistive / GelSight elastomeric shear | Contact shear saturation, mechanical hysteresis, physical wear |
+
+A robust physical perception architecture pairs complementary modalities—such as combining high-rate IMUs ($1000\text{ Hz}$) with mid-rate vision ($30\text{ Hz}$) and contact encoders—to eliminate single-sensor blind spots.
+
+---
+
+## The Pre-Inference Ingestion Tax and UMA Bus Contention
+
+Latency begins long before neural network inference executes. On embedded System-on-Chips (SoCs) utilizing Unified Memory Architectures (UMA)—where CPU, GPU, and NPU share a single LPDDR5 memory bus:
+
+```text
+SHARED UMA MEMORY BUS CONTENTION:
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                      UNIFIED MEMORY ARCHITECTURE (UMA) SoC                             │
+│                                                                                        │
+│   ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐             │
+│   │  CPU Control     │      │  NPU Accelerator │      │  MIPI-CSI DMA    │             │
+│   │  (1 kHz Safety)  │      │  (VLA Inference) │      │  (4K Video Ingest│             │
+│   └─────────┬────────┘      └─────────┬────────┘      └─────────┬────────┘             │
+│             │ High-Priority           │ Bulk Tensor             │ 1.2 GB/s             │
+│             │ Memory Fetch            │ Weight Stream           │ Pixel Stream         │
+│             ▼                         ▼                         ▼                      │
+│   ══════════════════════════════════════════════════════════════════════════════════   │
+│                   SHARED SYSTEM INTERCONNECT & L3 SYSTEM CACHE BUS                     │
+│   ══════════════════════════════════════════════════════════════════════════════════   │
+│                                       │                                                │
+│                                       ▼                                                │
+│                          SHARED LPDDR5 DRAM MEMORY (32 GB)                             │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+When high-bandwidth video streams saturate the interconnect bus:
+
+1. **L3 Cache Eviction:** Video DMA writes evict hot L3 cache lines used by real-time control threads.
+2. **DRAM Contention:** NPU tensor weight fetches collide with camera frame ingestion buffers, causing memory access latency to spike tenfold.
+3. **Control Jitter:** CPU real-time threads experience sudden $P_{99}$ latency spikes, directly degrading motor stability.
+
+To prevent bus starvation, systems must implement **zero-copy hardware DMA ring buffers** configured with strict Quality-of-Service (QoS) bus arbitration priorities.
+
+---
+
+## Spatial Affordance Tokenization vs. Passive Classification
+
+Traditional vision backbones classify semantic labels ("mug", "table"). Physical AI policies require **spatial affordance tokens** that describe physical interaction opportunities:
+
+```text
+PASSIVE CLASSIFICATION (Digital ML):
+  Image Pixels ──► [ ResNet / ViT ] ──► "Ceramic Coffee Mug (p = 0.94)" (Action Unclear)
+
+SPATIAL AFFORDANCE TOKENIZATION (Physical AI):
+  Image Pixels ──► [ Spatial Encoder ] ──► Affordance Tokens:
+                                             • Grasp Handle Vector: [x, y, z, roll, pitch, yaw]
+                                             • Center of Mass Offset: [Δx, Δy, Δz]
+                                             • Contact Friction Est: μ_est = 0.45
+                                             • Clearance Bound: r_safe = 0.08 m
+```
+
+### Action Decoders: Discrete Bins vs. Continuous Trajectories
+* **Discrete Action Bins (RT-1 / RT-2):** Tokenize continuous coordinates into 256 discrete bins per dimension. Fast token decoding, but exhibits discretization error and high token counts.
+* **Continuous Diffusion / Flow Decoders (Diffusion Policy, ACT):** Directly decode continuous spatial-temporal trajectories from latent vision embeddings, preserving high geometric fidelity.
+
+---
+
+## The Multi-Objective Perception Frontier
+
+Selecting a perception operating point requires navigating an inescapable multi-dimensional Pareto frontier:
+
+$$\text{Perception Operating Point} = f(\text{Quality } Q, \text{Latency } L, \text{Memory } M, \text{Energy } E, \text{Bandwidth } B)$$
+
+```text
+PERCEPTION PARETO FRONTIER:
+  Observation Quality (Q)
+       ▲
+       │                                     4K @ 60 Hz (Exceeds Bus Budget)
+       │                                           ● [UNSTABLE]
+       │
+       │                   1080p @ 30 Hz
+       │                         ● [OPTIMAL BENCHMARK]
+       │
+       │        720p @ 60 Hz
+       │             ● [LOW-LATENCY EMBEDDED]
+       │
+       │  480p @ 15 Hz
+       │       ● [LOW-POWER / SLEEP]
+       │
+       └────────────────────────────────────────────────────────► Ingestion Latency / Energy
+```
+
+* **High Resolution (4K):** High spatial accuracy, but high latency ($>100\text{ ms}$), high memory bandwidth, and thermal throttling.
+* **Balanced Embedded (720p @ 60 Hz):** Sufficient spatial token resolution for 3D grasping with sub-15 ms ingestion latency.
+
+---
+
+## PTP Hardware Timestamping and Observation Contracts
+
+Every sensory observation must carry a hardware-level timestamp synchronized via **Precision Time Protocol (PTP / IEEE 1588)**. Software timestamps taken in user-space introduces unpredictable OS scheduling jitter.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"Higher camera resolution always improves robotic manipulation accuracy."*  
+  *Correction:* Increasing resolution from 1080p to 4K quadruples memory bus traffic and adds 40 ms of image decoding latency, which increases information age $\Delta t$ and expands stopping distance $d_{\text{stop}}$.
+* **Fallacy 2:** *"A neural vision model can infer depth reliably from a single 2D monocular image without metric calibration."*  
+  *Correction:* Monocular depth suffers from scale ambiguity; small optical distortions result in centimeter-level metric grasp errors.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Observation Contract (`OBS-01`)
+Freeze the sensor acquisition contracts:
+
+1. Sensory modalities, sensor IDs, physical mounting frames, and calibration matrices.
+2. Operating resolution, frame rate, and zero-copy DMA memory channel allocations.
+3. Microsecond PTP hardware timestamping offsets and maximum allowed ingestion latency.
+4. Deterministic fallback behaviors when sensor frames drop or encounter optical glare.
+
+```yaml
+# DOSSIER CHECKPOINT: OBS-01
+observation_contract:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  sensor_suite:
+    camera_primary:
+      sensor_id: "CAM_WRIST_RGBD"
+      resolution: [640, 480]
+      frame_rate_hz: 30.0
+      dma_channel: "DMA2_STREAM1"
+      ingestion_budget_ms: 8.0
+      timestamp_source: "PTP_IEEE1588"
+    imu_proprioceptive:
+      sensor_id: "IMU_BASE_6DOF"
+      sample_rate_hz: 1000.0
+      spi_bus: "SPI1_HARD_RT"
+      ingestion_budget_ms: 0.2
+  affordance_token_schema:
+    spatial_latent_dim: 128
+    action_decoder_type: "CONTINUOUS_DIFFUSION"
+  dropout_fallbacks:
+    max_consecutive_dropped_frames: 2
+    timeout_action: "TRIGGER_STATE_DRIFT_ALARM"
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 5 — Perception Operating Frontier
+Instrument the vision ingestion pipeline on the **TinyAgents Kit (Arduino UNO Q)**. Profile DRAM memory bus contention as camera resolution scales from 480p to 1080p. Measure the pre-inference ingestion tax and configure zero-copy DMA ring buffers to eliminate frame dropouts.
+:::

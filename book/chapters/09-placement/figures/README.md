@@ -1,7 +1,3 @@
-# Figures for `09-placement`
+# Figures for Chapter 09-placement
 
-Store chapter figures here. From `09-placement.qmd`:
-
-```markdown
-![caption](figures/example.svg)
-```
+Place localized diagram assets (SVG, PNG, Excalidraw) for this chapter in this folder.

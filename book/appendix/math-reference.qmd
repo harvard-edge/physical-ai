@@ -1,0 +1,58 @@
+# Mathematical and Physical Reference {.unnumbered}
+
+This appendix compiles the core physical equations, timing bounds, and coordinate transformation laws used throughout the manual.
+
+---
+
+## Dynamic Stopping Bounds
+
+The dynamic stopping distance $d_{\text{stop}}$ represents the minimum clearance required to bring a moving physical actuator to rest before colliding with an obstacle:
+
+$$d_{\text{stop}}(t) = v(t) \cdot t_{\text{delay}}(t) + \frac{v(t)^2}{2 \cdot a_{\text{max}}}$$
+
+Where total delay $t_{\text{delay}}$ includes all latency tails and transport latencies:
+
+$$t_{\text{delay}}(t) = t_{\text{transduce}} + \Delta t_{\text{age}}(t) + t_{\text{comm}} + t_{\text{enforce}} + t_{\text{actuator\_response}}$$
+
+* $v(t)$: Current velocity ($\text{m/s}$)
+* $a_{\text{max}}$: Maximum safe deceleration ($\text{m/s}^2$)
+* $\Delta t_{\text{age}}$: Age of sensory observation used to compute the decision
+
+---
+
+## Spatial Frame Transformations
+
+A rigid body transformation from source frame $A$ to target frame $B$ is represented by a homogeneous transformation matrix $T_B^A \in SE(3)$:
+
+$$T_B^A = \begin{bmatrix} R_B^A & p_B^A \\ 0_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
+
+Where $R_B^A \in SO(3)$ is the $3 \times 3$ rotation matrix and $p_B^A \in \mathbb{R}^3$ is the translation vector.
+
+### Tangent Space Integration
+To integrate velocities smoothly without gimbal lock singularities:
+
+$$T(t + \Delta t) = T(t) \cdot \exp(\xi^\wedge \cdot \Delta t)$$
+
+Where $\xi = [v, \omega]^T \in \mathbb{R}^6$ represents the linear and angular twist vector.
+
+---
+
+## Information Freshness Decay
+
+Information freshness $\Delta t$ measures the time elapsed between physical event occurrence and actuation response:
+
+$$\Delta t_{\text{total}} = (t_{\text{actuation}} - t_{\text{transduction}})$$
+
+If target state changes at characteristic velocity $v_{\text{target}}$, spatial uncertainty expands as:
+
+$$\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t_{\text{total}}$$
+
+---
+
+## Control Barrier Invariants
+
+A safety envelope is defined by a continuously differentiable barrier function $h(x) \ge 0$:
+
+$$\dot{h}(x, u) \ge -\gamma(h(x))$$
+
+If $h(x) \ge 0$ defines the safe operational set, any proposed control vector $u$ is permitted only if it guarantees that $h(x)$ remains non-negative for all future time.

@@ -1,0 +1,253 @@
+# Time and Latency
+
+::: {.callout-question}
+Why is mean latency a dangerous lie in physical systems, and how does information age ($\Delta t$) dictate dynamic stopping distances ($d_{\text{stop}}$)?
+:::
+
+![Systems Organ Focus: Tracing Sense-to-Actuation latency tails and physical timing deadlines across the complete agent pipeline.](figures/fig_pipeline_locator.pdf){#fig-locator-ch02 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Deconstruct Sense-to-Actuation Latency:** Trace total latency ($t_{\text{total}}$) through photon integration, DMA transfer, neural inference, inter-core IPC, and actuator inductance rise times.
+2. **Model Information Freshness ($\Delta t$):** Quantify how sensor data staleness degrades state estimation accuracy and physical safety margins.
+3. **Analyze Tail Latency Distributions ($P_{99}, P_{99.9}$):** Measure why average benchmark metrics mask safety-critical operating system scheduling and memory bus contention stalls.
+4. **Derive Dynamic Stopping Distance ($d_{\text{stop}}$):** Formulate stopping distance physics as a function of velocity, brake acceleration, and tail latency.
+5. **Freeze the Requirements Ledger (`REQ-01`):** Construct the second artifact of the Cumulative Design Dossier establishing quantitative timing and safety envelopes.
+:::
+
+::: {.callout-autopsy}
+* **System:** Autonomous Mobile Warehouse Cart ($2.0\text{ m/s}$ nominal speed)
+* **Incident:** Rover struck a descending steel roll-up door; front chassis crushed.
+* **Telemetry Snapshot:** Mean vision pipeline inference latency was $28\text{ ms}$ ($35\text{ FPS}$). At $T+45.120\text{ s}$, a Linux background logging process triggered a major page fault and LPDDR5 memory bus stall; inference latency spiked to $240\text{ ms}$ ($P_{99.9}$ tail event).
+* **Root Cause:** During the $240\text{ ms}$ compute freeze, the cart traveled $0.48\text{ meters}$ without evaluating obstacle distance; dynamic stopping distance exceeded remaining gap.
+* **Architectural Flaw:** System was certified on mean benchmark latency rather than $P_{99}$ tails.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Timestamped trajectory proposal: $p_t(t_{\text{transduce}})$<br>• Model inference time budget: $t_{\text{inference}} \le 40\text{ ms}$<br>• Age of sensory evidence: $\Delta t_{\text{evidence}}$ |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Audits arrival age: $\Delta t_{\text{total}} = t_{\text{now}} - t_{\text{transduce}}$<br>• VETO if $\Delta t_{\text{total}}$ exceeds freshness wall ($\tau_{\text{wall}}$)<br>• Continuously computes: $d_{\text{stop}}(v, t_{\text{delay}})$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | If $P_{99}$ deadline is breached, discard stale proposal and execute Category 1 controlled dynamic deceleration. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Sensors deliver frames at perfect, unvarying $33.333\text{ ms}$ intervals; operating system thread scheduling has zero jitter; memory access is instantaneous.
+* **What the Bench Measures:** DMA memory transfers compete with neural accelerator weight streaming; Linux kernel background daemons trigger 100+ ms latency tail spikes; clock skew between SoC and MCU induces artificial velocity estimation errors.
+:::
+
+---
+
+## The World Sets the Clock: Physical Deadlines ($\tau_{\text{world}}$)
+
+In classical digital computing, the clock is synthetic: a quartz crystal oscillates at a fixed frequency, and the processor steps through instructions at its own pace. If a computation takes longer than expected, the clock simply keeps ticking until the output is ready.
+
+In physical systems, **the physical world sets the clock**. Every physical task defines a characteristic timescale—the **world deadline** ($\tau_{\text{world}}$)—within which a sensory observation must be converted into physical counter-force before the physical state diverges irreversibly:
+
+| Latency Stage | Physical / Silicon Mechanism | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Transduction ($t_{\text{transduce}}$)** | Photodiode charge integration / IMU cantilever deflection | $5\text{--}15\text{ ms}$ (Vision) / $0.1\text{--}1.0\text{ ms}$ (IMU) |
+| **2. DMA Ingestion ($t_{\text{dma}}$)** | Hardware DMA transfer across MIPI CSI-2 bus into shared DRAM buffer | $2\text{--}8\text{ ms}$ |
+| **3. Perception ($t_{\text{perceive}}$)** | Preprocessing, spatial crop, and neural visual backbone encoding on NPU | $10\text{--}25\text{ ms}$ |
+| **4. Policy Inference ($t_{\text{inference}}$)** | Forward pass of Vision-Language-Action (VLA) or diffusion planner | $20\text{--}60\text{ ms}$ |
+| **5. Inter-Processor IPC ($t_{\text{ipc}}$)** | Serializing proposal chunk across shared SRAM mailbox to Cortex-M4 | $0.5\text{--}2.0\text{ ms}$ |
+| **6. MCU Enforcement ($t_{\text{enforce}}$)** | Evaluating control barrier invariants, stopping distance $d_{\text{stop}}$, and clipping | $0.2\text{--}1.0\text{ ms}$ |
+| **7. Actuator Rise Time ($t_{\text{actuator}}$)** | Motor coil electrical $L/R$ time constant to build magnetic flux and torque | $5\text{--}15\text{ ms}$ |
+
+To engineer a dependable system, we deconstruct the total latency chain ($t_{\text{total}}$) into its discrete physical and computational stages:
+
+1. **Transduction Delay ($t_{\text{transduce}}$):** The physical time required for photons to integrate in CMOS photodiode wells (exposure time: $5\text{--}15\text{ ms}$) or for capacitive micro-cantilevers in an IMU to deflect under acceleration ($0.1\text{--}1.0\text{ ms}$).
+2. **DMA Ingestion Overhead ($t_{\text{dma}}$):** The time required for hardware Direct Memory Access engines to transfer raw sensor frames across deserializers and system buses into shared system memory ($2\text{--}8\text{ ms}$).
+3. **Perception Tokenization ($t_{\text{perceive}}$):** Image preprocessing, spatial cropping, color space conversion, and neural visual backbone encoding on the edge NPU ($10\text{--}25\text{ ms}$).
+4. **Policy Planning Inference ($t_{\text{inference}}$):** Forward inference of the Vision-Language-Action (VLA) model or diffusion trajectory unrolling ($20\text{--}60\text{ ms}$).
+5. **Inter-Processor Transport ($t_{\text{ipc}}$):** Serializing the trajectory proposal across the shared memory RPMSG ring buffer from the application processor (MPU) to the microcontroller (MCU) ($0.5\text{--}2.0\text{ ms}$).
+6. **MCU Safety Enforcement ($t_{\text{enforce}}$):** Evaluating control barrier invariants, calculating dynamic stopping distances, and projecting candidate actions onto safe envelopes in FreeRTOS ($0.2\text{--}1.0\text{ ms}$).
+7. **Actuator Electrical Rise Time ($t_{\text{actuator}}$):** The physical time required for motor coil inductance ($L/R$ electrical time constant) to build magnetic flux and produce physical mechanical torque ($5\text{--}15\text{ ms}$).
+
+### The Closed-Loop Stability Criterion
+A physical AI system maintains closed-loop stability if and only if the worst-case ($P_{99}$) cumulative latency plus a safety margin is strictly smaller than the world deadline:
+
+$$t_{\text{total}}(P_{99}) + t_{\text{margin}} < \tau_{\text{world}}$$
+
+If $t_{\text{total}}(P_{99}) \ge \tau_{\text{world}}$, the control loop becomes open-loop during latency spikes, leading to limit-cycle oscillations, mechanical shudder, or catastrophic collision.
+
+---
+
+## Information Freshness Decay ($\Delta t$) and the Freshness Wall
+
+Sensor data decays the instant it is transduced. When an image frame arrives at a neural network, it does not describe the *current* state of the world; it describes where the world was at time $t_{\text{transduce}}$.
+
+We define **Information Age** ($\Delta t$) at the instant of physical actuation as:
+
+$$\Delta t = t_{\text{actuation}} - t_{\text{transduction}}$$
+
+Consider an obstacle or target object moving in the workspace with characteristic velocity $v_{\text{target}}$. The spatial uncertainty ($\sigma_{\text{pos}}$) of the machine's belief expands linearly with information age:
+
+$$\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t$$
+
+Where $\sigma_0$ is the intrinsic sensor measurement noise.
+
+$$\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t$$
+
+Where $\sigma_0$ is the intrinsic sensor measurement noise.
+
+| Operating Regime | Information Age $\Delta t$ | Physical State & Machine Action |
+| :--- | :--- | :--- |
+| **Fresh Observation** | $\Delta t \ll \Delta t_{\text{wall}}$ | Spatial uncertainty is tightly bounded ($\sigma_{\text{pos}} < \text{clearance}$). Model proposals are physically valid and permitted. |
+| **Degraded Freshness** | $\Delta t \to \Delta t_{\text{wall}}$ | Uncertainty approaches obstacle boundary. MCU safety enforcer derates commanded velocity. |
+| **Beyond the Freshness Wall** | $\Delta t \ge \Delta t_{\text{wall}}$ | **State Drift Collapse:** Sensory evidence is stale. Proposals are invalidated and vetoed by the real-time reflex. |
+
+As information age $\Delta t$ increases, spatial uncertainty expands until it intersects the task clearance threshold. Beyond this critical boundary—**the Freshness Wall** ($\Delta t_{\text{wall}}$)—the physical state has drifted so far that the learned proposal becomes invalid.
+
+### The Capacity vs. Freshness Dilemma
+A common mistake in physical AI system design is choosing a massive foundation model (e.g. 7-billion-parameter VLA) running at $2\text{ Hz}$ ($500\text{ ms}$ latency) over a compact, distilled model running at $50\text{ Hz}$ ($20\text{ ms}$ latency). 
+
+Even if the 7B model possesses higher semantic reasoning capability, its predictions are based on $500\text{ ms}$ stale sensory evidence. In a dynamic physical environment, **a nimble model acting on fresh data consistently outperforms a massive model acting on stale history**.
+
+---
+
+## The Tail Latency Lie: Why $P_{99}$ Governs Physical Survival
+
+In standard machine learning benchmarks, researchers report average throughput: *"Our vision-language model achieves 30 FPS (33.3 ms mean latency)."*
+
+On embedded hardware, mean latency is irrelevant to physical safety. Operating system context switches, Unified Memory Architecture (UMA) bus contention, CPU cache misses, and garbage collection create heavy-tailed latency distributions.
+
+| Latency Metric | Measured Value | Physical Manifestation on Hardware |
+| :--- | :--- | :--- |
+| **Mean Latency ($P_{50}$)** | $33.3\text{ ms}$ ($30\text{ FPS}$) | Standard inference throughput during uninterrupted execution. |
+| **99th Percentile ($P_{99}$)** | $185.0\text{ ms}$ | Caused by Linux thread preemption and DMA memory bus contention. Occurs **1,800 times per hour** at $50\text{ Hz}$. |
+| **Max Spike ($P_{99.9}$)** | $320.0\text{ ms}$ | Caused by page faults and Python GC. At $2.0\text{ m/s}$, the machine travels **$0.64\text{ meters}$ blind**. |
+
+Consider the arithmetic of real-time control:
+
+* A robotic arm running a control loop at $50\text{ Hz}$ executes **180,000 cycles every hour**.
+* If the 99th percentile ($P_{99}$) latency spikes above the world deadline, the system experiences a control freeze **1,800 times per hour**—that is, once every two seconds.
+* If a vehicle travels at $2.0\text{ m/s}$, a single $P_{99.9}$ latency spike of $250\text{ ms}$ causes the machine to travel **$0.50\text{ meters}$ completely open-loop** before evaluating its next decision.
+
+In the physical world, survival is not governed by average speed; it is governed by the extreme tail of the latency distribution ($P_{99}, P_{99.9}, P_{\text{max}}$).
+
+---
+
+## Dynamic Stopping Distance Physics ($d_{\text{stop}}$)
+
+The ultimate physical metric connecting computing latency to mechanical safety is the **Dynamic Stopping Distance** ($d_{\text{stop}}$): the total forward clearance required to bring a moving machine to a complete, safe stop before collision occurs.
+
+$$d_{\text{stop}}(t) = v(t) \cdot t_{\text{delay}}(t) + \frac{v(t)^2}{2 \cdot a_{\text{max}}}$$
+
+Where total reaction delay $t_{\text{delay}}$ incorporates the entire sensory-motor latency chain:
+
+$$t_{\text{delay}}(t) = t_{\text{transduce}} + \Delta t_{\text{age}}(t) + t_{\text{comm}} + t_{\text{enforce}} + t_{\text{actuator\_response}}$$
+
+The stopping distance is composed of two distinct physical phases:
+
+```text
+DYNAMIC STOPPING DISTANCE COMPOSITION:
+├───────────── Reaction Distance (v · t_delay) ─────────────┼─── Braking Distance (v² / 2a_max) ───┤
+│                                                           │                                      │
+▼ Obstacle Detected                                         ▼ Braking Begins                       ▼ Complete Stop
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+```
+
+1. **The Reaction Phase ($v \cdot t_{\text{delay}}$):** The machine continues moving forward at unreduced velocity $v$ while photons integrate, neural networks compute, shared memory transmits, and MCU filters evaluate. Reaction distance scales **linearly with delay** and **linearly with velocity**.
+2. **The Braking Phase ($\frac{v^2}{2 a_{\text{max}}}$):** The distance traversed while motor inverters apply maximum safe deceleration $a_{\text{max}}$ within friction limits ($\mu g$). Braking distance scales **quadratically with velocity**.
+
+### Quantitative Systems Example
+Consider a mobile manipulator moving at $v = 1.0\text{ m/s}$ with maximum safe braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$:
+
+* **Nominal Cycle ($t_{\text{delay}} = 30\text{ ms}$):**
+  $$d_{\text{stop}} = (1.0 \cdot 0.030) + \frac{1.0^2}{2 \cdot 2.0} = 0.030\text{ m} + 0.250\text{ m} = \mathbf{0.280\text{ m}}$$
+* **$P_{99}$ Tail Spike ($t_{\text{delay}} = 230\text{ ms}$):**
+  $$d_{\text{stop}} = (1.0 \cdot 0.230) + \frac{1.0^2}{2 \cdot 2.0} = 0.230\text{ m} + 0.250\text{ m} = \mathbf{0.480\text{ m}}$$
+
+A single latency tail spike increases the required physical stopping clearance by **$20\text{ cm}$ ($+71\%$)**. If the workspace obstacle margin is only $35\text{ cm}$, the nominal machine operates safely, but the machine experiencing $P_{99}$ tail spikes crashes violently.
+
+---
+
+## The Sensory-Motor Metrology Protocol and Hardware Instrumentation
+
+To measure a Physical AI machine rigorously without introducing measurement artifacts:
+
+```text
+HARDWARE-TRIGGERED METROLOGY TOPOLOGY:
+  ┌────────────────────────────────────────────────────────┐
+  │ 1. Optical / Magnetic Transduction Event               │
+  │    (GPIO Output Pin Toggled on Sensor Arrival Interrupt)│
+  └──────────────────────────┬─────────────────────────────┘
+                             │ Channel 1 (Transduce Pulse)
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │ 2. Linux MPU VLA Inference Execution                   │
+  │    (GPIO Toggled on RPMSG Buffer Write)                │
+  └──────────────────────────┬─────────────────────────────┘
+                             │ Channel 2 (Inference Done)
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │ 3. MCU Safety Filter Validation                        │
+  │    (GPIO Toggled on PWM Register Write)                │
+  └──────────────────────────┬─────────────────────────────┘
+                             │ Channel 3 (PWM Output Active)
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │ 4. Current Shunt Oscilloscope Probe                    │
+  │    (Measures Physical Coil Current Rise dI/dt)         │
+  └────────────────────────────────────────────────────────┘
+```
+
+1. **Hardware-Triggered Instrumentation:** Use external oscilloscopes or logic analyzer GPIO toggles configured directly on hardware timer pins. Never use software print statements or user-space logging functions to measure real-time latency, as they perturb the scheduler.
+2. **Microsecond Precision Clocks (PTP / IEEE 1588):** Synchronize the Linux application processor and real-time microcontroller to a shared hardware microsecond timebase.
+3. **Cumulative Distribution Function (CDF) Auditing:** Record at least 10,000 continuous execution cycles under simulated memory bus load (e.g. streaming background 4K video while executing neural inference). Plot the full empirical CDF to inspect $P_{50}, P_{90}, P_{99}$, and $P_{99.9}$ tails.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"A high camera frame rate (e.g. 60 FPS) guarantees low sensory latency."*  
+  *Correction:* Frame rate measures pipeline throughput, not latency. A camera pipeline can deliver 60 FPS while buffering four frames internally in USB/DMA queues, adding $66.7\text{ ms}$ of stale information lag.
+* **Fallacy 2:** *"Software timestamps generated with Python's `time.time()` or `std::chrono` accurately measure sensor arrival."*  
+  *Correction:* Python timestamps record when the operating system scheduler dispatched the user thread, not when the physical photons hit the CMOS sensor.
+* **Fallacy 3:** *"Average latency is a sufficient metric for certifying robotic safety."*  
+  *Correction:* Average latency hides multi-hundred-millisecond tail spikes caused by memory bus contention and kernel interrupts. A system operating safely on average will regularly crash during tail events.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Requirements and Assumptions Ledger (`REQ-01`)
+The second checkpoint of the Cumulative Design Dossier is the **Requirements and Assumptions Ledger** (`REQ-01`). This artifact records the quantitative world deadlines, tail latency budgets, dynamic stopping envelopes, and environmental assumptions governing the machine.
+
+```yaml
+# DOSSIER CHECKPOINT: REQ-01
+requirements_ledger:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  world_deadlines:
+    tau_world_ms: 100.0
+    freshness_wall_tau_wall_ms: 80.0
+  latency_budgets_ms:
+    transduction_max: 15.0
+    dma_ingestion_max: 5.0
+    neural_inference_p99: 45.0
+    ipc_transfer_max: 2.0
+    mcu_enforcement_max: 1.0
+    actuator_rise_max: 12.0
+    total_sense_to_actuation_p99: 80.0
+  stopping_physics:
+    max_operational_velocity_mps: 0.50
+    max_safe_deceleration_mps2: 2.50
+    max_dynamic_stopping_distance_m: 0.090
+    workspace_safety_margin_m: 0.120
+  environmental_assumptions:
+    min_friction_mu: 0.35
+    min_illumination_lux: 150
+    max_ambient_temperature_c: 45.0
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Labs 2 and 3 — Freshness Wall and Latency Metrology
+Instrument the **TinyAgents Kit (Arduino UNO Q)**. Artificially inject transport latency into camera streams to map the empirical Freshness Wall where task success drops to zero. Measure hardware GPIO timestamps across Linux MPU and FreeRTOS MCU to construct the complete $P_{99}$ latency distribution under simulated memory bus load.
+:::

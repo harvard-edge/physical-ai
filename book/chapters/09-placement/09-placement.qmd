@@ -1,47 +1,155 @@
-# Where Intelligence Runs
+# Placement
 
-<!-- Canonical contract: docs/CHAPTER-OUTLINES.md, Chapter 9. -->
-
-<!-- Opening problem: Where should each capability run when every placement
-spends resources and changes a failure boundary? -->
-
-::: {.callout-objective}
-After this chapter, you will be able to decide where each part of the system
-runs, identify the resources it consumes and the parts that must not fail
-together, and predict what changes when one part moves.
+::: {.callout-question}
+How do we partition the seven canonical pipeline stages across heterogeneous processors (NPU, GPU, MPU, MCU) under strict power, thermal, and SRAM budgets?
 :::
 
-## See the Whole Loop at Once
+![Systems Organ Focus: Whole-System Heterogeneous Silicon Placement across Cloud, Host, Safety Core, and Inverters.](figures/fig_pipeline_locator.pdf){#fig-locator-ch09 width=100%}
 
-## Compute Domains Have Different Jobs
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
 
-## Measure Before Choosing Where It Runs
+1. **Map Pipeline Stages to Silicon Domains:** Partition the 7 canonical organs across Cloud, Linux MPU, Edge NPU, and real-time MCU fabrics.
+2. **Budget Heterogeneous Hardware Resources:** Balance FLOPS, SRAM bytes, DRAM bus bandwidth, and thermal dissipation (TDP) across the platform.
+3. **Mitigate Interconnect Contention:** Design bus quality-of-service (QoS) priorities ensuring motor control packets preempt high-bandwidth vision DMA transfers.
+4. **Analyze Re-Placement Ripple Effects:** Trace how moving a neural model from Cloud to Edge or MPU to MCU alters latency tails, jitter, and safety invariants.
+5. **Freeze the Placement Map (`PLACE-01`):** Construct the ninth artifact of the Cumulative Design Dossier establishing whole-system resource allocations.
+:::
 
-## Data Movement Is Work
+::: {.callout-autopsy}
+* **System:** Autonomous Agricultural Harvester (Cloud-Assisted Foundation Policy)
+* **Incident:** Harvester veered off furrow into irrigation canal; flooded electronics.
+* **Telemetry Snapshot:** High-level visual reasoning was placed on a remote 5G cloud cluster. At $T+112.40\text{ s}$, the machine passed under a steel grain silo; 5G signal dropped packet connection for $1400\text{ ms}$.
+* **Root Cause:** The on-board MPU had no local trajectory fallback buffer, while the local MCU had not been configured with an autonomous speed derating envelope.
+* **Architectural Flaw:** The system placed time-critical control across an un-budgeted and stochastic wireless network boundary.
+:::
 
-## Resources Are Shared
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Workload execution placement map<br>• Interconnect bus bandwidth allocations<br>• Thermal TDP distribution across compute nodes |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Enforces hard SRAM memory boundaries (PMP/MPU)<br>• Direct peripheral hardware access control<br>• Validates bus QoS priorities: CAN-FD $>$ Camera DMA |
+| **Failure Escalation** | *MCU Hardware Reflex* | If network drops or bus saturates, execute local MCU fallback trajectory within latency budget. |
+:::
 
-## What Must Not Fail Together
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Compute hardware is homogeneous; communication between components is instantaneous; memory bandwidth is infinite.
+* **What the Bench Measures:** Memory bus contention between vision DMA and NPU tensor streaming inflates latency tails; thermal throttling on edge SoCs cuts GPU clock frequencies by 50% under sustained load.
+:::
 
-## Local, Edge, and Hosted Tradeoffs
+---
 
-## Move One Thing and Follow the Ripple
+## Mapping the 7 Canonical Stages Across Heterogeneous Silicon
 
-## Record Where Each Part Runs
+Every Physical AI system maps its 7 foundational stages across four primary compute domains:
+
+| Silicon Domain | Compute & Clock Fabric | Pipeline Stages Hosted | Hardware Latency & Power Profile |
+| :--- | :--- | :--- | :--- |
+| **1. Cloud / Off-Board** | Multi-GPU Server Cluster<br>*(x86 + H100 Accelerators)* | Fleet foundation models, offline learning, global map updates | • Latency: $200\text{--}2000\text{ ms}$ (Stochastic network)<br>• Power: Kilowatts (Off-board) |
+| **2. Application Host** | Linux MPU + Edge NPU<br>*(ARM Cortex-A + Neural Processor)* | Spatial perception (Ch 4), temporal belief (Ch 5), action chunking (Ch 7) | • Latency: $10\text{--}100\text{ ms}$ (Bounded tail)<br>• Power: $5\text{--}35\text{ Watts}$ (Unified LPDDR5) |
+| **3. Real-Time Safety Core** | Microcontroller (MCU)<br>*(ARM Cortex-M4/M7, RISC-V)* | Sensory ingestion (Ch 4), 1 kHz safety enforcer & stopping bounds (Ch 8) | • Latency: $< 1\text{ ms}$ (Jitter-free deterministic)<br>• Power: $100\text{--}500\text{ mW}$ (Static SRAM) |
+| **4. Actuator Driver** | Dedicated Motor ASIC<br>*(FOC Gate Drivers & Inverters)* | Field-Oriented Control current loops, phase commutation, H-bridges | • Rate: $10\text{--}20\text{ kHz}$ direct PWM gate drive<br>• Power: Actuator current bus |
+
+---
+
+## Compute Domain Characteristics and Invariants
+
+| Domain | Characteristic Clock | Memory Substrate | Primary Architectural Invariant |
+| :--- | :--- | :--- | :--- |
+| **Cloud** | Gigahertz (x86/H100) | Terabytes DRAM | Untrusted; network timeouts must never block physical safety. |
+| **Linux MPU** | $1.5\text{--}2.5\text{ GHz}$ Multi-core | Gigabytes LPDDR5 | Untrusted; kernel panics must be safely contained by MCU watchdog. |
+| **Edge NPU** | Systolic Array ($8\text{--}32\text{ TOPs}$) | Dedicated SRAM + UMA | Bounded inference latency; weights must fit in on-chip SRAM. |
+| **MCU** | $100\text{--}500\text{ MHz}$ Single-core | Hundreds of KB SRAM | Hard real-time determinism; zero dynamic memory allocations (`malloc`). |
+| **Actuator FOC**| $20\text{ kHz}$ Dedicated ASIC | Register space only | Direct hardware current limiting and thermal fuse protection. |
+
+---
+
+## Interconnect Bus Arbitration and Hardware DMA Allocation
+
+Placing workloads across heterogeneous silicon creates severe interconnect traffic. To prevent memory starvation:
+
+1. **Hardware Bus Priorities (QoS):** The system interconnect must give highest priority to real-time microcontroller packets (CAN-FD / RPMSG) and motor driver SPI channels.
+2. **Dedicated DMA Channels:** Video cameras and LiDAR streams must be assigned isolated Direct Memory Access (DMA) FIFOs that do not contend with CPU instruction fetches.
+
+---
+
+## Re-Placement Ripple Effects
+
+Moving a single pipeline stage to a different compute domain creates cascading ripple effects across the entire system:
+
+```text
+RE-PLACEMENT RIPPLE ANALYSIS (Example: Moving VLA Policy from Cloud to Edge NPU):
+  [ CLOUD PLACEMENT ] ────────────────────────► [ EDGE NPU PLACEMENT ]
+  • High Model Capacity (70B Params)            • Quantized Model (3B INT4 Params)
+  • High Network Latency Tails (P99 = 450 ms)   • Low Deterministic Latency (P99 = 35 ms)
+  • Requires 5G Telemetry Infrastructure        • Zero Wireless Network Dependency
+  • Low On-Board Thermal Dissipation            • Adds +8W Thermal Load to Battery & Heatsink
+  • Large Workspace Stopping Margin Required    • Reduces Stopping Distance d_stop by 60%
+```
+
+Every re-placement requires re-evaluating the **Requirements Ledger** (`REQ-01`) and updating dynamic stopping bounds ($d_{\text{stop}}$).
+
+---
+
+## The Whole-System Resource Ledger
+
+Engineers must maintain a unified ledger balancing all physical and computational resources:
+
+$$\sum P_{\text{compute}} + \sum P_{\text{actuators}} \le P_{\text{battery\_max}} - P_{\text{safety\_margin}}$$
+
+$$\sum \text{SRAM}_{\text{static}} \le \text{SRAM}_{\text{physical\_capacity}}$$
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"We can run the entire Physical AI pipeline in the cloud over 5G."*  
+  *Correction:* Wireless networks experience unpredictable packet loss, signal fading, and handover latency spikes; a machine moving at speed will crash during brief disconnections.
+* **Fallacy 2:** *"Selecting an edge SoC is purely about TOPs (Tera-Operations per Second)."*  
+  *Correction:* High TOPs ratings are useless if memory bus bandwidth cannot stream model weights fast enough to sustain utilization.
+:::
+
+---
 
 ::: {.callout-decision}
-## Choose Where Each Part Runs
+### Dossier Delta: Placement Map and Resource Ledger (`PLACE-01`)
+Freeze the system's silicon placement and whole-system budgets:
 
-Choose and defend the whole-system placement map.
+1. The mapping matrix assigning each of the 7 stages to specific silicon substrates.
+2. The memory budget (SRAM footprint, LPDDR5 bandwidth allocations).
+3. The power and thermal budget (Watts TDP per node, battery capacity, runtime hours).
+4. Interconnect QoS priority mappings and fallback triggers upon domain failure.
 
-Record the placement map, shared-budget ledger, failure-domain map, and
-sensitivity analysis.
+```yaml
+# DOSSIER CHECKPOINT: PLACE-01
+placement_ledger:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  stage_placement:
+    transduction: "MCU_CORTEX_M4"
+    spatial_perception: "LINUX_MPU_ARM64"
+    temporal_belief: "LINUX_MPU_ARM64"
+    semantic_deliberation: "CLOUD_VLM_OR_EDGE_NPU"
+    action_planning: "EDGE_NPU_ACCELERATOR"
+    real_time_enforcement: "MCU_CORTEX_M4"
+    governance_provenance: "LINUX_MPU_SECURE_STORAGE"
+  resource_budgets:
+    mcu_sram_kb: 256
+    mcu_sram_used_kb: 142
+    mpu_dram_gb: 4.0
+    total_compute_tdp_watts: 12.5
+    peak_battery_power_watts: 45.0
+  interconnect_qos:
+    can_bus_priority: 0
+    rpmsg_ipc_priority: 1
+    camera_dma_priority: 3
+```
 :::
 
 ::: {.callout-lab}
-## Move One Part of the System
-
-Move one capability across compute domains. Measure the ripple through at least
-three system properties and one failure behavior, then accept or reject the
-placement.
+### Hands-on Realization: Lab 10 — Heterogeneous Silicon Placement
+Map and profile workloads across the **Arduino UNO Q heterogeneous architecture** (ARM Cortex-M4 MCU + Quad-Core Linux MPU). Measure power consumption, SRAM footprint, and memory bus bandwidth under varying compute distributions. Quantify the latency and reliability benefits of running safety enforcers locally on the MCU versus over network/IPC boundaries.
 :::

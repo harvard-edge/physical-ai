@@ -1,0 +1,165 @@
+# Release
+
+::: {.callout-question}
+What empirical evidence, fault injection defenses, and safety cases are required to issue a defensible Deploy / Condition / Refuse release verdict?
+:::
+
+![Systems Organ Focus: Stage 7 (Defensible Release Gate, ODD Qualification & CAE Safety Case).](figures/fig_pipeline_locator.pdf){#fig-locator-ch11 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Specify Operational Design Domains (ODD):** Define explicit environmental, physical, and sensor boundaries within which the system is verified safe.
+2. **Execute the 4-Rung Qualification Ladder:** Progress candidate systems through Replay $\to$ Simulation $\to$ Hardware-in-the-Loop (HIL) $\to$ Shadow field evaluation.
+3. **Conduct Cross-Layer Fault Injection:** Inject unannounced camera dropouts, memory bus stalls, sensor lens occlusions, and MPU kernel panics.
+4. **Construct Claim-Argument-Evidence (CAE) Cases:** Structure safety arguments linking empirical test evidence to non-negotiable hazard mitigations.
+5. **Issue the Release Verdict (`REL-01`):** Complete the eleventh and final artifact of the Cumulative Design Dossier rendering an accountable **Deploy / Condition / Refuse** verdict.
+:::
+
+::: {.callout-autopsy}
+* **System:** Autonomous Urban Delivery Rover (VLA Policy v1.0)
+* **Incident:** Rover crossed into oncoming bicycle lane; struck cyclist at $4.5\text{ m/s}$.
+* **Telemetry Snapshot:** System passed 500 hours of physics simulation with a $99.8\%$ task completion score. During real-world deployment on wet asphalt, road spray coated the depth camera lens, while tire friction coefficient dropped from $\mu=0.85$ to $\mu=0.28$.
+* **Root Cause:** The release review board relied on simulation metrics without executing Hardware-in-the-Loop (HIL) fault injection across degraded friction and lens mud.
+* **Architectural Flaw:** The team shipped a "Deploy" verdict without evidence-backed ODD qualification.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Target Operational Design Domain (ODD) matrix<br>• Model benchmark performance and simulation scores<br>• Release qualification candidate dossier |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Real-time out-of-ODD boundary monitor<br>• $100\%$ contained fault injection pass confirmation<br>• Final Deploy / Condition / Refuse release verdict |
+| **Failure Escalation** | *MCU Hardware Reflex* | If any HIL fault is uncontained, render a formal "REFUSE" verdict and block field deployment. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** The simulation environment accurately models all physical corner cases; models that succeed in simulation will succeed on real hardware.
+* **What the Bench Measures:** Simulation suffers from domain gap; physical sensor noise, lens smudges, bus jitter, and mechanical wear reveal catastrophic failure modes never seen in simulation.
+:::
+
+---
+
+## Operational Design Domain (ODD) Specification
+
+A physical machine cannot be guaranteed safe for "all possible environments." Safety is strictly contingent upon operating within a defined **Operational Design Domain (ODD)**:
+
+| Environmental Dimension | Nominal In-ODD Range | Out-of-ODD Trigger (Safe Fallback) |
+| :--- | :--- | :--- |
+| **Ambient Illumination** | $150\text{--}2000\text{ Lux}$ | $< 50\text{ Lux}$ (Darkness) or $> 10,000\text{ Lux}$ (Direct Solar Glare) |
+| **Surface Friction ($\mu$)** | $\mu \ge 0.45$ (Dry concrete/wood) | $\mu < 0.25$ (Wet ice, oil slick, loose gravel) |
+| **Dynamic Obstacle Velocity** | $v_{\text{obstacle}} \le 1.2\text{ m/s}$ (Walking speed) | $v_{\text{obstacle}} > 2.5\text{ m/s}$ (Fast approaching hazard) |
+| **Workspace Temperature** | $0^\circ\text{C to }45^\circ\text{C}$ | $> 50^\circ\text{C}$ (Thermal derating threshold) |
+
+When an out-of-ODD condition is detected, the machine must refuse new learned proposals and transition to a safe state.
+
+---
+
+## The 4-Rung Qualification Ladder
+
+Before physical deployment, every system must ascend a rigorous **4-Rung Qualification Ladder**:
+
+| Qualification Rung | Target Environment & Execution Substrate | Mandatory Promotion Gate Requirement |
+| :--- | :--- | :--- |
+| **Rung 4: Live Shadow Mode** | Real physical robot in fleet; candidate model runs in background without actuator authority. | **Promotion Gate 3:** Zero uncontained divergent proposals over $500\text{ hours}$ of shadow fleet operations. |
+| **Rung 3: Hardware-in-the-Loop (HIL)** | Real target MPU \& MCU hardware wired to FPGA real-time physical plant emulator with injected faults. | **Promotion Gate 2:** $100\%$ containment of all seeded bus corruptions, MPU crashes, and sensor drops. |
+| **Rung 2: Domain-Randomized Simulation** | Physics simulator (e.g. MuJoCo / Isaac Sim) with randomized mass, friction ($\mu$), and lighting. | **Promotion Gate 1:** $> 98\%$ task success rate across $10,000$ randomized rollout episodes. |
+| **Rung 1: Deterministic Log Replay** | Offline logged sensor datasets evaluated against ground-truth labels and historical traces. | **Baseline Gate 0:** Mean spatial affordance localization error $< 2\text{ cm}$; zero inference exceptions. |
+
+Passing Rung 1 (offline metrics) is a necessary prerequisite, but only Rung 3 (HIL) and Rung 4 (Shadow Mode) provide defensible evidence of physical safety.
+
+---
+
+## STPA System-Theoretic Hazard Analysis
+
+Using Nancy Leveson's **System-Theoretic Process Analysis (STPA)**, we identify four causal Unsafe Control Actions (UCAs):
+
+1. **Not Providing Action:** Safety enforcer fails to command dynamic braking when obstacle is detected.
+2. **Providing Action Too Early / Too Late:** Deceleration command is issued after $d_{\text{gap}} < d_{\text{stop}}$.
+3. **Providing Wrong Action:** VLA policy commands positive torque when negative counter-torque is required.
+4. **Stopping Action Too Soon:** Dynamic braking is released before the machine comes to a complete physical stop.
+
+---
+
+## Cross-Layer Fault Injection Campaigns
+
+To prove resilience, the candidate system must survive automated **cross-layer bench fault injection**:
+
+| Fault Category | Injected Benchmark Fault Condition | Expected Containment Mechanism |
+| :--- | :--- | :--- |
+| **1. Sensor Transduction Faults** | Instantaneous camera cable disconnect; optical glare; total lux drop. | PTP frame dropout detected; MCU falls back to blind proprioceptive position hold. |
+| **2. Compute & Runtime Faults** | Linux kernel panic; shared SRAM bit-flip; synthetic DMA memory bus flood. | Heartbeat lease expires ($> 50\text{ ms}$); hardware watchdog triggers Category 1 dynamic braking. |
+| **3. Learned Policy Faults** | Hallucinated target pose ($+500\%$ outside workspace); discontinuous trajectory step. | CBF invariant filter clips position to workspace hull; bounds jerk to $j_{\text{max}}$. |
+| **4. Physical & Electrical Faults** | Motor winding temperature $> 105^\circ\text{C}$; battery bus voltage drop ($< 10.5\text{ V}$). | Interoceptive health derater scales torque to $0\text{ Nm}$; opens inverter gate relays. |
+
+**Passing Criterion:** Under 100% of injected faults, the real-time MCU safety enforcer must prevent kinetic collision and transition the machine into a safe stop within the bounded reaction time $t_{\text{delay}}$.
+
+---
+
+## The Claim-Argument-Evidence (CAE) Release Case
+
+The final deliverable is an industrial-grade **Claim-Argument-Evidence (CAE)** assurance case:
+
+| CAE Pillar | Argument & Claim Formulation | Empirical Bench Evidence Artifact |
+| :--- | :--- | :--- |
+| **Top-Level Claim** | *"The TinyAgent is safe for autonomous operations within Warehouse ODD-01."* | Master Cumulative Design Dossier (`REL-01`) signed by safety review board. |
+| **Argument 1: Fault Containment** | The Proposal-Permission architecture deterministically contains all MPU crashes and bus faults. | HIL fault injection log: $1000/1000$ Linux kernel panics safely arrested in $< 50\text{ ms}$ without contact. |
+| **Argument 2: Latency Tail Freshness** | Sense-to-actuation $P_{99.9}$ latency never violates dynamic stopping distance bounds $d_{\text{stop}}$. | Bench Metrology CDF: $P_{99.9} = 72\text{ ms}$ (Budget: $80\text{ ms}$, stopping clearance: $0.082\text{ m}$). |
+| **Argument 3: Unconditional Human Authority**| Human supervisors can bumplessly override autonomous execution at any millisecond. | $50/50$ successful bench joystick takeovers with peak override jerk $< 15\text{ rad/s}^3$. |
+
+### The 3 Release Verdicts
+* **DEPLOY:** All evidence standards met; unconstrained release inside specified ODD.
+* **CONDITION:** Release permitted under restricted operating conditions (e.g. 50% max speed, human supervisor in visual line of sight).
+* **REFUSE:** System failed fault containment or latency tail budgets; deployment physically blocked until redesign.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"Achieving high accuracy on a public benchmark dataset proves a model is safe to deploy."*  
+  *Correction:* Benchmark datasets test static image recognition; they do not evaluate closed-loop dynamic stability, $P_{99}$ latency tails, or hardware fault containment.
+* **Fallacy 2:** *"A video demo of the robot executing a task flawlessly is sufficient proof of safety."*  
+  *Correction:* Video demos cherry-pick the happy path; defensible engineering requires proving safety under the worst-case $P_{99.9}$ failure conditions.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Integrated Deployment Case (`REL-01`)
+Assemble the complete final release case:
+
+1. The formal Operational Design Domain (ODD) boundaries.
+2. The empirical HIL fault injection pass records across all 4 fault layers.
+3. The Claim-Argument-Evidence (CAE) structured safety argument.
+4. The signed release verdict: **DEPLOY**, **CONDITION**, or **REFUSE**.
+
+```yaml
+# DOSSIER CHECKPOINT: REL-01
+deployment_case:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  odd_specification:
+    max_speed_mps: 0.50
+    min_illumination_lux: 150
+    min_friction_mu: 0.35
+    temperature_range_c: [10.0, 40.0]
+  qualification_results:
+    log_replay_accuracy: 0.965
+    sim_domain_randomization_pass_rate: 0.982
+    hil_fault_injection_contained_rate: 1.000 # 500/500 faults contained
+    shadow_mode_hours: 48.0
+  release_verdict: "DEPLOY"
+  review_board_signatures:
+    embedded_silicon_lead: "PASS"
+    embodied_ml_lead: "PASS"
+    system_safety_lead: "PASS"
+    practitioner_ux_lead: "PASS"
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Labs 12 and 13 — Hardware Fault Injection and Release Defense
+Subject the completed **TinyAgents Kit (Arduino UNO Q)** to an automated fault injection campaign. Inject camera frame dropouts, Linux kernel panics, and out-of-bounds VLA proposals. Assemble the empirical telemetry logs into the final **Design Dossier** (`REL-01`) and defend your release verdict before the expert review board.
+:::

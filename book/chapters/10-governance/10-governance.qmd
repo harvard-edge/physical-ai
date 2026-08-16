@@ -1,0 +1,149 @@
+# Governance
+
+::: {.callout-question}
+How do we enable seamless human takeover without inducing severe policy covariate shift through unmitigated feedback loops?
+:::
+
+![Systems Organ Focus: Stage 7 (Human Authority, Bumpless Override & Governed Lineage).](figures/fig_pipeline_locator.pdf){#fig-locator-ch10 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Design Human Authority State Machines:** Implement deterministic authority transitions (Manual $\to$ Autonomous $\to$ Shared $\to$ E-Stop).
+2. **Implement Bumpless Transfer Filters:** Smooth human joystick interventions to eliminate mechanical torque spikes and gearbox shock.
+3. **Mitigate Policy Endogeneity:** Apply truncated episode slicing and intervention tagging to prevent covariate shift and policy collapse during fine-tuning.
+4. **Establish Cryptographic Lineage:** Implement tamper-evident hardware telemetry logs binding sensor data, model weights, and physical actuator actions.
+5. **Freeze the Authority Record (`AUTH-01`):** Construct the tenth artifact of the Cumulative Design Dossier establishing human authority contracts and rollback protocols.
+:::
+
+::: {.callout-autopsy}
+* **System:** Fleet of 50 Autonomous Pallet Lifters (Behavioral Cloning Policy v2.1)
+* **Incident:** Lifters systematically accelerated into staging pillars upon approaching pallet racks; caused $240,000 in structural warehouse damage.
+* **Telemetry Snapshot:** Engineers fine-tuned policy weights on 10,000 hours of raw field telemetry containing human operator joystick interventions.
+* **Root Cause:** Whenever human operators intervened near pillars, the raw logs recorded an anomalous state transition without an intervention tag. The neural network fit weights to the pre-crash state, treating human panic corrections as nominal actions.
+* **Architectural Flaw:** The data pipeline lacked a truncated episode slicing protocol.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Human supervision state request<br>• Model weight update candidate (OTA payload)<br>• Structured interaction telemetry episode |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Dedicated hardware E-Stop interrupt authority<br>• Bumpless blending filter: jerk-limited handoff<br>• Dual-bank bootloader rollback verification |
+| **Failure Escalation** | *MCU Hardware Reflex* | If human intervenes or candidate firmware trips safety, instantly revert authority and reboot to Golden Verified Firmware Bank A. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Teleoperation data is always expert and noise-free; retraining a policy on logged rollouts monotonically improves performance.
+* **What the Bench Measures:** Human operators react late and over-correct; naive imitation learning on un-sliced intervention logs induces covariate shift and policy collapse.
+:::
+
+---
+
+## Human Authority and The Authority State Machine
+
+Physical authority is not an all-or-nothing binary switch; it is a structured state machine:
+
+| State Transition | Trigger Event & Condition | Authority Allocation & Action |
+| :--- | :--- | :--- |
+| **Manual $\to$ Autonomous** | Operator releases controls \& arms consent lease | MPU policy proposals permitted; MCU validates workspace boundaries. |
+| **Autonomous $\to$ Manual** | Joystick deflection $> \epsilon$ or pedal pressed | **Immediate Preemption:** Human operator seized authority; bumpless blending filter engages. |
+| **Any $\to$ Hardware E-Stop** | Physical emergency stop depressed or MCU watchdog trip | **Zero-Software Interlock:** Actuator power relays open; spring friction brakes lock mechanical links. |
+
+* **Manual Override Privilege:** A physical human input (joystick deflection, foot pedal, E-stop button) routed directly to MCU hardware always preempts learned proposals unconditionally.
+* **Consent Leases:** Autonomous operation requires periodic operator presence heartbeats (e.g. dead-man's switch).
+
+---
+
+## Bumpless Control Overrides and Jerk-Limited Blending
+
+Abruptly switching between an autonomous neural policy and a human joystick command creates sudden torque steps that damage mechanical gearboxes.
+
+| Blending Filter Parameter | Mathematical Constraint | Physical Function on Mechanism |
+| :--- | :--- | :--- |
+| **Smoothing Window ($\tau_{\text{blend}}$)** | $u(t) = \alpha(t) u_{\text{human}}(t) + (1 - \alpha(t)) u_{\text{policy}}(t)$ | Blending parameter $\alpha(t) \in [0, 1]$ smoothly ramps over $50\text{--}150\text{ ms}$. |
+| **Acceleration Limit ($a_{\text{max}}$)** | $\|\dot{u}(t)\| \le a_{\text{max}}$ | Prevents discontinuous velocity jumps and motor driver overcurrent spikes. |
+| **Jerk Bound ($j_{\text{max}}$)** | $\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$ | Bounds torque rate-of-change, eliminating mechanical shudder and gearbox backlash impacts. |
+
+---
+
+## Policy Endogeneity and Intervention Covariate Shift
+
+A physical robot shapes its own future data distribution. When a human operator intervenes to prevent an accident:
+
+| Logging Protocol | Log Record Structure | Impact on Retrained Policy |
+| :--- | :--- | :--- |
+| **Naive Logging** *(Poisonous)* | Continuous rollout stream without takeover demarcation: $[s_t, a_t]$ logged blindly. | Model learns spurious correlation: *"Drive fast directly toward obstacles before steering sharp right."* Induces catastrophic policy collapse. |
+| **Governed Slicing** *(Safe Flywheel)* | Takeover timestamp $t_{\text{takeover}}$ recorded; preceding trajectory sliced and tagged as failure; recovery isolated as corrective demo. | Policy learns correct nominal behavior while isolating recovery demonstrations into structured safe-recovery subsets. |
+
+To prevent policy collapse from intervention data:
+
+1. **Intervention Tagging:** The logging engine records the exact millisecond ($t_{\text{takeover}}$) when human override occurred.
+2. **Truncated Episode Slicing:** The data flywheel automatically discards the preceding $N$ seconds of autonomous execution prior to takeover, isolating the human recovery trajectory as a separate demonstration.
+
+---
+
+## Microsecond PTP Logging and Cryptographic Provenance
+
+For safety accountability and regulatory release cases:
+
+* **PTP Synchronized Ring Buffers:** All sensor inputs, model proposals, MCU safety vetoes, and actuator currents are recorded into an on-board flight data recorder stamped with microsecond hardware timebases.
+* **Cryptographic Lineage:** Every trained model artifact carries a cryptographic hash linking it directly to the exact dataset version, hyperparameter configuration, and qualification test run.
+
+---
+
+## Field Shadow Mode and Dual-Bank OTA Memory Rollback
+
+When deploying updated models over-the-air (OTA):
+
+1. **Shadow Mode Execution:** Candidate policies run in the background on live sensory streams without physical actuator authority, logging their proposals to compare against the active baseline policy.
+2. **Dual-Bank A/B Flash Memory:** Microcontroller firmware and model weights are written to Bank B while Bank A executes. If the new image fails health assertions within 60 seconds, the hardware watchdog automatically reverts to Bank A.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"More data always improves a physical AI policy, even if collected from human intervention recoveries."*  
+  *Correction:* Un-tagged human interventions contaminate behavioral cloning datasets with severe covariate shift, causing the policy to repeat dangerous states.
+* **Fallacy 2:** *"Software over-the-air updates can proceed directly to flash without dual-bank rollback protection."*  
+  *Correction:* A corrupted OTA update on a physical machine can brick communication transceivers, requiring destructive manual disassembly.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Human-Authority and Governance Record (`AUTH-01`)
+Freeze the governance and data lineage mechanisms:
+
+1. The authority handoff state machine and bumpless blending parameters.
+2. The intervention logging schema and truncated episode slicing rules.
+3. Cryptographic hash records linking trained weights to dataset lineage.
+4. The dual-bank OTA update and automated rollback protocol.
+
+```yaml
+# DOSSIER CHECKPOINT: AUTH-01
+governance_record:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  human_authority:
+    e_stop_priority: 0
+    joystick_override_threshold_norm: 0.15
+    bumpless_blend_window_ms: 100.0
+    max_override_jerk_rad_s3: 20.0
+  data_governance:
+    intervention_tagging_enabled: true
+    pre_intervention_discard_window_s: 2.0
+    telemetry_ptp_sync_source: "ETH_IEEE1588"
+  ota_and_provenance:
+    active_bank: "BANK_A"
+    rollback_watchdog_timeout_s: 60.0
+    model_weights_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 11 — Bumpless Override and Data Governance
+Implement human authority state transitions on the **TinyAgents Kit (Arduino UNO Q)**. Connect an analog joystick to the MCU and execute live overrides during autonomous trajectory execution. Observe how bumpless filtering eliminates motor current spikes. Record un-tagged vs. sliced intervention logs to demonstrate how naive retraining induces policy collapse.
+:::

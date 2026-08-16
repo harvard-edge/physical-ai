@@ -1,32 +1,35 @@
-# Chapters
+# The Book Chapters & Architectural Spine
 
-Each teaching chapter is a folder. The entry file has the **same name as the folder** (not `index.qmd`). Figures live under `figures/`.
+This directory contains the manuscript source files for the 11 substantive chapters and capstone defense of ***Physical AI: Machine Learning Systems That Sense and Act***.
 
-| Folder | Title (H1 in qmd) | Lab |
-| --- | --- | --- |
-| `01-frame/` | From ML Systems to Physical AI | `labs/01-close-the-loop/` |
-| `02-costs/` | What the Physical World Costs | `labs/02-freshness-wall/` |
-| `03-measure/` | Measuring a Moving System | `labs/03-measure-both-brains/` |
-| `04-runtime/` | A Runtime That Must Keep Running | `labs/04-runtime-fault-containment/` |
-| `05-perception/` | Perception Under a Deadline | `labs/05-perception-frontier/` |
-| `06-state/` | State, Time, and World Models | `labs/06-belief-drift/` |
-| `07-intent/` | From Meaning to Intent | `labs/07-two-speed-intent/` |
-| `08-limits/` | Keeping Action Within Limits | `labs/08-mcu-enforcer/` |
-| `09-placement/` | Where Intelligence Runs | `labs/09-placement-ripple/` |
-| `10-assurance/` | Building Confidence Before Deployment | `labs/10-shadow-and-faults/` |
-| `11-authority/` | Human Authority | `labs/11-authority-paths/` |
-| `12-learning/` | Learning From Interaction | `labs/12-learning-turn/` |
-| `13-deploy/` | Ready to Deploy? | `labs/13-ship-gate/` |
-| `99-review/` | Final Design Review | `labs/99-design-review/` |
+Each chapter is organized in its own directory, with the main manuscript file matching the directory name (`NN-slug/NN-slug.qmd`) and localized visual assets in `figures/`.
 
-Layout per chapter:
+---
+
+## The 3 Parts and 12 Chapters
+
+| Directory | Title | Part / Organ of the Agent | Dossier Artifact |
+| :--- | :--- | :--- | :--- |
+| `01-boundary/` | **Physical Causality** | Part I: The Physical Foundation | `Loop Charter` (`LOOP-01`) |
+| `02-metrology/`| **Time and Latency** | Part I: The Physical Foundation | `Requirements Ledger` (`REQ-01`) |
+| `03-runtime/`  | **Multi-Rate Systems** | Part I: The Physical Foundation | `Runtime Skeleton` (`RUN-01`) |
+| `04-perception/`| **Perception** | Part II: The Agent Architecture | `Observation Contract` (`OBS-01`) |
+| `05-state/`    | **Memory** | Part II: The Agent Architecture | `State and Timing Model` (`STATE-01`) |
+| `06-intent/`   | **Reasoning** | Part II: The Agent Architecture | `Intent Schema` (`INTENT-01`) |
+| `07-planning/` | **Planning** | Part II: The Agent Architecture | `Planning Schema` (`PLAN-01`) |
+| `08-enforcement/`| **Reflex** | Part II: The Agent Architecture | `Enforcement Design` (`ENF-01`) |
+| `09-placement/`| **Placement** | Part III: Integration and Release | `Placement Ledger` (`PLACE-01`) |
+| `10-governance/`| **Governance** | Part III: Integration and Release | `Governance Record` (`AUTH-01`) |
+| `11-assurance/`| **Release** | Part III: Integration and Release | `Deployment Case` (`REL-01`) |
+| `99-capstone/` | **Capstone** | Capstone: Final System Defense | Final Release Defense |
+
+---
+
+## Chapter Directory Structure
 
 ```text
 NN-slug/
-  NN-slug.qmd    # manuscript
-  figures/       # chapter images
+  ├── NN-slug.qmd     # Chapter manuscript in Quarto markdown
+  └── figures/        # Localized SVG, PNG, and sketch assets
+      └── README.md
 ```
-
-Outline spine + kit lab mapping: [`docs/TEACHING-FLOW.md`](../../docs/TEACHING-FLOW.md).
-
-Labs stay in repo-root `labs/` (postdoc kit track), not inside these folders.

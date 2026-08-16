@@ -1,0 +1,65 @@
+# Arduino UNO Q Dual-Brain Reference {.unnumbered}
+
+The **TinyAgents Kit** uses the **Arduino UNO Q** as the reference educational platform. This appendix provides the hardware specs, core partitioning, and inter-processor communication (IPC) contracts.
+
+---
+
+## Dual-Brain System Topology
+
+| Processor Subsystem | Architectural Core and OS | Primary Systems Role and Execution Contract |
+| :--- | :--- | :--- |
+| **Application Processor (MPU)** | Multi-core ARM Cortex-A<br>Embedded Linux OS | **Untrusted Proposal Service:** Runs Python, PyTorch, ROS2, edge VLMs/VLAs; emits timestamped expiring trajectory proposals ($p_t$). |
+| **Real-Time Controller (MCU)** | ARM Cortex-M / RISC-V<br>FreeRTOS / Bare-Metal | **Trusted Permission Authority:** Runs deterministic 1 kHz timing loop, dynamic stopping enforcer ($d_{\text{stop}}$), and hardware PWM timers. |
+| **Inter-Processor Link (IPC)** | Shared SRAM Mailbox<br>RPMSG / OpenAMP Protocol | Zero-copy lock-free circular ring buffers with atomic sequence counters and hardware mailbox interrupts. |
+
+---
+
+## Hardware Resource Partitioning
+
+| Subsystem | Application Processor (MPU) | Real-Time Controller (MCU) |
+| :--- | :--- | :--- |
+| **Core Architecture** | Multi-core ARM Cortex-A | ARM Cortex-M / RISC-V |
+| **Operating System** | Embedded Linux (Yocto / Debian) | FreeRTOS / Bare-Metal |
+| **Memory** | 2 GB to 4 GB LPDDR4 DRAM | 256 KB to 512 KB SRAM |
+| **Execution Domain** | Virtual memory, page tables | Physical addresses, zero paging |
+| **Determinism** | Best-effort ($P_{99} \approx 20\text{--}80\text{ ms}$) | Hard real-time (Jitter $< 5\,\mu\text{s}$) |
+| **Physical I/O** | USB, MIPI-CSI Camera, Wi-Fi / Ethernet | Direct Timer PWM, Encoders, E-Stop GPIO |
+
+---
+
+## Shared Memory RPMSG Message Contract
+
+The MPU sends timestamped intent proposals to the MCU over the non-blocking RPMSG ring buffer.
+
+```c
+// Shared C Header for MPU and MCU: tinyagent_ipc.h
+
+typedef struct __attribute__((packed)) {
+    uint32_t message_id;
+    uint64_t timestamp_us;       // Microsecond hardware timestamp
+    uint32_t lease_duration_ms;  // Proposal expiration timeout
+    
+    // Target Spatial Goal (Cartesian in end-effector or world frame)
+    float target_pos_x;          // Meters
+    float target_pos_y;          // Meters
+    float target_pos_z;          // Meters
+    
+    // Trajectory Derivative Bounds
+    float max_velocity_m_s;      // Clamped velocity limit
+    float max_acceleration_m_s2; // Clamped acceleration limit
+    
+    // Confidence and CRC
+    float model_confidence;      // [0.0, 1.0]
+    uint32_t crc32;              // Payload integrity checksum
+} TinyAgent_IntentProposal_t;
+```
+
+---
+
+## Hardware Safety Watchdog Protocol
+
+The MCU monitors the MPU via a strict countdown watchdog:
+
+1. **Heartbeat Packet:** MPU must transmit a ping packet every $\tau \le 10\text{ ms}$.
+2. **Watchdog Timeout:** If MCU receives no heartbeat for $50\text{ ms}$, hardware timer triggers an NMI.
+3. **Hardware Action:** MCU disables motor H-bridge power gate via GPIO pin `GPIO_PB12_ESTOP` within $250\,\mu\text{s}$.

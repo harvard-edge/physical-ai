@@ -17,7 +17,7 @@ These are settled, with the reasoning, so we do not relitigate them.
   enrollment, open self-followers, and Arduino/partner packaging. Do not
   maintain a separate “material development curriculum” or ETH-only syllabus.
   `TEACHING-FLOW.md` / `CHAPTER-OUTLINES.md` are authoring depth under that
-  course, not a second offer. `ETH-SEMINAR.md` redirects to `COURSE.md`.
+  course, not a second offer.
   Optional lecture+lab alternate: `SEMESTER-PACK.md`.
 - **Dual-brain (MPU proposes, MCU permits) is the reference teaching
   architecture for the TinyAgents Kit on Arduino UNO Q.** Concepts stay

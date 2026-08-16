@@ -1,0 +1,171 @@
+# Planning
+
+::: {.callout-question}
+How do we decode multimodal goals into continuous, shock-free joint trajectories at $20\text{--}50\text{ Hz}$ while protecting mechanical gearboxes from jerk?
+:::
+
+![Systems Organ Focus: Stage 5 (Trajectory Decoders, Action Chunking & Jerk Ensembling).](figures/fig_pipeline_locator.pdf){#fig-locator-ch07 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Deploy Multi-Step Action Chunking:** Implement modern trajectory generators (Diffusion Policy, ACT) predicting $H$-step future waypoint horizons in parallel.
+2. **Enforce $\mathcal{C}^2$ Jerk Continuity:** Apply temporal ensembling and spline interpolation to eliminate discontinuous velocity steps across chunk boundaries.
+3. **Protect Mechanical Hardware:** Bound derivative limits (velocity $\dot{q}$, acceleration $\ddot{q}$, jerk $\dddot{q}$) to prevent gearbox gear shear and harmonic resonance.
+4. **Manage Asynchronous Re-Anchoring Handshakes:** Safely re-initialize trajectory inference when real-time safety enforcers intervene or veto proposals.
+5. **Freeze the Planning Schema (`PLAN-01`):** Construct the seventh artifact of the Cumulative Design Dossier establishing chunk horizon budgets and continuity bounds.
+:::
+
+::: {.callout-autopsy}
+* **System:** Dual-Arm Bimanual Manipulator (Action Diffusion Policy at $15\text{ Hz}$)
+* **Incident:** Joint 2 harmonic drive planetary teeth sheared; arm collapsed onto table.
+* **Telemetry Snapshot:** System updated action chunks every $66\text{ ms}$ ($H=16$ steps). At chunk transition boundary $T+21.450\text{ s}$, new inference pass produced a velocity step from $-0.42\text{ rad/s}$ to $+0.65\text{ rad/s}$ across a single $1\text{ ms}$ control cycle.
+* **Root Cause:** The software switched from Chunk $k$ to Chunk $k+1$ without temporal ensembling or jerk filtering, commanding infinite instantaneous motor acceleration.
+* **Architectural Flaw:** The planner lacked $\mathcal{C}^2$ trajectory continuity.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Multi-step trajectory chunk: $A_t = [a_0, \dots, a_H]$<br>• Prediction horizon: $H = 16\text{ to }32$ steps (at $50\text{ Hz}$)<br>• Commanded acceleration and jerk derivatives |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Validates $\mathcal{C}^2$ continuity: $\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$<br>• Checks dynamic torque bounds per joint: $\tau \le \tau_{\text{max}}$<br>• Re-anchors baseline state upon safety intervention |
+| **Failure Escalation** | *MCU Hardware Reflex* | If chunk violates derivative bounds, clip jerk to $j_{\text{max}}$ and trigger asynchronous re-anchoring. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Teleoperation demonstration datasets contain infinite-frequency, perfectly continuous joint trajectories; actuators track step commands with zero mechanical compliance.
+* **What the Bench Measures:** Robotic motor gearboxes have backlash and harmonic compliance; un-smoothed trajectory steps excite resonant structural vibrations (chatter) that loosen hardware fasteners and burn motor windings.
+:::
+
+---
+
+## Vision-Language-Action (VLA) Policies and Trajectory Decoders
+
+Vision-Language-Action (VLA) policies (e.g. OpenVLA, Octo, Diffusion Policy, ACT) map sensory observations and semantic intents directly into continuous spatio-temporal trajectories:
+
+| Generation Stage | Computational Substrate | Mathematical Formulation & Output |
+| :--- | :--- | :--- |
+| **1. Multimodal Conditioning** | Transformer Cross-Attention on NPU | Condition vector $c = [o_t, p_t, s_t]$ fusing vision, intent, and proprioception. |
+| **2. Trajectory Denoising** | Flow Matching / Diffusion Decoder | 100-step reverse diffusion denoises Gaussian noise into continuous joint spline. |
+| **3. Action Chunk Assembly** | Memory Buffer Alignment | Continuous chunk $A_t = \{ [q_k, \dot{q}_k, \tau_k] \}_{k=0}^H$ of length $H = 16$ steps. |
+| **4. Asynchronous Queue** | SPSC Lock-Free Shared SRAM Mailbox | Chunk streamed to MCU queue for real-time validation and temporal ensembling. |
+
+* **Action Chunking:** Emits a sequence of $H$ future joint targets ($a_0, a_1, \dots, a_H$), providing smooth trajectory guidance between inference cycles.
+* **Receding Horizon Execution:** As Chunk $k$ executes, the MPU computes Chunk $k+1$ in the background.
+
+---
+
+## Action Representations: Task-Space vs. Joint-Space
+
+Choosing the mathematical representation of action proposals dictates the computational division between MPU and MCU:
+
+| Action Representation | Format | Advantages | Systems Trade-offs |
+| :--- | :--- | :--- | :--- |
+| **Task-Space End-Effector ($\Delta SE(3)$)** | $[\Delta x, \Delta y, \Delta z, \Delta \text{yaw}, \text{grip}]$ | Morphology invariant; transfers across arms | MCU must solve real-time inverse kinematics (IK) |
+| **Joint-Space Angles ($\Delta q \in \mathbb{R}^n$)** | $[\Delta q_1, \Delta q_2, \dots, \Delta q_n]$ | Direct motor mapping; no runtime IK required | Overfits specific robot kinematics |
+| **Joint Impedance ($K_p, K_d, q_{\text{target}}$)** | Target angles + dynamic stiffness | Compliant contact; safe physical interaction | Requires high-frequency torque feedback loops |
+
+---
+
+## Multi-Step Action Chunking ($H$-step Horizons)
+
+The length of the prediction horizon $H$ governs the trade-off between open-loop responsiveness and computational efficiency:
+
+| Horizon Regime | Horizon Length $H$ | Systems Responsiveness vs. Computational Load |
+| :--- | :--- | :--- |
+| **Short Horizon** | $H = 4$ steps ($80\text{ ms}$) | High closed-loop agility; excessive NPU compute load ($50\text{ Hz}$); risk of motor stutter. |
+| **Balanced Horizon** | $H = 16$ steps ($320\text{ ms}$) | Optimal trade-off; smooth continuous motion; manageable NPU inference cadence ($20\text{ Hz}$). |
+| **Long Horizon** | $H = 64$ steps ($1.28\text{ s}$) | Minimal compute overhead; vulnerable to dynamic collisions; high open-loop drift error. |
+
+* **The Receding Horizon Principle:** The MCU executes the first $K$ steps of Chunk $k$ ($K < H$), blending seamlessly into Chunk $k+1$ before the previous chunk fully depletes.
+
+---
+
+## Temporal Ensembling and $\mathcal{C}^2$ Continuity
+
+Because neural inference is stochastic, consecutive action chunks ($A^{(t)}$ and $A^{(t+1)}$) rarely align perfectly at overlapping boundaries:
+
+| Continuity Level | Mathematical Derivative Constraint | Physical Consequence on Hardware |
+| :--- | :--- | :--- |
+| **Position Discontinuity ($\mathcal{C}^0$ Failure)** | $\lim_{t \to t_k^-} q(t) \ne \lim_{t \to t_k^+} q(t)$ | Infinite commanded velocity impulse; instantaneous motor torque spike; gearbox backlash damage. |
+| **Velocity Discontinuity ($\mathcal{C}^1$ Failure)** | $\lim_{t \to t_k^-} \dot{q}(t) \ne \lim_{t \to t_k^+} \dot{q}(t)$ | Infinite commanded acceleration impulse; excessive motor coil current draw; thermal stress. |
+| **Jerk Discontinuity ($\mathcal{C}^2$ Failure)** | $\|\frac{d^3 q}{dt^3}\| > j_{\text{max}}$ | Excites structural resonance frequencies; causes mechanical chassis chatter and loosened fasteners. |
+
+To achieve smooth physical motion, the runtime applies **Receding Horizon Temporal Ensembling**:
+
+$$a(t) = \sum_{i} w_i \cdot A_{t-i}^{(i)}$$
+
+Where weights $w_i = \exp(-\lambda i)$ favor newly computed trajectories while enforcing:
+
+1. **Position Continuity ($\mathcal{C}^0$):** No instantaneous displacement steps.
+2. **Velocity Continuity ($\mathcal{C}^1$):** Continuous velocity curves, eliminating infinite acceleration impulses.
+3. **Jerk Bounding ($\mathcal{C}^2$):** Bounding the third time derivative ($\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$) to prevent excitation of structural resonant frequencies.
+
+---
+
+## The Asynchronous State Re-Anchoring Handshake
+
+When a real-time safety enforcer vetoes or clips a motor command (e.g. stopping $5\text{ cm}$ before a collision), the physical machine's actual position ($s_{\text{actual}}$) diverges from what the VLA model predicted ($s_{\text{expected}}$).
+
+| Protocol Step | Handshake Substrate | Synchronization Mechanism & Action |
+| :--- | :--- | :--- |
+| **1. Proposal Emission** | MPU Linux Daemon | VLA policy emits action chunk $A_t$ assuming arm starts at predicted coordinate $p_0$. |
+| **2. Real-Time Intervention** | MCU 1 kHz Safety Loop | Enforcer detects dynamic obstacle, vetoes trajectory, and holds arm at safe coordinate $p_{\text{veto}}$. |
+| **3. Shared Veto Flag** | Shared SRAM Mailbox | MCU sets atomic `VETO_ACTIVE` hardware interrupt flag and posts true state $p_{\text{veto}}$. |
+| **4. Queue Flush & Re-anchor**| MPU Policy Pipeline | MPU aborts pending chunk buffer, flushes KV-cache, and re-seeds diffusion planner directly from $p_{\text{veto}}$. |
+
+Without an explicit re-anchoring handshake, the neural policy continues pushing against safety boundaries, accumulating integral windup and generating violent oscillatory snaps when limits are released.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"Predicting single-step actions ($H=1$) provides the most responsive closed-loop control."*  
+  *Correction:* Single-step execution at 20 Hz starves motor controllers during inference latency spikes, causing destructive mechanical chatter.
+* **Fallacy 2:** *"A neural network can be trained to produce jerk-bounded motion without external filtering."*  
+  *Correction:* Neural policies are stochastic function approximators; even minor output noise creates high-frequency jerk spikes that destroy mechanical gearboxes.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Planning Schema (`PLAN-01`)
+Freeze the trajectory generation and action chunk contracts:
+
+1. The policy interface format (Task-Space $\Delta SE(3)$ vs. Joint Angles $\mathbb{R}^n$).
+2. The action chunk horizon $H$, execution sub-step $K$, and update frequency.
+3. The temporal ensembling weighting function and $\mathcal{C}^2$ jerk limits ($j_{\text{max}}$).
+4. The asynchronous re-anchoring handshake protocol upon safety interventions.
+
+```yaml
+# DOSSIER CHECKPOINT: PLAN-01
+planning_schema:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  policy_interface:
+    action_space: "JOINT_ANGLES_RAD"
+    dimension: 3
+    prediction_horizon_steps: 16
+    chunk_step_dt_ms: 20.0
+    planning_frequency_hz: 20.0
+  temporal_ensembling:
+    enabled: true
+    weighting_type: "EXPONENTIAL_DECAY"
+    decay_lambda: 0.15
+  derivative_limits:
+    max_joint_velocity_rad_s: 2.0
+    max_joint_acceleration_rad_s2: 8.0
+    max_joint_jerk_rad_s3: 25.0
+  reanchoring_protocol:
+    divergence_threshold_rad: 0.05
+    handshake_timeout_ms: 100.0
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 8 — Action Chunking and Ensembling
+Deploy an action diffusion policy on the **TinyAgents Kit (Arduino UNO Q)**. Compare raw chunk transitions against temporal ensembled trajectories on an oscilloscope. Measure motor current spikes and mechanical vibration to prove that $\mathcal{C}^2$ jerk limiting eliminates harmonic chatter while preserving task execution speed.
+:::

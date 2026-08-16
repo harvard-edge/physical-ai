@@ -1,0 +1,168 @@
+# Reflex
+
+::: {.callout-question}
+What mathematical guarantees and bare-metal enforcers ensure that unverified learned proposals never violate physical safety invariants?
+:::
+
+![Systems Organ Focus: Stage 6 (Real-Time Reflex & 1 kHz Bare-Metal Safety Enforcers).](figures/fig_pipeline_locator.pdf){#fig-locator-ch08 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Implement Zero-Allocation 1000 Hz MCU Enforcers:** Construct real-time safety filters running in bare-metal / FreeRTOS timing loops.
+2. **Enforce Control Barrier Invariants ($h(x) \ge 0$):** Project untrusted candidate actions onto forward-invariant safe sets ($\mathcal{C}$) via minimal-intervention quadratic programs.
+3. **Compute Dynamic Stopping Envelopes ($d_{\text{stop}}$):** Intercept and veto trajectory proposals that violate clearance margins relative to moving obstacles.
+4. **Execute Deterministic Emergency Fallback Chains:** Implement standardized Category 0/1/2 emergency stop state machines upon safety vetoes or sensor loss.
+5. **Freeze the Enforcement Design (`ENF-01`):** Construct the eighth artifact of the Cumulative Design Dossier establishing barrier functions and hardware veto bounds.
+:::
+
+::: {.callout-autopsy}
+* **System:** Collaborative Dual-Arm Medical Assembly Station
+* **Incident:** Arm penetrated human exclusion zone; collided with technician's hand.
+* **Telemetry Snapshot:** High-capacity VLA policy suffered out-of-distribution optical glare from an overhead surgical lamp, proposing a joint angle step of $+45^\circ$.
+* **Root Cause:** The software safety guard was implemented as a Python script running on the Linux application processor; during the event, a multi-threading race condition allowed the raw packet to reach the motor CAN transceiver before the check finished.
+* **Architectural Flaw:** Safety checks were co-located on the untrusted proposal processor rather than enforced independently on a dedicated real-time microcontroller.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Trajectory step: $p_t = [v_{\text{cmd}}, \omega_{\text{cmd}}, F_{\text{grip}}]$<br>• Candidate action buffer across next $50\text{ ms}$<br>• Unverified intent vector |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Evaluates Control Barrier Invariant: $h(x) \ge 0$<br>• Checks dynamic stopping clearance: $d_{\text{gap}} > d_{\text{stop}}$<br>• VETO / Clip: $u_t = \text{project\_safe}(p_t)$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | If invariant is breached, veto command instantly and execute Category 1 controlled stop. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Safety boundaries are soft penalty terms in a reinforcement learning reward function; collisions simply yield a negative floating-point score.
+* **What the Bench Measures:** In the physical world, a safety violation breaks metal; safety must be a hard, inviolable mathematical constraint enforced by isolated microcontroller hardware.
+:::
+
+---
+
+## The Proposal–Permission Privilege
+
+The Proposal–Permission boundary is the fundamental architectural law of Physical AI Systems:
+
+| Enforcement Stage | Mathematical / Physical Constraint | Real-Time MCU Reflex Action |
+| :--- | :--- | :--- |
+| **1. Kinematic & Dynamic Limits** | $q_{\text{min}} \le q_t \le q_{\text{max}}$, $\|\dot{q}_t\| \le \dot{q}_{\text{max}}$, $\|\tau_t\| \le \tau_{\text{cont}}$ | Clamps candidate commands to safe envelope before solving inverse kinematics. |
+| **2. Dynamic Stopping Distance ($d_{\text{stop}}$)** | $d_{\text{clearance}} \ge v(t) \cdot t_{\text{delay}} + \frac{v(t)^2}{2 a_{\text{max}}}$ | Vetoes accelerating proposals toward obstacles; initiates Category 1 controlled deceleration. |
+| **3. Control Barrier Function (CBF)** | $\nabla h(x)^T f(x, u_t) \ge -\alpha(h(x))$ *(Forward invariant safe set $\mathcal{C}$)* | Solves zero-allocation QP: $\min \|u_t - p_t\|^2$ subject to the safety barrier constraint. |
+
+* **Untrusted MPU (The Proposer):** Can propose ambitious trajectories, optimize long-term goals, or hallucinate wildly.
+* **Trusted MCU (The Permitter):** Acts as an incorruptible mathematical gatekeeper. If $p_t$ is safe, $u_t = p_t$. If $p_t$ violates safety, the MCU projects $p_t$ onto the nearest safe boundary or triggers safe deceleration.
+
+---
+
+## Dynamic Stopping Distance Physics ($d_{\text{stop}}$)
+
+The MCU continuously evaluates whether the current physical velocity allows the machine to stop before reaching an obstacle:
+
+$$d_{\text{stop}}(t) = v(t) \cdot t_{\text{delay}} + \frac{v(t)^2}{2 \cdot a_{\text{max}}}$$
+
+Where $t_{\text{delay}}$ includes the total sensory-motor reaction time.
+
+| Stopping Margin Regime | Physical Condition | Controller Action |
+| :--- | :--- | :--- |
+| **Safe Execution Zone** | $d_{\text{gap}} \gg d_{\text{stop}}(v)$ | Action proposal permitted at full commanded velocity. |
+| **Approaching Limit** | $d_{\text{gap}} \to d_{\text{stop}}(v)$ | Commanded velocity clipped to maximum admissible approach speed. |
+| **Boundary Violation** | $d_{\text{gap}} \le d_{\text{stop}}(v)$ | **Safety Veto:** Category 1 dynamic injection braking triggered to stop prior to contact. |
+
+If environmental clearance shrinks such that $d_{\text{gap}} \le d_{\text{stop}}$, the MCU immediately overrides the MPU and engages maximum emergency deceleration ($a_{\text{max}}$).
+
+---
+
+## Control Barrier Invariants ($h(x) \ge 0$)
+
+To guarantee safety mathematically without manually hardcoding geometric clipping rules, modern physical enforcers utilize **Control Barrier Functions (CBFs)**.
+
+We define a safe operating set $\mathcal{C}$ as the super-level set of a continuously differentiable function $h(x)$:
+
+$$\mathcal{C} = \{ x \in \mathbb{R}^n : h(x) \ge 0 \}$$
+
+To ensure the system never exits the safe set ($\dot{h}(x) \ge -\alpha(h(x))$), the MCU solves a lightweight **Quadratic Program (QP)** at 1000 Hz:
+
+$$\min_{u_t} \frac{1}{2} \| u_t - p_t \|^2 \quad \text{subject to} \quad \nabla h(x)^T f(x, u_t) \ge -\alpha(h(x))$$
+
+| CBF State | Geometric Invariant | Permitted Actuation $u_t$ |
+| :--- | :--- | :--- |
+| **Safe Interior** | $h(x) > 0$ | Proposal permitted without alteration: $u_t = p_t$. |
+| **Barrier Boundary** | $h(x) = 0$ | Proposal projected orthogonally onto safe tangent space: $u_t = \text{proj}_{\partial \mathcal{C}}(p_t)$. |
+| **Unsafe Interior** | $h(x) < 0$ | Active counter-control applied to restore state to safe set $\mathcal{C}$. |
+
+* If the proposal $p_t$ is safe ($h(x) \ge 0$), the QP outputs $u_t = p_t$ with zero modification.
+* If $p_t$ points towards violation, the QP minimally modifies $u_t$ to slide tangentially along the safe barrier boundary.
+
+---
+
+## Standardized Fallback Escalation (Category 0/1/2 Stops)
+
+When a safety violation occurs, the enforcer transitions through an internationally standardized stop escalation:
+
+| Stop Category | Trigger Event | Mechanism | Mechanical Consequence |
+| :--- | :--- | :--- | :--- |
+| **Category 2** | Intent lease expiry, minor boundary proximity | Controlled Position Hold | Actuators remain energized; arm holds coordinate via closed-loop PID. |
+| **Category 1** | Barrier violation, dynamic stopping trigger | Controlled Deceleration | Actuators actively apply $a_{\text{max}}$ braking to zero speed; power removed after stop. |
+| **Category 0** | Hardware E-stop, watchdog timeout, current spike | Immediate Power Cut | Actuator power relays open instantaneously; mechanical friction brakes engage. |
+
+---
+
+## Zero-Allocation Determinism
+
+The safety enforcer must run on bare-metal or FreeRTOS microcontrollers under strict embedded systems rules:
+
+* **No Dynamic Allocation (`malloc` / `new`):** All buffers, matrices, and queues must be statically allocated at compile time to eliminate heap fragmentation.
+* **Bounded Execution Cycles:** The 1000 Hz ISR loop must complete in $< 250\,\mu\text{s}$, leaving $75\%$ CPU headroom for communication and diagnostics.
+* **Independent Timer Interrupts:** Safety loops run from dedicated hardware timer interrupts, immune to software thread preemption.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"A reinforcement learning policy trained with safety penalties does not need an external MCU enforcer."*  
+  *Correction:* Neural policies are stochastic function approximators; reward penalties do not provide mathematical guarantees against out-of-distribution hallucinations.
+* **Fallacy 2:** *"A software safety check written in Python provides adequate protection."*  
+  *Correction:* Python garbage collection pauses, OS scheduling delays, and GIL lock contention introduce multi-millisecond tail spikes that compromise real-time safety.
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: Action Limits and Enforcement Design (`ENF-01`)
+Freeze the real-time reflex and safety enforcer contracts:
+
+1. The mathematical definition of the safe set barrier function $h(x) \ge 0$.
+2. The dynamic stopping parameters ($v_{\text{max}}, a_{\text{max}}, t_{\text{delay}}, d_{\text{stop}}$).
+3. The zero-allocation FreeRTOS task configuration and timer interrupt priorities.
+4. The standardized Category 0/1/2 fallback escalation state machine.
+
+```yaml
+# DOSSIER CHECKPOINT: ENF-01
+enforcement_design:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  mcu_timing_loop:
+    target_frequency_hz: 1000.0
+    max_execution_time_us: 250.0
+    heap_allocation_bytes: 0
+  control_barrier_invariants:
+    workspace_geofence_box_m: [[-0.35, 0.35], [0.10, 0.60], [0.00, 0.50]]
+    max_payload_mass_kg: 0.50
+    min_table_clearance_m: 0.015
+  stopping_envelope:
+    max_deceleration_mps2: 4.0
+    reaction_delay_ms: 12.0
+  fallbacks:
+    category_2_hold_stiffness_kp: 150.0
+    category_1_dynamic_brake_decel: 4.0
+    category_0_relay_gpio: "GPIO_PB12_ESTOP"
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 9 — MCU Safety Enforcer
+Implement the 1000 Hz real-time safety enforcer on the **Arduino UNO Q microcontroller (Cortex-M4)**. Feed intentionally corrupted and dangerous trajectory proposals from the Linux MPU. Prove on an oscilloscope and bench fixture that the MCU vetoes hazardous commands in $< 1\text{ ms}$, enforcing workspace geofences and bringing the machine to a safe stop before impact.
+:::

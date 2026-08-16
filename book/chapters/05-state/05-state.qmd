@@ -1,0 +1,178 @@
+# Memory
+
+::: {.callout-question}
+How does an embodied agent maintain spatial belief under sensor occlusion and predict future states without the computational overhead of high-fidelity 3D physics rendering?
+:::
+
+![Systems Organ Focus: Stage 3 (World Models, Latent Predictive Dynamics & Spatial $SE(3)$ State).](figures/fig_pipeline_locator.pdf){#fig-locator-ch05 width=100%}
+
+::: {.callout-objective}
+By the conclusion of this chapter, you will be able to:
+
+1. **Construct Continuous Temporal Belief Buffers:** Bridge discrete, staggered sensor arrivals with high-frequency forward prediction loops.
+2. **Deploy Latent World Models:** Implement non-generative predictive architectures (JEPA, RSSM) that anticipate future dynamics directly in representation space.
+3. **Maintain Dynamic $SE(3)$ Frame Trees:** Perform continuous spatial coordinate transformations and smooth Lie algebra ($\mathfrak{se}(3)$) tangent-space integration.
+4. **Enforce State Validity TTL Leases:** Quantify state uncertainty decay and revoke physical authority when sensory evidence expires.
+5. **Freeze the State and Timing Model (`STATE-01`):** Construct the fifth artifact of the Cumulative Design Dossier establishing spatial coordinate graphs and validity bounds.
+:::
+
+::: {.callout-autopsy}
+* **System:** Precision Electronic Assembly Arm (3-DoF Delta Robot)
+* **Incident:** Gripper slammed into aluminum PCB jig; shattered suction nozzle.
+* **Telemetry Snapshot:** Camera detected target PCB position at $T+08.100\text{ s}$. Due to USB transfer buffering, the vision transform matrix was stamped $65\text{ ms}$ in the past.
+* **Root Cause:** The arm forward-kinematics tree was evaluated using current joint angles but historical camera frames without synchronizing coordinate frame timestamps.
+* **Architectural Flaw:** The system lacked an $SE(3)$ time-indexed temporal belief buffer.
+:::
+
+::: {.callout-contract}
+| Component | Authority and Substrate | Contract Specification |
+| :--- | :--- | :--- |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Estimated world state: $s_t = [x, v, q, \dot{q}, \Sigma]$<br>• Spatial frame transform: $T_{\text{target}}^{\text{world}} \in SE(3)$<br>• Uncertainty covariance bounds: $\text{Tr}(\Sigma) \le \sigma_{\text{max}}$ |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Verifies state lease is fresh: $(t_{\text{now}} - t_{\text{upd}}) < \tau_{\text{TTL}}$<br>• Checks innovation residuals: $\|z - h(x)\| < 3\sigma$<br>• Enforces dynamic thermal derating: $\tau \le \tau_{\text{max}}(T)$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | If spatial uncertainty exceeds threshold, freeze state lease and command Category 2 safe position hold. |
+:::
+
+::: {.callout-note icon=false}
+**The Sim-to-Real Delta:**
+* **What Simulation Assumes:** Robot base and world origin share a static, perfect transformation matrix; joint state is known with mathematical certainty at every simulation step.
+* **What the Bench Measures:** Camera mounting brackets flex under mechanical acceleration; microsecond clock drift between sensor microcontrollers causes artificial velocity estimation spikes; state uncertainty grows exponentially during visual occlusion.
+:::
+
+---
+
+## Discrete Observations vs. Continuous Temporal Belief
+
+The physical world evolves continuously: $\dot{x} = f(x, u)$. Sensors sample this continuum at discrete, staggered intervals.
+
+| Sensory Stream / State Model | Arrival Rate & Jitter | Temporal Synchronization & Propagation Mechanism |
+| :--- | :--- | :--- |
+| **High-Rate Proprioception**<br>*(IMU: 1 kHz, Encoders: 200 Hz)* | Hard real-time ($< 0.1\text{ ms}$ jitter) | Direct MCU timer capture; provides the continuous high-frequency base for numerical forward-integration. |
+| **Delayed Exteroception**<br>*(Stereo Depth / Vision: 30 Hz)* | Delayed arrival ($30\text{--}80\text{ ms}$ lag) | Ingested with PTP hardware timestamps; historical state ring buffer rewinds to $t_{\text{capture}}$, applies Kalman innovation updates, and re-propagates forward to $t_{\text{now}}$. |
+| **Continuous Temporal Belief $S(t)$** | Continuous ($1000\text{ Hz}$ query rate) | Forward prediction buffer continuously solves $\dot{x} = f(x, u)$ between discrete sensor arrivals to eliminate control staleness. |
+
+To bridge the gap between sensor arrivals:
+
+1. **The Prediction Buffer:** The system integrates kinematic equations of motion to forward-predict the machine's current state $S(t_{\text{now}})$ in real time.
+2. **Measurement Updates:** When delayed observations arrive ($O_{t-\text{lag}}$), the state history buffer rewinds, applies innovation corrections, and forward-propagates the updated belief to the present instant.
+
+---
+
+## Spatial Coordinate Frame Trees ($SE(3)$) and Lie Algebra ($\mathfrak{se}(3)$)
+
+Every physical measurement is referenced to a specific physical coordinate frame. The machine maintains a dynamic **Spatial Frame Graph**:
+
+| Coordinate Frame Pair | Physical Meaning & Transform Notation | Calibration & Update Frequency |
+| :--- | :--- | :--- |
+| **World $\to$ Robot Base** | $T_{\text{base}}^{\text{world}} \in SE(3)$ (Odometry localization) | Continuous EKF integration ($200\text{ Hz}$) |
+| **Base $\to$ Camera** | $T_{\text{camera}}^{\text{base}} \in SE(3)$ (Extrinsic sensor mounting) | Rigid kinematic calibration (Static / thermal drift tracking) |
+| **Base $\to$ End-Effector** | $T_{\text{EE}}^{\text{base}} \in SE(3)$ (Forward kinematics) | Real-time joint encoder computation ($1000\text{ Hz}$) |
+| **Camera $\to$ Target Object** | $T_{\text{target}}^{\text{camera}} \in SE(3)$ (Visual affordance detection) | Stochastic VLM/Perception proposal updates ($10\text{--}30\text{ Hz}$) |
+| **End-Effector $\to$ Grasp** | $T_{\text{grasp}}^{\text{EE}} \in SE(3)$ (Tactile contact offset) | Tactile contact detection and force closure ($1000\text{ Hz}$) |
+
+A rigid body transformation between frame $A$ and frame $B$ is represented as a homogeneous matrix in the Special Euclidean group $T_B^A \in SE(3)$:
+
+$$T_B^A = \begin{bmatrix} R_B^A & p_B^A \\ 0_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
+
+### Tangent Space Integration ($\mathfrak{se}(3)$)
+To integrate continuous velocities without encountering Euler angle gimbal lock singularities, updates are computed in the Lie algebra tangent space ($\mathfrak{se}(3)$):
+
+$$T(t + \Delta t) = T(t) \cdot \exp(\xi^\wedge \cdot \Delta t)$$
+
+Where $\xi = [v, \omega]^T \in \mathbb{R}^6$ represents the combined linear and angular twist vector.
+
+---
+
+## The Predict-Observe-Correct Estimator Cycle
+
+From a systems engineering perspective, state estimation is a 3-step continuous cycle:
+
+| Estimator Step | Mathematical Computation | Physical & Systems Role |
+| :--- | :--- | :--- |
+| **1. Predict** *(Forward Model)* | $\hat{x}_t = f(\hat{x}_{t-1}, u_{t-1})$, $P_t = F P_{t-1} F^T + Q$ | Propagates belief continuously across inter-sensor arrival intervals ($1000\text{ Hz}$). |
+| **2. Observe** *(Innovation Residual)* | $y_t = z_t - h(\hat{x}_t)$, $S_t = H P_t H^T + R$ | Evaluates statistical discrepancy between sensory evidence and forward belief. Serves as a hardware anomaly flag. |
+| **3. Correct** *(Covariance Update)* | $K_t = P_t H^T S_t^{-1}$, $\hat{x}_t \leftarrow \hat{x}_t + K_t y_t$ | Fuses delayed measurement and tightens spatial uncertainty covariance $P_t$. |
+
+* **Innovation Residuals ($y = z - h(\hat{x})$):** If the residual suddenly exceeds statistical bounds ($\|y\| > 3\sigma$), the system detects sensor occlusion, encoder slip, or external mechanical collision.
+
+---
+
+## Proprioceptive State and Interoceptive Health (Thermal Derating)
+
+In addition to external spatial coordinates, the state model tracks internal physical health:
+
+1. **Proprioception:** Joint angles ($q$), joint velocities ($\dot{q}$), actuator torques ($\tau$), and contact forces ($F_{\text{contact}}$).
+2. **Interoception:** Motor winding temperatures ($T_{\text{motor}}$), battery voltage sag ($V_{\text{bus}}$), and inverter current draw.
+
+| Operating Thermal Regime | Winding Temperature Range | Maximum Permissible Torque $\tau_{\text{max}}$ |
+| :--- | :--- | :--- |
+| **Nominal Operating Zone** | $T_{\text{motor}} < 85^\circ\text{C}$ | $100\%$ nominal continuous torque rated authority. |
+| **Linear Derating Zone** | $85^\circ\text{C} \le T_{\text{motor}} \le 110^\circ\text{C}$ | Linearly derated: $\tau_{\text{max}}(T) = \tau_{\text{nom}} \cdot \left(1 - \frac{T - 85}{25}\right)$. |
+| **Thermal Emergency Cutoff** | $T_{\text{motor}} > 110^\circ\text{C}$ | $\tau = 0\text{ Nm}$; open inverter gate drives to prevent permanent winding demagnetization. |
+
+When winding temperature climbs toward thermal limits ($T > 85^\circ\text{C}$), the state model dynamically derates the maximum allowable actuator torque ($\tau_{\text{max}}(T)$) to prevent permanent motor demagnetization.
+
+---
+
+## State Validity Horizons (TTL Leases) and Drift Triggers
+
+Internal belief degrades over time if not refreshed by new physical evidence. Every state estimate carries a strict **Time-To-Live (TTL) lease**:
+
+$$\text{State Lease Valid If: } (t_{\text{now}} - t_{\text{last\_sensor\_update}}) < \tau_{\text{TTL}}$$
+
+If no valid sensory evidence arrives before $\tau_{\text{TTL}}$ expires, the state model triggers a **State Drift Alarm**, invalidating downstream neural proposals and commanding safe fallback.
+
+---
+
+## Systems Fallacies and Pitfalls
+
+::: {.callout-warning}
+### Common Engineering Fallacies
+* **Fallacy 1:** *"The internal latent representation of an LLM or VLM acts as a spatial world model."*  
+  *Correction:* Neural context windows do not maintain metric spatial coordinates, frame graphs, or physical velocity integration.
+* **Fallacy 2:** *"Euler angles are suitable for robot orientation representation."*  
+  *Correction:* Euler angles suffer from mathematical singularities (gimbal lock); orientation must be parameterized using unit quaternions or Lie group matrices ($SO(3)$).
+:::
+
+---
+
+::: {.callout-decision}
+### Dossier Delta: State, Frames and Timing Model (`STATE-01`)
+Freeze the internal state representations:
+
+1. The $SE(3)$ coordinate frame tree hierarchy and baseline calibration transforms.
+2. State vector schemas (pose, velocity, covariance, proprioceptive currents, and thermal health).
+3. The state validity TTL window ($\tau_{\text{TTL}}$) and innovation anomaly thresholds.
+4. Resynchronization protocols for late-arriving or dropped sensor frames.
+
+```yaml
+# DOSSIER CHECKPOINT: STATE-01
+state_timing_model:
+  system_id: "TINYAGENT-SYSTEM-01"
+  version: "1.0.0"
+  frame_graph:
+    root_frame: "world"
+    transforms:
+      - parent: "world"
+        child: "robot_base"
+        translation_m: [0.0, 0.0, 0.0]
+        rotation_quat: [0.0, 0.0, 0.0, 1.0]
+      - parent: "robot_base"
+        child: "camera_optical"
+        translation_m: [0.05, 0.12, 0.35]
+        rotation_quat: [0.707, 0.0, 0.707, 0.0]
+  state_ttl_leases:
+    visual_tracking_ttl_ms: 100.0
+    proprioceptive_ttl_ms: 10.0
+  thermal_limits:
+    warning_temperature_c: 85.0
+    critical_cutoff_temperature_c: 105.0
+    derating_slope_nm_per_c: 0.08
+  anomaly_detection:
+    innovation_residual_sigma_threshold: 3.5
+```
+:::
+
+::: {.callout-lab}
+### Hands-on Realization: Lab 6 — Belief Drift and Frame Sync
+Implement the state estimation pipeline on the **TinyAgents Kit (Arduino UNO Q)**. Stream asynchronous IMU, encoder, and vision packets. Induce artificial clock drift and measure how timestamp errors generate false velocity estimates. Configure state TTL leases and observe the robot safely freeze when belief uncertainty exceeds safety limits.
+:::
