@@ -6,9 +6,10 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 chapters=(
   book/chapters/01-boundary/01-boundary.qmd
-  book/chapters/02-latency/02-latency.qmd
-  book/chapters/03-workflow/03-workflow.qmd
+  book/chapters/02-constraints/02-constraints.qmd
+  book/chapters/03-cognition/03-cognition.qmd
   book/chapters/04-perception/04-perception.qmd
+
   book/chapters/05-state/05-state.qmd
   book/chapters/06-intent/06-intent.qmd
   book/chapters/07-planning/07-planning.qmd

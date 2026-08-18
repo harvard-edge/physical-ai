@@ -93,18 +93,19 @@ The book is organized into **3 Foundational Parts (11 substantive chapters + Cap
 
 | Part | Chapter | Focus / Organ | Design Dossier Artifact |
 | :--- | :--- | :--- | :--- |
-| **Part I: Foundations** | `01-boundary` | **Physical Causality** | `LOOP-01` (Loop Charter) |
-| | `02-latency` | **Time, Freshness & Latency** | `REQ-01` (Requirements & Latency Ledger) |
-| | `03-workflow` | **The Agent Workflow** | `FLOW-01` (Workflow & Multi-Rate Charter) |
-| **Part II: Pipeline Organs** | `04-perception`| **Perception & Encoders** | `OBS-01` (Observation Contract) |
-| | `05-state` | **Memory & World Models** | `STATE-01` (State & Timing Model) |
-| | `06-intent` | **Reasoning & Intent** | `INTENT-01` (Intent Schema & Leases) |
-| | `07-planning` | **Planning & Chunking** | `PLAN-01` (Trajectory Planning Schema) |
-| | `08-enforcement`| **Reflex & Safety Veto** | `ENF-01` (Safety Enforcer & CBF) |
-| **Part III: Integration & Release** | `09-placement` | **Workload Placement** | `PLACE-01` (Heterogeneous Silicon Ledger)|
-| | `10-governance` | **Human Governance** | `AUTH-01` (Governance Record & Lineage) |
-| | `11-assurance` | **Defensible Assurance** | `REL-01` (Claim-Argument-Evidence Case) |
-| **Capstone** | `99-capstone` | **Capstone Bench Defense** | Full Dossier Defense & Release Verdict |
+| **Part I: Foundations & Co-Design Matrix** | `01-boundary` | **The Causal Boundary & The Co-Design Challenge** | `LOOP-01` (Loop Charter) |
+| | `02-constraints` | **The Physical Constraints (The Columns)** | `REQ-01` (Requirements & Latency Ledger) |
+| | `03-cognition` | **The Cognitive Dimensions (The Rows & Matrix)** | `FLOW-01` (Workflow & Multi-Rate Charter) |
+| **Part II: The Embodied Lifecycle** | `04-perception`| **Stage 1: Perceive · VLA Spatial Tokens & Ingestion** | `OBS-01` (Observation Contract) |
+| | `05-state` | **Stage 2: Remember · Latent World Models & SE(3) Trees** | `STATE-01` (State & Timing Model) |
+| | `06-intent` | **Stage 3: Reason · Multimodal VLMs & Intent Leases** | `INTENT-01` (Intent Schema & Leases) |
+| | `07-planning` | **Stage 4: Plan · Diffusion Action Chunking & C2 Jerk** | `PLAN-01` (Trajectory Planning Schema) |
+| | `08-enforcement`| **Stage 5: Execute · 1 kHz MCU Safety Invariants** | `ENF-01` (Safety Enforcer & CBF) |
+| **Part III: Placement, Governance & Release** | `09-placement` | **Workload Placement · Heterogeneous Silicon & QoS** | `PLACE-01` (Heterogeneous Silicon Ledger)|
+| | `10-governance` | **Human Governance · Bumpless Takeover & Data** | `AUTH-01` (Governance Record & Lineage) |
+| | `11-assurance` | **Defensible Assurance · Seeded Faults & Safety Cases**| `REL-01` (Claim-Argument-Evidence Case) |
+| **Capstone** | `99-capstone` | **Whole-System Bench Defense Under Seeded Faults** | Full Dossier Defense & Release Verdict |
+
 
 
 ---
