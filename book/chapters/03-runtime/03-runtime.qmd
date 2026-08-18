@@ -1,206 +1,215 @@
-# Multi-Rate Systems
+# The Physical AI Agent Workflow
 
-::: {.callout-question}
-How do we architect an asynchronous, lock-free runtime that bridges $1\text{ Hz}$ semantic planning with $1000\text{ Hz}$ motor reflexes while surviving application processor crashes?
-:::
-
-![Systems Organ Focus: Decoupling asynchronous multi-rate runtimes across the Proposal–Permission boundary.](figures/fig_pipeline_locator.pdf){#fig-locator-ch03 width=100%}
+![Systems Organ Focus: Tracing the complete end-to-end agent workflow, the multi-rate temporal hierarchy, and the Proposal–Permission privilege split.](figures/fig_pipeline_locator.svg){#fig-locator-ch03 width=100%}
 
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Architect the Multi-Rate Engine:** Decouple slow deliberative planning ($1\text{ Hz}$) from intermediate trajectory decoding ($20\text{--}50\text{ Hz}$) and bare-metal motor reflexes ($1000\text{ Hz}$).
-2. **Implement Lock-Free Shared Memory IPC:** Design triple-buffered lock-free ring buffers across heterogeneous memory regions (Linux MPU to Cortex-M4 MCU).
-3. **Configure Heartbeat Leases & Watchdogs:** Isolate untrusted user-space neural models from motor electronics using hardware watchdog timers ($\tau_{\text{watchdog}}$).
-4. **Survive MPU Panics on the Bench:** Prove experimentally that the MCU executes controlled category fallbacks when the application processor crashes or freezes.
-5. **Freeze the Runtime Skeleton (`RUN-01`):** Construct the third artifact of the Cumulative Design Dossier establishing inter-core memory layouts and timing contracts.
+1. **Formulate the Fundamental Tug-of-War:** Contrast the unbounded computational demands of semantic foundation models (tokens, context, diffusion steps) with the microsecond determinism demanded by Newtonian dynamics.
+2. **Trace the End-to-End Agent Lifecycle:** Map a physical task from open-vocabulary prompt ingestion down through 3D affordance tokenization, latent world modeling, action chunking, real-time safety projection, motor PWM switching, and endogenous feedback.
+3. **Deconstruct the Three Cadences of Intelligence:** Architect the multi-rate hierarchy decoupling slow semantic deliberation (System 2, $0.5\text{--}2\text{ Hz}$) from intermediate trajectory decoding (System 1.5, $20\text{--}50\text{ Hz}$) and bare-metal safety reflexes (System 1, $1000\text{ Hz}$).
+4. **Apply the Three Architectural Peace Treaties:** Implement the Proposal–Permission split, Action Chunking delay amortization, and Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) to resolve the compute-vs-physics conflict.
+5. **Map the Modular Blueprint for Parts 2 and 3:** Connect each station in the overarching agent workflow to its dedicated pipeline organ chapter (Chapters 4–8) and silicon placement chapter (Chapters 9–11).
+6. **Freeze the Workflow Specification (`FLOW-01`):** Author the third formal specification of the Cumulative Design Dossier establishing inter-rate cadences, lease timeouts, and fallback state machines.
 :::
 
 ::: {.callout-autopsy}
-* **System:** Autonomous Sorting Gantry (Linear Actuator traveling at $1.2\text{ m/s}$)
-* **Incident:** Carriage rammed mechanical end-stop; stripped drive belt teeth.
-* **Telemetry Snapshot:** Application processor suffered a Linux kernel panic due to an out-of-memory (OOM) killer event in a neural vision pipeline.
-* **Root Cause:** The motor driver board received no fresh commands; motor H-bridge power switches remained in their last energized state for $850\text{ ms}$ before power was cut.
-* **Architectural Flaw:** The system lacked an independent hardware watchdog to cut actuator power upon host CPU failure.
+* **System:** Autonomous High-Speed Sorting Gantry (Linear Cartesian Actuator traveling at $1.5\text{ m/s}$).
+* **Incident:** Carriage slammed into mechanical end-stop at full speed; stripped timing belt teeth and cracked linear guide bearing blocks ($1,400\text{ USD}$ repair).
+* **Telemetry Snapshot:** The Vision-Language Model (VLM) running in user space encountered an unexpected multi-object clutter scene. Memory usage spiked, triggering the Linux kernel Out-Of-Memory (OOM) killer, which terminated the Python planning process at $T+14.200\text{ s}$.
+* **Root Cause:** The system lacked a decoupled real-time supervisor. The motor gate driver remained latched in its last commanded forward torque state for $680\text{ ms}$ before power was manually severed.
+* **Architectural Flaw:** Monolithic execution—slow, unconstrained AI software held direct electrical authority over motor inverters without a deterministic real-time watchdog to cut power upon host stall.
 :::
 
 ::: {.callout-contract}
 | Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Asynchronous trajectory proposal buffer ($20\text{ Hz}$)<br>• Periodic heartbeat ping ($\tau_{\text{heartbeat}} \le 10\text{ ms}$)<br>• Bounded execution slice per chunk |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Checks atomic IPC sequence counters<br>• Hardware watchdog timer ($\tau_{\text{watchdog}} = 50\text{ ms}$)<br>• $1000\text{ Hz}$ deterministic execution loop |
-| **Failure Escalation** | *MCU Hardware Reflex* | If heartbeat expires ($> 50\text{ ms}$) or shared buffer corrupts, trigger NMI and execute Category 1 controlled dynamic braking. |
+| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU* | • Open-vocabulary intent lease: $\mathcal{L}_{\text{intent}}(t_{\text{expire}} \le 1000\text{ ms})$<br>• Action chunk trajectory: $H$ waypoints at $20\text{--}50\text{ Hz}$<br>• Monotonic heartbeat counter ($\tau_{\text{heartbeat}} \le 10\text{ ms}$) |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Audits proposal freshness: $\Delta t \le \tau_{\text{wall}}$<br>• Minimal-intervention barrier projection ($1000\text{ Hz}$)<br>• Hardware watchdog timer ($\tau_{\text{watchdog}} = 20\text{ ms}$) |
+| **Failure Escalation** | *MCU Hardware Reflex* | If heartbeat expires ($> 20\text{ ms}$) or intent lease lapses, immediately execute active Category 1 dynamic deceleration to zero velocity. |
 :::
 
 ::: {.callout-note icon=false}
 **The Sim-to-Real Delta:**
-* **What Simulation Assumes:** All components step synchronously in a single thread (`env.step()`); compute takes zero real time; models never crash or leak memory.
-* **What the Bench Measures:** Multi-threading across Linux and FreeRTOS introduces race conditions; shared memory cache lines invalidate unpredictably; Linux kernel OOM killers terminate user processes mid-trajectory.
+* **What Simulation Assumes:** The entire agent runs synchronously in a single Python thread (`obs = env.reset(); action = model(obs); env.step(action)`); compute takes zero real time; the environment pauses while the neural network thinks.
+* **What the Bench Measures:** The physical world moves continuously while models compute; foundation models take $500\text{ ms}$ while motor loops demand $1\text{ ms}$; application processors suffer kernel panics and thread preemption mid-trajectory.
 :::
 
 ---
 
-## The Multi-Rate Execution Reality: The Three Speeds of Intelligence
+## The Great Tug-of-War: Deliberation vs. Relentless Physics
 
-A fundamental mistake in embodied AI systems design is attempting to run all components at a single monolithic clock rate.
+Physical AI is not simply deep learning models connected to electric motors. Rather, Physical AI is the engineering discipline born from the violent collision of two worlds pulling with maximum force in **diametrically opposite directions**:
 
-Consider the computational disparity across the agent:
-* Reasoning about open-vocabulary semantic goals with a Vision-Language Model requires billions of floating-point operations (FLOPs) and takes hundreds of milliseconds.
-* Generating continuous motor trajectory splines with a diffusion policy takes tens of milliseconds.
-* Enforcing dynamic stopping envelopes, reading joint encoders, and commutating motor phase currents requires sub-millisecond determinism.
+![**The Fundamental Tug-of-War in Physical AI.** The structural conflict between the AI Deliberation Realm (which demands time, tokens, and compute capacity) and the Physical Dynamics Realm (which demands microsecond speed, deterministic reflexes, and fresh evidence). Physical AI reconciles this conflict through three architectural contracts: the Proposal–Permission split, Action Chunking, and Expiring Leases.](figures/fig03_great_tension.svg){#fig-great-tension width=100%}
 
-Forcing the entire system into a single loop creates an impossible compromise: either the high-level semantic reasoning is starved of compute, or the low-level motor safety loop is slowed down to an unsafe, jittery crawl.
+### The Two Opposing Forces
 
-| Speed Layer | Compute Substrate & Frequency | Primary Systems Responsibilities |
+1. **The AI and Deliberation Realm (The "Brain"):**
+   * *What it craves:* Maximum expressive capacity, large parameter footprints ($7\text{B}\text{--}70\text{B}$ foundation models), multi-view spatial attention, deep token contexts, and iterative diffusion denoising ($10\text{--}100$ steps).
+   * *Its temporal reality:* It thrives on having **time to deliberate**. In digital software, pausing an extra $200\text{ ms}$ to evaluate an autoregressive chain-of-thought prompt yields higher accuracy and better reasoning.
+   * *Its battle cry:* *"Give me $500\text{ ms}$ to think for higher semantic intelligence!"*
+
+2. **The Physical and Dynamics Realm (The "Body"):**
+   * *What it craves:* Microsecond determinism, zero phase lag, and unyielding adherence to Newton's laws of motion.
+   * *Its temporal reality:* **The universe does not wait for computation.** Gravity pulls downward at $9.8\text{ m/s}^2$ continuously. Kinetic momentum ($\mathbf{p} = m\mathbf{v}$) carries kilograms of mass forward along its trajectory. Information freshness decays instantly ($\sigma_{\text{pos}} = \sigma_0 + v\Delta t$). Motor stator coils demand microsecond PWM gate switching.
+   * *Its battle cry:* *"Act in $1\text{ ms}$ or the mechanism collides!"*
+
+### Why Monolithic Architectures Fail
+
+If an engineer attempts to build a physical agent with a naive, monolithic architecture, the system collapses into one of two fatal failure modes:
+
+* **Failure Mode A (The Stalled Brain):** Forcing the foundation model directly into the motor loop forces the control frequency down to $1\text{--}2\text{ Hz}$. During the $500\text{ ms}$ computation freeze, the machine moves blind, state uncertainty explodes past the Freshness Wall ($\Delta t_{\text{wall}}$), and the robot crashes violently.
+* **Failure Mode B (The Blind Reflex):** Restricting the system exclusively to microsecond control loops eliminates latency, but strips away semantic intelligence. The machine cannot understand natural language instructions, parse novel object geometries, or adapt to unstructured, open-world environments.
+
+Physical AI systems engineering is the discipline of **negotiating peace between these two opposing forces**.
+
+---
+
+## The Complete End-to-End Physical Agent Lifecycle
+
+To understand how an autonomous agent resolves this tension in practice, we trace a complete task through its nine-stage lifecycle—from the arrival of an open-vocabulary human instruction down to physical torque on copper coils and endogenous sensory feedback:
+
+![**The Complete End-to-End Physical Agent Lifecycle.** Tracing the dataflow of a task from high-level natural language prompt ingestion down through 3D affordance perception, latent world modeling, expiring intent leases, action chunk decoding, real-time safety projection, hardware PWM switching, and endogenous feedback mutation ($W_t \to W_{t+1} \to O_{t+1}$).](figures/fig03_agent_workflow.svg){#fig-agent-workflow width=100%}
+
+### The 9 Stations of the Agent Dataflow
+
+| Lifecycle Station | Subsystem Function & Transform | Corresponding Curriculum Chapter |
 | :--- | :--- | :--- |
-| **System 2: Semantic Reasoning** | Linux MPU / Remote Cloud<br>$0.5\text{--}2\text{ Hz}$ *(Stochastic latency: 500–2000 ms)* | • Open-vocabulary scene parsing & affordance grounding<br>• Emits time-bounded **Expiring Intent Proposals** ($p_t$)<br>• Zero direct actuator authority |
-| **System 1.5: Motor Planning** | Linux MPU / Edge NPU<br>$10\text{--}50\text{ Hz}$ *(Bounded tail: 20–100 ms)* | • Action chunk unrolling ($H$-step horizon waypoints $a_k$)<br>• $\mathcal{C}^2$ jerk continuity & temporal ensembling<br>• Fast trajectory replanning |
-| **System 1: Real-Time Reflex** | Dedicated Real-Time MCU<br>$500\text{--}2000\text{ Hz}$ *(Hard real-time: $<1\text{ ms}$ jitter)* | • Dynamic stopping distance verification ($d_{\text{stop}}$)<br>• Control Barrier Invariant evaluation ($h(x) \ge 0$)<br>• Direct inverter gate drive: $u_t = \text{permit}(p_t)$ |
+| **1. Open-World Goal** | Ingests natural language instruction | Chapter 6 (*Semantic Deliberation*) |
+| **2. Transduction** | Photons & IMU into DMA ring buffers | Chapter 4 (*Perception & Encoders*) |
+| **3. 3D Perception** | Pixels $\to$ 3D Affordance Tokens ($SE(3)$) | Chapter 4 (*Perception & Encoders*) |
+| **4. Latent World Model** | Filters noise, tracks coordinate trees | Chapter 5 (*World Models & State*) |
+| **5. Intent Lease** | Emits bounded intent lease $\mathcal{L}_{\text{intent}}$ | Chapter 6 (*Semantic Deliberation*) |
+| **6. Action Chunking** | Decodes $H$ future waypoints at 20–50 Hz | Chapter 7 (*Planning & Chunking*) |
+| **7. Safety Reflex** | 1 kHz minimal-intervention CBF projection | Chapter 8 (*Real-Time Enforcement*) |
+| **8. Physical Mutation** | PWM pulses coils; matter & momentum mutate | Chapter 1 & Chapter 11 (*Assurance*) |
+| **9. Endogenous Loop** | Physical state $W_{t+1}$ emits observation | Whole-System Closed-Loop Synthesis |
 
-We resolve this by decoupling the runtime into **The Three Speeds of Intelligence**:
 
-### System 2: Semantic Deliberation ($0.5\text{--}2\text{ Hz}$)
-Runs high-level multimodal vision-language models (VLMs) on the Linux application processor or remote cloud servers. System 2 parses high-level user commands, identifies target objects in unstructured visual scenes, and emits time-bounded **Expiring Intent Proposals** ($p_t$). It operates asynchronously, with non-deterministic execution times ranging from $500\text{ ms}$ to $2000\text{ ms}$.
-
-### System 1.5: Motor Planning and Action Chunking ($10\text{--}50\text{ Hz}$)
-Runs Vision-Language-Action (VLA) policies, diffusion trajectory generators, or receding horizon decoders on an edge NPU or Linux CPU. System 1.5 consumes the current visual affordance tokens and intent lease, unrolling a multi-step trajectory chunk of future joint waypoints spanning $0.5\text{--}1.5\text{ seconds}$ into the future. It operates with bounded tail latency ($20\text{--}50\text{ ms}$).
-
-### System 1: Real-Time Reflex and Safety Enforcement ($500\text{--}2000\text{ Hz}$)
-Runs on a dedicated bare-metal or FreeRTOS microcontroller (e.g. ARM Cortex-M4/M7). System 1 interpolates trajectory waypoints, evaluates control barrier invariants, monitors microsecond hardware clocks, checks dynamic stopping envelopes ($d_{\text{stop}}$), and directly drives motor inverters. It executes under strict, hard real-time determinism ($< 1\text{ ms}$ jitter-free loop).
+1. **Station 1 (Open-World Goal Ingestion):** A human operator or high-level factory scheduler issues an open-vocabulary instruction: *"Unload the heated steel pin from the fixture and place it into the cooling bin."*
+2. **Station 2 (Physical Transduction & Ingestion):** Photons reflect off the physical workpiece and integrate in CMOS photodiode wells ($t_{\text{transduce}} \approx 8\text{ ms}$). Hardware DMA engines stream raw Bayer image frames across the MIPI CSI-2 bus directly into shared system memory ($t_{\text{dma}} \approx 3\text{ ms}$) without CPU intervention.
+3. **Station 3 (Perception & Spatial Tokenization):** An edge Vision Transformer (ViT) or DINOv2 backbone ingests the raw pixels, applies patch pruning, and lifts 2D visual features into metric 3D space using calibrated camera geometry. It outputs compact **3D spatial affordance tokens** ($SE(3)$ grasp approach vectors and obstacle bounding volumes).
+4. **Station 4 (Latent World Model & State Estimation):** Rather than hallucinating expensive pixel predictions, a latent predictive world model (such as a Joint Embedding Predictive Architecture / JEPA) filters visual noise and updates the agent's internal belief state. It maintains coordinate frame trees and bounds spatial uncertainty ($\sigma_{\text{pos}}$).
+5. **Station 5 (Semantic Deliberation & Intent Leases):** Running at a deliberate cadence ($1\text{ Hz}$), a multimodal Vision-Language Model (VLM) reasons over the 3D affordance tokens and language goal. It emits a time-bounded **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$):
+   $$\mathcal{L}_{\text{intent}} = \left\langle \mathbf{T}_{\text{target}} \in SE(3), \; \mathcal{B}_{\text{workspace}}, \; \dot{\mathbf{x}}_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
+   System 2 possesses zero electrical privilege over actuators; it only establishes the geometric goal and expiration deadline.
+6. **Station 6 (Trajectory Decoding & Action Chunking):** An intermediate diffusion policy or Action Chunking with Transformers (ACT) decoder consumes the active intent lease and current proprioceptive joint angles. It predicts an action chunk of $H$ future waypoints in parallel, spanning $0.5\text{--}1.0\text{ seconds}$ of smooth motion.
+7. **Station 7 (Real-Time Safety Reflex & Control Barrier Veto):** Running deterministically at $1000\text{ Hz}$ on a bare-metal microcontroller (MCU), the safety enforcer intercepts the proposed action chunk at the **Proposal–Permission Boundary**. It executes a minimal-intervention quadratic program (QP) to project candidate actions onto the forward-invariant safe set ($\mathcal{C}$), verifying joint jerk limits, thermal accumulators, and dynamic stopping clearances ($d_{\text{stop}} \le d_{\text{clearance}}$).
+8. **Station 8 (Actuation & Physical Mutation):** Permitted torque commands $u_t$ are written to hardware timer registers, switching 3-phase inverter MOSFETs across the DC power bus. Current rises across stator coil inductance ($L/R$), generating magnetic flux that physically moves mechanical linkages:
+   $$A_t \implies \text{Matter, Momentum, and Energy Mutate } (W_t \longrightarrow W_{t+1})$$
+9. **Station 9 (Endogenous Sensory Feedback):** The displaced mechanism alters the physical environment into $W_{t+1}$, which directly generates the subsequent optical and proprioceptive observation stream $O_{t+1}$, closing the causal loop.
 
 ---
 
-## Asynchronous IPC and Lock-Free Ring Buffers
+## The Three Cadences of Physical AI
 
-To connect components operating across disparate frequencies without blocking fast control loops, communication must use **lock-free, zero-allocation shared memory ring buffers**.
+To bridge the orders-of-magnitude temporal gap between semantic reasoning and motor physics, modern physical agents decouple execution into **Three Distinct Temporal Cadences**:
 
-If a real-time microcontroller safety thread ever calls a blocking mutex or waits for an operating system semaphore owned by a Linux user-space process, a phenomenon known as **priority inversion** occurs. If the Linux process is preempted or encounters a page fault while holding the lock, the 1000 Hz motor safety loop is starved of execution, causing immediate mechanical instability.
+![**The Three Cadences of Physical AI.** The asynchronous multi-rate temporal hierarchy: System 2 ($0.5\text{--}2\text{ Hz}$ Semantic Intent), System 1.5 ($20\text{--}50\text{ Hz}$ Action Chunking), and System 1 ($1000\text{ Hz}$ Real-Time Safety Reflex).](figures/fig03_three_cadences.svg){#fig-three-cadences width=100%}
 
-| Shared Memory Segment | Producer $\to$ Consumer | Allocation & Synchronization Protocol |
+| Dimension | System 2: Semantic Intent | System 1.5: Action Chunking | System 1: Real-Time Reflex |
+| :--- | :--- | :--- | :--- |
+| **Operating Frequency** | $0.5\text{--}2\text{ Hz}$ ($500\text{--}2000\text{ ms}$) | $20\text{--}50\text{ Hz}$ ($20\text{--}50\text{ ms}$) | $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
+| **Silicon Substrate** | Multi-core MPU / Edge NPU / Cloud | Edge NPU / Application Processor | Bare-Metal Cortex-M / RISC-V MCU |
+| **Operating System** | Embedded Linux (PREEMPT_RT) | Linux User Space / C++ TensorRT | Bare-Metal / FreeRTOS (No Dynamic Heap) |
+| **Underlying Model** | Multimodal VLM ($7\text{B}\text{--}70\text{B}$ weights) | Diffusion Policy / ACT Transformer | Control Barrier Invariants / Watchdogs |
+| **Output Artifact** | Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$) | Horizon of $H$ future joint waypoints | Permitted motor gate PWM setpoints ($u_t$) |
+| **Privilege Level** | **Untrusted Proposal Service** | **Candidate Trajectory Generator** | **Sole Electrical Permission Authority** |
+| **Failure Response** | Lease expires; system holds position | Drops stale chunks; replans next horizon | Executes active Category 1 dynamic stop |
+
+---
+
+## Negotiating the Peace: The Three Architectural Contracts
+
+How do these three asynchronous cadences cooperate without race conditions, thread starvation, or mechanical runaway? Physical AI systems rely on **Three Formal Architectural Contracts**:
+
+### 1. The Proposal–Permission Privilege Split
+
+The first and most fundamental architectural law is the absolute separation of proposal generation from execution permission:
+
+$$\text{Untrusted Neural Proposals } p_t \quad \xrightarrow{\quad \text{Shared SRAM Mailbox} \quad} \quad \left[ \text{MCU Safety Enforcer} \right] \quad \xrightarrow{\quad \text{Permitted Current } u_t \quad} \quad \text{Inverter PWM}$$
+
+* **The MPU is an Advisory Proposal Engine:** The high-capacity neural network running in Linux user space generates untrusted candidate proposals ($p_t$). It possesses zero physical routing to motor timer registers or gate drivers.
+* **The MCU is the Trusted Gatekeeper:** A deterministic bare-metal microcontroller evaluates physical safety invariants at $1000\text{ Hz}$. It alone holds the electrical privilege to pulse motor inverters.
+
+### 2. Action Chunking: Amortizing Inference Delay Across Time
+
+In single-step Markovian policies, the robot must pause at every time-step $t$ to compute action $a_t$. If neural inference takes $30\text{ ms}$, the control frequency is capped at an unstable $33\text{ Hz}$.
+
+**Action Chunking breaks this bottleneck.** Instead of predicting a single next action, the trajectory decoder predicts a temporal chunk of $H$ future waypoints:
+
+$$\mathbf{A}_{t:t+H} = \pi_{\theta}(\mathbf{s}_t) = \left[ a_t, a_{t+1}, a_{t+2}, \dots, a_{t+H-1} \right]$$
+
+While the real-time microcontroller smoothly interpolates and enforces safety across waypoints $a_t \dots a_{t+k}$, the neural accelerator computes the *next* action chunk in the background. Action chunking **amortizes the heavy computational cost of neural inference across continuous physical time**.
+
+### 3. Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) and Hardware Watchdogs
+
+To prevent mechanical runaway when the application processor panics, freezes, or encounters an Out-of-Memory stall, all authority is time-bounded:
+
+1. **Semantic Intent Leases:** System 2 emits intents with a strict Time-to-Live (TTL) lease:
+   $$\mathcal{L}_{\text{intent}} = \langle \text{Goal}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \rangle$$
+   If the VLM freezes, $\Delta t_{\text{TTL}}$ lapses ($t > t_{\text{issue}} + \Delta t_{\text{TTL}}$). The trajectory generator automatically decelerates and enters a safe hover/hold state.
+2. **Hardware Watchdog Heartbeats:** The Linux MPU must toggle a hardware heartbeat register every $\tau_{\text{heartbeat}} \le 10\text{ ms}$. If the Linux kernel panics or freezes, the hardware watchdog expires ($t > 20\text{ ms}$), triggering a non-maskable interrupt (NMI) on the MCU that immediately trips the motor gate-driver enable line (Safe Torque Off / STO).
+
+---
+
+## The Modular Blueprint: How the Rest of the Book Builds the Agent
+
+With the complete agent workflow established, the entire structure of the book becomes a modular engineering build:
+
+![**The Physical AI Curriculum Blueprint and Roadmap.** Systematic modular deconstruction from Part 1 foundational physics to Part 2 pipeline organs and Part 3 real-world qualification.](figures/fig03_modular_blueprint.svg){#fig-modular-blueprint width=100%}
+
+
+---
+
+## Cumulative Design Dossier Checkpoint: Freezing `FLOW-01`
+
+In Chapter 3, we freeze the formal **Workflow & Multi-Rate Lifecycle Charter (`FLOW-01`)** in the Cumulative Design Dossier:
+
+### Temporal Cadence Contracts (`FLOW-01`)
+
+| Subsystem Tier | Nominal Rate | Worst-Case Tail Budget | Lease TTL / Buffer Horizon | Fail-Safe Fallback Action |
+| :--- | :--- | :--- | :--- | :--- |
+| **System 2: Semantic Intent** | $1.0\text{ Hz}$ | Latency $\le 1000\text{ ms}$ | $\text{TTL} = 1500\text{ ms}$ | Hold position under closed-loop PD control |
+| **System 1.5: Action Chunking** | $20.0\text{ Hz}$ | $P_{99} \le 45\text{ ms}$ | $H = 16$ steps ($800\text{ ms}$ window) | Receding-horizon temporal ensemble blending |
+| **System 1: Real-Time Reflex** | $1000\text{ Hz}$ | Jitter $\le 15\,\mu\text{s}$ | $1.0\text{ ms}$ tick deadline | 1 kHz Control Barrier Function safety veto |
+
+### Privilege Isolation Rules (`FLOW-01`)
+
+| Rule ID | Architectural Requirement | Enforcement Mechanism |
 | :--- | :--- | :--- |
-| **Trajectory Ring Buffer** | Linux MPU $\longrightarrow$ Real-Time MCU | Double-buffered SPSC slots, 64-byte aligned, atomic index pointer swap with memory barriers (`__DMB()`, `__DSB()`). |
-| **Heartbeat Lease Register** | Linux MPU $\longrightarrow$ Real-Time MCU | Monotonically incrementing 64-bit microsecond counter checked against watchdog deadline $\tau_{\text{watchdog}}$. |
-| **High-Rate Telemetry Stream** | Real-Time MCU $\longrightarrow$ Linux MPU | Lock-free circular buffer containing 1 kHz encoder positions, motor phase currents, and enforcer veto flags. |
+| **`ISO-01-MEM`** | Zero shared dynamic heap memory across MPU and MCU | Pre-allocated static SRAM ring buffers with atomic sequence counters |
+| **`ISO-02-GATE`** | Exclusive MCU ownership of inverter gate drivers | Hardware pin multiplexing and memory protection unit (MPU) locks |
+| **`ISO-03-DOG`** | Hardware heartbeat watchdog interlock ($\tau \le 20\text{ ms}$) | Active Category 1 dynamic deceleration ($t_{\text{stop}} \le 15\text{ ms}$) $\to$ STO |
 
-### The Lock-Free IPC Design Principles
-1. **Zero Dynamic Memory Allocation:** Memory structures (ring buffers, message queues) are statically allocated in shared dual-port SRAM at boot time. Neither processor calls `malloc()` or `free()` during runtime.
-2. **Single-Producer, Single-Consumer (SPSC) Queues:** Trajectory proposals flow unidirectionally from MPU to MCU; high-rate telemetry flows unidirectionally from MCU to MPU.
-3. **Atomic Sequence Counters and Memory Barriers:** To prevent torn reads across 32-bit and 64-bit word boundaries, updates to buffer write pointers use atomic hardware operations accompanied by explicit memory barriers (`__DMB()`, `__DSB()`).
-4. **Double-Buffered Trajectory Slots:** The MPU writes candidate trajectory chunks into an inactive memory slot and atomically flips an active index pointer once the CRC payload checksum is verified.
+*(The complete, machine-readable YAML template for `FLOW-01` is maintained in @sec-dossier-templates).*
+
 
 ---
 
-## Hardware Failure Domain Isolation
+## Hands-On Bench Laboratory: `labs/03-agent-workflow`
 
-True systems resilience requires fault containment across hardware failure domains. In computing systems design (Saltzer and Kaashoek), a system must prevent a fault in an untrusted subsystem from propagating into a trusted safety critical component.
-
-| Failure Domain | Architectural Substrate | Hardware Isolation & Containment Boundary |
-| :--- | :--- | :--- |
-| **Untrusted Proposal Domain** *(Linux MPU + Edge NPU)* | Complex OS, dynamic virtual paging, GPU drivers, user-space daemons. | **Subject to:** OOM kills, kernel panics, PyTorch segmentation faults, and scheduling jitter. Constrained by MPU/PMP memory isolation windows so DMA engines cannot write to MCU SRAM. |
-| **Trusted Permission Domain** *(Real-Time MCU)* | Static SRAM, zero dynamic memory allocation, deterministic FreeRTOS loop ($1000\text{ Hz}$). | **Exclusive ownership of:** Motor PWM timers, inverter gate drivers, CAN-FD buses, and hardware E-stop relays. The Linux processor has zero physical address routing to motor pins. |
-| **Physical Actuation Domain** *(Motors & Power Bus)* | Brushless motors, power MOSFETs, emergency brake relays. | Independent power decoupling and brownout supervisory circuits ensure MCU maintains dynamic braking authority even during battery voltage sag. |
-
-To enforce failure domain isolation on physical AI hardware:
-
-* **Memory Protection Units (MPU / PMP):** Hardware memory protection units restrict the application processor's Direct Memory Access (DMA) engines from reading or writing outside its allocated shared memory window, preventing errant Linux drivers from corrupting microcontroller SRAM.
-* **Isolated Peripheral Bus Ownership:** Motor PWM timer registers, CAN-FD transceivers, and emergency stop GPIO lines must be mapped exclusively to the microcontroller's internal peripheral bus. The Linux application processor must have zero physical address routing to motor gate driver pins.
-* **Independent Power and Brownout Supervision:** The microcontroller power supply rail is decoupled with dedicated bulk capacitance and independent brownout reset circuitry, ensuring the MCU stays alive to command dynamic braking even during transient battery voltage sag.
-
----
-
-## Watchdog Protocols and Heartbeat Leases
-
-To detect software freezes, kernel panics, or thread deadlocks on the application processor, the runtime implements a bidirectional **hardware heartbeat lease protocol**:
-
-```text
-HEARTBEAT STATE MACHINE (Running on MCU Enforcer):
-                   Heartbeat Received & Valid (t - t_last < τ_watchdog)
-                       ┌───────────────────────────────┐
-                       │                               │
-                       ▼                               │
-              ┌──────────────────┐                     │
-              │  NOMINAL STATE   │─────────────────────┘
-              │  (Policy Active) │
-              └──────────────────┘
-                       │
-                       │ Heartbeat Timeout Expired (t - t_last >= τ_watchdog)
-                       │ or MPU Kernel Panic Detected
-                       ▼
-              ┌──────────────────┐
-              │  SAFETY FALLBACK │ ──► Category 1 Stop (Dynamic Braking)
-              │  (MCU Autonomy)  │ ──► Transition to Safe Position Hold
-              └──────────────────┘
-```
-
-1. **The MPU Heartbeat Ping:** Every $\tau_{\text{heartbeat}} = 10\text{ ms}$, the application processor's trajectory planning thread writes an incremented sequence counter and timestamp into a dedicated shared SRAM register.
-2. **The Hardware Watchdog Countdown:** The microcontroller runs a dedicated hardware countdown timer. Every 1000 Hz cycle, the MCU checks if the sequence counter has advanced.
-3. **The Non-Maskable Interrupt (NMI):** If no valid heartbeat is received within $\tau_{\text{watchdog}} = 50\text{ ms}$ (a 5-cycle missed lease), the hardware timer expires and trips a hardware Non-Maskable Interrupt (NMI).
-4. **Autonomous MCU Takeover:** The NMI interrupt service routine immediately invalidates all active trajectory chunks, revokes the MPU's motor permission, and initiates controlled physical deceleration.
-
----
-
-## Fallback State Machines and Safe Physical Continuity
-
-When an upstream software component fails or a hardware watchdog trips, the physical machine must execute a standardized, deterministic fallback sequence:
-
-| Stop Level | Trigger Condition | Physical Mechanical Action |
-| :--- | :--- | :--- |
-| **Category 2 Stop** *(Controlled Hold)* | VLM intent lease expires; minor sensory frame dropout ($\le 2$ dropped frames). | **Controlled Position Hold:** Actuators remain energized and actively maintain spatial coordinates via closed-loop PID control. |
-| **Category 1 Stop** *(Controlled Braking)* | MPU heartbeat timeout ($> 50\text{ ms}$); workspace boundary breach; trajectory jerk spike. | **Controlled Dynamic Deceleration:** Actuators apply maximum permissible counter-torque ($a_{\text{max}}$) to bring joints to rest before cutting drive power. |
-| **Category 0 Stop** *(Immediate Interlock)* | MCU watchdog timer trip; physical emergency stop switch depressed; motor phase overcurrent. | **Immediate Power Removal:** Actuator power relays cut instantaneously; spring-actuated friction brakes lock mechanical links. |
-
-* **Category 2 Stop (Controlled Hold):** Used during transient communication delays or minor planning hiccups. The robot remains energized and holds its exact position in space, preventing gravity from sagging the arm.
-* **Category 1 Stop (Dynamic Braking):** The primary safety response for application processor crashes. The MCU uses its own internal kinematic model to bring the machine to a controlled stop at maximum safe deceleration ($a_{\text{max}}$) without tipping over or losing traction.
-* **Category 0 Stop (Hard Cut):** The ultimate physical fail-safe for hardware short-circuits or microcontroller failures. Actuator power relays are physically opened, removing all electrical energy from the motor coils.
-
----
-
-## Systems Fallacies and Pitfalls
-
-::: {.callout-warning}
-### Common Engineering Fallacies
-* **Fallacy 1:** *"A multi-threaded ROS 2 node running on real-time Linux (PREEMPT_RT) provides adequate safety determinism."*  
-  *Correction:* While `PREEMPT_RT` reduces kernel preemption latency, user-space processes still suffer from DRAM bus contention, page faults, and GPU driver blocking. True fault containment requires dedicated microcontroller silicon.
-* **Fallacy 2:** *"Software timeouts inside Python scripts (`asyncio.wait_for()`) can replace hardware watchdogs."*  
-  *Correction:* If the Python interpreter hangs on a C-extension dead lock or the Linux kernel panics, all Python async tasks freeze indefinitely. Software cannot monitor its own death.
-* **Fallacy 3:** *"Shared memory mutexes (`pthread_mutex_lock()`) are safe between real-time threads."*  
-  *Correction:* If a non-real-time thread is preempted while holding a shared mutex, the real-time thread blocks, resulting in unbounded latency spikes. Real-time IPC must be strictly lock-free.
+::: {.callout-lab title="Lab 3: Tracing the Multi-Rate Agent Workflow on Silicon"}
+* **Objective:** Deploy and trace the complete three-cadence agent lifecycle on the Arduino UNO Q dual-brain platform, verifying that the system survives intentional MPU user-space crashes.
+* **Phase 1 (Multi-Rate Bringup):** Launch the System 2 VLM mock intent generator ($1\text{ Hz}$) and System 1.5 ACT trajectory decoder ($20\text{ Hz}$) on the Linux MPU. Stream action chunks into the shared SRAM ring buffer. Run the System 1 Control Barrier Function loop ($1000\text{ Hz}$) on the Cortex-M MCU.
+* **Phase 2 (Lifecycle Instrumentation):** Use logic analyzer GPIO probes to record the concurrent timing waveforms of intent lease generation, action chunk unrolling, and 1 kHz MCU PWM permission updates.
+* **Phase 3 (Fault Injection & Survival Test):** Trigger an artificial kernel panic and process SIGKILL (`kill -9`) on the Linux planning process mid-trajectory. Verify on the oscilloscope that the MCU detects the heartbeat timeout ($t > 20\text{ ms}$) and executes an active Category 1 dynamic deceleration halt without physical collision.
+* **Dossier Milestone:** Freeze the validated `FLOW-01` charter in your project repository.
 :::
 
 ---
 
-::: {.callout-decision}
-### Dossier Delta: Continuous Runtime Skeleton (`RUN-01`)
-The third checkpoint of the Cumulative Design Dossier is the **Continuous Runtime Skeleton** (`RUN-01`). This artifact records the thread execution rates, shared memory IPC layouts, hardware watchdog parameters, and fallback state machine configurations.
+## Summary & What Comes Next
 
-```yaml
-# DOSSIER CHECKPOINT: RUN-01
-runtime_skeleton:
-  system_id: "TINYAGENT-SYSTEM-01"
-  version: "1.0.0"
-  execution_rates_hz:
-    system_2_deliberation: 1.0
-    system_1_5_planning: 20.0
-    system_1_enforcement: 1000.0
-  ipc_shared_memory:
-    transport: "RPMSG / Dual-Port SRAM"
-    base_address: "0x38000000"
-    buffer_size_bytes: 65536
-    lock_free_queues: true
-    memory_barrier_enforced: true
-  watchdog_configuration:
-    heartbeat_interval_ms: 10.0
-    watchdog_timeout_ms: 50.0
-    hardware_nmi_pin: "GPIO_PA08"
-    hardware_e_stop_relay_pin: "GPIO_PB12_ESTOP"
-  fallbacks:
-    heartbeat_loss_action: "CATEGORY_1_DYNAMIC_BRAKE"
-    mcu_autonomous_hold: true
-    max_controlled_deceleration_mps2: 3.5
-```
-:::
+In this chapter, we resolved the foundational conflict of Physical AI:
 
-::: {.callout-lab}
-### Hands-on Realization: Lab 4 — Runtime Fault Containment
-Implement the multi-rate runtime skeleton on the **TinyAgents Kit (Arduino UNO Q)**. While the robot is executing an active trajectory, trigger an intentional Linux kernel panic (`kill -9` / kernel crash). Prove on the bench that the real-time MCU detects the heartbeat loss within 50 ms and brings the physical machine to a smooth, controlled stop without colliding.
-:::
+1. **The Great Tug-of-War:** Showed why semantic intelligence wants infinite deliberation time while Newtonian physics demands immediate deterministic action.
+2. **The 9-Stage Lifecycle:** Traced how a task flows from open-vocabulary prompt ingestion down through 3D affordances, world models, intent leases, action chunks, barrier reflexes, motor PWM, and endogenous feedback ($W_t \to W_{t+1} \to O_{t+1}$).
+3. **The Three Cadences:** Decoupled execution into System 2 ($1\text{ Hz}$ Intent), System 1.5 ($20\text{--}50\text{ Hz}$ Action Chunking), and System 1 ($1000\text{ Hz}$ Safety Reflex).
+4. **The Three Peace Treaties:** Reconciled compute with physics through the Proposal–Permission split, Action Chunking delay amortization, and Expiring Intent Leases.
+5. **The Modular Blueprint:** Established how Part 2 (Chapters 4–8) builds each organ in this workflow, and Part 3 (Chapters 9–11) places, governs, and verifies the complete system.
+
+Now that the entire foundational triad of Part 1 is complete—**Physical Causality (Ch 1)**, **Time and Latency (Ch 2)**, and **The Agent Workflow (Ch 3)**—we enter **Part 2 (*The 7 Canonical Pipeline Organs*)**. 
+
+In **Chapter 4 (*Perception and Spatial Encoders*)**, we begin building the first station in the pipeline: converting raw photon streams into metric 3D spatial affordance tokens without saturating the shared memory bus.

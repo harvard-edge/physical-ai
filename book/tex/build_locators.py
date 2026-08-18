@@ -55,6 +55,7 @@ def generate_locator(chapter_slug, organ_num):
 \\usepackage{{tgheros}}
 \\usepackage{{sfmath}}
 \\usepackage{{amsmath}}
+\\usepackage{{fontawesome5}}
 \\usepackage{{tikz}}
 \\usetikzlibrary{{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc}}
 \\usepackage{{xcolor}}
@@ -126,50 +127,50 @@ def generate_locator(chapter_slug, organ_num):
 
   % Top Banner: Stage 7 Governance
   \\node[{ get_style(7) }, text width=7.4in] (s7) {{
-    \\textbf{{7. GOVERNANCE \\& RELEASE GATE}} $\\cdot$ STPA Hazard Mitigation $\\cdot$ Bumpless Override $\\cdot$ Defensible Release Case (\\textbf{{LOOP-01}} $\\to$ \\textbf{{REL-01}})
+    \\textbf{{\\faIcon{{balance-scale}}\\; 7. GOVERNANCE \\& RELEASE GATE}} $\\cdot$ STPA Hazard Mitigation $\\cdot$ Bumpless Override $\\cdot$ Defensible Release Case (\\textbf{{LOOP-01}} $\\to$ \\textbf{{REL-01}})
   }};
 
   % --- TOP ROW: Organs 1, 2, 3 ---
   \\node[{ get_style(1) }, text width=2.22in, below=0.22in of s7.south west, anchor=north west] (s1) {{
-    \\textbf{{1. SENSING}}\\\\
+    \\textbf{{\\faIcon{{satellite-dish}}\\; 1. SENSING}}\\\\
     {{Photons / Voltages to DMA}}\\\\
     {{\\scriptsize MIPI CSI-2 $\\cdot$ SPI Bus Priority}}
   }};
 
   \\node[{ get_style(2) }, text width=2.22in, right=0.37in of s1] (s2) {{
-    \\textbf{{2. PERCEPTION}}\\\\
+    \\textbf{{\\faIcon{{eye}}\\; 2. PERCEPTION}}\\\\
     {{\\mbox{{ViT Encoders}} $\\cdot$ \\mbox{{DINOv2}}}}\\\\
     {{\\scriptsize 3D Spatial Affordance Tokens}}
   }};
 
   \\node[{ get_style(3) }, text width=2.22in, right=0.37in of s2] (s3) {{
-    \\textbf{{3. MEMORY}}\\\\
+    \\textbf{{\\faIcon{{database}}\\; 3. MEMORY}}\\\\
     {{Temporal Belief $\\cdot$ $SE(3)$ Trees}}\\\\
     {{\\scriptsize JEPA / RSSM World Models}}
   }};
 
   % --- MIDDLE ROW: Organs 5, 4 ---
   \\node[{ get_style(4) }, text width=3.51in, below=0.25in of s3.south east, anchor=north east] (s4) {{
-    \\textbf{{4. REASONING (System 2 $\\cdot$ MPU)}}\\\\
+    \\textbf{{\\faIcon{{brain}}\\; 4. REASONING (System 2 $\\cdot$ MPU)}}\\\\
     {{Vision-Language Foundation Models $\\cdot$ 3D Goals}}\\\\
     {{\\scriptsize Leases with Expiring TTL ($t_{{\\text{{expire}}}}$)}}
   }};
 
   \\node[{ get_style(5) }, text width=3.51in, left=0.38in of s4] (s5) {{
-    \\textbf{{5. PLANNING (System 1.5 $\\cdot$ MPU/NPU)}}\\\\
+    \\textbf{{\\faIcon{{network-wired}}\\; 5. PLANNING (System 1.5 $\\cdot$ MPU/NPU)}}\\\\
     {{Diffusion Policies $\\cdot$ \\mbox{{ACT Action Chunking}}}}\\\\
     {{\\scriptsize $H$-Step Action Horizons $\\cdot$ Jerk Continuity}}
   }};
 
   % --- LOWER ROW: Organ 6 ---
   \\node[{ get_style(6) }, text width=7.4in, below=0.42in of s5.south west, anchor=north west] (s6) {{
-    \\textbf{{6. REFLEX (System 1 $\\cdot$ MCU)}}\\\\
+    \\textbf{{\\faIcon{{shield-alt}}\\; 6. REFLEX (System 1 $\\cdot$ MCU)}}\\\\
     {{1 kHz Real-Time Loop $\\cdot$ Control Barrier Functions ($h(x) \\ge 0$) $\\cdot$ Stopping Distance $d_{{\\text{{stop}}}} \\le d_{{\\text{{clearance}}}} \\cdot$ Veto ($u_t$)}}
   }};
 
   % --- PHYSICAL WORLD ROW ---
   \\node[{ "activeorgan" if organ_num == 0 else "allactiveorgan" }, draw=harvardcrimson!60, fill=white, text width=7.4in, below=0.22in of s6.south west, anchor=north west] (world) {{
-    \\textbf{{\\color{{harvardcrimson}}THE PHYSICAL WORLD ($W_t \\to W_{{t+1}}$)}} $\\cdot$ Kinetic Momentum $\\cdot$ Joule Heat $\\cdot$ Friction $\\cdot$ Collision Dynamics
+    \\textbf{{\\color{{harvardcrimson}}\\faIcon{{cogs}}\\; THE PHYSICAL WORLD ($W_t \\to W_{{t+1}}$)}} $\\cdot$ Kinetic Momentum $\\cdot$ Joule Heat $\\cdot$ Friction $\\cdot$ Collision Dynamics
   }};
 
   % Proposal-Permission Boundary Line
@@ -178,7 +179,7 @@ def generate_locator(chapter_slug, organ_num):
   \\draw[dashed, line width=0.9pt, harvardcrimson!70] (bleft) -- (bright);
   \\node[font=\\sffamily\\scriptsize\\bfseries, fill=white, draw=harvardcrimson!40, rounded corners=2pt, inner sep=2.5pt, text=harvardcrimson!90] 
     at ($(bleft)!0.5!(bright)$) 
-    {{THE PROPOSAL--PERMISSION PRIVILEGE BOUNDARY}};
+    {{\\faIcon{{lock}}\\; THE PROPOSAL--PERMISSION PRIVILEGE BOUNDARY}};
 
   % Connecting Arrows
   \\draw[{ get_arrow_style(1, 2) }] (s1.east) -- (s2.west);
@@ -190,7 +191,7 @@ def generate_locator(chapter_slug, organ_num):
 
   % Closed-loop feedback from physical world back to sensing
   \\draw[{ get_arrow_style(0, 1) }] (world.west) -- ++(-0.35in, 0) |- (s1.west) 
-    node[pos=0.25, above, rotate=90, font=\\sffamily\\scriptsize\\bfseries, text=harvardcrimson!80] {{Endogenous Sensory Shift ($O_{{t+1}}$)}};
+    node[pos=0.25, above, rotate=90, font=\\sffamily\\scriptsize\\bfseries, text=harvardcrimson!80] {{\\faIcon{{sync-alt}}\\; Endogenous Sensory Shift ($O_{{t+1}}$)}};
 
 \\end{{tikzpicture}}
 \\end{{document}}
@@ -198,9 +199,10 @@ def generate_locator(chapter_slug, organ_num):
     with open(tex_path, "w") as f:
         f.write(tex_content)
     
-    subprocess.run(["pdflatex", "-interaction=nonstopmode", "fig_pipeline_locator.tex"], cwd=chap_fig_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["lualatex", "-interaction=nonstopmode", "fig_pipeline_locator.tex"], cwd=chap_fig_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pdftocairo", "-svg", "fig_pipeline_locator.pdf", "fig_pipeline_locator.svg"], cwd=chap_fig_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
     for slug, organ in CHAPTER_ACTIVE_ORGAN.items():
         generate_locator(slug, organ)
-    print("All chapter roadmap locators regenerated successfully.")
+    print("All chapter roadmap locators regenerated as PDF and SVG successfully.")

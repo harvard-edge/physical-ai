@@ -12,7 +12,7 @@
 | **Level** | Advanced Bachelor (3rd/4th year) & Master (D-ITET, D-INFK, Robotics/CPS) |
 | **Contact** | Weekly Seminar (2 h / week) + Hands-On Studio / Lab Time |
 | **Reference Book** | *Physical AI: Machine Learning Systems That Sense and Act* (Vijay Janapa Reddi) |
-| **Hardware Kit** | **TinyAgents Kit** (Arduino UNO Q Dual-Brain: Linux MPU + Real-Time MCU) |
+| **Hardware Kit** | **Physical AI Kit** (Arduino UNO Q Dual-Brain: Linux MPU + Real-Time MCU) |
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### Dr. Andrea Mattia Garavagno — Co-Teacher & Studio Lead
 * Postdoctoral Researcher, ETH Zurich (Integrated Systems Laboratory, IIS, D-ITET)
-* Runs day-to-day TinyAgents Kit bring-up, studio hours, and hardware milestone checkpoints.
+* Runs day-to-day Physical AI Kit bring-up, studio hours, and hardware milestone checkpoints.
 
 **Office Hours:** By appointment (email instructors with subject `[Physical AI]`).
 
@@ -35,7 +35,7 @@
 
 Standard machine learning ends at digital output. A classifier emits a label; a language model emits text. **Physical AI Systems** begin when that output moves matter, consumes kinetic energy, affects humans, and alters all future sensory observations ($W_t \to W_{t+1}$). **You cannot `ctrl+z` kinetic energy.**
 
-In this course, student teams design, build, measure, and defend an intelligent **TinyAgent** on the **Arduino UNO Q Dual-Brain Kit**:
+In this course, student teams design, build, measure, and defend an intelligent **Physical Agent** on the **Physical AI Kit** (Arduino UNO Q Dual-Brain):
 
 ```text
        ┌─────────────────────────────────────────────────────────────┐

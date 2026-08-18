@@ -4,7 +4,7 @@ This directory contains the weekly seminar and lecture slide decks for **Physica
 
 | Week | Seminar / Lecture Topic | Deck |
 | :---: | :--- | :--- |
-| **W1** | Course Kickoff, The Dual-Brain Architecture & TinyAgents Kit Bring-Up | `w01-kickoff.pdf` *(TBD)* |
+| **W1** | Course Kickoff, The Dual-Brain Architecture & Physical AI Kit Bring-Up | `w01-kickoff.pdf` *(TBD)* |
 | **W2** | Physical AI Scope, Physical Causality & The Loop Charter | `w02-scope-charter.pdf` *(TBD)* |
 | **W3** | World Timescales, Deadlines & Sensory-Motor Metrology ($P_{99}$) | `w03-metrology.pdf` *(TBD)* |
 | **W4** | Continuous Multi-Rate Runtimes & Hardware Fault Containment | `w04-runtime.pdf` *(TBD)* |

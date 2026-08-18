@@ -1,9 +1,5 @@
 # Perception
 
-::: {.callout-question}
-What is the memory bus and throughput cost of transforming continuous analog photons into discrete neural spatial tokens without starving the accelerator?
-:::
-
 ![Systems Organ Focus: Stage 1 (Sensing) and Stage 2 (Perception & Vision Encoders).](figures/fig_pipeline_locator.pdf){#fig-locator-ch04 width=100%}
 
 ::: {.callout-objective}
@@ -59,26 +55,12 @@ A robust physical perception architecture pairs complementary modalities—such 
 
 Latency begins long before neural network inference executes. On embedded System-on-Chips (SoCs) utilizing Unified Memory Architectures (UMA)—where CPU, GPU, and NPU share a single LPDDR5 memory bus:
 
-```text
-SHARED UMA MEMORY BUS CONTENTION:
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                      UNIFIED MEMORY ARCHITECTURE (UMA) SoC                             │
-│                                                                                        │
-│   ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐             │
-│   │  CPU Control     │      │  NPU Accelerator │      │  MIPI-CSI DMA    │             │
-│   │  (1 kHz Safety)  │      │  (VLA Inference) │      │  (4K Video Ingest│             │
-│   └─────────┬────────┘      └─────────┬────────┘      └─────────┬────────┘             │
-│             │ High-Priority           │ Bulk Tensor             │ 1.2 GB/s             │
-│             │ Memory Fetch            │ Weight Stream           │ Pixel Stream         │
-│             ▼                         ▼                         ▼                      │
-│   ══════════════════════════════════════════════════════════════════════════════════   │
-│                   SHARED SYSTEM INTERCONNECT & L3 SYSTEM CACHE BUS                     │
-│   ══════════════════════════════════════════════════════════════════════════════════   │
-│                                       │                                                │
-│                                       ▼                                                │
-│                          SHARED LPDDR5 DRAM MEMORY (32 GB)                             │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
+| Subsystem Traffic | Bandwidth & Access Pattern | Memory Domain Impact |
+| :--- | :--- | :--- |
+| **MIPI-CSI Video Ingestion** | $1.2\text{ GB/s}$ continuous pixel streaming | Writes directly to LPDDR5 DRAM; evicts CPU/NPU cache lines |
+| **NPU Neural Weight Streaming** | Bulk tensor weight bursts ($10\text{--}30\text{ GB/s}$) | Saturates interconnect bandwidth during vision encoder inference |
+| **Real-Time CPU Control** | Low bandwidth, high priority ($1000\text{ Hz}$) | Starved during unthrottled video bursts, causing $P_{99}$ latency spikes |
+
 
 When high-bandwidth video streams saturate the interconnect bus:
 
@@ -172,7 +154,7 @@ Freeze the sensor acquisition contracts:
 ```yaml
 # DOSSIER CHECKPOINT: OBS-01
 observation_contract:
-  system_id: "TINYAGENT-SYSTEM-01"
+  system_id: "PHYSICAL-AGENT-01"
   version: "1.0.0"
   sensor_suite:
     camera_primary:
@@ -198,5 +180,5 @@ observation_contract:
 
 ::: {.callout-lab}
 ### Hands-on Realization: Lab 5 — Perception Operating Frontier
-Instrument the vision ingestion pipeline on the **TinyAgents Kit (Arduino UNO Q)**. Profile DRAM memory bus contention as camera resolution scales from 480p to 1080p. Measure the pre-inference ingestion tax and configure zero-copy DMA ring buffers to eliminate frame dropouts.
+Instrument the vision ingestion pipeline on the **Physical AI Kit (Arduino UNO Q)**. Profile DRAM memory bus contention as camera resolution scales from 480p to 1080p. Measure the pre-inference ingestion tax and configure zero-copy DMA ring buffers to eliminate frame dropouts.
 :::

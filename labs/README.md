@@ -1,99 +1,114 @@
-# TinyAgents Kit Labs
+# The Physical AI Kit & Hardware Laboratories
 
-Physical realization of *Physical AI: Machine Learning Systems That Sense and
-Act* on the **TinyAgents Kit** (Arduino UNO Q: Linux MPU + real-time MCU).
+This directory contains the firmware contracts, starter checkpoints, hardware wiring specifications, and laboratory execution guides for the **Physical AI Kit** accompanying ***Physical AI: Machine Learning Systems That Sense and Act***.
 
-Brand hierarchy: field/course **Physical AI Systems** · book above · product
-**TinyAgents Kit**.
+---
 
-This folder is owned by the postdoc for kit bring-up, firmware, starter
-checkpoints, wiring, and lab write-ups. The book steward owns the learning
-objective, phenomenon, evidence, and decision contract for every lab. Hardware
-implements pedagogy; it does not invent it.
+## The Physical AI Kit (Arduino UNO Q Dual-Brain Reference Platform)
 
-## Ownership
-
-| Role | Owns |
-| --- | --- |
-| Book steward | Chapter concept, lab contract (phenomenon, prediction, perturbation, measurement, failure, decision, dossier update) |
-| Postdoc | UNO Q realization: wiring, MPU/MCU code, starter checkpoints, assembly guides, validation on hardware |
-| Learner | Prediction, measurement, diagnosis, engineering decision, dossier update |
-
-## Dual-brain invariant (kit signature)
-
-The dual-brain split is the technical depth of the kit—not branding fluff.
-
-- **MPU** proposes: perception, state, policy (including VLMs/VLAs as components), planning, tools, logging.
-- **MCU** permits: timing-critical sensing/actuation where required, watchdogs, limits, command validation, safe fallback, final physical authority.
-- Messages: typed, timestamped, expiring **intent** from MPU; MCU may permit, refuse, interrupt, or recover.
-- No peer, cloud service, or MPU process may bypass the receiving MCU enforcer.
-- Teaching instrument for proposal vs permission (runtime-assurance lineage); not a complete safety certification.
-
-## Taught Formats
-
-**Default (public):** [`course/syllabus.md`](../course/syllabus.md) — one project-based
-course for enrolled and open/Arduino follow-along. Kit work is the team project
-with forced experiences (measure, runtime continuity, enforcer).
-
-Do not invent a second lab syllabus for partners—the course *is* the curriculum.
-
-### Semester pack sessions (lecture track only)
-
-| Session | Weeks (typ.) | Chapters | Lab dirs |
-| --- | --- | --- | --- |
-| 0 Bring-up | 0 | — | `00-kit-bringup` |
-| L1 Loop & freshness | 2 | 1–2 | `01` + `02` |
-| L2 Measure both brains | 3 | 3 | `03-measure-both-brains` |
-| L3 Runtime fault | 4 | 4 | `04-runtime-fault-containment` |
-| L4 Observe & belief | 6 | 5–6 | `06` (+ knobs from `05`) |
-| L5 Propose → permit | 7–8 | 7–8 | `07` then `08` |
-| L6 Place & qualify | 9 | 9–10 | `09` then `10` |
-| L7 Authority & lineage | 10 | 11–12 | `11` + light `12` |
-| L8 Ship → defend | 11–13 | 13 + review | `13-ship-gate` → `99-design-review` |
-
-### Full lab catalogue
-
-| Dir | Book chapter | Lab focus | Semester role |
-| --- | --- | --- | --- |
-| `00-kit-bringup/` | — | Board, sensors, actuators, MPU–MCU link | Session 0 |
-| `01-close-the-loop/` | 1 | Advisory vs actuating loop | L1 / seminar W2 |
-| `02-freshness-wall/` | 2 | Efficacy vs information age | L1 / seminar W2 |
-| `03-measure-both-brains/` | 3 | End-to-end timing across MPU and MCU | L2 / seminar W3 |
-| `04-runtime-fault-containment/` | 4 | MPU failure, MCU continuity | L3 · Foundations gate / T2 |
-| `05-perception-frontier/` | 5 | Sensing operating point | Folded into L4 / project |
-| `06-belief-drift/` | 6 | State, frames, clocks, innovation | L4 / seminar W5–6 |
-| `07-two-speed-intent/` | 7 | Reflex vs deliberation proposals | L5 / project |
-| `08-mcu-enforcer/` | 8 | Independent action check and veto | L5 · signature / midterm |
-| `09-placement-ripple/` | 9 | Re-place one capability; measure ripple | L6 / light in seminar |
-| `10-shadow-and-faults/` | 10 | Shadow policy and fault injection | L6 / light in seminar |
-| `11-authority-paths/` | 11 | Approve, stop, revoke, forget | L7 / seminar W10 |
-| `12-learning-turn/` | 12 | Trajectory admission and candidate check | L7 light / seminar W10 |
-| `13-ship-gate/` | 13 | Integrated deploy / refuse case | L8a / seminar W11 |
-| `99-design-review/` | Final review | Transfer and diagnosed failure | L8b / final talk |
-
-## Per-lab layout
-
-Each lab directory should contain:
+The **Physical AI Kit** is a zero-magic, dual-brain embedded platform engineered specifically to expose real-world systems realities—tail latency ($P_{99}$), memory bus contention, clock skew, thermal limits, and real-time safety enforcement.
 
 ```text
-NN-name/
-  CONTRACT.md     # accepted pedagogy handoff from book steward
-  README.md       # learner-facing bring-up and procedure (postdoc)
-  mpu/            # Linux-side starter and student work
-  mcu/            # real-time-side starter and student work
-  checkpoint/     # tested starter snapshot for this chapter
-  evidence/       # example logs, plots, schemas (no secrets)
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 THE PHYSICAL AI KIT                                    │
+│                     (Arduino UNO Q Dual-Brain Reference Platform)                      │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│   ┌──────────────────────────────────┐      ┌──────────────────────────────────────┐   │
+│   │   HOST BRAIN: LINUX MPU          │      │   REFLEX BRAIN: REAL-TIME MCU        │   │
+│   │   (Cognitive Cortex)             │      │   (Safety Permission Authority)      │   │
+│   │   • Quad-core Application Proc   │      │   • 32-bit ARM Cortex-M4 Micro       │   │
+│   │   • Gigabytes Shared DRAM (UMA)  │      │   • Zero-Dynamic Allocation (TCM)    │   │
+│   │   • Workloads: Encoders, VLMs,   │      │   • Workloads: 1 kHz CBF Enforcer,   │   │
+│   │     Diffusion Action Chunks      │      │     Dynamic Stopping $d_{\text{stop}}$,  │   │
+│   │   • Role: Untrusted Proposals    │      │     Watchdog Leases, Interlock Relay │   │
+│   │   • Frequency: 0.5 Hz – 50 Hz    │      │   • Frequency: 1000 Hz Hard Loop     │   │
+│   └─────────────────┬────────────────┘      └──────────────────┬───────────────────┘   │
+│                     │                                          │                       │
+│                     └─────────────────┐      ┌─────────────────┘                       │
+│                                       ▼      ▼                                         │
+│                       ┌───────────────────────────────┐                                │
+│                       │   HETEROGENEOUS SHARED SRAM   │                                │
+│                       │   • Lock-free ring buffers    │                                │
+│                       │   • Atomic sequence counters  │                                │
+│                       │   • Expiring intent leases    │                                │
+│                       └───────────────┬───────────────┘                                │
+│                                       │                                                │
+│   ════════════════════════════════════╪═════════════════════════════════════════════   │
+│   SENSOR INGESTION SUITE              │          ACTUATOR & SAFETY SUBSYSTEM           │
+│   • MIPI CSI-2 Camera (DMA rings)     │          • Precision Multi-Axis Motion Stage   │
+│   • Optical Quadrature Encoders       │          • 3-Phase Gate Drivers & Shunt Sense  │
+│   • 6-DoF Inertial Measurement Unit   ▼          • Hardware Emergency Power Interlock  │
+│                               PHYSICAL REALITY                                         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Do not begin firmware until `CONTRACT.md` is accepted for that chapter.
+---
 
-## Shared code
+## Pedagogical Division of Ownership
 
-`shared/` holds reusable MPU–MCU contracts, instrumentation helpers, and kit
-utilities used by more than one lab. Prefer stable message schemas over
-chapter-specific forks.
+The laboratory curriculum connects platform-neutral theory to bench execution:
 
-## Relation to the rest of the repo
+| Role | Responsibility & Deliverables |
+| :--- | :--- |
+| **Course Lecturer / Book Author**<br>*(Prof. Vijay Janapa Reddi)* | Owns the pedagogical spine, chapter concepts, and formal **Lab Contracts** (`CONTRACT.md`): learning objectives, target physical phenomena, mathematical formulations, fault injection regimes, and design dossier decision gates. |
+| **Kit & Studio Lead**<br>*(Dr. Andrea Mattia Garavagno)* | Owns the **Physical AI Kit** hardware realization: PCB pinouts, power rail isolation, MPU Linux environments, MCU FreeRTOS/bare-metal starter checkpoints, assembly schematics, and bench validation. |
+| **Student / Practitioner** | Executes the experiments, measures latency distributions and physical telemetry, diagnoses systems failures, makes architectural trade-offs, and updates the versioned **Cumulative Design Dossier**. |
 
-Canonical public offer: `course/syllabus.md`. Kit implements that course’s project.
-This folder is firmware and lab contracts only.
+---
+
+## The Signature Dual-Brain Invariant: Propose vs. Permit
+
+The dual-brain split is not a decorative software abstraction—it is a physical and architectural firewall:
+
+1. **The Linux MPU Proposes (Cognitive Cortex):** Runs high-capacity perception models (ViT, DINOv2), multimodal reasoning (VLMs), and trajectory decoders (ACT Action Chunking). It operates under best-effort Linux scheduling and emits typed, timestamped, **expiring intent leases** ($p_t$ with TTL $t_{\text{expire}}$).
+2. **The Real-Time MCU Permits (Reflex & Safety Enforcer):** Runs a zero-allocation $1000\text{ Hz}$ bare-metal / FreeRTOS control loop. It verifies Control Barrier Functions ($h(x) \ge 0$), evaluates dynamic stopping distance ($d_{\text{stop}}$), services hardware watchdogs, and commands the 3-phase motor bridge.
+3. **No Direct Actuator Access:** No MPU user-space process, cloud API, or Python script possesses direct electrical authority to toggle gate drivers. All physical consequences require MCU permission: $u_t = \text{permit}(p_t)$.
+4. **Crash Invariance:** If the Linux MPU experiences an uncaught exception, `SIGKILL`, or kernel panic, the MCU hardware watchdog trips within $50\text{ ms}$ and clamps the actuator power rail to safe de-energization.
+
+---
+
+## The 14-Week Laboratory Spine
+
+The hardware studio track follows the 14-week course syllabus ([`course/syllabus.md`](../course/syllabus.md)), incrementally transforming the raw **Physical AI Kit** into a certified, autonomous **Physical Agent**:
+
+| Week | Milestone | Lab Directory | Core Systems Focus | Dossier Artifact |
+| :---: | :--- | :--- | :--- | :---: |
+| **W1** | **Kit Bring-Up** | `00-kit-bringup/` | Board bring-up, inter-processor link, and safe idle | Hardware Bring-Up |
+| **W2** | **Causal Boundary** | `01-close-the-loop/` | Advisory mode vs. closed-loop physical state mutation | `LOOP-01` |
+| **W3** | **Freshness & Tails** | `02-freshness-wall/`<br>`03-measure-both-brains/`| Information age ($\Delta t$), $P_{99}$ latency tails, and memory bus contention | `REQ-01` |
+| **W4** | **Runtime Engine** | `04-runtime-fault-containment/` | Multi-rate IPC, seqlocks, and MPU crash survival | `RUN-01` |
+| **W5** | **Vision Ingestion** | `05-perception-frontier/` | MIPI CSI-2 DMA ring buffers and spatial tokens | `OBS-01` |
+| **W6** | **Spatial Memory** | `06-belief-drift/` | $SE(3)$ frame graphs, clock drift, and TTL belief leases | `STATE-01` |
+| **W7** | **Semantic Intent** | `07-two-speed-intent/` | Edge VLM bounding boxes and expiring intent leases | `INTENT-01` |
+| **W8** | **Safety Enforcer** | `08-mcu-enforcer/` | **Signature Lab:** 1 kHz MCU Control Barrier Function vetoes | `ENF-01` |
+| **W9** | **Silicon Placement**| `09-placement-ripple/` | Heterogeneous resource ledger (FLOPs, SRAM, Watts, QoS) | `PLACE-01` |
+| **W10**| **Faults & Lineage** | `10-shadow-and-faults/`<br>`11-authority-paths/` | Bumpless joystick override and shadow runtime auditing | `AUTH-01` |
+| **W11**| **Release Gate** | `12-learning-turn/`<br>`13-ship-gate/` | Cross-layer seeded fault injection and safety case | `REL-01` |
+| **W12–14**| **Capstone Jury**| `99-design-review/` | Live unannounced fault defense and jury release verdict | **Final Release** |
+
+---
+
+## Directory Structure per Lab
+
+Each laboratory directory follows a standardized contract-first structure:
+
+```text
+NN-slug/
+├── CONTRACT.md       # Pedagogical specification (learning goals, phenomenon, math, dossier gate)
+├── README.md         # Student-facing step-by-step bench guide & hardware wiring schematics
+├── mpu/              # Linux application code (Python, TensorRT, PyTorch, IPC endpoints)
+├── mcu/              # Real-time microcontroller firmware (C/C++, FreeRTOS, CBF enforcer)
+├── checkpoint/       # Known-good starter firmware and configuration snapshots
+└── evidence/         # Reference oscilloscope captures, latency histograms, and dossier logs
+```
+
+---
+
+## Shared Firmware & Schemas
+
+The [`labs/shared/`](shared/) directory contains production-grade, reusable headers and schemas shared across all labs:
+* Lock-free shared memory IPC layouts and atomic sequence counters (`ipc_ring.h`).
+* Typed intent proposal and telemetry message schemas (`intent_lease.h`).
+* Control Barrier Function quadratic program solvers and stopping distance estimators (`cbf_enforcer.h`).
+* Hardware GPIO profiling and PTP timestamp synchronization utilities.

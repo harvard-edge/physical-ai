@@ -1,6 +1,6 @@
 # Shared kit assets
 
-Reusable MPU/MCU contracts and helpers for the TinyAgents Kit.
+Reusable MPU/MCU contracts and helpers for the Physical AI Kit.
 
 | Path | Purpose |
 | --- | --- |
