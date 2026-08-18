@@ -94,17 +94,18 @@ The book is organized into **3 Foundational Parts (11 substantive chapters + Cap
 | Part | Chapter | Focus / Organ | Design Dossier Artifact |
 | :--- | :--- | :--- | :--- |
 | **Part I: Foundations** | `01-boundary` | **Physical Causality** | `LOOP-01` (Loop Charter) |
-| | `02-metrology` | **Time and Latency** | `REQ-01` (Requirements & Latency Ledger) |
-| | `03-runtime` | **Multi-Rate Systems** | `RUN-01` (Continuous Runtime Skeleton) |
-| **Part II: Agent Architecture** | `04-perception`| **Perception** | `OBS-01` (Observation Contract) |
-| | `05-state` | **Memory** | `STATE-01` (State & Timing Model) |
-| | `06-intent` | **Reasoning** | `INTENT-01` (Intent Schema & Leases) |
-| | `07-planning` | **Planning** | `PLAN-01` (Trajectory Planning Schema) |
-| | `08-enforcement`| **Reflex** | `ENF-01` (Safety Enforcer & CBF) |
-| **Part III: Release & Defense** | `09-placement` | **Placement** | `PLACE-01` (Heterogeneous Silicon Ledger)|
-| | `10-governance` | **Governance** | `AUTH-01` (Provenance & Human Override) |
-| | `11-assurance` | **Release** | `REL-01` (Defensible Release Case) |
-| **Capstone** | `99-capstone` | **Capstone Defense** | Evidence-Backed Release Verdict |
+| | `02-latency` | **Time, Freshness & Latency** | `REQ-01` (Requirements & Latency Ledger) |
+| | `03-workflow` | **The Agent Workflow** | `FLOW-01` (Workflow & Multi-Rate Charter) |
+| **Part II: Pipeline Organs** | `04-perception`| **Perception & Encoders** | `OBS-01` (Observation Contract) |
+| | `05-state` | **Memory & World Models** | `STATE-01` (State & Timing Model) |
+| | `06-intent` | **Reasoning & Intent** | `INTENT-01` (Intent Schema & Leases) |
+| | `07-planning` | **Planning & Chunking** | `PLAN-01` (Trajectory Planning Schema) |
+| | `08-enforcement`| **Reflex & Safety Veto** | `ENF-01` (Safety Enforcer & CBF) |
+| **Part III: Integration & Release** | `09-placement` | **Workload Placement** | `PLACE-01` (Heterogeneous Silicon Ledger)|
+| | `10-governance` | **Human Governance** | `AUTH-01` (Governance Record & Lineage) |
+| | `11-assurance` | **Defensible Assurance** | `REL-01` (Claim-Argument-Evidence Case) |
+| **Capstone** | `99-capstone` | **Capstone Bench Defense** | Full Dossier Defense & Release Verdict |
+
 
 ---
 
