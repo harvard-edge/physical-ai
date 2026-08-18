@@ -74,24 +74,25 @@ In this course, student teams design, build, measure, and defend an intelligent 
 
 ## 3. The 14-Week Schedule
 
-The curriculum follows **The Anatomy of a Physical AI Agent**, moving from physical foundations to internal spatial belief, deliberative reasoning, real-time safety vetoes, and defensible release:
+The curriculum follows the **Physical AI Co-Design Matrix**, moving from physical and cognitive foundations to internal spatial belief, deliberative reasoning, real-time safety vetoes, heterogeneous placement, and defensible release:
 
-| Week | Seminar Topic | Project & Kit Milestone | Due Artifact |
+| Week | Seminar & Chapter Topic | Project & Kit Milestone | Due Artifact Checkpoint |
 | :---: | :--- | :--- | :---: |
-| **W1** | **Kickoff & The Dual-Brain Architecture** | Team formation & UNO Q kit bring-up | **T0: Roster + Kit (`labs/00`)** |
-| **W2** | **Physical Causality & Causal Boundaries** | Matter, momentum & drawing causal boundaries | **T1: Loop Charter (`labs/01`)** |
-| **W3** | **Time and Latency Metrology** | Measuring sense-to-actuation $P_{99}$ tail latency | `labs/02` + `labs/03` |
-| **W4** | **Multi-Rate Systems & Crash Survival** | Multi-rate scheduling; MPU crash $\to$ MCU holds | **T2: Runtime Skeleton (`labs/04`)** |
-| **W5** | **Perception & Vision Encoders (ViTs/DINOv2)** | Pre-inference DMA tax & UMA bus contention | `labs/05` |
-| **W6** | **Memory, State & Latent World Models (JEPAs)**| $SE(3)$ frame graphs, PTP sync & TTL leases | `labs/06` |
-| **W7** | **MIDTERM DESIGN REVIEWS (T3 Milestone)** | **Team Talks:** Propose $\to$ Permit demonstration | **T3: Midterm Talk & Demo** |
-| **W8** | **Reasoning & Deliberation (VLMs & Intent Leases)**| Grounding open-vocabulary goals with VLMs | `labs/07` |
-| **W9** | **Planning & Action Chunking (Diffusion/ACT)**| Trajectory rollouts & temporal ensembling ($\mathcal{C}^2$) | — |
-| **W10** | **Reflex & Safety Enforcement (1 kHz CBFs)**| 1 kHz safety filters & dynamic stopping bounds ($d_{\text{stop}}$)| **`labs/08` (Signature Lab)** |
-| **W11** | **Placement & Silicon Resource Ledgers**| Mapping across MCU, MPU, NPU, and Cloud | **T4: Release Draft (`labs/09`)** |
-| **W12** | **Governance & Human Authority (Bumpless Overrides)**| Bumpless overrides, tagged truncated logs & OTA | `labs/10` + `labs/11` |
-| **W13** | **Release & Cross-Layer Fault Injection** | Hardware fault injection rig (HIL / stress test) | `labs/12` + `labs/13` |
-| **W14** | **FINAL CAPSTONE DEFENSE & DOSSIER SUBMISSION** | **Oral defense under seeded bench faults** | **T5: Final Defense & T6: Dossier** |
+| **W1** | **Kickoff & The Dual-Brain Architecture** | Team formation & UNO Q kit bring-up | **T0: Roster + Kit Setup** |
+| **W2** | **Ch 1: The Causal Boundary & Co-Design Matrix** | Matter, momentum & power isolation sandbox | **T1: `LOOP-01` (Loop Charter)** |
+| **W3** | **Ch 2: The Physical Constraints (The Columns)** | Sense-to-actuation $P_{99}$ tail metrology & stopping bounds | **T2: `REQ-01` (Requirements Ledger)** |
+| **W4** | **Ch 3: The Cognitive Dimensions (The Rows)** | Multi-rate 3-cadence runtime & watchdog crash survival | **T3: `FLOW-01` (Workflow Charter)** |
+| **W5** | **Ch 4: Stage 1 — Perceive (Spatial Tokens & Ingestion)**| Zero-copy DMA ring buffers & DINOv2 spatial tokens | `OBS-01` (Observation Contract) |
+| **W6** | **Ch 5: Stage 2 — Remember (World Models & SE(3))** | $SE(3)$ frame graph trees & uncertainty decay leases | `STATE-01` (State & Timing Model) |
+| **W7** | **MIDTERM DESIGN REVIEWS (T4 Milestone)** | **Team Talks:** Proposal–Permission closed-loop demo | **T4: Midterm System Review** |
+| **W8** | **Ch 6: Stage 3 — Reason (VLMs & Intent Leases)** | Multimodal VLM grounding & expiring intent leases | `INTENT-01` (Policy & Intent Schema) |
+| **W9** | **Ch 7: Stage 4 — Plan (Diffusion Action Chunking)** | Receding-horizon ACT rollouts & $\mathcal{C}^2$ jerk splines | `PLAN-01` (Planning Schema) |
+| **W10** | **Ch 8: Stage 5 — Execute (1 kHz MCU Safety Reflex)**| 1 kHz Control Barrier Functions & dynamic stop halts | **`ENF-01` (Signature Lab)** |
+| **W11** | **Ch 9: Heterogeneous Silicon Placement & UMA QoS** | Compute, SRAM, and bus arbitration resource ledger | `PLACE-01` (Placement Map) |
+| **W12** | **Ch 10: Human Governance & Governed Data Flywheels**| $\mathcal{C}^2$ bumpless transfer & truncated episode slicing | `AUTH-01` (Governance Record) |
+| **W13** | **Ch 11: Defensible Assurance & Seeded Fault Trials** | Cross-layer fault injection rig & CAE safety case | **T5: `REL-01` (Release Case)** |
+| **W14** | **FINAL CAPSTONE DEFENSE & DOSSIER SUBMISSION** | **Oral defense under unannounced seeded bench faults** | **T6: Final Defense & Dossier Sign-Off** |
+
 
 ---
 
