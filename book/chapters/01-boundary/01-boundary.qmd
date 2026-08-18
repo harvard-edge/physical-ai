@@ -148,13 +148,13 @@ Why can we not simply deploy a PyTorch foundation model onto a robot and call it
 
 When software leaves the epistemic sandbox of the datacenter and interacts with physical matter, four inescapable physical realities emerge:
 
-### 1. Physical Irreversibility & Momentum Accumulation ($\mathbf{p} = m\mathbf{v}, I^2 R$)
+### 1. Physical Irreversibility and Momentum Accumulation ($\mathbf{p} = m\mathbf{v}, I^2 R$)
 In software engineering, developers rely on transactional rollbacks, `try/catch` handlers, and container restarts. In the physical world, mass carries momentum and electrical current dissipates thermal energy:
 
 * **Momentum Accumulation:** When an autonomous mechanism is moving, physical inertia carries the mass forward along its trajectory. If an application processor freezes, physical momentum continues to drive the mechanism until counter-torque decelerates it or it strikes an obstacle.
 * **Thermal Energy Accumulation ($I^2 R$):** Driving motor current $I(t)$ across stator winding resistance $R$ produces continuous thermal dissipation. While copper coils tolerate brief acceleration bursts, a software glitch commanding continuous stall current for even a fraction of a second melts winding insulation and demagnetizes rotor magnets. **You cannot `ctrl+z` kinetic energy.**
 
-### 2. The Time Law & Information Freshness ($\Delta t, P_{99}$)
+### 2. The Time Law and Information Freshness ($\Delta t, P_{99}$)
 In digital web serving, if a query takes $20\text{ ms}$ or $200\text{ ms}$, the answer is still valid. In the physical world, **the environment does not pause for computation**. 
 
 Sensor data decays the microsecond photons hit the camera sensor. A camera frame capturing an obstacle is already stale ($\Delta t$) by the time neural tensor operations complete. Furthermore, mean latency is a dangerous metric: a robot's dynamic stopping distance ($d_{\text{stop}}$) is dictated by the **tail latency ($P_{99}, P_{99.9}$)**:
@@ -167,7 +167,7 @@ $$\Delta t_{\text{tail}} = t_{\text{exposure}} + t_{\text{dma}} + t_{\text{infer
 
 If tail latency spikes due to memory bus contention or garbage collection, stopping distance expands, causing catastrophic collisions.
 
-### 3. Policy Endogeneity & Compounding Feedback Loops
+### 3. Policy Endogeneity and Compounding Feedback Loops
 In digital ML, datasets are assumed independent and identically distributed ($i.i.d.$). In Physical AI, the system is locked in an endogenous causal loop:
 
 $$A_t \longrightarrow W_{t+1} \longrightarrow O_{t+1}$$
@@ -205,33 +205,33 @@ To address these physical challenges systematically, we structure the agent into
 
 ![The Anatomy and Causal Sensory-Motor Loop of a Physical AI Agent: Tracing the 7 Canonical Pipeline Organs across the Proposal--Permission Privilege Boundary.](figures/fig01_agent_anatomy.svg){#fig-anatomy width=100%}
 
-### Stage 1: Sensing & Ingestion (Photons to DMA)
+### Stage 1: Sensing and Ingestion (Photons to DMA)
 Analog phenomena—photons hitting photodiode wells, magnetic fields inducing Hall voltages, strain gauges flexing under contact pressure—are transduced and streamed across MIPI CSI-2, SPI, or I2C buses into Direct Memory Access (DMA) ring buffers. This stage incurs a measurable **pre-inference memory bus tax**: continuous DMA transactions contend with neural accelerators and CPU cores for Unified Memory Architecture (UMA) bandwidth, introducing non-deterministic latency jitter before a single neural weight is computed.
 
-### Stage 2: Perception & Vision Encoders (Tensors to 3D Affordance Tokens)
+### Stage 2: Perception and Vision Encoders (Tensors to 3D Affordance Tokens)
 High-dimensional raw image frames ($1920 \times 1080 \times 3$) are ingested by vision backbones such as Vision Transformers (ViT) [@dosovitskiy2020image] and self-supervised feature extractors like DINOv2 [@oquab2023dinov2]. Rather than emitting passive semantic text labels, the perception engine lifts 2D visual patch tokens into metric 3D space using calibrated camera geometry and depth fields. This compresses millions of raw pixels into compact **3D spatial affordance tokens**—contact point distributions, surface normals, obstacle bounding volumes, and grasp approach vectors in three-dimensional coordinate space ($SE(3)$).
 
-### Stage 3: World Models & Temporal State (Latent Belief & Frame Trees)
+### Stage 3: World Models and Temporal State (Latent Belief and Frame Trees)
 Because physical sensors suffer from optical glare, occlusions, and asynchronous transport jitter, an acting machine cannot operate under memoryless Markovian assumptions. Instead, the agent maintains an internal world model. 
 
 Rejecting computationally prohibitive pixel-generation pipelines (which cost hundreds of milliseconds and risk non-physical visual hallucinations), the state organ leverages latent predictive architectures—such as Joint Embedding Predictive Architectures (JEPA) [@lecun2022path; @assran2023self] and Recurrent State Space Models (RSSM) [@ha2018worldmodels; @hafner2023mastering]. The world model predicts future latent transitions directly in compact representation space with fixed computational cost ($<5\text{ ms}$), filtering out task-irrelevant visual entropy. It maintains continuous $SE(3)$ coordinate frame trees, tracks spatial uncertainty, bounds state staleness via Time-to-Live (TTL) leases, and estimates proprioceptive joint dynamics.
 
-### Stage 4: Semantic Deliberation & Intent (System 2: 1 Hz VLMs)
+### Stage 4: Semantic Deliberation and Intent (System 2: 1 Hz VLMs)
 Running on the application processor (MPU), multimodal Vision-Language Models (VLMs) and spatial reasoning transformers [@brohan2023rt2] interpret natural language instructions (*"sort the damaged bearings into the red bin"*) against open-vocabulary scene context. Due to autoregressive token generation and large parameter footprints ($7\text{B}\text{--}70\text{B}$ weights), System 2 operates at a deliberate frequency ($0.5\text{--}2\text{ Hz}$) with heavy tail latencies ($P_{99} > 500\text{ ms}$). It emits time-bounded **Expiring Intent Leases**:
 
 $$\mathcal{L}_{\text{intent}} = \left\langle \mathbf{T}_{\text{target}} \in SE(3), \; \mathcal{B}_{\text{workspace}} \subset \mathbb{R}^3, \; \dot{\mathbf{x}}_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
 
 System 2 holds zero direct electrical authority over actuators.
 
-### Stage 5: Trajectory Decoders & Action Chunking (System 1.5: 20–50 Hz)
+### Stage 5: Trajectory Decoders and Action Chunking (System 1.5: 20–50 Hz)
 The trajectory generator decodes high-level semantic intent into continuous joint waypoint trajectories. Utilizing modern embodied paradigms—specifically **Diffusion Policy** [@chi2023diffusionpolicy] and **Action Chunking with Transformers (ACT)** [@zhao2023learning]—the policy predicts an action chunk of $H$ future waypoints in parallel. 
 
 Action chunking breaks the single-step Markovian latency bottleneck, creates an asynchronous execution buffer for the real-time core, and models complex multimodal trajectory distributions without mode collapse. Receding-horizon temporal ensembling with $\mathcal{C}^2$ jerk continuity smooths overlapping trajectory chunks to protect mechanical linkages and cycloidal gearboxes from high-frequency shock.
 
-### Stage 6: Real-Time Reflex & Safety Enforcement (System 1: 1 kHz MCU)
+### Stage 6: Real-Time Reflex and Safety Enforcement (System 1: 1 kHz MCU)
 Running deterministically at $1000\text{ Hz}$ on a dedicated bare-metal microcontroller (MCU), the safety enforcer intercepts all proposed action chunks before they reach actuator inverters. Grounded in formal **Control Barrier Functions** [@ames2019control] and layered safety envelopes [@brooks1986robust], the MCU executes a minimal-intervention projection operator, verifying that candidate proposals satisfy invariant safety bounds and dynamic stopping limits ($d_{\text{stop}} \le d_{\text{clearance}}$).^[In Chapter 8, we formalize this enforcer as a minimal-intervention Control Barrier Function (CBF), guaranteeing forward invariance of the safe operating set $\mathcal{C}$.] The MCU alone writes permitted current setpoints $u_t$ to motor PWM timer registers. If an MPU proposal expires, suffers latency jitter, or violates safety invariants, the MCU executes a deterministic, zero-software mechanical halt.
 
-### Stage 7: Governance, Lineage & Defensible Release Gate
+### Stage 7: Governance, Lineage and Defensible Release Gate
 The governance organ coordinates bumpless human teleoperation overrides, logs cryptographically immutable sensory-motor telemetry records, and tags safety interventions to prevent policy covariate shift during retraining. It constructs the formal Claim-Argument-Evidence (CAE) safety case [@bishop1998methodology] required to render an accountable **Deploy / Condition / Refuse** release verdict under rigorous STPA hazard analysis [@leveson2011engineering].
 
 ---
@@ -269,18 +269,19 @@ In heterogeneous dual-brain SoCs (such as the Arduino UNO Q platform), the Linux
 
 ---
 
-## Freezing the Loop Charter (`LOOP-01`)
+::: {.callout-decision}
+### Dossier Delta: Loop Charter (`LOOP-01`)
 
 Every chapter in this book freezes an industrial-grade engineering specification for the **Cumulative Design Dossier**. In Chapter 1, we establish the foundational **Loop Charter (`LOOP-01`)**, defining the physical limits, causal boundaries, and authority hierarchy of our reference platform:
 
-### System Boundary and Silicon Privilege Split
+#### System Boundary and Silicon Privilege Split
 
 | Subsystem Domain | Processor & Trust Tier | Cadence & Memory Boundary | Granted Physical Authority |
 | :--- | :--- | :--- | :--- |
 | **Proposal Engine** | ARM Cortex-A Linux (MPU)<br>*UNTRUSTED_PROPOSAL_SERVICE* | $1\text{ Hz}$ VLM $\to$ $20\text{ Hz}$ ACT Policy<br>2 GB LPDDR4 (Shared UMA) | **Zero electrical authority** over inverters; emits expiring proposals ($p_t$) with $\text{TTL} \le 100\text{ ms}$. |
 | **Permission Authority** | Bare-Metal MCU (Cortex-M / RISC-V)<br>*TRUSTED_PERMISSION_SUPERVISOR* | $1000\text{ Hz}$ CBF Enforcer $\to$ $20\text{ kHz}$ FOC<br>256 KB Static SRAM (Zero Heap) | **Sole hardware veto**; controls physical gate enable (`EN_GATE`), watchdog lease ($\tau_{\text{watchdog}} \le 10\text{ ms}$). |
 
-### Non-Negotiable Safety Invariants (`LOOP-01`)
+#### Non-Negotiable Safety Invariants (`LOOP-01`)
 
 | Invariant ID | Title | Safety Specification & Limits | Enforcement Mechanism |
 | :--- | :--- | :--- | :--- |
@@ -294,6 +295,7 @@ Every chapter in this book freezes an industrial-grade engineering specification
 | **`INV-08-PREEMPT`** | Bumpless Human Preemption | Hardware E-Stop and manual joystick deflection signals preempt MPU proposals within $t \le 1.0\text{ ms}$. | Hardware GPIO Interrupt |
 
 *(The complete, machine-readable YAML template for `LOOP-01` is maintained in @sec-dossier-templates).*
+:::
 
 ---
 
@@ -309,7 +311,7 @@ Every chapter in this book freezes an industrial-grade engineering specification
 
 ---
 
-## Summary & What Comes Next
+## Summary and What Comes Next
 
 In this chapter, we crossed the Causal Boundary:
 

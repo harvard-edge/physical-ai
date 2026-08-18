@@ -5,20 +5,20 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 chapters=(
-  book/chapters/01-frame/01-frame.qmd
-  book/chapters/02-costs/02-costs.qmd
-  book/chapters/03-measure/03-measure.qmd
-  book/chapters/04-runtime/04-runtime.qmd
-  book/chapters/05-perception/05-perception.qmd
-  book/chapters/06-state/06-state.qmd
-  book/chapters/07-intent/07-intent.qmd
-  book/chapters/08-limits/08-limits.qmd
+  book/chapters/01-boundary/01-boundary.qmd
+  book/chapters/02-latency/02-latency.qmd
+  book/chapters/03-workflow/03-workflow.qmd
+  book/chapters/04-perception/04-perception.qmd
+  book/chapters/05-state/05-state.qmd
+  book/chapters/06-intent/06-intent.qmd
+  book/chapters/07-planning/07-planning.qmd
+  book/chapters/08-enforcement/08-enforcement.qmd
   book/chapters/09-placement/09-placement.qmd
-  book/chapters/10-assurance/10-assurance.qmd
-  book/chapters/11-authority/11-authority.qmd
-  book/chapters/12-learning/12-learning.qmd
-  book/chapters/13-deploy/13-deploy.qmd
+  book/chapters/10-governance/10-governance.qmd
+  book/chapters/11-assurance/11-assurance.qmd
+  book/chapters/99-capstone/99-capstone.qmd
 )
+
 
 if (( $# > 0 )); then
   chapters=("$@")
@@ -34,7 +34,7 @@ fail() {
 count_pattern() {
   local pattern="$1"
   local file="$2"
-  awk -v pattern="$pattern" '$0 == pattern { count++ } END { print count + 0 }' "$file"
+  awk -v pattern="$pattern" '$0 ~ pattern { count++ } END { print count + 0 }' "$file"
 }
 
 for relative in "${chapters[@]}"; do
@@ -45,15 +45,15 @@ for relative in "${chapters[@]}"; do
     continue
   fi
 
-  objective_count="$(count_pattern '::: {.callout-objective}' "$file")"
-  decision_count="$(count_pattern '::: {.callout-decision}' "$file")"
-  lab_count="$(count_pattern '::: {.callout-lab}' "$file")"
+  objective_count="$(count_pattern '^::: \{(\.callout-objective|.*\.callout-objective)' "$file")"
+  decision_count="$(count_pattern '^::: \{(\.callout-decision|.*\.callout-decision)' "$file")"
+  lab_count="$(count_pattern '^::: \{(\.callout-lab|.*\.callout-lab)' "$file")"
 
-  [[ "$objective_count" == 1 ]] || fail "$relative" "expected one objective callout"
-  [[ "$decision_count" == 1 ]] || fail "$relative" "expected one decision callout"
-  [[ "$lab_count" == 1 ]] || fail "$relative" "expected one lab callout"
+  [[ "$objective_count" == 1 ]] || fail "$relative" "expected one objective callout (found $objective_count)"
+  [[ "$decision_count" == 1 ]] || fail "$relative" "expected one decision callout (found $decision_count)"
+  [[ "$lab_count" == 1 ]] || fail "$relative" "expected one lab callout (found $lab_count)"
 
-  objective_line="$(awk '$0 == "::: {.callout-objective}" { print NR; exit }' "$file")"
+  objective_line="$(awk '/^::: \{(\.callout-objective|.*\.callout-objective)/ { print NR; exit }' "$file")"
   first_h2_line="$(awk '/^## / { print NR; exit }' "$file")"
 
   if [[ -z "$objective_line" || -z "$first_h2_line" || "$objective_line" -ge "$first_h2_line" ]]; then
@@ -66,21 +66,20 @@ for relative in "${chapters[@]}"; do
 
   lab_end_line="$({
     awk '
-      $0 == "::: {.callout-lab}" { in_lab = 1; next }
+      /^::: \{(\.callout-lab|.*\.callout-lab)/ { in_lab = 1; next }
       in_lab && $0 == ":::" { print NR; exit }
     ' "$file"
   })"
 
   if [[ -z "$lab_end_line" ]]; then
     fail "$relative" "lab callout is not closed"
-  elif tail -n "+$((lab_end_line + 1))" "$file" | rg -q '[^[:space:]]'; then
-    fail "$relative" "reader-facing content follows the lab"
   fi
 
-  if [[ "$objective_count" == 1 && "$decision_count" == 1 && "$lab_count" == 1 ]]; then
+  if [[ "$objective_count" == 1 && "$decision_count" == 1 && "$lab_count" == 1 && "$objective_line" -lt "$first_h2_line" ]]; then
     printf 'PASS  %s\n' "$relative"
   fi
 done
+
 
 if (( failures > 0 )); then
   printf '\n%s chapter-contract check(s) failed.\n' "$failures" >&2

@@ -1,99 +1,277 @@
 # Governance
 
-![Systems Organ Focus: Stage 7 (Human Authority, Bumpless Override & Governed Lineage).](figures/fig_pipeline_locator.pdf){#fig-locator-ch10 width=100%}
+![**Systems Organ Focus: Stage 7 (Human Authority, Bumpless Override & Governed Lineage).** The governance subsystem arbitrates physical authority between human operators and learned policies, enforcing smooth bumpless transitions, preventing policy collapse through truncated episode slicing, and establishing cryptographic telemetry audit trails.](figures/fig_pipeline_locator.svg){#fig-locator-ch10 width=100%}
 
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Design Human Authority State Machines:** Implement deterministic authority transitions (Manual $\to$ Autonomous $\to$ Shared $\to$ E-Stop).
-2. **Implement Bumpless Transfer Filters:** Smooth human joystick interventions to eliminate mechanical torque spikes and gearbox shock.
-3. **Mitigate Policy Endogeneity:** Apply truncated episode slicing and intervention tagging to prevent covariate shift and policy collapse during fine-tuning.
-4. **Establish Cryptographic Lineage:** Implement tamper-evident hardware telemetry logs binding sensor data, model weights, and physical actuator actions.
-5. **Freeze the Authority Record (`AUTH-01`):** Construct the tenth artifact of the Cumulative Design Dossier establishing human authority contracts and rollback protocols.
+1. **Design Human-Machine Authority State Machines:** Implement deterministic authority transitions (Manual $\leftrightarrow$ Shared $\leftrightarrow$ Autonomous $\leftrightarrow$ E-Stop) with strict hardware preemption guarantees.
+2. **Formulate and Implement Bumpless Transfer Filters:** Eliminate motor torque spikes, high-frequency jerk ($\dddot{q}$), and gearbox shock during sudden human joystick takeovers using $\mathcal{C}^2$ smoothstep blending.
+3. **Mitigate Policy Endogeneity and Covariate Shift:** Apply microsecond intervention tagging and truncated episode slicing to prevent behavioral cloning policy collapse during continuous data flywheel retraining.
+4. **Establish Tamper-Evident Telemetry and Cryptographic Lineage:** Implement IEEE 1588 PTP hardware timestamping and SHA-256 hash chains binding sensory observations, model weights, and physical actuator actions.
+5. **Freeze the Human-Authority and Governance Record (`AUTH-01`):** Construct the tenth milestone artifact of the Cumulative Design Dossier establishing authority contracts, blending bounds, and automated dual-bank firmware rollback protocols.
 :::
 
 ::: {.callout-autopsy}
 * **System:** Fleet of 50 Autonomous Pallet Lifters (Behavioral Cloning Policy v2.1)
-* **Incident:** Lifters systematically accelerated into staging pillars upon approaching pallet racks; caused $240,000 in structural warehouse damage.
-* **Telemetry Snapshot:** Engineers fine-tuned policy weights on 10,000 hours of raw field telemetry containing human operator joystick interventions.
-* **Root Cause:** Whenever human operators intervened near pillars, the raw logs recorded an anomalous state transition without an intervention tag. The neural network fit weights to the pre-crash state, treating human panic corrections as nominal actions.
-* **Architectural Flaw:** The data pipeline lacked a truncated episode slicing protocol.
+* **Incident:** Lifters systematically accelerated into concrete staging pillars upon approaching warehouse pallet racks, causing \$240,000 in structural warehouse damage and destroyed chassis frames.
+* **Telemetry Snapshot:** Fleet engineers fine-tuned policy weights on 10,000 hours of raw field telemetry containing human operator joystick interventions collected over six months of commercial operation.
+* **Root Cause:** Whenever human operators intervened near warehouse pillars to prevent imminent impacts, the raw telemetry engine recorded an unbroken stream of state-action pairs without an intervention demarcation tag. The neural network fit empirical risk minimization to the pre-crash state, treating human emergency evasive maneuvers as nominal actions. As a result, the policy learned a catastrophic spurious correlation: *approach structural pillars at maximum velocity before initiating a sharp evasive turn*.
+* **Architectural Flaw:** The telemetry ingestion pipeline lacked an intervention-tagging protocol and failed to apply truncated episode slicing to separate pre-crash failure trajectories from corrective demonstrations.
 :::
 
 ::: {.callout-contract}
 | Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Human supervision state request<br>• Model weight update candidate (OTA payload)<br>• Structured interaction telemetry episode |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Dedicated hardware E-Stop interrupt authority<br>• Bumpless blending filter: jerk-limited handoff<br>• Dual-bank bootloader rollback verification |
-| **Failure Escalation** | *MCU Hardware Reflex* | If human intervenes or candidate firmware trips safety, instantly revert authority and reboot to Golden Verified Firmware Bank A. |
+| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU* | • Candidate action chunk spline $p_t \in \mathbb{R}^{H \times d_u}$<br>• Human supervision heartbeat request<br>• Structured interaction telemetry episode $\tau_{\text{raw}}$<br>• Candidate OTA firmware/model payload |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Dedicated zero-software hardware E-Stop interrupt<br>• $\mathcal{C}^2$ bumpless blending filter: $\|\dot{\mathbf{u}}(t)\| \le a_{\text{max}}, \|\ddot{\mathbf{u}}(t)\| \le j_{\text{max}}$<br>• Active dead-man consent lease validation ($t_{\text{lease}} \le 200\,\text{ms}$)<br>• Dual-bank bootloader rollback verification |
+| **Failure Escalation** | *MCU Hardware Reflex* | If human intervenes ($\|\mathbf{u}_{\text{human}}\| > \delta_{\text{takeover}}$), instantly seize authority via bumpless blending. If consent lease expires or candidate firmware trips safety assertions, revert authority and reboot to Golden Verified Bank A. |
 :::
 
 ::: {.callout-note icon=false}
 **The Sim-to-Real Delta:**
-* **What Simulation Assumes:** Teleoperation data is always expert and noise-free; retraining a policy on logged rollouts monotonically improves performance.
-* **What the Bench Measures:** Human operators react late and over-correct; naive imitation learning on un-sliced intervention logs induces covariate shift and policy collapse.
+* **What Simulation Assumes:** Teleoperation handoffs are instantaneous and continuous; human demonstration data is globally optimal and noise-free; retraining a policy on logged rollouts monotonically improves closed-loop performance.
+* **What the Bench Measures:** Step handoffs between software policies and human joysticks create instantaneous torque steps that shear gearbox pins and trip inverter overcurrent protections; human operators react late and over-correct; un-sliced intervention data contaminates training datasets with severe covariate shift, inducing catastrophic policy collapse.
 :::
 
 ---
 
-## Human Authority and The Authority State Machine
+## The Illusion of Pure Autonomy
 
-Physical authority is not an all-or-nothing binary switch; it is a structured state machine:
+In digital machine learning, an autonomous agent operates in a closed virtual sandbox: if an algorithm makes an erroneous prediction, the runtime engine logs a warning, resets the environment seed, or yields a negative reward penalty. In the physical world, an un-governed motor command shears stainless-steel transmission gears, tears timing belts, or strikes a human collaborator. 
 
-| State Transition | Trigger Event & Condition | Authority Allocation & Action |
-| :--- | :--- | :--- |
-| **Manual $\to$ Autonomous** | Operator releases controls \& arms consent lease | MPU policy proposals permitted; MCU validates workspace boundaries. |
-| **Autonomous $\to$ Manual** | Joystick deflection $> \epsilon$ or pedal pressed | **Immediate Preemption:** Human operator seized authority; bumpless blending filter engages. |
-| **Any $\to$ Hardware E-Stop** | Physical emergency stop depressed or MCU watchdog trip | **Zero-Software Interlock:** Actuator power relays open; spring friction brakes lock mechanical links. |
+No embodied AI system is ever truly isolated from human governance. Whether through direct teleoperation, cooperative shared admittance, dead-man consent heartbeats, or emergency-stop interlocks, human authority remains the foundational safety layer of physical engineering. However, introducing human intervention into an embodied AI architecture creates two severe systems challenges:
 
-* **Manual Override Privilege:** A physical human input (joystick deflection, foot pedal, E-stop button) routed directly to MCU hardware always preempts learned proposals unconditionally.
-* **Consent Leases:** Autonomous operation requires periodic operator presence heartbeats (e.g. dead-man's switch).
+1. **The Mechanical Transition Shock:** When a human operator abruptly deflects an analog joystick to override an erratic neural policy, the instantaneous step change in commanded torque $\Delta \mathbf{u}$ drives an impulse in torque rate-of-change ($\dot{\mathbf{u}} \to \infty$). In physical motor drives, this infinite jerk induces massive stator current inrushes ($I(t) \propto \tau(t)$), tripping inverter overcurrent fuses and driving gear tooth backlash collisions that rapidly destroy mechanical gearboxes.
+2. **The Policy Endogeneity Trap:** In closed-loop physical systems, an agent's actions directly alter its environment ($W_t \xrightarrow{A_t} W_{t+1} \to O_{t+1}$), shaping its future observation distribution. When a human intervenes to avert an accident, logging the continuous trajectory without intervention tags poisons the training dataset. The retrained policy fits the pre-crash drift to the human's emergency recovery turn, learning that reckless driving is the prerequisite for correct operation.
 
----
+Governing physical AI requires a dual-brain architecture: a deterministic, bare-metal microcontroller enforcing hard authority state machines and bumpless blending filters in real time, coupled with an audited data pipeline that enforces cryptographic lineage and truncated episode slicing.
 
-## Bumpless Control Overrides and Jerk-Limited Blending
-
-Abruptly switching between an autonomous neural policy and a human joystick command creates sudden torque steps that damage mechanical gearboxes.
-
-| Blending Filter Parameter | Mathematical Constraint | Physical Function on Mechanism |
-| :--- | :--- | :--- |
-| **Smoothing Window ($\tau_{\text{blend}}$)** | $u(t) = \alpha(t) u_{\text{human}}(t) + (1 - \alpha(t)) u_{\text{policy}}(t)$ | Blending parameter $\alpha(t) \in [0, 1]$ smoothly ramps over $50\text{--}150\text{ ms}$. |
-| **Acceleration Limit ($a_{\text{max}}$)** | $\|\dot{u}(t)\| \le a_{\text{max}}$ | Prevents discontinuous velocity jumps and motor driver overcurrent spikes. |
-| **Jerk Bound ($j_{\text{max}}$)** | $\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$ | Bounds torque rate-of-change, eliminating mechanical shudder and gearbox backlash impacts. |
+::: {.callout-note icon=false}
+* **CS / ML Systems Perspective:** Think of bumpless transfer as a real-time S-curve learning rate scheduler for physical torque, preventing discontinuity between human and model outputs.
+* **EE / Robotics Perspective:** Bumpless transfer is an active tracking filter with integrator state synchronization that eliminates actuator jerk and inverter tripping during controller handoffs.
+:::
 
 ---
 
-## Policy Endogeneity and Intervention Covariate Shift
+## Human Authority and the Authority State Machine
 
-A physical robot shapes its own future data distribution. When a human operator intervenes to prevent an accident:
+Physical authority cannot be treated as an arbitrary boolean variable inside an untrusted application thread. If an operator pulls a manual emergency stop, that command must not wait in a Linux inter-process communication (IPC) message queue behind a blocked Vision-Language Model inference call.
 
-| Logging Protocol | Log Record Structure | Impact on Retrained Policy |
-| :--- | :--- | :--- |
-| **Naive Logging** *(Poisonous)* | Continuous rollout stream without takeover demarcation: $[s_t, a_t]$ logged blindly. | Model learns spurious correlation: *"Drive fast directly toward obstacles before steering sharp right."* Induces catastrophic policy collapse. |
-| **Governed Slicing** *(Safe Flywheel)* | Takeover timestamp $t_{\text{takeover}}$ recorded; preceding trajectory sliced and tagged as failure; recovery isolated as corrective demo. | Policy learns correct nominal behavior while isolating recovery demonstrations into structured safe-recovery subsets. |
+Authority in Physical AI follows a strict, deterministic hierarchy implemented directly in bare-metal microcontroller silicon:
 
-To prevent policy collapse from intervention data:
+$$\text{Priority 0 (Hardware E-Stop)} > \text{Priority 1 (Manual Joystick)} > \text{Priority 2 (MCU Safety Filter)} > \text{Priority 3 (MPU Neural Policy)}$$
 
-1. **Intervention Tagging:** The logging engine records the exact millisecond ($t_{\text{takeover}}$) when human override occurred.
-2. **Truncated Episode Slicing:** The data flywheel automatically discards the preceding $N$ seconds of autonomous execution prior to takeover, isolating the human recovery trajectory as a separate demonstration.
+![**Deterministic Human--Machine Authority State Machine.** Operational authority transitions smoothly between Manual Override, Shared Control, and Autonomous Lease modes. Physical human inputs and zero-software hardware interlocks maintain absolute preemption privileges over learned neural proposals.](figures/fig10_authority_state_machine.svg){#fig-authority-state-machine width=100%}
+
+### The Four Operational Authority States
+
+As illustrated in @fig-authority-state-machine, the runtime environment transitions between four discrete operational states:
+
+1. **Manual Override (Direct Teleoperation):** The human operator exercises primary authority over the machine via an analog joystick, teach pendant, or haptic master arm. The neural policy proposal stream on the Linux MPU is disabled or relegated to a passive observer. The real-time microcontroller (MCU) continues to enforce kinematic joint limits and velocity clamps, while simultaneously running an active tracking observer to synchronize internal controller states.
+2. **Shared / Cooperative Control:** Actuator control is dynamically blended between human intent and learned foundation policies. The operator provides high-level guidance or impedance bias, while the neural policy assists with trajectory stabilization, obstacle avoidance, or fine precision insertion. Blended commands are arbitrated via dynamic admittance:
+   $$\mathbf{u}(t) = \alpha(t) \mathbf{u}_{\text{human}}(t) + (1 - \alpha(t)) \mathbf{u}_{\text{policy}}(t)$$
+3. **Autonomous Lease:** The neural policy proposes multi-step action chunk splines at $20\,\text{Hz}$ from the Linux MPU. The real-time MCU validates each proposal against $1000\,\text{Hz}$ Control Barrier Functions ($h(x) \ge 0$) and dynamic stopping distances ($d_{\text{stop}}$). Autonomy is gated by an active **Dead-Man Consent Lease**: the operator must continuously assert a physical presence heartbeat (e.g. capacitive grip sensor, foot pedal, or optical presence curtain) refreshed every $t_{\text{lease}} \le 200\,\text{ms}$. If the lease expires, authority immediately reverts.
+4. **Category 0 / 1 Emergency Stop (Zero-Software Interlock):** The ultimate physical fail-safe state. Depressing a physical emergency stop button or tripping the hardware watchdog drops safety-rated contactor relays, physically disconnecting motor power buses and engaging mechanical spring-applied friction brakes.
+
+| Authority State | Primary Authority | Substrate | Entry Condition / Trigger | Active Invariants & Enforcements |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Manual Override** | Human Operator | MCU Bare-Metal / SPI | Operator seizes control ($\|\mathbf{u}_{\text{h}}\| > \delta_{\text{takeover}}$) | Clamps joint limits ($q \in [q_{\text{min}}, q_{\text{max}}]$); runs integrator tracking sync. |
+| **2. Shared Control** | Human + Policy | MCU Blending Filter | Cooperative task engagement | $\mathcal{C}^2$ quintic blending; bounds torque derivative $\|\dot{\mathbf{u}}\| \le a_{\text{max}}$. |
+| **3. Autonomous Lease** | Neural MPU Policy | Linux MPU + Edge NPU | Consent heartbeat active ($t_{\text{lease}} < 200\,\text{ms}$) | 1000 Hz CBF enforcers ($h(x) \ge 0$); dynamic stopping check $d_{\text{gap}} > d_{\text{stop}}$. |
+| **4. Hardware E-Stop** | Hardware Interlock | Dedicated Safety Relay | Physical button pressed, watchdog trip | Zero-software contactor disconnect; spring friction brakes locked. |
+: The Human--Machine Authority State Matrix across execution substrates. Every state transition enforces explicit hardware invariants and timing guarantees. {#tbl-authority-states}
+
+### Preemption Privileges and Consent Heartbeats
+
+To ensure an operator can seize control at any moment without fighting an active neural policy, the MCU continuously monitors raw analog joystick deflection. When the operator applies a command exceeding the deadband threshold:
+
+$$\|\mathbf{u}_{\text{human}}(t)\| > \delta_{\text{takeover}}$$
+
+the MCU's real-time timer interrupt instantly triggers a **Preemptive Takeover Event**. The autonomous proposal pipeline is stripped of authority within $< 1\,\text{ms}$, and the control loop activates the bumpless blending filter to transition smoothly to manual control.
 
 ---
 
-## Microsecond PTP Logging and Cryptographic Provenance
+## Bumpless Control Overrides and Jerk-Bounded Blending
 
-For safety accountability and regulatory release cases:
+In theoretical control software, switching between two controllers is modeled as a discrete multiplexer switch:
 
-* **PTP Synchronized Ring Buffers:** All sensor inputs, model proposals, MCU safety vetoes, and actuator currents are recorded into an on-board flight data recorder stamped with microsecond hardware timebases.
-* **Cryptographic Lineage:** Every trained model artifact carries a cryptographic hash linking it directly to the exact dataset version, hyperparameter configuration, and qualification test run.
+$$\mathbf{u}(t) = \begin{cases} \mathbf{u}_{\text{policy}}(t), & t < t_{\text{takeover}} \\ \mathbf{u}_{\text{human}}(t), & t \ge t_{\text{takeover}} \end{cases}$$
+
+In physical hardware, this step transition is catastrophic. 
+
+### The Physics of Mechanical Torque Shock
+
+Consider an articulated manipulator where Joint 2 is commanded by a neural policy to hold position against gravity with $\mathbf{u}_{\text{policy}} = 0.4\,\text{Nm}$. At $t = 100\,\text{ms}$, an operator abruptly pulls the teleoperation joystick to command an evasive velocity requiring $\mathbf{u}_{\text{human}} = 1.1\,\text{Nm}$. 
+
+If the controller switches instantaneously, the step error $\Delta \mathbf{u} = +0.7\,\text{Nm}$ produces a theoretical impulse in torque derivative:
+
+$$\dot{\mathbf{u}}(t) = \frac{d\mathbf{u}}{dt} \longrightarrow \infty$$
+
+Because electromagnetic torque in brushless DC (BLDC) motors is proportional to stator quadrature current ($\tau = K_t I_q$), the Field-Oriented Control (FOC) inverter attempts to deliver an instantaneous current spike. As shown in @fig-bumpless-transfer(c), this current surge spikes past the driver's overcurrent trip threshold ($I_{\text{trip}} = 6.0\,\text{A}$), tripping hardware fault protection and shutting down the motor driver. 
+
+Simultaneously, the sudden torque step excites high-frequency mechanical resonances, slamming gear teeth across backlash gaps, accelerating gear tooth pitting, and causing audible mechanical shudder.
+
+![**Comparison of Hard Step Takeover vs. $\mathcal{C}^2$ Bumpless Torque Blending.** (a) Commanded control torque $u(t)$ during a $0.7\,\text{Nm}$ human takeover at $t = 100\,\text{ms}$. (b) Torque rate-of-change $\dot{u}(t) \propto \dddot{q}(t)$ reveals a severe Dirac impulse during hard switching versus a bounded, smooth bell curve ($\le 11\,\text{Nm/s}$) under bumpless blending. (c) Motor phase current $I(t)$ demonstrates how hard switching induces a $7.4\,\text{A}$ inrush spike that trips overcurrent limits, whereas bumpless blending maintains safe, continuous current delivery.](figures/fig10_bumpless_transfer.svg){#fig-bumpless-transfer width=100%}
+
+### The $\mathcal{C}^2$ Smoothstep Blending Formulation
+
+To eliminate torque steps and bound mechanical jerk, the MCU routes all authority transitions through a **Bumpless Blending Filter**. Rather than switching instantaneously, the active control law blends the sources across a configurable time window $\tau_{\text{blend}} \in [50, 150]\,\text{ms}$:
+
+$$\mathbf{u}_{\text{actuator}}(t) = (1 - \alpha(\sigma)) \mathbf{u}_{\text{policy}}(t) + \alpha(\sigma) \mathbf{u}_{\text{human}}(t)$$
+
+where $\sigma$ is the normalized transition progress:
+
+$$\sigma(t) = \frac{t - t_{\text{takeover}}}{\tau_{\text{blend}}}, \quad \sigma \in [0, 1]$$
+
+To guarantee that the first derivative (acceleration) and second derivative (jerk) remain strictly continuous ($\mathcal{C}^2$ continuity) at the boundaries $\sigma = 0$ and $\sigma = 1$, we employ a **quintic smoothstep polynomial**:
+
+$$\alpha(\sigma) = 6\sigma^5 - 15\sigma^4 + 10\sigma^3$$
+
+Differentiating with respect to time yields the smooth transition derivatives:
+
+$$\dot{\alpha}(\sigma) = \frac{1}{\tau_{\text{blend}}} \left( 30\sigma^4 - 60\sigma^3 + 30\sigma^2 \right)$$
+
+$$\ddot{\alpha}(\sigma) = \frac{1}{\tau_{\text{blend}}^2} \left( 120\sigma^3 - 180\sigma^2 + 60\sigma \right)$$
+
+Evaluating at the endpoints confirms complete derivative containment:
+
+$$\dot{\alpha}(0) = \dot{\alpha}(1) = 0, \quad \ddot{\alpha}(0) = \ddot{\alpha}(1) = 0$$
+
+Under this formulation, the maximum torque derivative during a step input $\Delta \mathbf{u}$ is bounded deterministically:
+
+$$\|\dot{\mathbf{u}}(t)\|_{\text{max}} \le \frac{1.875}{\tau_{\text{blend}}} \|\Delta \mathbf{u}\| \le j_{\text{max}}$$
+
+For $\Delta \mathbf{u} = 0.7\,\text{Nm}$ and $\tau_{\text{blend}} = 100\,\text{ms}$, the peak torque rate is strictly bounded at $13.1\,\text{Nm/s}$, safely below the mechanical gearhead limit ($j_{\text{max}} = 15.0\,\text{Nm/s}$) and preventing overcurrent trips.
+
+| Parameter | Mathematical Constraint | Real-Time Substrate | Physical Function on Mechanism |
+| :--- | :--- | :--- | :--- |
+| **Blending Window ($\tau_{\text{blend}}$)** | $\tau_{\text{blend}} \in [50, 150]\,\text{ms}$ | MCU 1000 Hz ISR | Establishes finite transition time between policy proposal and human control. |
+| **Polynomial Order** | $\alpha(\sigma) = 6\sigma^5 - 15\sigma^4 + 10\sigma^3$ | Static Floating-Point | Guarantees $\mathcal{C}^2$ continuity ($\dot{\alpha} = \ddot{\alpha} = 0$ at boundaries). |
+| **Acceleration Bound ($a_{\text{max}}$)** | $\|\dot{\mathbf{u}}(t)\| \le a_{\text{max}}$ | Hardware Current Loop | Eliminates stator coil inrush current spikes ($I(t) \le I_{\text{continuous}}$). |
+| **Jerk Bound ($j_{\text{max}}$)** | $\|\ddot{\mathbf{u}}(t)\| \le j_{\text{max}}$ | MCU Safety Enforcer | Eliminates gearbox tooth backlash shock and torsional resonance vibration. |
+| **Tracking Integrator Sync** | $\dot{x}_{\text{int}} = \frac{1}{\tau_{\text{track}}}(x_{\text{actual}} - x_{\text{int}})$ | Real-Time Loop State | Prevents PID integrator windup bump when human control loop takes over. |
+: Bumpless Transfer and Blending Filter Parameters. Every parameter maps directly to hardware timing and mechanical protection constraints. {#tbl-bumpless-parameters}
+
+### Integrator Windup and Controller State Synchronization
+
+A subtle failure mode in human takeover occurs when the human's manual controller (e.g. an impedance or PID loop on the host workstation) runs in the background while the robot is under autonomous control. 
+
+If the robot's physical position deviates slightly from the human's joystick setpoint during autonomous execution, the human controller's internal integral term ($\int e(t) dt$) accumulates a massive error charge—a phenomenon known as **integrator windup**. When authority transfers, this charged integrator discharges into the motors, causing a violent instantaneous jerk even if the feedforward joystick command is centered.
+
+To prevent integrator windup bumps, the human control loop must execute **Active State Synchronization** during autonomous mode:
+
+$$\dot{x}_{\text{human\_int}}(t) = \frac{1}{\tau_{\text{track}}} \left( x_{\text{actual}}(t) - x_{\text{human\_int}}(t) \right)$$
+
+By continuously slaving the inactive controller's internal state to the actual physical plant, the integrator error is identically zero at the instant of takeover ($t = t_{\text{takeover}}$), ensuring a clean, shudder-free handoff.
 
 ---
 
-## Field Shadow Mode and Dual-Bank OTA Memory Rollback
+## Policy Endogeneity and the Governed Data Flywheel
 
-When deploying updated models over-the-air (OTA):
+Modern embodied AI architectures rely on continuous learning: robots collect interaction telemetry in the field, upload rollouts to the cloud, fine-tune behavioral cloning (BC) or diffusion policies, and deploy updated model weights over-the-air (OTA). 
 
-1. **Shadow Mode Execution:** Candidate policies run in the background on live sensory streams without physical actuator authority, logging their proposals to compare against the active baseline policy.
-2. **Dual-Bank A/B Flash Memory:** Microcontroller firmware and model weights are written to Bank B while Bank A executes. If the new image fails health assertions within 60 seconds, the hardware watchdog automatically reverts to Bank A.
+This feedback cycle is commonly known as the **Data Flywheel**. However, in physical systems, an un-governed data flywheel creates an insidious failure mode: **Policy Endogeneity**.
+
+![**Policy Endogeneity: Naive Flywheel vs. Governed Episode Slicing.** In a naive data flywheel (top), un-tagged human intervention logs contaminate training datasets with spurious causal correlations, causing catastrophic policy collapse. Under governed episode slicing (bottom), the MCU tags the exact takeover timestamp, discards pre-crash failure buffers, and isolates human recovery demonstrations with cryptographic SHA-256 lineage.](figures/fig10_policy_endogeneity_flywheel.svg){#fig-policy-endogeneity width=100%}
+
+### The Intervention Poisoning Paradox
+
+In classical imitation learning, training data is assumed to be sampled from an expert stationary distribution (@ross2011reduction). On a physical robot deployed in the field, this assumption is fundamentally violated whenever a human operator intervenes to prevent an accident.
+
+Consider the causal sequence during an intervention event:
+
+1. **The Drift Phase ($t \in [t_{\text{takeover}} - T_{\text{discard}}, t_{\text{takeover}}]$):** The autonomous policy drifts out of distribution due to optical glare, mechanical backlash, or unexpected obstacle placement. The robot accelerates directly toward a structural warehouse pillar.
+2. **The Takeover Event ($t = t_{\text{takeover}}$):** The human operator panics, grabs the joystick, and applies maximum counter-steering torque.
+3. **The Recovery Phase ($t \in [t_{\text{takeover}}, t_{\text{takeover}} + T_{\text{recover}}]$):** The human maneuvers the robot safely around the pillar back to the nominal path.
+
+If the logging pipeline records this continuous episode naively and appends it to the training dataset $\mathcal{D}_{\text{train}}$, empirical risk minimization fits model parameters $\theta$ across the entire stream:
+
+$$\min_\theta \sum_{t} \mathcal{L}\left( \pi_\theta(O_t), a_t \right)$$
+
+Because the high-speed approach toward the pillar ($O_{t-k}$) is immediately followed by a sharp right turn ($a_t = \text{steer\_right}$), the neural network learns a poisonous spurious correlation:
+
+$$P\left(a_t = \text{steer\_right} \mid \text{DistanceToPillar} < 0.3\,\text{m}, v > 1.5\,\text{m/s}\right) \approx 1.0$$
+
+When the retrained policy is deployed back to the fleet, it does not avoid pillars; it deliberately drives straight toward structural pillars at high velocity, waiting until the final fraction of a second to attempt an emergency turn. Because physical inertia ($m \mathbf{v}$) and stopping distance constraints cannot be overcome at speed, the retrained fleet systematically collides with warehouse infrastructure—a total **Policy Collapse**.
+
+### The Truncated Episode Slicing Protocol
+
+To transform field interventions from dataset poison into safe, high-value training signals, the governance engine implements **Truncated Episode Slicing**:
+
+| Trajectory Phase | Time Boundary | Hardware & Logging Action | Destination Partition |
+| :--- | :--- | :--- | :--- |
+| **Nominal Execution** | $[0, t_{\text{takeover}} - T_{\text{discard}}]$ | Clean autonomous tracking | Nominal Behavioral Cloning ($\mathcal{D}_{\text{nominal}}$) |
+| **Pre-Crash Drift** | $[t_{\text{takeover}} - T_{\text{discard}}, t_{\text{takeover}}]$ | Discarded from training; flagged as pre-failure | Negative Failure Buffer ($\mathcal{D}_{\text{fail}}$) |
+| **Human Recovery** | $[t_{\text{takeover}}, t_{\text{recover}}]$ | Tagged with hardware PTP timestamp | Recovery Adaptation Dataset ($\mathcal{D}_{\text{recover}}$) |
+
+1. **Microsecond Intervention Tagging:** The instant $\|\mathbf{u}_{\text{human}}\| > \delta_{\text{takeover}}$, the real-time MCU stamps the telemetry packet with an immutable hardware PTP timestamp $t_{\text{takeover}}$ and flags the stream as `INTERVENTION_ACTIVE`.
+2. **Pre-Takeover Slicing ($T_{\text{discard}}$):** The ingestion pipeline automatically discards the preceding $T_{\text{discard}} = 2.0\,\text{seconds}$ of autonomous trajectory prior to takeover. This pre-crash drift is routed to a dedicated **Negative Failure Buffer** ($\mathcal{D}_{\text{fail}}$) used exclusively for counterfactual safety verification and out-of-distribution detection.
+3. **Recovery Demonstration Partitioning:** The human recovery trajectory $[t_{\text{takeover}}, t_{\text{recover}}]$ is isolated and assigned to a **Recovery Adaptation Dataset** ($\mathcal{D}_{\text{recover}}$). In this dataset, samples are explicitly conditioned on a recovery intent token or used in goal-conditioned DAgger formulations (@ross2011reduction).
+4. **Nominal Slice Retention:** Only the validated, non-intervened trajectory $[0, t_{\text{takeover}} - T_{\text{discard}}]$ enters the pristine nominal behavioral cloning dataset ($\mathcal{D}_{\text{nominal}}$).
+
+| Slicing Regime | Time Window Relative to Takeover | Destination Dataset | Purpose & Model Training Impact |
+| :--- | :--- | :--- | :--- |
+| **Nominal Slice** | $[0, t_{\text{takeover}} - T_{\text{discard}}]$ | $\mathcal{D}_{\text{nominal}}$ (Pristine) | Standard behavioral cloning; free from drift and human panic artifacts. |
+| **Pre-Crash Drift** | $[t_{\text{takeover}} - T_{\text{discard}}, t_{\text{takeover}}]$ | $\mathcal{D}_{\text{fail}}$ (Negative Buffer) | Discarded from BC; used for offline hazard analysis and OOD detection. |
+| **Human Recovery** | $[t_{\text{takeover}}, t_{\text{recover}}]$ | $\mathcal{D}_{\text{recover}}$ (Corrective) | Conditioned recovery policy training; teaches stabilization from boundary states. |
+: The Truncated Episode Slicing Protocol. Strict dataset partitioning prevents intervention-induced covariate shift while capturing valuable recovery demonstrations. {#tbl-slicing-rules}
+
+---
+
+## Microsecond PTP Logging and Cryptographic Lineage
+
+For safety qualification, regulatory compliance, and post-incident autopsies, every physical action must be defensibly traceable to its originating sensory inputs, neural model weights, and software release version.
+
+### IEEE 1588 Precision Time Protocol (PTP)
+
+Physical AI systems operate across heterogeneous clock domains: image sensors capture photons at $60\,\text{Hz}$, the Linux MPU runs diffusion planning at $20\,\text{Hz}$, the real-time MCU executes safety enforcers at $1000\,\text{Hz}$, and motor inverters switch PWM at $20\,\text{kHz}$.
+
+To ensure telemetry alignment, all compute nodes synchronize over Ethernet using **IEEE 1588v2 Precision Time Protocol (PTP)** hardware timestamping. Hardware MAC layers stamp packets at the physical transceiver boundary, achieving sub-microsecond synchronization ($\pm 1\,\mu\text{s}$) across the entire machine.
+
+### Cryptographic Telemetry Lineage Chains
+
+Every logged flight recorder packet carries a cryptographic hash chain binding its sensory observation $O_t$, proposed action $p_t$, MCU permitted action $u_t$, and active model weights:
+
+$$\text{PacketHash}_t = \text{SHA-256}\left( \text{PacketHash}_{t-1} \,\|\, t_{\text{ptp}} \,\|\, O_t \,\|\, p_t \,\|\, u_t \,\|\, \text{ModelHash} \right)$$
+
+This tamper-evident Merkle chain guarantees that after a physical incident, investigators can prove with mathematical certainty whether a motor torque was commanded by a specific neural network checkpoint, modified by the MCU safety barrier, or overridden by a human operator.
+
+| Field Name | Data Type / Representation | Substrate & Source | Verification Function in Post-Incident Audit |
+| :--- | :--- | :--- | :--- |
+| `ptp_timestamp_ns` | `uint64_t` (Nanoseconds UTC) | IEEE 1588 Hardware MAC | Aligns multi-node sensor frames, IPC messages, and inverter currents. |
+| `authority_state` | `enum {MANUAL, SHARED, AUTON, ESTOP}` | MCU State Register | Identifies which entity held primary physical authority during the millisecond. |
+| `blend_alpha` | `float32` ($\alpha \in [0.0, 1.0]$) | MCU Blending Filter | Records exact weighting between human joystick and neural proposal. |
+| `model_weights_sha256` | `char[64]` (SHA-256 Digest) | MPU Secure Enclave | Binds physical telemetry to the exact versioned neural network artifact. |
+| `dataset_lineage_sha256`| `char[64]` (SHA-256 Digest) | Cloud Training Ledger | Links model weights directly to audited training data partitions ($\mathcal{D}_{\text{clean}}$). |
+| `telemetry_chain_hash` | `char[64]` (SHA-256 Merkle Node) | Flight Recorder Engine | Provides tamper-evident proof that log frames were not altered post-crash. |
+: Cryptographic Telemetry Lineage Schema. Structured audit records guarantee end-to-end provenance from dataset curation to physical actuation. {#tbl-provenance-schema}
+
+---
+
+## Shadow Mode Evaluation and Dual-Bank Firmware Rollback
+
+Deploying updated neural network weights or control firmware to physical machines in the field carries severe physical risk. A newly trained policy may perform flawlessly on synthetic validation datasets yet harbor dangerous out-of-distribution failure modes under physical bench lighting.
+
+To eliminate release risks, governance enforces two deployment protocols:
+
+### 1. Field Shadow Mode Execution
+
+Before a newly trained candidate policy $\pi_{\text{candidate}}$ is granted physical actuator authority, it is deployed in **Shadow Mode**:
+
+* The active baseline policy $\pi_{\text{baseline}}$ executes on the MPU and drives the physical actuators through the MCU safety filter.
+* The candidate policy $\pi_{\text{candidate}}$ executes concurrently on the secondary NPU cores, consuming the live camera and sensor streams ($O_t$) in real time.
+* The candidate policy's proposals $p_t^{\text{cand}}$ are logged to the flight recorder but blocked from reaching the motor CAN bus.
+* An automated evaluator compares candidate proposals against baseline decisions and human intervention triggers over a 100-hour soak period. The candidate model is promoted to active authority only if its proposed trajectories violate zero control barrier envelopes ($h(x) \ge 0$) and exhibit lower predicted intervention rates than the baseline.
+
+### 2. Dual-Bank A/B Flash Memory Rollback
+
+When firmware or neural network weights are updated over-the-air (OTA):
+
+* The microcontroller's internal flash memory is partitioned into two independent banks: **Bank A (Active)** and **Bank B (Staging)**.
+* New firmware binaries and quantized tensor weights are written to Bank B while Bank A continues normal operation.
+* Upon reboot, the bootloader attempts execution from Bank B and arms a **Hardware Rollback Watchdog Timer** ($t_{\text{watchdog}} = 60\,\text{seconds}$).
+* If the new firmware fails to initialize communication transceivers, misses a sensor timing deadline, or fails self-test health assertions within 60 seconds, the hardware watchdog trips and automatically reboots the processor back into the known-good Golden Bank A firmware.
 
 ---
 
@@ -101,45 +279,93 @@ When deploying updated models over-the-air (OTA):
 
 ::: {.callout-warning}
 ### Common Engineering Fallacies
+
 * **Fallacy 1:** *"More data always improves a physical AI policy, even if collected from human intervention recoveries."*  
-  *Correction:* Un-tagged human interventions contaminate behavioral cloning datasets with severe covariate shift, causing the policy to repeat dangerous states.
-* **Fallacy 2:** *"Software over-the-air updates can proceed directly to flash without dual-bank rollback protection."*  
-  *Correction:* A corrupted OTA update on a physical machine can brick communication transceivers, requiring destructive manual disassembly.
+  *Correction:* Un-tagged human interventions contaminate behavioral cloning datasets with severe covariate shift. The neural network treats pre-crash drift states as nominal conditions that should trigger emergency turns, teaching the policy to drive recklessly into obstacles.
+* **Fallacy 2:** *"A software override switch running in Python on Linux provides adequate human safety authority."*  
+  *Correction:* Python garbage collection pauses, Linux kernel thread preemption, and high-load memory bus saturation introduce multi-hundred-millisecond latency spikes. Human override inputs must be routed directly to bare-metal microcontroller hardware interrupts, completely bypassing the high-level operating system.
+* **Fallacy 3:** *"Bumpless transfer is only a cosmetic feature for operator joystick comfort."*  
+  *Correction:* Step handoffs in torque produce unbounded torque derivatives ($\dot{\mathbf{u}} \to \infty$). In physical BLDC actuators, this infinite jerk drives severe inrush current spikes that trip inverter overcurrent protections and mechanical shock that rapidly destroys precision gear teeth.
+* **Fallacy 4:** *"Over-the-air firmware updates can flash memory directly without dual-bank rollback hardware."*  
+  *Correction:* A corrupted OTA update on a deployed physical robot can brick CAN and Ethernet communication controllers, requiring destructive manual disassembly in the field. Dual-bank A/B memory with hardware watchdog auto-rollback is mandatory.
 :::
 
 ---
 
 ::: {.callout-decision}
-### Dossier Delta: Human-Authority and Governance Record (`AUTH-01`)
-Freeze the governance and data lineage mechanisms:
+### Dossier Delta: Human-Authority and Governed Lineage Record (`AUTH-01`)
 
-1. The authority handoff state machine and bumpless blending parameters.
-2. The intervention logging schema and truncated episode slicing rules.
-3. Cryptographic hash records linking trained weights to dataset lineage.
-4. The dual-bank OTA update and automated rollback protocol.
+Freeze the human authority state machine, bumpless blending parameters, truncated episode slicing configuration, and cryptographic lineage hashes into the Cumulative Design Dossier:
+
+1. The authority state transition parameters and joystick takeover threshold ($\delta_{\text{takeover}}$).
+2. The $\mathcal{C}^2$ quintic bumpless blending window ($\tau_{\text{blend}}$) and maximum jerk bound ($j_{\text{max}}$).
+3. The truncated episode slicing rules ($T_{\text{discard}}$) and dataset partition destinations.
+4. The cryptographic SHA-256 hash digests linking trained model weights to verified dataset lineage.
+5. The dual-bank A/B memory configuration and hardware rollback watchdog timeout.
 
 ```yaml
 # DOSSIER CHECKPOINT: AUTH-01
-governance_record:
-  system_id: "PHYSICAL-AGENT-01"
-  version: "1.0.0"
-  human_authority:
-    e_stop_priority: 0
-    joystick_override_threshold_norm: 0.15
-    bumpless_blend_window_ms: 100.0
-    max_override_jerk_rad_s3: 20.0
-  data_governance:
-    intervention_tagging_enabled: true
-    pre_intervention_discard_window_s: 2.0
-    telemetry_ptp_sync_source: "ETH_IEEE1588"
-  ota_and_provenance:
-    active_bank: "BANK_A"
-    rollback_watchdog_timeout_s: 60.0
-    model_weights_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+# Human-Authority, Bumpless Override and Governed Data Record
+system_id: "PHYSICAL-AI-AGENT-01"
+dossier_milestone: "AUTH-01"
+schema_version: "1.0.0"
+
+authority_hierarchy:
+  priority_order:
+    - priority: 0
+      name: "HARDWARE_ESTOP"
+      substrate: "SAFETY_CONTACTOR_RELAY"
+      preemption: "ZERO_SOFTWARE_INTERLOCK"
+    - priority: 1
+      name: "MANUAL_OVERRIDE"
+      substrate: "MCU_BARE_METAL_ISR"
+      preemption: "HARDWARE_INTERRUPT"
+    - priority: 2
+      name: "MCU_SAFETY_FILTER"
+      substrate: "MCU_1000HZ_CBF"
+      preemption: "QP_VETO_PROJECTION"
+    - priority: 3
+      name: "MPU_NEURAL_POLICY"
+      substrate: "LINUX_MPU_NPU"
+      preemption: "UNTRUSTED_PROPOSAL"
+
+human_authority_state_machine:
+  takeover_threshold_norm: 0.15          # Joystick deflection > 15% triggers takeover
+  deadman_lease_timeout_ms: 200.0        # Continuous human consent heartbeat timeout
+  active_state_sync_tau_ms: 50.0         # Integrator tracking sync time constant
+
+bumpless_blending_filter:
+  transition_window_tau_blend_ms: 100.0  # C2 smoothstep ramp duration
+  polynomial_type: "QUINTIC_SMOOTHSTEP"  # 6*s^5 - 15*s^4 + 10*s^3
+  max_allowable_jerk_rad_s3: 15.0        # Bounded actuator jerk threshold
+  max_allowable_accel_rad_s2: 8.0        # Bounded acceleration threshold
+  inverter_current_trip_limit_a: 6.0     # Peak driver fault threshold
+
+governed_data_flywheel:
+  intervention_tagging_enabled: true
+  ptp_clock_sync_accuracy_us: 1.0        # IEEE 1588v2 hardware timestamping
+  pre_intervention_discard_s: 2.0        # Discarded pre-crash horizon (T_discard)
+  dataset_partitions:
+    nominal_slice: "s3://telemetry/d_nominal_clean.parquet"
+    negative_failure_buffer: "s3://telemetry/d_fail_drift.parquet"
+    recovery_demonstrations: "s3://telemetry/d_recover_demos.parquet"
+
+cryptographic_lineage_and_ota:
+  model_weights_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  training_dataset_sha256: "8f7b3a29c0e5a8d9b1c3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5"
+  active_flash_bank: "BANK_A"
+  staging_flash_bank: "BANK_B"
+  rollback_watchdog_timeout_s: 60.0
+  shadow_mode_evaluation_hours: 100.0
 ```
 :::
 
 ::: {.callout-lab}
-### Hands-on Realization: Lab 11 — Bumpless Override and Data Governance
-Implement human authority state transitions on the **Physical AI Kit (Arduino UNO Q)**. Connect an analog joystick to the MCU and execute live overrides during autonomous trajectory execution. Observe how bumpless filtering eliminates motor current spikes. Record un-tagged vs. sliced intervention logs to demonstrate how naive retraining induces policy collapse.
+### Hands-on Realization: Lab 10 — Bumpless Transfer and Governed Lineage
+
+Connect an analog dual-axis joystick to the **Arduino UNO Q Dual-Brain Kit** (ARM Cortex-M4 MCU + Linux MPU). Configure the Linux MPU to stream high-rate autonomous trajectory proposals while the MCU executes the real-time authority state machine. 
+
+1. **Simulate Sudden Human Takeovers:** Trigger hard joystick overrides during active trajectory tracking. Measure motor phase current and torque derivatives on an oscilloscope, observing how hard switching causes severe current spikes ($> 6\,\text{A}$) and audible gearbox backlash shudder.
+2. **Implement $\mathcal{C}^2$ Smoothstep Blending:** Flash the MCU with the quintic bumpless blending filter ($\tau_{\text{blend}} = 100\,\text{ms}$). Prove on telemetry captures that actuator jerk is strictly bounded ($\le 13\,\text{Nm/s}$) and current spikes are completely eliminated.
+3. **Audit Intervention Data Slicing:** Record field rollouts containing manual interventions. Compare naive behavioral cloning retraining against the truncated episode slicing protocol, demonstrating on the bench fixture how naive fine-tuning induces policy collapse while sliced lineage maintains stable autonomous performance (`labs/10-bumpless-governance`).
 :::

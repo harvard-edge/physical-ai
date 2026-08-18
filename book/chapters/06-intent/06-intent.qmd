@@ -1,167 +1,439 @@
-# Reasoning
+# Semantic Reasoning and Deliberation
 
-![Systems Organ Focus: Stage 4 (Semantic Deliberation & System 2 Expiring Intent Leases).](figures/fig_pipeline_locator.pdf){#fig-locator-ch06 width=100%}
+![**Systems Organ Focus: Stage 4 (Semantic Deliberation & System 2 Expiring Intent Leases).** Stage 4 operates asynchronously on the Linux MPU at $0.5\text{--}2\text{ Hz}$, converting open-vocabulary natural language instructions into metric $SE(3)$ affordance targets wrapped in time-bounded validity leases ($\mathcal{L}_{\text{intent}}$) before handoff to System 1.5 motion planners.](figures/fig_pipeline_locator.svg){#fig-locator-ch06 width=100%}
 
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Ground Open-Vocabulary Goals into $SE(3)$ Frames:** Bridge semantic language tokens to 3D metric bounding boxes and approach vectors.
-2. **Validate Kinematic Reachability:** Implement non-blocking workspace and manipulability filters ($\kappa(J)$) on untrusted foundation model proposals.
-3. **Structure Asynchronous System 2 Proposal Queues:** Isolate slow, stochastic VLM inference ($0.5\text{--}2\text{ Hz}$) from continuous real-time motor execution.
-4. **Enforce Expiring Intent Validity Leases ($t_{\text{expire}}$):** Formulate time-bounded intent contracts that revoke authorization if world state moves before execution begins.
-5. **Freeze the Intent Schema (`INTENT-01`):** Construct the sixth artifact of the Cumulative Design Dossier establishing semantic proposal payloads and reachability boundaries.
+1. **Ground Open-Vocabulary Goals into Metric $SE(3)$ Affordance Frames:** Lift 2D vision-language patch tokens into calibrated 3D metric coordinate frames ($T_{\text{target}}^{\text{world}} \in SE(3)$) using camera intrinsics ($K^{-1}$), surface normal estimation, and grasp contact geometries.
+2. **Deconstruct the Dual-Brain Speed Mismatch:** Formulate the asynchronous systems decoupling between slow, memory-bandwidth-bound VLM deliberation ($0.5\text{--}2\text{ Hz}$) and real-time execution loops.
+3. **Implement Morphological Reachability and Singularity Filters:** Screen untrusted foundation model proposals through geometric reachability envelopes ($\mathcal{W}_{\text{reach}}$), Jacobian condition numbers ($\kappa(J)$), and Yoshikawa manipulability indices ($w = \sqrt{\det(J J^T)}$).
+4. **Enforce Expiring Intent Validity Leases ($\mathcal{L}_{\text{intent}}$):** Structure time-bounded intent contracts that monitor dynamic scene drift ($\|p_{\text{now}} - p_{\text{capture}}\| > \delta_{\text{drift}}$) and revoke physical authorization when timestamps expire ($t > t_{\text{expire}}$).
+5. **Design Deterministic Model Abstention and Safe Fallback Protocols:** Implement calibrated confidence gates and zero-authority fallback transitions (IEC 60204-1 Category 2 position hold and safe home postures) when encountering ambiguous or out-of-distribution prompts.
+6. **Freeze the Intent Schema (`INTENT-01`):** Author the sixth versioned artifact of the Cumulative Design Dossier establishing semantic proposal payloads, morphological validation gates, and lease expiration parameters.
 :::
 
-::: {.callout-autopsy}
-* **System:** Assistive Mobile Manipulator (Vision-Language Foundation Model)
-* **Incident:** Robot arm drove end-effector at full speed into a glass vitrine.
-* **Telemetry Snapshot:** User commanded "retrieve the water glass from behind the vase". The VLM generated a 3D target coordinate at $[x=1.45\text{ m}, y=0.20\text{ m}, z=0.85\text{ m}]$.
-* **Root Cause:** The target coordinate lay $0.35\text{ meters}$ beyond the arm's maximum physical kinematic reach. The inverse kinematics solver saturated joint velocity near a singularity, swinging the elbow violently outward into the glass.
-* **Architectural Flaw:** The system failed to filter VLM proposals through a kinematic reachability validator before committing to motion.
+::: {.callout-autopsy title="The Unbounded Semantic Reach"}
+* **System:** High-Mix Precision Assembly Manipulator (7-DoF Articulated Arm + OpenVLA System 2 Proposal Service).
+* **Incident:** End-effector rammed a polycarbonate safety partition at $1.4\text{ m/s}$, bending the wrist mounting flange and stripping the joint 5 harmonic drive teeth ($1{,}450\text{ USD}$ physical hardware replacement).
+* **Telemetry Snapshot:** Operator commanded *"retrieve the heated calibration bolt behind the fixture."* The Vision-Language Model ingested camera frame $O(t_0)$ and emitted target coordinate $p_{\text{target}} = [1.32, 0.45, 0.78]^T\text{ m}$ relative to the robot base. The physical arm reach boundary was $R_{\max} = 0.85\text{ m}$.
+* **Root Cause:** The target coordinate lay $0.47\text{ m}$ beyond the physical reach envelope. The inverse kinematics (IK) solver attempted to invert an ill-conditioned Jacobian ($\kappa(J) = 1{,}840 \gg \kappa_{\text{thresh}}$) near the workspace boundary, causing joint velocities to explode ($\dot{q}_5 > 450^\circ/\text{s}$) into the partition.
+* **Architectural Flaw:** Monolithic trust—the system treated raw autoregressive VLM token outputs as executable physical setpoints without validating morphological reachability, Jacobian conditioning, or scene freshness leases.
 :::
 
-::: {.callout-contract}
-| Component | Authority and Substrate | Contract Specification |
+::: {.callout-contract title="The Proposal–Permission Privilege Contract"}
+| **Component** | **Authority and Substrate** | **Contract Specification** |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Semantic intent lease: $p_t$<br>• Target 3D bounding box: $[x_{\text{min}}, y_{\text{min}}, z_{\text{min}}, \dots]$<br>• Expiring lease window: $t_{\text{expire}} = t_{\text{now}} + 800\text{ ms}$ |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Kinematic reachability check: inside workspace envelope<br>• Jacobian condition number: $\kappa(J) < \text{threshold}$<br>• VETO if lease expires before execution starts |
-| **Failure Escalation** | *MCU Hardware Reflex* | If VLM abstains or proposal is invalid, command Category 2 safe position hold and request operator clarification. |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Semantic Intent Lease: $\mathcal{L}_{\text{intent}}$<br>• Target 3D pose: $T_{\text{target}}^{\text{world}} \in SE(3)$<br>• Workspace bounding box: $\mathcal{B} = [x_{\min}, y_{\min}, z_{\min}, x_{\max}, y_{\max}, z_{\max}] \subset \mathbb{R}^3$<br>• Cartesian velocity clamp: $\dot{\mathbf{x}}_{\text{max}} \le 0.40\text{ m/s}$<br>• Confidence score: $p_{\text{sem}} \ge \gamma_{\text{thresh}}$<br>• Expiring lease window: $t_{\text{expire}} = t_{\text{issue}} + 800\text{ ms}$ |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Geometric reachability check: $p_{\text{target}} \in \mathcal{W}_{\text{reach}}$<br>• Jacobian condition number: $\kappa(J) = \frac{\sigma_{\max}(J)}{\sigma_{\min}(J)} \le 50.0$<br>• Manipulability index: $w = \sqrt{\det(J J^T)} \ge w_{\min}$<br>• Freshness check: $(t_{\text{now}} - t_{\text{capture}}) < t_{\text{expire}}$<br>• Scene drift validation: $\|p_{\text{now}} - p_{\text{capture}}\| \le 30\text{ mm}$ |
+| **Failure Escalation** | *MCU Hardware Reflex & Governance* | If the VLM abstains, confidence falls below threshold ($p_{\text{sem}} < \gamma$), the lease expires, or scene drift is detected, reject the intent, command an IEC 60204-1 Category 2 safe position hold, and prompt the operator for disambiguation. |
 :::
 
-::: {.callout-note icon=false}
-**The Sim-to-Real Delta:**
-* **What Simulation Assumes:** Language models output perfect geometric coordinates; token generation completes in zero simulated time; objects do not move while the model "thinks".
-* **What the Bench Measures:** Autoregressive KV-cache decoding saturates edge SoC memory bandwidth for 800+ ms; physical objects move while tokens decode, making coordinates stale; stochastic temperature causes non-deterministic path proposals.
+::: {.callout-note title="The Sim-to-Real Delta" icon=false}
+* **What Simulation Assumes:** Language models output perfect geometric coordinates; token generation completes in zero simulated time; objects remain perfectly static while the model "thinks"; semantic prompts map uniquely to collision-free paths.
+* **What the Bench Measures:** Autoregressive KV-cache decoding saturates edge SoC memory bandwidth for $500\text{--}1200\text{ ms}$; physical objects shift while tokens decode, making coordinates stale; stochastic temperature creates non-deterministic reach targets; visual glare causes catastrophic coordinate hallucinations.
 :::
 
 ---
 
-## Grounding Natural Language into 3D Physical Affordances
+## The Illusion of Semantic Competence Behind Glass
 
-A text string such as *"pick up the red screwdriver"* contains zero geometric or physical information. The System 2 reasoning organ must bridge semantic intent into physical space:
+In digital artificial intelligence, multimodal Vision-Language Models (VLMs) demonstrate astonishing capabilities. You can present a model with an image of a cluttered workbench, type the open-vocabulary prompt *"locate the rusted M8 bolt behind the heat sink,"* and watch the model generate accurate 2D bounding boxes, segmentation masks, and descriptive natural language responses.
 
-| Grounding Stage | Computational Substrate | Transformation & Output Representation |
-| :--- | :--- | :--- |
-| **1. Visual Grounding** | Vision Transformer (ViT) on Edge NPU | Open-vocabulary text prompt cross-attended against image patch tokens $\to$ 2D bounding mask. |
-| **2. 3D De-projection** | Camera Ray Cast ($K^{-1}$) + Depth | Unprojects 2D centroid into metric workspace coordinates: $p_{\text{target}} = [x, y, z]^T \in \mathbb{R}^3$. |
-| **3. Affordance Framing** | Geometry \& Surface Normal Estimation | Computes 6-DoF target frame $T_{\text{target}}^{\text{world}} \in SE(3)$ and admissible approach vector $n_{\text{approach}}$. |
-| **4. Grasp Bounds** | Grasp Contact Regressor | Estimates target gripper aperture $d_{\text{grasp}}$ and maximum allowable contact force $F_{\text{contact}}$. |
+In the digital world, software operates behind glass. If the model hallucinates an object that does not exist, misidentifies a reflection, or takes two seconds to generate its output, the error remains safely contained in memory: a bounding box is drawn in the wrong pixel location on a monitor, or an API returns an incorrect JSON string. You can adjust the prompt, lower the temperature, or re-run the query.
 
-1. **Pixel-to-Space De-projection:** Convert 2D image pixel masks into 3D metric coordinates using calibrated camera intrinsics ($K$) and depth maps.
-2. **Contact Grasp Framing:** Compute the 3D target coordinate frame ($T_{\text{target}}^{\text{world}} \in SE(3)$) defining orientation, approach angle, and grip width.
-3. **Semantic Ambiguity Resolution:** If multiple candidate objects exist, the model requests human disambiguation or selects the most physically accessible candidate.
+**In Physical AI Systems, software moves physical mass and dissipates electrical energy.**
 
----
+The moment you connect an autoregressive vision-language model to a physical robot arm, mobile rover, or automated assembly workcell, the model's outputs cease to be advisory text tokens. If a VLM hallucinates a 3D coordinate located ten centimeters beyond an arm's physical reach, the inverse kinematics solver will invert an ill-conditioned Jacobian matrix, joint velocities will spike toward infinity, and the arm will slam violently into its mechanical hardstops or a nearby glass fixture. If the model takes $800\text{ ms}$ to generate a grasp target while a human operator reaches into the workcell, the robot will execute an obsolete action based on a world state that no longer exists.
 
-## The VLM as an Asynchronous Proposal Service
+This fundamental tension exposes why end-to-end monolithic foundation models cannot be trusted with direct motor authority:
 
-VLMs operate under high computational overhead. On edge accelerators (e.g. NVIDIA Jetson, Raspberry Pi AI Kit, Arduino UNO Q), autoregressive token generation exhibits non-deterministic execution times:
+$$\text{Digital VLM: } \text{Prompt} \xrightarrow{\quad \text{Autoregressive Decode} \quad} \text{Text / 2D Bounding Box} \quad (\text{Zero Physical Risk})$$
 
-| Decoding Phase | Hardware Substrate & Bottleneck | Latency Budget & Physical Implication |
-| :--- | :--- | :--- |
-| **Prefill / Time-to-First-Token (TTFT)** | NPU Matrix Compute Unit (Compute-bound) | $80\text{--}150\text{ ms}$; processing prompt tokens and image patches into initial KV-cache. |
-| **Autoregressive Decoding (TPOT)** | Unified LPDDR5 Memory Bus (Bandwidth-bound) | $35\text{--}55\text{ ms}$ per generated token; fetching large weight matrices for single token emissions. |
-| **Complete Spatial Intent Proposal** | Total End-to-End Latency ($t_{\text{inference}}$) | $500\text{--}1200\text{ ms}$; requires asynchronous queueing and explicit expiration leases ($t_{\text{expire}}$). |
+$$\text{Physical Intent: } \text{Prompt} \xrightarrow{\quad \text{VLM Proposal} \quad} \mathcal{L}_{\text{intent}} \xrightarrow{\quad \text{Morphological Gate} \quad} T_{\text{target}}^{\text{world}} \in SE(3) \implies \text{Matter Moves } (W_t \to W_{t+1})$$
 
-Because decoding takes hundreds of milliseconds:
+High-capacity multimodal models are indispensable for **System 2 Semantic Deliberation**—they provide the open-world semantic reasoning required to understand unstructured human instructions and complex visual scenes. However, they are **untrusted proposal generators operating at human deliberation speeds ($0.5\text{--}2\text{ Hz}$)**. They possess zero intrinsic knowledge of motor dynamics, gear ratios, kinematic singularities, or physical momentum.
 
-* **The VLM runs asynchronously:** It runs in a background thread or cloud container, decoupled from the mid-rate motor planning loop.
-* **Speculative Intent Buffers:** Downstream planners continue executing valid prior intents while the VLM deliberates on subsequent sub-goals.
+To harness the semantic power of foundation models without risking mechanical destruction, Physical AI architectures isolate the VLM behind a formal systems contract: the **Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$)**. Before any semantic proposal reaches downstream motion planners or actuator inverters, it must pass through rigorous geometric de-projection, morphological reachability filters, and real-time freshness validation.
 
 ---
 
-## Morphological Kinematic Validation
+## The Dual-Brain Speed Mismatch: Why System 2 Runs at 0.5–2 Hz
 
-Before an intent proposal is emitted to the planning layer, it must be validated against the robot's physical morphology:
+To understand how high-level reasoning couples to low-level motor control, we must analyze the computational anatomy of modern Vision-Language Models on edge hardware.
 
-| Validation Gate | Physical & Mathematical Test | Gate Action & Failure Handling |
+| **Concept** | **1-Sentence Bridge for Computer Science / ML** | **1-Sentence Bridge for Electrical Eng / Robotics** |
 | :--- | :--- | :--- |
-| **Gate 1: Workspace Geometric Bounds** | $p_{\text{target}} \in \mathcal{W}_{\text{reach}}$ | Verifies target is inside physical reach envelope; rejects unreachable targets. |
-| **Gate 2: Inverse Kinematics Feasibility** | Condition number $\kappa(J) < \kappa_{\text{threshold}}$ | Verifies arm is not in mathematical kinematic singularity; rejects infeasible poses. |
-| **Gate 3: Static Payload Limit** | $m_{\text{object}} \cdot g \cdot r_{\text{arm}} \le \tau_{\text{continuous}}$ | Checks object mass against joint torque limits; prevents motor overcurrent trips. |
+| **Expiring Intent Lease** | A time-to-live capability token bounding spatial goal validity to a fresh observation frame. | A time-bounded setpoint contract with hardware timer watchdogs revoking motor authorization. |
+| **Morphological Reachability** | Filtering ungrounded latent coordinate proposals through physical workspace bounds. | Evaluating forward/inverse kinematics and Jacobian SVD conditioning before trajectory planning. |
+| **Autoregressive Memory Tax** | KV-cache DRAM bandwidth bottlenecks causing hundreds of milliseconds of deliberation delay. | Memory bus wait states that delay high-level target updates to the real-time motion core. |
+: **The Two-On-Ramps Bridge for System 2 Semantic Intent.** Translating core deliberative concepts across software and robotics backgrounds. {#tbl-two-on-ramps}
 
-By filtering proposals through kinematic feasibility gates, impossible or destructive motor requests are rejected before trajectory planning begins.
+A physical agent operates across three distinct speeds of intelligence (@tbl-three-speeds). While inner current loops run at $10\text{--}25\text{ kHz}$ in dedicated timer hardware and safety enforcers evaluate barrier invariants at $1000\text{ Hz}$ on bare-metal microcontrollers, multimodal foundation models (such as OpenVLA [@brohan2023rt2; @kim2024openvla], RT-2, or vision-language-action transformers) run at a deliberate cadence of **$0.5\text{ to } 2\text{ Hz}$**.
+
+| **Tier** | **Subsystem Function** | **Cadence & Period** | **Silicon & Execution Substrate** | **Timing & Determinism Role** |
+| :--- | :--- | :--- | :--- | :--- |
+| **System 1 (Reflex)** | Real-Time Safety & Enforcer | $1000\text{ Hz}$ ($1.0\text{ ms}$) | Bare-Metal Real-Time MCU | Hard real-time; deterministic zero-allocation CBF invariants ($h(x) \ge 0$). |
+| **System 1.5 (Action)** | Visuomotor Trajectory Planner | $20\text{--}50\text{ Hz}$ ($20\text{--}50\text{ ms}$) | Edge NPU / GPU Accelerator | Soft real-time; Diffusion Policy / ACT multi-step action chunking ($H=16\text{--}32$). |
+| **System 2 (Intent)** | Semantic Deliberation & VLM | $0.5\text{--}2\text{ Hz}$ ($500\text{--}2000\text{ ms}$) | Linux Application Processor (MPU) | Non-real-time; stochastic autoregressive decoding; untrusted proposal generator. |
+: **The Three Speeds of Intelligence in a Physical AI Agent.** Each tier operates on dedicated silicon with distinct timing guarantees, separating high-level open-world deliberation from real-time motor protection. {#tbl-three-speeds}
+
+Why can a modern edge accelerator not run a 7-billion parameter VLM at $1000\text{ Hz}$? The answer lies in the fundamental physics of semiconductor memory architectures.
+
+### The Physics of Autoregressive Decoding: Compute-Bound vs. Memory-Bound
+
+Inference in a multimodal transformer consists of two fundamentally distinct computational phases:
+
+| **Decoding Phase** | **Computational Bottleneck** | **Hardware Execution Substrate** | **Typical Latency Range** | **Physical Systems Implication** |
+| :--- | :--- | :--- | ---: | :--- |
+| **Prefill Phase (TTFT)** | Compute-bound (Matrix GEMM) | NPU Systolic Arrays / Tensor Cores | $80\text{--}150\text{ ms}$ | High arithmetic intensity; processes prompt and image patch tokens into initial KV-cache. |
+| **Autoregressive Decoding (TPOT)** | Memory-bandwidth-bound (DRAM fetch) | LPDDR5 Unified Memory Highway | $35\text{--}60\text{ ms/token}$ | Arithmetic intensity $\le 1.0\text{ FLOP/Byte}$; fetching weights for each token stalls matrix units. |
+: **Computational Profiling of Multimodal Transformer Deliberation on Edge Silicon.** Deconstructing why high-capacity VLMs exhibit hundreds of milliseconds of execution delay. {#tbl-vlm-profiling}
+
+1. **The Prefill Phase (Time-to-First-Token / TTFT):** The model ingests the prompt text tokens and visual patch tokens from the camera image ($16 \times 16$ pixel patches flattened into dense embeddings). This phase is **compute-bound**: large matrix-matrix multiplications ($\text{GEMM}$) fill the systolic arrays of the neural processing unit (NPU), exhibiting high arithmetic intensity ($\text{FLOPs} / \text{Byte}$). On edge accelerators like the NVIDIA Jetson Orin or embedded NPU SoCs, prefill completes in $80\text{ to }150\text{ ms}$.
+2. **The Autoregressive Decoding Phase (Time-Per-Output-Token / TPOT):** To generate subsequent spatial tokens (bounding boxes, coordinate numbers, or action primitives), the transformer must generate tokens one by one. For every single emitted token, the processor must stream billions of weight parameters from external LPDDR5 DRAM across the memory bus into on-chip SRAM cache:
+   $$\text{Arithmetic Intensity} = \frac{\text{Floating Point Operations}}{\text{DRAM Bytes Transferred}} \approx \frac{2 \times N_{\text{params}}}{2 \times N_{\text{params}}} = 1.0 \quad \left[\frac{\text{FLOP}}{\text{Byte}}\right]$$
+   At an arithmetic intensity of $1.0\text{ FLOP/Byte}$, the matrix compute units sit idle for over $90\%$ of each clock cycle waiting for memory transfers. On a system with $68\text{ GB/s}$ of unified memory bandwidth, fetching a quantized $4\text{ GB}$ model footprint takes approximately $40\text{ ms}$ per token. Generating a 15-token spatial intent description requires $600\text{ ms}$ of pure weight-streaming time.
+
+Total end-to-end deliberation latency aggregates across both phases:
+
+$$t_{\text{deliberate}} = t_{\text{prefill}} + \sum_{k=1}^{N_{\text{tokens}}} t_{\text{decode}}^{(k)} \approx 100\text{ ms} + (15 \times 45\text{ ms}) = 775\text{ ms}$$
+
+Furthermore, background operating system services, garbage collection in high-level runtimes, and memory bus contention from incoming MIPI CSI-2 camera DMA streams inflate the tail latency distribution ($P_{99} > 1200\text{ ms}$). 
+
+Because the VLM takes nearly a full second to formulate a single thought, **the VLM must operate as an asynchronous proposal service**. It cannot reside on the hot path of motor actuation. Instead, it runs in a background thread on the Linux MPU, generating coarse semantic intent targets that are asynchronously buffered, validated, and handed off to mid-rate ($20\text{--}50\text{ Hz}$) trajectory planners.
 
 ---
 
-## Asynchronous Intent Queues and Scene Drift
+## Grounding Open-Vocabulary Instructions into Metric $SE(3)$ Affordance Targets
 
-If the physical world changes while the VLM is deliberating—such as an obstacle moving into the path during the 800 ms inference window—the generated intent becomes obsolete before it can be executed.
+A natural language command such as *"pick up the heated bolt"* contains rich semantic meaning but zero geometric coordinates, physical units, or contact vectors. The primary job of Stage 4 is **Spatial Affordance Grounding**: lifting symbolic language tokens and 2D camera pixels into metric coordinate frames in the Special Euclidean group $SE(3)$.
 
-| Timeline Event | Elapsed Time | Environmental & Systems State | Action Taken |
+![**The 4-Stage VLM Visual and Spatial Affordance Grounding Pipeline.** Natural language prompts are cross-attended with visual patch tokens on the Linux MPU, producing 2D segmentation masks. Inverse camera intrinsics ($K^{-1}$) lift pixel coordinates into metric 3D bounding boxes $\mathcal{B} \subset \mathbb{R}^3$, which are framed into 6-DoF grasp targets $T_{\text{target}}^{\text{world}} \in SE(3)$ before lease emission.](figures/fig06_vlm_grounding_pipeline.svg){#fig-vlm-grounding width=100%}
+
+As illustrated in @fig-vlm-grounding, spatial grounding executes across four sequential stages:
+
+### Stage 1: Linguistic Cross-Attention and Visual Feature Ingestion
+The vision-language backbone ingests two inputs: the tokenized text instruction $L = [w_1, w_2, \dots, w_m]$ and the visual sensor frame $I \in \mathbb{R}^{H \times W \times 3}$. A Vision Transformer (ViT) [@dosovitskiy2020image] discretizes the image into non-overlapping patches of size $P \times P$ (e.g. $14 \times 14$ pixels), projecting them into a sequence of visual patch embeddings $V = [v_1, v_2, \dots, v_n]$.
+
+Cross-attention layers compute the alignment between linguistic query tokens and spatial image patches:
+
+$$\mathbf{A}_{\text{cross}} = \text{Softmax}\left(\frac{\mathbf{Q}_L \mathbf{K}_V^T}{\sqrt{d_k}}\right) \mathbf{V}_V$$
+
+This produces a localized spatial attention map highlighting the image regions that correspond semantically to the target noun phrase (*"the heated bolt"*).
+
+### Stage 2: 2D Visual Token Grounding and Mask Segmentation
+The model decodes the attended feature map into a 2D bounding box and segmentation mask in image pixel coordinates:
+
+$$\mathbf{m}_{2\text{D}} = \left[ u_{\min}, v_{\min}, u_{\max}, v_{\max} \right]^T \subset \mathbb{R}^2, \quad (u_c, v_c) = \left( \frac{u_{\min} + u_{\max}}{2}, \frac{v_{\min} + v_{\max}}{2} \right)$$
+
+The model simultaneously emits a semantic confidence score $p_{\text{sem}} \in [0, 1]$. If $p_{\text{sem}}$ falls below a calibrated acceptance threshold $\gamma_{\text{thresh}}$ (e.g., $0.75$), the pipeline halts and emits a model abstention token rather than propagating an uncertain visual hypothesis.
+
+### Stage 3: Depth De-projection via Inverse Camera Intrinsics ($K^{-1}$)
+A 2D pixel coordinate $(u, v)$ has no physical depth. To convert pixel coordinates into metric distance in meters, the perception system samples the synchronized depth map $Z = D(u, v)$ captured by a calibrated active stereo or time-of-flight sensor.
+
+Using the pinhole camera projection model, the 3D metric coordinate in the camera optical frame $\mathbf{p}_{\text{cam}} = [X_c, Y_c, Z_c]^T \in \mathbb{R}^3$ is reconstructed via inverse ray casting:
+
+$$\begin{bmatrix} X_c \\ Y_c \\ Z_c \end{bmatrix} = Z \cdot \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} = Z \cdot \begin{bmatrix} 1/f_x & 0 & -c_x / f_x \\ 0 & 1/f_y & -c_y / f_y \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}$$
+
+where $f_x, f_y$ are the focal lengths in pixels, and $(c_x, c_y)$ is the principal point offset.
+
+Transforming the camera-frame point into the global robot base coordinate frame leverages the extrinsic mounting transform $\mathbf{T}_{\text{cam}}^{\text{base}} \in SE(3)$ established in Chapter 5:
+
+$$\begin{bmatrix} \mathbf{p}_{\text{world}} \\ 1 \end{bmatrix} = \mathbf{T}_{\text{cam}}^{\text{world}} \begin{bmatrix} \mathbf{p}_{\text{cam}} \\ 1 \end{bmatrix} = \begin{bmatrix} \mathbf{R}_{\text{cam}}^{\text{world}} & \mathbf{t}_{\text{cam}}^{\text{world}} \\ \mathbf{0}_{1 \times 3} & 1 \end{bmatrix} \begin{bmatrix} \mathbf{p}_{\text{cam}} \\ 1 \end{bmatrix}$$
+
+De-projecting all pixels within the segmentation mask yields the metric 3D bounding box:
+
+$$\mathcal{B}_{\text{target}} = \left[ x_{\min}, y_{\min}, z_{\min}, x_{\max}, y_{\max}, z_{\max} \right]^T \subset \mathbb{R}^3$$
+
+### Stage 4: Affordance Geometry and $SE(3)$ Grasp Target Framing
+Knowing where an object sits in 3D space is insufficient for manipulation; the robot must know **how to approach and grasp it**. 
+
+The grounding organ estimates local surface normals by computing the spatial covariance of point cloud neighbors within $\mathcal{B}_{\text{target}}$ via Principal Component Analysis (PCA):
+
+$$\mathbf{C} = \frac{1}{K} \sum_{i=1}^K (\mathbf{p}_i - \bar{\mathbf{p}})(\mathbf{p}_i - \bar{\mathbf{p}})^T, \quad \mathbf{C} \mathbf{v}_j = \lambda_j \mathbf{v}_j \quad (\lambda_1 \le \lambda_2 \le \lambda_3)$$
+
+The eigenvector $\mathbf{v}_1$ corresponding to the smallest eigenvalue $\lambda_1$ defines the local surface normal vector $\mathbf{n}_{\text{surface}}$. The target grasp approach vector is aligned antiparallel to the surface normal: $\mathbf{n}_{\text{approach}} = -\mathbf{n}_{\text{surface}}$.
+
+This constructs the complete 6-DoF target coordinate frame $\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$:
+
+$$\mathbf{T}_{\text{target}}^{\text{world}} = \begin{bmatrix} \mathbf{r}_{\text{grip}} & \mathbf{r}_{\text{binormal}} & \mathbf{n}_{\text{approach}} & \mathbf{p}_{\text{centroid}} \\ 0 & 0 & 0 & 1 \end{bmatrix}$$
+
+along with the required gripper aperture $d_{\text{grasp}} = \|\mathbf{x}_{\text{extent}}\| + \delta_{\text{clearance}}$ and maximum allowable contact force $F_{\text{contact}}$.
+
+---
+
+## The Expiring Intent Lease Contract ($\mathcal{L}_{\text{intent}}$) and Scene Drift
+
+In traditional digital software, once an algorithm computes a target, that target remains valid in memory indefinitely until overwritten. In the physical world, **time is an active adversary**. The physical environment evolves continuously while the computer computes.
+
+Consider what happens during a typical $800\text{ ms}$ VLM deliberation cycle:
+1. At $t = 0\text{ ms}$, the camera captures image frame $O(t_0)$.
+2. From $t = 0\text{ to } 780\text{ ms}$, the Linux MPU streams weights and decodes tokens.
+3. At $t = 350\text{ ms}$, a human operator moves a metal fixture into the workspace, or the target object rolls three centimeters to the left.
+4. At $t = 800\text{ ms}$, the VLM emits its grasp coordinate based on the visual evidence captured at $t = 0\text{ ms}$.
+
+If the robot unconditionally executes this proposal, it will drive its end-effector into the new obstacle or close its fingers on empty air. **A target coordinate generated from historical evidence is stale the moment it is emitted.**
+
+![**The Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$) Timeline and Scene Drift Escalation.** A VLM deliberates over camera frame $O(t_0)$ for $800\text{ ms}$. If a physical mutation occurs at $t = 350\text{ ms}$, the continuous state tracker detects drift when the lease is issued at $t = 800\text{ ms}$. If drift exceeds threshold $\delta_{\text{drift}}$ or time breaches $t_{\text{expire}}$, the lease is immediately revoked, commanding an IEC 60204-1 Category 2 safe position hold.](figures/fig06_expiring_intent_lease.svg){#fig-intent-lease width=100%}
+
+To solve this temporal vulnerability, every System 2 proposal is packaged inside a formally bounded **Expiring Intent Lease**:
+
+$$\mathcal{L}_{\text{intent}} = \left\langle \mathbf{T}_{\text{target}} \in SE(3), \; \mathcal{B}_{\text{workspace}} \subset \mathbb{R}^3, \; \dot{\mathbf{x}}_{\text{max}}, \; t_{\text{capture}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
+
+The six fields of the intent lease establish explicit physical boundaries (@tbl-lease-spec):
+
+| **Lease Parameter** | **Mathematical Type** | **Physical Meaning & Systems Enforcement** |
+| :--- | :--- | :--- |
+| **`target_pose`** | $\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$ | The 6-DoF target coordinate frame (position and approach orientation) for the end-effector. |
+| **`workspace_box`** | $\mathcal{B} \subset \mathbb{R}^3$ | A 3D metric bounding box $[x_{\min}, y_{\min}, z_{\min}, x_{\max}, y_{\max}, z_{\max}]$ restricting admissible motion trajectories. |
+| **`velocity_clamp`**| $\dot{\mathbf{x}}_{\text{max}} \in \mathbb{R}^+$ | The maximum allowable Cartesian velocity ($v_{\max} \le 0.40\text{ m/s}$) during intent execution. |
+| **`timestamp_capture`** | $t_{\text{capture}} \in \mathbb{R}^+$ | PTP hardware timestamp of the raw camera frame used to formulate the proposal. |
+| **`timestamp_issue`** | $t_{\text{issue}} \in \mathbb{R}^+$ | PTP hardware timestamp when the MPU finalized deliberation and emitted the lease. |
+| **`ttl_duration`** | $\Delta t_{\text{TTL}} \in \mathbb{R}^+$ | Hard validity lifetime ($\Delta t_{\text{TTL}} = 800\text{ ms}$); defines hard deadline $t_{\text{expire}} = t_{\text{issue}} + \Delta t_{\text{TTL}}$. |
+: **The Formal Specification Fields of the Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$).** Every proposal emitted by System 2 is bound in space, velocity, and time. {#tbl-lease-spec}
+
+### The Dual Lease Validation Gates
+
+When an intent lease $\mathcal{L}_{\text{intent}}$ arrives at the motion planning layer, it must pass two non-negotiable runtime gates before motion begins:
+
+1. **The Hard Expiration Deadline ($t_{\text{expire}}$):**
+   The real-time supervisor checks the current hardware clock $t_{\text{now}}$ against the expiration deadline:
+   $$\text{Lease Valid If: } t_{\text{now}} < t_{\text{expire}} = t_{\text{issue}} + \Delta t_{\text{TTL}}$$
+   If downstream planning delays, network IPC jitter, or OS scheduling preemption cause $t_{\text{now}} \ge t_{\text{expire}}$, the lease is expired. Authorization is instantly revoked, and the robot remains safely in position hold.
+
+2. **Continuous Scene Drift Validation ($\delta_{\text{drift}}$):**
+   The high-rate state estimator (running at $200\text{ Hz}$ from Chapter 5) tracks feature keypoints and depth residuals within the target bounding box $\mathcal{B}$. It evaluates the drift metric between the capture instant $t_{\text{capture}}$ and the present instant $t_{\text{now}}$:
+   $$\Delta_{\text{drift}} = \|\mathbf{p}_{\text{target}}(t_{\text{now}}) - \mathbf{p}_{\text{target}}(t_{\text{capture}})\|$$
+   $$\text{Condition: } \Delta_{\text{drift}} \le \delta_{\text{drift\_max}} \quad (\text{e.g. } 0.030\text{ m})$$
+   If the target object has moved by more than $30\text{ mm}$ while the VLM was deliberating, the lease is aborted as stale (@fig-intent-lease). The system requests a fresh sensor frame and initiates a new deliberation cycle without moving the physical arm.
+
+---
+
+## Morphological Reachability, Singularity Filtering, and Manipulability Validation
+
+Even if an intent lease is fresh and semantically accurate, it may demand a physical motion that the robot's mechanical structure cannot execute. 
+
+Foundation models have no physical body; they are trained on Internet datasets of images and text. An unconstrained VLM will happily emit a coordinate that lies behind a joint limit, beyond the reach of the linkages, or directly inside a kinematic singularity.
+
+To protect the physical mechanism, candidate proposals must pass through a **3-Gate Morphological Validator** before entering the trajectory generation queue (@fig-reachability-filter).
+
+![**The 3-Gate Morphological Reachability and Singularity Validator.** Untrusted stochastic proposals from the VLM are screened sequentially: Gate 1 verifies workspace geometric bounds ($\mathcal{W}_{\text{reach}}$); Gate 2 checks Jacobian condition numbers ($\kappa(J) \le 50.0$) and Yoshikawa manipulability ($w \ge w_{\min}$); Gate 3 evaluates static gravity and payload torque limits. Only proposals passing all three gates receive an executable intent lease.](figures/fig06_kinematic_reachability_filter.svg){#fig-reachability-filter width=100%}
+
+### Gate 1: Geometric Workspace Envelopes ($\mathcal{W}_{\text{reach}}$)
+The validator evaluates whether the target coordinate $\mathbf{p}_{\text{target}} \in \mathbb{R}^3$ lies within the admissible geometric reach envelope:
+
+$$\mathcal{W}_{\text{reach}} = \left\{ \mathbf{p} \in \mathbb{R}^3 \;\middle|\; R_{\min} \le \|\mathbf{p} - \mathbf{p}_{\text{base}}\| \le R_{\max}, \; z_{\text{table\_min}} \le p_z \le z_{\max} \right\}$$
+
+If the Euclidean distance from the base exceeds maximum arm reach $R_{\max}$ ($0.85\text{ m}$ in our assembly manipulator) or commands a target below the tabletop plane ($z < z_{\text{table\_min}}$), Gate 1 immediately rejects the proposal.
+
+### Gate 2: Kinematic Singularity and Jacobian Conditioning ($\kappa(J)$)
+When an articulated manipulator approaches a kinematic singularity (such as full arm extension or joint alignment), its ability to move in certain Cartesian directions collapses.
+
+The differential mapping between joint velocities $\dot{\mathbf{q}} \in \mathbb{R}^n$ and end-effector Cartesian velocities $\dot{\mathbf{x}} \in \mathbb{R}^6$ is governed by the configuration-dependent Jacobian matrix:
+
+$$\dot{\mathbf{x}} = \mathbf{J}(\mathbf{q}) \dot{\mathbf{q}}$$
+
+To compute the required joint velocity for a commanded Cartesian velocity, the system solves the inverse problem:
+
+$$\dot{\mathbf{q}} = \mathbf{J}^\dagger(\mathbf{q}) \dot{\mathbf{x}} = \mathbf{J}^T (\mathbf{J} \mathbf{J}^T)^{-1} \dot{\mathbf{x}}$$
+
+Using Singular Value Decomposition (SVD), the Jacobian is decomposed into its principal transformation axes:
+
+$$\mathbf{J}(\mathbf{q}) = \mathbf{U} \mathbf{\Sigma} \mathbf{V}^T = \sum_{i=1}^m \sigma_i \mathbf{u}_i \mathbf{v}_i^T \quad (\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_m \ge 0)$$
+
+We define two quantitative measures of kinematic health:
+
+1. **The Jacobian Condition Number ($\kappa(J)$):**
+   $$\kappa(\mathbf{J}) = \frac{\sigma_{\max}(\mathbf{J})}{\sigma_{\min}(\mathbf{J})} = \frac{\sigma_1}{\sigma_m}$$
+2. **The Yoshikawa Manipulability Index ($w(\mathbf{q})$):**
+   $$w(\mathbf{q}) = \sqrt{\det\left(\mathbf{J}(\mathbf{q})\mathbf{J}^T(\mathbf{q})\right)} = \prod_{i=1}^m \sigma_i$$
+
+Near a singular configuration, the minimum singular value vanishes ($\sigma_m \to 0$), causing the condition number to explode ($\kappa(\mathbf{J}) \to \infty$). Under this condition, even a tiny Cartesian motion command requires **infinite joint velocity ($\|\dot{\mathbf{q}}\| \to \infty$)**. When an uncontrolled system attempts to execute such setpoints, joint motors saturate their velocity limits, the arm violently swings off-path, and gearboxes shear.
+
+Gate 2 enforces a strict kinematic safety invariant:
+
+$$\text{Gate 2 Condition: } \kappa(\mathbf{J}(\mathbf{q}_{\text{target}})) \le \kappa_{\text{threshold}} \quad (\kappa_{\text{threshold}} = 50.0) \quad \mathbf{AND} \quad w(\mathbf{q}_{\text{target}}) \ge w_{\min}$$
+
+Proposals failing this test are flagged as kinematically singular and blocked.
+
+### Gate 3: Static Gravity and Payload Torque Feasibility
+Even if a posture is kinematically reachable and non-singular, holding an object at full horizontal extension may exceed the continuous thermal torque ratings of the shoulder and elbow actuators.
+
+The validator computes the required static joint torques:
+
+$$\boldsymbol{\tau}_{\text{static}}(\mathbf{q}) = \mathbf{g}(\mathbf{q}) + \mathbf{J}^T(\mathbf{q}) \begin{bmatrix} m_{\text{payload}} \cdot \mathbf{g} \\ \mathbf{0}_{3 \times 1} \end{bmatrix}$$
+
+where $\mathbf{g}(\mathbf{q}) \in \mathbb{R}^n$ is the gravitational torque vector.
+
+Gate 3 checks that every joint torque satisfies the continuous thermal limit $\tau_{\text{continuous}}$:
+
+$$\text{Gate 3 Condition: } |\tau_{\text{static}, i}| \le \tau_{\text{continuous}, i} \quad \forall i \in \{1, \dots, n\}$$
+
+This prevents the system from committing to grasps that would overheat motor windings or trip inverter overcurrent protection.
+
+---
+
+## Handling Hallucinations, Out-of-Distribution Prompts, and Model Abstention
+
+What should a Physical AI system do when given an impossible or nonsensical instruction, such as *"pick up the coffee mug"* in a scene with no mugs, or *"grab the purple dinosaur"* in an industrial assembly cell?
+
+In digital chat interfaces, large language models often hallucinate plausible-sounding answers when uncertain. In a physical machine, **guessing is catastrophic**. A model that guesses a coordinate when uncertain will pick up the wrong item, crush an unmodeled fixture, or stall against a barrier.
+
+| **Abstention Tier** | **Trigger Condition** | **Systems Fallback Mechanism** | **Safety & Actuation Guarantee** |
 | :--- | :--- | :--- | :--- |
-| **Observation Ingest** | $t = 0\text{ ms}$ | VLM captures camera frame; workspace is clear | VLM begins System 2 prompt evaluation |
-| **Physical Mutation** | $t = 350\text{ ms}$ | Human operator places fixture in workspace | Continuous state estimator logs geometric change |
-| **Stale Emission** | $t = 700\text{ ms}$ | VLM emits grasp proposal based on $t = 0$ frame | Proposal invalidated: scene drift detected |
+| **Tier 1: Calibrated Confidence Gate** | Semantic confidence $p_{\text{sem}} < 0.75$ | MPU halts coordinate emission and emits typed `ABSTAIN` token. | Zero coordinate payload emitted to downstream trajectory decoders. |
+| **Tier 2: IEC 60204-1 Category 2 Hold** | Model abstains, lease expires, or drift occurs | Real-time MCU clamps joint setpoints to current positions ($\mathbf{q}_{\text{hold}}$). | Active closed-loop PD stiffness with gravity compensation; zero mechanical free-fall. |
+| **Tier 3: Governed Recovery & Query** | System stationary in Category 2 hold | Emits structured telemetry packet with cropped camera frame to operator. | Physical motion halted until authenticated human operator resolves ambiguity. |
+: **The 3-Tier Model Abstention and Safety Fallback Cascade.** Replacing ungrounded coordinate guessing with deterministic safety holds and operator queries. {#tbl-abstention-cascade}
 
-To resolve scene drift:
+To eliminate guessing, the System 2 reasoning organ implements a **Calibrated Model Abstention Protocol**:
 
-1. **Timestamped Scene Hashes:** Intent proposals carry the timestamp ($t_{\text{obs}}$) of the sensory observation used to generate them.
-2. **Drift Detection:** If the internal state estimator detects significant geometric changes between $t_{\text{obs}}$ and $t_{\text{now}}$, the proposal is instantly invalidated.
+### 1. Calibrated Confidence Scoring and Selective Prediction
+The VLM is fine-tuned to emit an explicit confidence metric $p_{\text{sem}} = \sigma(z_{\text{confidence}})$ alongside its coordinate proposals. Using temperature-scaled Platt calibration on validation benchmarks, the probability is calibrated such that:
 
----
+$$\mathbb{P}(\text{IoU}_{3\text{D}} \ge 0.75 \mid p_{\text{sem}} \ge \gamma) \ge 0.99$$
 
-## Expiring Intent Leases ($t_{\text{expire}}$) and Model Abstention
+If $p_{\text{sem}} < \gamma_{\text{thresh}}$, the model is forbidden from emitting coordinate numbers. Instead, it emits a typed **Abstention Token**:
 
-Every intent proposal is wrapped in an **Expiring Intent Lease**:
+$$\text{Output: } \texttt{<ABSTAIN\_LOW\_CONFIDENCE, confidence=0.42>}$$
 
-| Lease Field | Field Value / Specification | Systems Purpose & Validation Rule |
+### 2. The Structured Abstention Vocabulary
+We define four formal abstention tokens representing distinct failure categories (@tbl-abstention-tokens):
+
+| **Abstention Token** | **Trigger Condition** | **Systems Fallback Action** |
 | :--- | :--- | :--- |
-| **`lease_id`** | `INT-042` | Monotonically incrementing lease identifier for audit trail. |
-| **`target_box`** | $[x_{\text{min}}, y_{\text{min}}, z_{\text{min}}, x_{\text{max}}, y_{\text{max}}, z_{\text{max}}]$ | 3D spatial bounding box enclosing target affordance. |
-| **`target_pose`** | $T_{\text{target}}^{\text{world}} \in SE(3)$ | Target end-effector coordinate frame and approach normal. |
-| **`velocity_cap`**| $v_{\text{max}} \le 0.40\text{ m/s}$ | Maximum allowable velocity during intent execution. |
-| **`created_at`**  | $t_{\text{created}} = 1045.220\text{ s}$ | PTP synchronized hardware timestamp of source observation. |
-| **`expires_at`**  | $t_{\text{expire}} = t_{\text{created}} + 0.800\text{ s}$ | Hard validity deadline; planning aborted if breached. |
+| `ABSTAIN_OBJECT_NOT_FOUND` | No visual patch satisfies prompt query ($p_{\text{sem}} < 0.50$). | Command safe position hold; log missing asset; notify operator. |
+| `ABSTAIN_AMBIGUOUS_PROMPT` | Multiple candidate objects match prompt ($|\Delta p| < 0.10$). | Command safe position hold; emit camera crop; prompt for clarification. |
+| `ABSTAIN_OUT_OF_REACH` | Target centroid fails Gate 1 workspace bounds ($p \notin \mathcal{W}_{\text{reach}}$). | Abort intent; command arm retraction; report unreachable coordinate. |
+| `ABSTAIN_SINGULAR_POSTURE` | Target pose fails Gate 2 condition number ($\kappa(J) > 50.0$). | Abort intent; request alternative grasp approach vector from VLM. |
+: **The Formal Structured Abstention Vocabulary for System 2 Deliberation.** Explicit typed tokens replace ungrounded coordinate guessing during failure conditions. {#tbl-abstention-tokens}
 
-* **Lease Expiration ($t_{\text{expire}}$):** If downstream planning or execution is delayed and exceeds $t_{\text{expire}}$, the intent immediately expires. The system safely transitions to position hold.
-* **Explicit Model Abstention:** If the VLM's confidence falls below a calibrated threshold ($p_{\text{confidence}} < \gamma$), the model emits an explicit **Abstain** token, requesting clarification rather than generating a hazardous proposal.
+### 3. The IEC 60204-1 Category 2 Safe Position Hold
+Whenever an abstention token is emitted, an intent lease expires, or scene drift is detected, the real-time core executes an immediate **Category 2 Safe Position Hold**:
+
+$$\mathbf{u}_{\text{hold}}(t) = \mathbf{K}_p (\mathbf{q}_{\text{current}} - \mathbf{q}(t)) - \mathbf{K}_d \dot{\mathbf{q}}(t) + \mathbf{g}(\mathbf{q}_{\text{current}})$$
+
+1. **Zero Mechanical Free-Fall:** Unlike an emergency E-stop that cuts all motor power (Category 0 / Safe Torque Off), a Category 2 hold maintains active inverter gate control, holding the arm firmly in its current joint posture $\mathbf{q}_{\text{current}}$ with gravity compensation. This prevents heavy vertical links from dropping under gravity onto delicate fixtures.
+2. **Zero Action Generation:** Downstream trajectory generation is paused. The robot remains completely stationary while logging telemetry and awaiting operator resolution.
 
 ---
 
 ## Systems Fallacies and Pitfalls
 
-::: {.callout-warning}
-### Common Engineering Fallacies
-* **Fallacy 1:** *"A Vision-Language Model can output joint torques directly."*  
-  *Correction:* Foundation models are autoregressive token generators; forcing them to emit high-frequency motor currents results in execution jitter and immediate physical damage.
-* **Fallacy 2:** *"A high confidence score from a VLM guarantees physical reachability."*  
-  *Correction:* VLMs have no intrinsic knowledge of arm joint limits or obstacle occlusions; reachability must be verified through geometric inverse kinematics.
+::: {.callout-warning title="Common Engineering Fallacies"}
+### Fallacy 1: "An end-to-end Vision-Language-Action Model can directly output 1 kHz motor torques."
+* **The Misconception:** Believing that scaling a single large transformer model will eventually allow it to ingest raw camera pixels and emit high-frequency motor currents directly to motor inverters at $1000\text{ Hz}$.
+* **The Physical Reality:** Autoregressive transformer inference is fundamentally bound by DRAM memory bandwidth and non-deterministic OS scheduling ($P_{99} > 1000\text{ ms}$). Attempting to drive motor timer registers directly from a foundation model induces severe execution stuttering, latency jitter, and immediate mechanical destruction. High-level reasoning must be asynchronously decoupled from real-time reflexes.
+
+### Fallacy 2: "High linguistic confidence implies physical reachability."
+* **The Misconception:** Assuming that because a VLM assigns a $99\%$ token probability to identifying an object, the resulting target pose is physically executable by the robot arm.
+* **The Physical Reality:** Language models operate in text token probability space, completely decoupled from joint limits, link lengths, and Jacobian singularities. A 99% confident semantic identification can easily correspond to a 3D coordinate lying $30\text{ cm}$ beyond the arm's physical reach or aligned with a singular kinematic gimbal lock. Reachability must be verified through geometric inverse kinematics.
+
+### Fallacy 3: "Once an intent proposal is generated, it remains valid until the task completes."
+* **The Misconception:** Treating a generated motion goal as a static setpoint that can be executed at any point in the future.
+* **The Physical Reality:** The physical world is dynamic. If an obstacle shifts, a person moves, or the target rolls while the VLM deliberates over its $800\text{ ms}$ inference window, executing a stale proposal causes immediate collision. Intent targets must carry hardware-stamped expiration leases ($t_{\text{expire}}$) with continuous scene drift validation.
 :::
 
 ---
 
 ::: {.callout-decision}
 ### Dossier Delta: Policy Interface and Intent Schema (`INTENT-01`)
-Freeze the high-level semantic policy contracts:
 
-1. Natural language task ontology and supported primitive skills (`Pick`, `Place`, `Inspect`, `Abstain`).
-2. The binary Intent Proposal schema (3D coordinates, bounding envelopes, and orientation frames).
-3. The intent expiration lease parameters ($t_{\text{expire}}$) and scene drift invalidation rules.
-4. Confidence thresholds and model abstention fallback protocols.
+We freeze the formal interface specification for Stage 4 (Semantic Deliberation and System 2 Intent Proposals). This specification defines the exact binary schemas, morphological validation gates, lease duration limits, and model abstention protocols for the cumulative design dossier (@tbl-intent-dossier).
+
+| **Dossier Field** | **Configured Value** | **Physical & Systems Rationale** |
+| :--- | :--- | :--- |
+| `system_id` | `"PHYSICAL-AGENT-01"` | Canonical reference system identifier. |
+| `schema_version` | `"1.0.0"` | Frozen release milestone (`INTENT-01`). |
+| `vlm_proposal_model` | `"OpenVLA-7B-INT8"` | Quantized 8-bit vision-language-action backbone running on Linux MPU/NPU. |
+| `max_deliberation_timeout_ms` | `1000.0` | Maximum allowable deliberation time before MPU aborts proposal cycle. |
+| `lease_default_ttl_ms` | `800.0` | Expiring intent validity window ($\Delta t_{\text{TTL}}$); defines $t_{\text{expire}} = t_{\text{issue}} + \Delta t_{\text{TTL}}$. |
+| `scene_drift_threshold_m` | `0.030` | Maximum allowable target centroid drift ($30\text{ mm}$) before lease revocation. |
+| `workspace_radius_max_m` | `0.850` | Gate 1 reach envelope boundary ($R_{\max}$); rejects coordinates outside sphere. |
+| `workspace_floor_min_m` | `0.020` | Gate 1 tabletop elevation floor ($z_{\min}$); prevents table collisions. |
+| `jacobian_condition_max` | `50.0` | Gate 2 singularity threshold ($\kappa(J) = \sigma_{\max}/\sigma_{\min}$); prevents velocity explosion. |
+| `manipulability_index_min` | `0.015` | Gate 2 Yoshikawa manipulability floor ($w = \sqrt{\det(J J^T)}$). |
+| `confidence_threshold` | `0.75` | Minimum semantic confidence ($p_{\text{sem}}$) required to emit coordinate payload. |
+| `fallback_action` | `"IEC_CAT2_SAFE_HOLD"` | Deterministic closed-loop position hold executed upon abstention or timeout. |
+: **Cumulative Design Dossier Checkpoint `INTENT-01`: Policy Interface and Intent Schema.** Freezing the operational parameters and safety limits governing semantic proposal generation. {#tbl-intent-dossier}
 
 ```yaml
-# DOSSIER CHECKPOINT: INTENT-01
+# ==============================================================================
+# CUMULATIVE DESIGN DOSSIER: ARTIFACT INTENT-01
+# Stage 4: Semantic Deliberation and Expiring Intent Lease Interface
+# System: PHYSICAL-AGENT-01 | Release Milestone: INTENT-01
+# ==============================================================================
 intent_schema:
   system_id: "PHYSICAL-AGENT-01"
   version: "1.0.0"
-  vlm_proposal_service:
+  dossier_milestone: "INTENT-01"
+
+  # System 2 Execution Substrate & Deliberation Timing
+  deliberation_service:
     model_name: "OpenVLA-7B-INT8"
-    execution_substrate: "Edge NPU / Linux MPU"
-    max_deliberation_time_ms: 800.0
-  lease_parameters:
+    execution_substrate: "Linux MPU / Edge NPU"
+    max_deliberation_timeout_ms: 1000.0
+    prefill_compute_budget_ms: 150.0
+    decode_per_token_budget_ms: 45.0
+
+  # Expiring Intent Lease Parameters (L_intent)
+  intent_lease_contract:
     default_lease_duration_ms: 800.0
+    hard_expiration_enforcement: true
+    max_cartesian_velocity_mps: 0.40
     scene_drift_invalidation_threshold_m: 0.030
-  kinematic_filters:
-    max_workspace_radius_m: 0.45
-    jacobian_condition_max: 50.0
-  abstention:
-    confidence_threshold: 0.75
-    fallback_action: "SAFE_HOLD_AND_PROMPT_OPERATOR"
+    spatial_bounding_box_padding_m: 0.050
+
+  # Morphological Kinematic Validation Gates
+  morphological_gates:
+    gate1_workspace_envelope:
+      max_reach_radius_m: 0.850
+      min_reach_radius_m: 0.120
+      min_table_clearance_z_m: 0.020
+    gate2_singularity_filter:
+      jacobian_condition_number_max: 50.0
+      yoshikawa_manipulability_min: 0.015
+      damped_least_squares_damping_factor: 0.05
+    gate3_torque_limits:
+      max_continuous_payload_kg: 1.50
+      enforce_gravity_compensation_check: true
+
+  # Model Abstention and Safety Fallback
+  abstention_policy:
+    confidence_acceptance_threshold: 0.75
+    supported_abstention_tokens:
+      - "ABSTAIN_OBJECT_NOT_FOUND"
+      - "ABSTAIN_AMBIGUOUS_PROMPT"
+      - "ABSTAIN_OUT_OF_REACH"
+      - "ABSTAIN_SINGULAR_POSTURE"
+    fallback_escalation: "IEC_CAT2_SAFE_POSITION_HOLD"
+    operator_query_on_abstain: true
 ```
 :::
 
+---
+
 ::: {.callout-lab}
-### Hands-on Realization: Lab 7 — VLM Intent Proposals
-Deploy an edge VLM pipeline on the **Physical AI Kit (Arduino UNO Q)**. Stream natural language commands to identify and locate physical objects in the workspace. Verify that the MPU generates structured, expiring intent leases and test that the system safely abstains when presented with ambiguous or kinematically impossible goals.
+### Hands-on Realization: Lab 7 — VLM Intent Proposals (`labs/06-vlm-intent`)
+
+In this laboratory realization, you will deploy the complete Stage 4 semantic deliberation and intent lease pipeline on the **Physical AI Kit (Arduino UNO Q Dual-Brain Architecture)**.
+
+| **Execution Domain** | **Hardware Substrate** | **Assigned System Roles & Responsibilities** |
+| :--- | :--- | :--- |
+| **Linux Application Processor (MPU)** | Quad-Core ARM Cortex-A53 @ 1.2 GHz | • Ingests USB camera frames and natural language text prompts.<br>• Executes OpenVLA / edge vision-language proposal service.<br>• Packages and emits Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) via RPMSG shared memory mailbox. |
+| **Real-Time Core (MCU)** | ARM Cortex-M4 @ 64 MHz (Bare-Metal) | • Intercepts incoming intent leases and evaluates Gate 1 & Gate 2 kinematic filters.<br>• Enforces hardware timer watchdog and lease expiration deadlines ($t_{\text{expire}}$).<br>• Drives multi-axis Dynamixel smart servo bus and executes Category 2 position hold reflexes. |
+: **Dual-Brain Hardware Substrate Allocation for Lab 7.** Dividing untrusted semantic proposal generation from deterministic kinematic safety enforcement. {#tbl-lab-dual-brain}
+
+#### Step 1: Benchmark Edge Deliberation Tail Latencies ($P_{50}, P_{99}$)
+Run the lightweight vision-language proposal service on the Linux MPU. Stream 100 consecutive natural language object queries. Measure the empirical distribution of Time-to-First-Token (TTFT), autoregressive decode latency, and total deliberation time $t_{\text{deliberate}}$. Verify that memory bus contention causes a $P_{99}$ tail spike exceeding $850\text{ ms}$.
+
+#### Step 2: Ground Open-Vocabulary Prompts into 3D $SE(3)$ Leases
+Issue natural language commands (*"pick up the blue marker"*, *"grasp the calibration cube"*). Inspect the emitted binary RPMSG packet in the shared SRAM mailbox. Verify that the MPU populates the 6-DoF target pose $T_{\text{target}}^{\text{world}} \in SE(3)$, the 3D bounding box $\mathcal{B}$, the velocity clamp $\dot{\mathbf{x}}_{\text{max}}$, and the synchronized hardware timestamps $t_{\text{capture}}$ and $t_{\text{issue}}$.
+
+#### Step 3: Seed Morphological Reachability and Singularity Faults
+Command targets located at $R = 1.20\text{ m}$ (outside physical reach) and near joint singularity alignments. Observe the real-time MCU intercept the proposal, evaluate Gate 1 and Gate 2, reject the invalid intent, and verify that the system emits a clean `ABSTAIN_OUT_OF_REACH` token without moving the physical arm.
+
+#### Step 4: Seed Dynamic Scene Drift Perturbations
+Trigger a valid VLM proposal for a target object. While the VLM is deliberating (during the $800\text{ ms}$ inference window), physically shift the target object by $50\text{ mm}$. Observe the continuous state estimator detect $\Delta_{\text{drift}} > 30\text{ mm}$ when the lease is presented, triggering immediate lease revocation and commanding an IEC 60204-1 Category 2 safe position hold.
 :::

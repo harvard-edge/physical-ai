@@ -1,167 +1,390 @@
 # Planning
 
-![Systems Organ Focus: Stage 5 (Trajectory Decoders, Action Chunking & Jerk Ensembling).](figures/fig_pipeline_locator.pdf){#fig-locator-ch07 width=100%}
+![**Systems Organ Focus:** Stage 5 (Trajectory Planning & Action Chunking). Acting as the System 1.5 proposal engine, the trajectory planner translates 1 Hz expiring intent leases from System 2 into continuous, multi-step action chunks ($H=16$), amortizing neural inference delay across physical time while guaranteeing $\mathcal{C}^2$ jerk continuity before passing candidate commands to the 1 kHz real-time MCU safety enforcer.](figures/fig_pipeline_locator.svg){#fig-locator-ch07 width=100%}
 
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Deploy Multi-Step Action Chunking:** Implement modern trajectory generators (Diffusion Policy, ACT) predicting $H$-step future waypoint horizons in parallel.
-2. **Enforce $\mathcal{C}^2$ Jerk Continuity:** Apply temporal ensembling and spline interpolation to eliminate discontinuous velocity steps across chunk boundaries.
-3. **Protect Mechanical Hardware:** Bound derivative limits (velocity $\dot{q}$, acceleration $\ddot{q}$, jerk $\dddot{q}$) to prevent gearbox gear shear and harmonic resonance.
-4. **Manage Asynchronous Re-Anchoring Handshakes:** Safely re-initialize trajectory inference when real-time safety enforcers intervene or veto proposals.
-5. **Freeze the Planning Schema (`PLAN-01`):** Construct the seventh artifact of the Cumulative Design Dossier establishing chunk horizon budgets and continuity bounds.
+1. **Deconstruct the Latency Starvation Bottleneck:** Contrast single-step Markovian policies ($H=1$) against multi-step trajectory decoders, diagnosing why discrete inference delays starve actuator loops and excite destructive mechanical resonances.
+2. **Implement Modern Action Chunking (ACT & Diffusion Policy):** Construct parallel multi-step decoders predicting $H$-step waypoint horizons ($H=16\text{ to }32$) conditioned on multimodal vision embeddings, proprioception, and semantic intent leases.
+3. **Amortize Delay via Receding-Horizon Temporal Ensembling:** Formulate exponential ensemble blending ($w_i = \exp(-\lambda i)$) across overlapping prediction horizons, suppressing high-frequency diffusion sampling noise and eliminating boundary discontinuities.
+4. **Enforce $\mathcal{C}^2$ Quintic Spline Continuity:** Formulate polynomial trajectory interpolation matching boundary position, velocity, and acceleration to strictly bound joint jerk ($\|\dddot{q}\| \le j_{\text{max}}$), protecting cycloidal reducers and harmonic drives from tooth shear.
+5. **Architect the Asynchronous State Re-Anchoring Handshake:** Implement lock-free shared SRAM mailbox protocols between Linux MPU and real-time MCU to safely flush queues and re-seed trajectory generation upon safety vetoes without integral windup or snap-back.
+6. **Freeze the Planning Schema (`PLAN-01`):** Construct the seventh milestone artifact of the Cumulative Design Dossier establishing chunk horizon budgets, temporal ensembling parameters, and derivative continuity bounds.
 :::
 
-::: {.callout-autopsy}
-* **System:** Dual-Arm Bimanual Manipulator (Action Diffusion Policy at $15\text{ Hz}$)
-* **Incident:** Joint 2 harmonic drive planetary teeth sheared; arm collapsed onto table.
-* **Telemetry Snapshot:** System updated action chunks every $66\text{ ms}$ ($H=16$ steps). At chunk transition boundary $T+21.450\text{ s}$, new inference pass produced a velocity step from $-0.42\text{ rad/s}$ to $+0.65\text{ rad/s}$ across a single $1\text{ ms}$ control cycle.
-* **Root Cause:** The software switched from Chunk $k$ to Chunk $k+1$ without temporal ensembling or jerk filtering, commanding infinite instantaneous motor acceleration.
-* **Architectural Flaw:** The planner lacked $\mathcal{C}^2$ trajectory continuity.
+::: {.callout-autopsy title="The Sheared Cycloidal Drive Pin"}
+* **System:** 6-DoF Articulated Delta / Bimanual Assembly Manipulator (Diffusion Policy running at $20\text{ Hz}$ on Linux MPU).
+* **Incident:** Joint 2 cycloidal reducer planetary drive pins sheared during a high-speed pick-and-place transition; the robot arm collapsed onto the workbench, destroying an $1800\text{ USD}$ optical calibration target.
+* **Telemetry Snapshot:** At chunk transition $T+21.450\text{ s}$, Chunk $k$ completed at joint velocity $-0.42\text{ rad/s}$. The newly arrived Chunk $k+1$ commanded an initial velocity $+0.65\text{ rad/s}$ across a single $1\text{ ms}$ control tick. Measured joint acceleration spiked to $1070\text{ rad/s}^2$, generating a transient torque pulse of $48.2\text{ N}\cdot\text{m}$ against a continuous rated gearbox ceiling of $18.0\text{ N}\cdot\text{m}$.
+* **Root Cause:** Discontinuous chunk switching ($\mathcal{C}^0 / \mathcal{C}^1$ failure) without temporal ensembling or quintic spline interpolation, commanding an instantaneous velocity step that demanded infinite motor jerk.
+* **Architectural Flaw:** The planner treated neural action chunks as raw discrete setpoints rather than generating $\mathcal{C}^2$ continuous trajectories with bounded jerk.
 :::
 
 ::: {.callout-contract}
 | Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Multi-step trajectory chunk: $A_t = [a_0, \dots, a_H]$<br>• Prediction horizon: $H = 16\text{ to }32$ steps (at $50\text{ Hz}$)<br>• Commanded acceleration and jerk derivatives |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Validates $\mathcal{C}^2$ continuity: $\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$<br>• Checks dynamic torque bounds per joint: $\tau \le \tau_{\text{max}}$<br>• Re-anchors baseline state upon safety intervention |
-| **Failure Escalation** | *MCU Hardware Reflex* | If chunk violates derivative bounds, clip jerk to $j_{\text{max}}$ and trigger asynchronous re-anchoring. |
+| **What the MPU Proposes (System 1.5)** | *Untrusted · Stochastic · Linux MPU* | • Multi-step trajectory chunk: $A_t = [a_0, \dots, a_{H-1}]$<br>• Prediction horizon: $H = 16\text{ steps}$ (at $\Delta t = 20\text{ ms}$)<br>• Quintic polynomial spline coefficients: $[c_0, \dots, c_5]$ per segment |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Validates $\mathcal{C}^2$ jerk bound: $\|\dddot{q}(t)\| \le j_{\text{max}} = 25.0\text{ rad/s}^3$<br>• Checks dynamic velocity & acceleration: $\|\dot{q}\| \le v_{\text{max}}, \|\ddot{q}\| \le a_{\text{max}}$<br>• Evaluates tracking error: $\|q_{\text{actual}} - q_{\text{expected}}\| \le \epsilon_{\text{diverge}}$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | If jerk or divergence bounds are breached, clamp acceleration to $a_{\text{max}}$, set atomic `VETO_ACTIVE` bit in shared SRAM, flush queue, and re-anchor planner from $q_{\text{actual}}$. |
 :::
 
 ::: {.callout-note icon=false}
 **The Sim-to-Real Delta:**
-* **What Simulation Assumes:** Teleoperation demonstration datasets contain infinite-frequency, perfectly continuous joint trajectories; actuators track step commands with zero mechanical compliance.
-* **What the Bench Measures:** Robotic motor gearboxes have backlash and harmonic compliance; un-smoothed trajectory steps excite resonant structural vibrations (chatter) that loosen hardware fasteners and burn motor windings.
+* **What Simulation Assumes:** Actuators track discrete target positions instantaneously with infinite stiffness; physics engines step synchronously with neural policy inference; gearboxes possess zero mechanical backlash and infinite tooth shear strength.
+* **What the Bench Measures:** Physical actuators have rotor inertia, motor coil inductance ($L/R$ electrical time constant), cycloidal gear compliance, and backlash; step velocity commands excite structural vibration modes ($15\text{--}45\text{ Hz}$ chatter) that shear drive pins, loosen chassis fasteners, and trip motor inverter overcurrent protection.
 :::
 
 ---
 
-## Vision-Language-Action (VLA) Policies and Trajectory Decoders
+## The Three Speeds of Physical AI and the Latency Bottleneck
 
-Vision-Language-Action (VLA) policies (e.g. OpenVLA, Octo, Diffusion Policy, ACT) map sensory observations and semantic intents directly into continuous spatio-temporal trajectories:
+In digital artificial intelligence, autoregressive sequence models generate text token by token. If generating a single token requires $50\text{ ms}$, the user simply perceives a natural typing cadence. In the physical world, however, matter and momentum never pause. A mechanical manipulator in motion possesses kinetic momentum ($\mathbf{p} = m\mathbf{v}$) and inertia that cannot be frozen while a neural network deliberates.
 
-| Generation Stage | Computational Substrate | Mathematical Formulation & Output |
-| :--- | :--- | :--- |
-| **1. Multimodal Conditioning** | Transformer Cross-Attention on NPU | Condition vector $c = [o_t, p_t, s_t]$ fusing vision, intent, and proprioception. |
-| **2. Trajectory Denoising** | Flow Matching / Diffusion Decoder | 100-step reverse diffusion denoises Gaussian noise into continuous joint spline. |
-| **3. Action Chunk Assembly** | Memory Buffer Alignment | Continuous chunk $A_t = \{ [q_k, \dot{q}_k, \tau_k] \}_{k=0}^H$ of length $H = 16$ steps. |
-| **4. Asynchronous Queue** | SPSC Lock-Free Shared SRAM Mailbox | Chunk streamed to MCU queue for real-time validation and temporal ensembling. |
+When roboticists first attempted to connect deep neural policies directly to physical motors, they adopted the classical Reinforcement Learning formulation: at every time step $t$, the policy ingests current observation $o_t$ and emits a single next-step action $a_t$ (a single-step Markovian policy, $H=1$).
 
-* **Action Chunking:** Emits a sequence of $H$ future joint targets ($a_0, a_1, \dots, a_H$), providing smooth trajectory guidance between inference cycles.
-* **Receding Horizon Execution:** As Chunk $k$ executes, the MPU computes Chunk $k+1$ in the background.
+**In physical hardware, single-step Markovian neural execution fails catastrophically due to the Latency Starvation Bottleneck.**
+
+Consider what occurs when a modern Vision-Language-Action (VLA) policy running on an edge processor (e.g. NVIDIA Jetson Orin or embedded SoC NPU) requires $50\text{ ms}$ ($20\text{ Hz}$) to process camera frames and compute a forward inference pass (@fig-three-speeds-latency):
+
+1. **The Latency Starvation Trap:** An industrial motor inverter requires pulse-width modulation (PWM) updates at $1000\text{ Hz}$ ($1\text{ ms}$ control cycle) to maintain field-oriented control and stable magnetic flux. If the neural policy emits only one action every $50\text{ ms}$, the motor receives a command for $1\text{ ms}$ and is then starved of new guidance for the remaining $49\text{ ms}$.
+2. **Discrete Acceleration Hammering:** Between inference cycles, the motor either holds its last commanded velocity or comes to an abrupt halt. When the next inference arrives $50\text{ ms}$ later with a new velocity vector, the motor is subjected to an instantaneous velocity step ($\Delta \dot{q}$). This step demands infinite instantaneous acceleration ($\ddot{q} \to \infty$) and infinite jerk ($\dddot{q} \to \infty$), hammering gearbox teeth and drawing massive current spikes across inverter MOSFET bridges.
+3. **Compounding Teleoperation Drift:** Human teleoperation demonstration datasets are fundamentally non-Markovian: human demonstrators execute smooth continuous gestures conditioned on long-term intent, not single-frame Markovian reactions. Training single-step policies on human demonstrations induces compounding error ($O(T^2)$ drift), causing the arm to wander off-distribution within a few seconds.
+
+![**The Three Speeds of Physical AI Intelligence and the Latency Starvation Bottleneck.** Single-step policies starve motor controllers during inference latency windows, causing discrete velocity jumps and mechanical chatter. In contrast, System 1.5 Action Chunking provides a continuous reservoir of future waypoints executed seamlessly by the 1 kHz real-time MCU reflex engine.](figures/fig07_three_speeds_latency.svg){#fig-three-speeds-latency width=100%}
+
+To bridge the gap between slow semantic deliberation and high-frequency physical actuation, Physical AI decomposes computation into **The Three Speeds of Embodied Intelligence** (@tbl-three-speeds):
+
+| Speed Tier | Cognitive Role | Hardware Substrate | Update Cadence | Output Payload & Contract |
+| :--- | :--- | :--- | :---: | :--- |
+| **System 2** | Semantic Deliberation | Host Linux MPU / Cloud | $0.5\text{--}2\text{ Hz}$ | Expiring 3D Intent Leases ($t_{\text{expire}}$, target $SE(3)$ frame) |
+| **System 1.5** | Trajectory Generation | Embedded SoC NPU / GPU | $15\text{--}50\text{ Hz}$ | Multi-step Action Chunks ($A_t$, $H=16\text{--}32$ future waypoints) |
+| **System 1** | Reflex & Enforcement | Bare-Metal / FreeRTOS MCU | $1000\text{ Hz}$ | $\mathcal{C}^2$ Spline Evaluation, CBF Safety Veto, PWM Gate Switching |
+: **The Three Speeds of Physical AI Intelligence.** Systems decompose computation into distinct frequency domains to match cognitive overhead to physical actuator deadlines. {#tbl-three-speeds}
+
+* **System 2 (Deliberation, $1\text{ Hz}$):** High-capacity Vision-Language Models (VLMs) parse open-vocabulary instructions and ground target affordances into 3D metric bounding boxes protected by expiring intent validity leases ($t_{\text{expire}}$).
+* **System 1.5 (Planning, $20\text{ Hz}$):** Action Chunking models (Diffusion Policy, ACT) ingest intent leases and proprioceptive history to predict a continuous horizon of $H$ future waypoints ($A_t = [a_0, \dots, a_{H-1}]$) in parallel.
+* **System 1 (Reflex, $1000\text{ Hz}$):** A dedicated real-time microcontroller receives action chunks via lock-free shared SRAM queues, fits $\mathcal{C}^2$ quintic splines across waypoints, evaluates Control Barrier Function (CBF) safety invariants, and switches motor inverter PWM gates deterministically every $1\text{ ms}$.
 
 ---
 
-## Action Representations: Task-Space vs. Joint-Space
+## Modern Trajectory Decoders: Action Chunking with Transformers and Diffusion Policies
 
-Choosing the mathematical representation of action proposals dictates the computational division between MPU and MCU:
+Instead of predicting a single next action, modern Physical AI systems employ **Action Chunking**: predicting a trajectory of $H$ future waypoints simultaneously:
 
-| Action Representation | Format | Advantages | Systems Trade-offs |
+$$A_t = \big[ \mathbf{a}_t, \mathbf{a}_{t+1}, \mathbf{a}_{t+2}, \dots, \mathbf{a}_{t+H-1} \big] \in \mathbb{R}^{H \times d_a}$$
+
+where $H$ is the chunk prediction horizon (typically $H \in [16, 64]$) and $d_a$ is the dimension of the robot's action space.
+
+Two primary neural architectures dominate modern trajectory decoding: **Action Chunking with Transformers (ACT)** and **Diffusion Policies**.
+
+```
+                           ACTION CHUNKING DECODER TAXONOMY
+                                          │
+                  ┌───────────────────────┴───────────────────────┐
+                  ▼                                               ▼
+      Action Chunking with                            Denoising Diffusion &
+       Transformers (ACT)                            Flow Matching Policies
+  ─────────────────────────────────             ─────────────────────────────────
+  • CVAE Latent Style Variable $z$              • Denoises Gaussian Noise $\epsilon$
+  • Non-Autoregressive Transformer              • Multi-Step Langevin / Flow ODE
+  • Single Forward Pass Latency                 • Multi-Modal Path Representation
+  • Low NPU Computational Footprint             • High Expressivity on Complex Tasks
+```
+
+### Action Chunking with Transformers (ACT)
+
+Action Chunking with Transformers (ACT) formulates trajectory generation as a Conditional Variational Autoencoder (CVAE). Human demonstration data contains inherent multimodality: when reaching for a cup around an obstacle, a human demonstrator might reach from the left on trial 1 and from the right on trial 2. A naive mean-squared-error (MSE) regression model averages these two valid trajectories, commanding the robot arm to drive straight through the center of the obstacle.
+
+ACT resolves this by introducing a latent style variable $\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$:
+
+1. **Training Phase (Encoder):** A Transformer encoder maps the full demonstration trajectory $A_{t:t+H}$ and current observation $o_t$ into the parameters of a Gaussian distribution $q_\phi(\mathbf{z} \mid o_t, A_{t:t+H}) = \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$.
+2. **Inference Phase (Decoder):** At runtime, the encoder is discarded. The policy sets $\mathbf{z} = \mathbf{0}$ (the mean of the prior) or samples $\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$. A Transformer decoder takes the style token $\mathbf{z}$, observation tokens (vision embeddings from DINOv2 / ResNet), and proprioceptive joint positions $q_t$, and emits all $H$ future action waypoints in a **single non-autoregressive forward pass**.
+
+$$\mathcal{L}_{\text{ACT}} = \sum_{k=0}^{H-1} \big\| \mathbf{a}_{t+k} - \hat{\mathbf{a}}_{t+k} \big\|_1 + \beta \cdot \mathcal{D}_{\text{KL}}\big( q_\phi(\mathbf{z} \mid o_t, A_{t:t+H}) \,\parallel\, \mathcal{N}(0, \mathbf{I}) \big)$$
+
+Because ACT decodes all $H$ waypoints in a single forward transformer evaluation (rather than generating tokens autoregressively one by one), inference is extremely fast ($12\text{--}25\text{ ms}$ on embedded NPUs), leaving ample compute budget for camera ingestion.
+
+### Diffusion Policies and Conditional Flow Matching
+
+Diffusion Policies formulate trajectory generation as a conditional denoising diffusion process. Rather than directly predicting waypoints with regression, the model starts from pure Gaussian noise $A_t^K \sim \mathcal{N}(0, \mathbf{I})$ and iteratively denoises it over $K$ reverse diffusion steps into a physically realizable trajectory chunk $A_t^0$:
+
+$$A_t^{k-1} = \frac{1}{\sqrt{\alpha_k}} \left( A_t^k - \frac{1 - \alpha_k}{\sqrt{1 - \bar{\alpha}_k}} \boldsymbol{\epsilon}_\theta(A_t^k, k, o_t) \right) + \sigma_k \mathbf{z}$$
+
+where $\boldsymbol{\epsilon}_\theta$ is a 1D Temporal U-Net or Transformer predicting the noise vector conditioned on observation embeddings $o_t$.
+
+Conditional Flow Matching (CFM) further accelerates diffusion inference by parameterizing continuous vector fields that transport probability distributions along straight trajectories:
+
+$$\frac{d\mathbf{x}_t}{dt} = \mathbf{v}_\theta(\mathbf{x}_t, t \mid o_t)$$
+
+This formulation enables high-fidelity multimodal trajectory generation in as few as $4\text{ to }8$ ODE integration steps, making real-time $20\text{ Hz}$ execution feasible on embedded edge SoCs.
+
+### Action Representations: Joint Space vs. Task Space vs. Impedance
+
+The mathematical representation of action waypoints dictates the division of computational authority between MPU and MCU (@tbl-action-spaces):
+
+| Representation Format | Mathematical Vector | Advantages | Systems Trade-offs & Failure Modes |
 | :--- | :--- | :--- | :--- |
-| **Task-Space End-Effector ($\Delta SE(3)$)** | $[\Delta x, \Delta y, \Delta z, \Delta \text{yaw}, \text{grip}]$ | Morphology invariant; transfers across arms | MCU must solve real-time inverse kinematics (IK) |
-| **Joint-Space Angles ($\Delta q \in \mathbb{R}^n$)** | $[\Delta q_1, \Delta q_2, \dots, \Delta q_n]$ | Direct motor mapping; no runtime IK required | Overfits specific robot kinematics |
-| **Joint Impedance ($K_p, K_d, q_{\text{target}}$)** | Target angles + dynamic stiffness | Compliant contact; safe physical interaction | Requires high-frequency torque feedback loops |
+| **Joint-Space Position** | $\mathbf{q} \in \mathbb{R}^n$ (rad) | Direct motor setpoints; no runtime IK required on MCU | Model overfits arm morphology; cannot transfer across robots |
+| **Task-Space $SE(3)$ Pose** | $[\mathbf{p}, \mathbf{R}] \in SE(3)$ | Robot morphology invariant; easily visualizable | MCU must solve real-time Inverse Kinematics near singularities |
+| **Joint Impedance Control** | $[\mathbf{q}_{\text{target}}, \mathbf{K}_p, \mathbf{K}_d]$ | Compliant physical interaction; safe contact dynamics | Requires high-rate torque feedback ($>1\text{ kHz}$) on motor drives |
+: **Comparison of Action Space Representations.** Selecting the appropriate mathematical action space establishes the computational boundary between high-level planning and low-level motor execution. {#tbl-action-spaces}
+
+For tabletop manipulation and precision assembly, **Joint-Space Position** ($\mathbf{q} \in \mathbb{R}^n$) is the industry standard for System 1.5 Action Chunking: it eliminates the risk of real-time Inverse Kinematics solver failures or kinematic singularity explosions on the MCU during high-speed execution.
 
 ---
 
-## Multi-Step Action Chunking ($H$-step Horizons)
+## Delay Amortization and Receding-Horizon Temporal Ensembling
 
-The length of the prediction horizon $H$ governs the trade-off between open-loop responsiveness and computational efficiency:
+Action Chunking fundamentally alters the latency economics of Physical AI. If a neural network requires $50\text{ ms}$ to compute an inference, single-step execution forces the machine into a stop-and-go stutter. But when the network predicts a chunk of $H=16$ steps spanning $320\text{ ms}$ of physical time, the system achieves **Delay Amortization**.
 
-| Horizon Regime | Horizon Length $H$ | Systems Responsiveness vs. Computational Load |
-| :--- | :--- | :--- |
-| **Short Horizon** | $H = 4$ steps ($80\text{ ms}$) | High closed-loop agility; excessive NPU compute load ($50\text{ Hz}$); risk of motor stutter. |
-| **Balanced Horizon** | $H = 16$ steps ($320\text{ ms}$) | Optimal trade-off; smooth continuous motion; manageable NPU inference cadence ($20\text{ Hz}$). |
-| **Long Horizon** | $H = 64$ steps ($1.28\text{ s}$) | Minimal compute overhead; vulnerable to dynamic collisions; high open-loop drift error. |
+While the real-time MCU executes the waypoints of Chunk $k$, the MPU computes Chunk $k+1$ in the background. The computational delay of the neural network is completely amortized across the physical duration of the previously planned trajectory.
 
-* **The Receding Horizon Principle:** The MCU executes the first $K$ steps of Chunk $k$ ($K < H$), blending seamlessly into Chunk $k+1$ before the previous chunk fully depletes.
+```
+Time: 0 ms       50 ms            100 ms           150 ms           200 ms
+MPU:  [Infer A0] ───────────────> [Infer A1] ────────────────────> [Infer A2]
+MCU:             [Execute A0...]  [Blend A0+A1...] [Blend A1+A2...] [Execute A2...]
+                 ▲                ▲                ▲
+                 Zero Starvation  Seamless Stride  Continuous Motion
+```
+
+### Receding-Horizon Temporal Ensembling
+
+Because neural network inference is stochastic, consecutive action chunks ($A^{(t)}$ and $A^{(t+1)}$) computed at successive time intervals will rarely align with mathematical perfection. If the system simply switched from Chunk $k$ to Chunk $k+1$ when Chunk $k$ expired, the robot would experience a discrete jump in commanded velocity at the chunk boundary (@fig-chunking-ensembling).
+
+To eliminate inter-chunk discontinuities and filter high-frequency stochastic noise, Physical AI runtimes execute **Receding-Horizon Temporal Ensembling**:
+
+At every physical time step $\tau$, multiple overlapping chunks $A^{(i)}$ provide candidate action predictions $\mathbf{a}_{\tau - t_i}^{(i)}$. The runtime computes the executed action $\mathbf{a}^*(\tau)$ as a normalized exponentially weighted average:
+
+$$\mathbf{a}^*(\tau) = \frac{\sum_{i=0}^{N-1} w_i \cdot \mathbf{a}_{\tau - t_i}^{(i)}}{\sum_{i=0}^{N-1} w_i}$$
+
+where the temporal ensembling weight $w_i$ decays exponentially with the age of the prediction:
+
+$$w_i = \exp\big(-\lambda \cdot (\tau - t_i)\big)$$
+
+Here, $\lambda \ge 0$ is the exponential decay parameter (typically $\lambda \in [0.10, 0.25]$):
+* **High $\lambda$ ($\lambda > 0.5$):** Aggressively prioritizes the newest inference pass, maximizing responsiveness to sudden visual changes at the expense of higher trajectory jitter.
+* **Low $\lambda$ ($\lambda < 0.05$):** Heavily smooths across older chunks, producing ultra-fluid motion but increasing tracking latency when dynamic objects move.
+* **Balanced $\lambda$ ($\lambda = 0.15$):** Provides the optimal balance, suppressing diffusion sampling noise while maintaining sub-$100\text{ ms}$ reaction latency to environmental perturbations.
+
+![**Receding-Horizon Action Chunking with Exponential Temporal Ensembling.** Overlapping action chunks predicted at successive inference cycles are blended using exponential weight decay ($w_i = \exp(-\lambda i)$), synthesizing a continuous reference trajectory while filtering out high-frequency stochastic policy noise.](figures/fig07_action_chunking_ensembling.svg){#fig-chunking-ensembling width=100%}
+
+### Lock-Free Shared SRAM Ring Buffers (SPSC IPC)
+
+To transfer action chunks from the Linux MPU to the real-time MCU with microsecond latency, systems utilize a **Single-Producer Single-Consumer (SPSC) Lock-Free Ring Buffer** in shared physical SRAM:
+
+```c
+// Zero-allocation SPSC trajectory queue in shared memory
+typedef struct {
+    uint32_t chunk_id;
+    uint64_t timestamp_ptp_ns;
+    uint16_t horizon_steps;
+    float dt_ms;
+    float waypoints[32][6]; // Horizon H=32, 6-DoF joint angles (rad)
+    uint32_t crc32_checksum;
+} TrajectoryChunk_t;
+
+typedef struct {
+    volatile uint32_t head; // Written only by MPU (Producer)
+    volatile uint32_t tail; // Written only by MCU (Consumer)
+    TrajectoryChunk_t buffer[4]; // Double-buffered chunk slots
+} SharedTrajectoryQueue_t;
+```
+
+The MPU writes complete chunks to `buffer[head]` and executes a memory barrier before incrementing `head`. The MCU reads from `buffer[tail]`, verifies the CRC32 checksum, evaluates the temporal ensemble blend, and advances `tail`—achieving zero-copy data transfer with zero mutex contention across processor domains.
 
 ---
 
-## Temporal Ensembling and $\mathcal{C}^2$ Continuity
+## Derivative Smoothness: $\mathcal{C}^2$ Jerk Continuity and Actuator Protection
 
-Because neural inference is stochastic, consecutive action chunks ($A^{(t)}$ and $A^{(t+1)}$) rarely align perfectly at overlapping boundaries:
+Even with temporal ensembling, passing discrete waypoints to motor controllers at $50\text{ Hz}$ leaves $20\text{ ms}$ intervals between target updates. If the motor controller applies zero-order holds or simple linear interpolation between waypoints, mechanical disaster ensues.
 
-| Continuity Level | Mathematical Derivative Constraint | Physical Consequence on Hardware |
-| :--- | :--- | :--- |
-| **Position Discontinuity ($\mathcal{C}^0$ Failure)** | $\lim_{t \to t_k^-} q(t) \ne \lim_{t \to t_k^+} q(t)$ | Infinite commanded velocity impulse; instantaneous motor torque spike; gearbox backlash damage. |
-| **Velocity Discontinuity ($\mathcal{C}^1$ Failure)** | $\lim_{t \to t_k^-} \dot{q}(t) \ne \lim_{t \to t_k^+} \dot{q}(t)$ | Infinite commanded acceleration impulse; excessive motor coil current draw; thermal stress. |
-| **Jerk Discontinuity ($\mathcal{C}^2$ Failure)** | $\|\frac{d^3 q}{dt^3}\| > j_{\text{max}}$ | Excites structural resonance frequencies; causes mechanical chassis chatter and loosened fasteners. |
+We classify trajectory continuity across mathematical derivative orders (@fig-c2-jerk-continuity):
 
-To achieve smooth physical motion, the runtime applies **Receding Horizon Temporal Ensembling**:
+1. **Position Discontinuity ($\mathcal{C}^0$ Failure):** The trajectory contains instantaneous spatial steps ($\lim_{t \to t_0^-} q(t) \ne \lim_{t \to t_0^+} q(t)$). Demands infinite velocity ($\dot{q} \to \infty$), causing severe gearbox backlash hammering and stripped motor shaft keys.
+2. **Velocity Discontinuity ($\mathcal{C}^1$ Failure):** Position is continuous, but velocity exhibits sharp step transitions ($\lim_{t \to t_0^-} \dot{q}(t) \ne \lim_{t \to t_0^+} \dot{q}(t)$). Demands infinite acceleration ($\ddot{q} \to \infty$), generating instantaneous torque spikes ($\tau = J \ddot{q}$) that trip motor inverter overcurrent alarms.
+3. **Acceleration Discontinuity ($\mathcal{C}^2$ Failure):** Velocity is continuous, but acceleration exhibits discrete step transitions. The third time derivative—**jerk** ($\dddot{q}(t) = \frac{d^3 q}{dt^3}$)—explodes to infinity ($\dddot{q} \to \infty$).
 
-$$a(t) = \sum_{i} w_i \cdot A_{t-i}^{(i)}$$
+![**Derivative Continuity $\mathcal{C}^2$ vs. Discontinuous Waypoint Stepping.** Discontinuous chunk steps generate infinite acceleration spikes ($\delta(t)$) and destructive jerk, whereas $\mathcal{C}^2$ quintic spline interpolation bounds velocity, acceleration, and jerk, protecting gearboxes and keeping motor coil currents within thermal limits.](figures/fig07_c2_jerk_continuity.svg){#fig-c2-jerk-continuity width=100%}
 
-Where weights $w_i = \exp(-\lambda i)$ favor newly computed trajectories while enforcing:
+### The Mechanical Physics of Jerk ($\dddot{q}$)
 
-1. **Position Continuity ($\mathcal{C}^0$):** No instantaneous displacement steps.
-2. **Velocity Continuity ($\mathcal{C}^1$):** Continuous velocity curves, eliminating infinite acceleration impulses.
-3. **Jerk Bounding ($\mathcal{C}^2$):** Bounding the third time derivative ($\|\frac{d^3 q}{dt^3}\| \le j_{\text{max}}$) to prevent excitation of structural resonant frequencies.
+Why does infinite jerk break physical machines even when velocity and acceleration remain within nominal limits?
+
+Every physical robotic actuator consists of an electric motor, an elastic coupling, and a reduction gearbox (e.g. strain wave / harmonic drive or cycloidal drive):
+
+$$\tau_{\text{transmitted}} = K_{\text{gear}} \cdot \big( q_{\text{motor}} - N \cdot q_{\text{link}} \big) + D_{\text{gear}} \cdot \big( \dot{q}_{\text{motor}} - N \cdot \dot{q}_{\text{link}} \big)$$
+
+When an un-smoothed trajectory commands a step change in acceleration, the rate of torque change ($\dot{\tau} \propto \dddot{q}$) excites the mechanical resonant frequencies ($15\text{--}45\text{ Hz}$) of the harmonic drive flexspline:^[In precision strain wave gearing, the flexspline dynamic stress is governed by $\sigma_{\text{bending}}(t) = \frac{E \cdot t_w}{\rho(t)} + \frac{\tau(t)}{Z_p}$, where $E$ is Young's modulus, $t_w$ is flexspline wall thickness, and $\rho(t)$ is the instantaneous pitch radius of curvature. Transient jerk spikes induce high-frequency torsional oscillations that concentrate shear stress at the tooth root fillet, causing progressive fatigue micro-cracking and tooth shearing.]
+
+* **Harmonic Resonance (Chatter):** High-frequency jerk spikes pump energy into gearbox structural resonance modes, causing audible ringing, severe end-effector vibration, and loosened chassis bolts.
+* **Cycloidal Pin Shear:** Cycloidal reducers distribute torque across multiple steel pins. Rapid torque transients concentrate mechanical load onto one or two teeth before elastic load sharing engages, shearing drive pins.
+* **Motor Coil Thermal Dissipation:** High-frequency current ripple increases stator Joule heating ($I^2 R$) without generating useful mechanical work, pushing winding temperatures toward thermal derating thresholds ($>85^\circ\text{C}$).
+
+### Real-Time Quintic Spline Interpolation on the MCU
+
+To guarantee $\mathcal{C}^2$ jerk continuity, the real-time MCU fits a **Quintic Polynomial Spline** ($5^{\text{th}}$-order polynomial) across every adjacent waypoint pair $[q_k, q_{k+1}]$:
+
+$$q(t) = c_0 + c_1 t + c_2 t^2 + c_3 t^3 + c_4 t^4 + c_5 t^5, \quad t \in [0, T]$$
+
+where $T = \Delta t$ is the waypoint interval ($20\text{ ms}$).
+
+The six polynomial coefficients $[c_0, c_1, c_2, c_3, c_4, c_5]$ are uniquely determined in closed form by enforcing six boundary conditions matching position, velocity, and acceleration at both segment endpoints:
+
+$$\begin{aligned}
+q(0) &= q_0, & \dot{q}(0) &= \dot{q}_0, & \ddot{q}(0) &= \ddot{q}_0 \\
+q(T) &= q_1, & \dot{q}(T) &= \dot{q}_1, & \ddot{q}(T) &= \ddot{q}_1
+\end{aligned}$$
+
+Solving this linear system yields the exact closed-form algebraic solution executed on the microcontroller:
+
+$$\begin{aligned}
+c_0 &= q_0 \\
+c_1 &= \dot{q}_0 \\
+c_2 &= \frac{1}{2} \ddot{q}_0 \\
+c_3 &= \frac{20(q_1 - q_0) - (8\dot{q}_1 + 12\dot{q}_0)T - (3\ddot{q}_0 - \ddot{q}_1)T^2}{2 T^3} \\
+c_4 &= \frac{30(q_0 - q_1) + (14\dot{q}_1 + 16\dot{q}_0)T + (3\ddot{q}_0 - 2\ddot{q}_1)T^2}{2 T^4} \\
+c_5 &= \frac{12(q_1 - q_0) - 6(\dot{q}_1 + \dot{q}_0)T - (\ddot{q}_1 - \ddot{q}_0)T^2}{2 T^5}
+\end{aligned}$$
+
+At every $1\text{ ms}$ tick of the FreeRTOS timer interrupt, the MCU evaluates $q(t)$, $\dot{q}(t)$, and $\ddot{q}(t)$ via Horner's method in fewer than $45$ clock cycles ($<0.3\ \mu\text{s}$ on an ARM Cortex-M4 running at $160\text{ MHz}$), guaranteeing mathematically continuous acceleration and strictly bounded jerk:
+
+$$\|\dddot{q}(t)\| = \|6 c_3 + 24 c_4 t + 60 c_5 t^2\| \le j_{\text{max}}$$
+
+| Robot Morphology | Velocity Bound ($v_{\text{max}}$) | Acceleration Bound ($a_{\text{max}}$) | Jerk Bound ($j_{\text{max}}$) | Actuator Technology |
+| :--- | :---: | :---: | :---: | :--- |
+| **Collaborative Tabletop Arm** | $2.0\text{ rad/s}$ | $8.0\text{ rad/s}^2$ | $25.0\text{ rad/s}^3$ | Quasi-Direct Drive / Planetary Gear |
+| **Precision High-Speed Delta** | $6.5\text{ rad/s}$ | $35.0\text{ rad/s}^2$ | $150.0\text{ rad/s}^3$ | Direct-Drive BLDC Motors |
+| **Heavy Industrial Manipulator** | $1.5\text{ rad/s}$ | $4.5\text{ rad/s}^2$ | $12.0\text{ rad/s}^3$ | Harmonic Drive & Cycloidal Reducers |
+: **Standard Derivative Bounds Across Robot Morphologies.** Establishing explicit derivative thresholds prevents structural resonance and gearbox damage. {#tbl-derivative-bounds}
 
 ---
 
 ## The Asynchronous State Re-Anchoring Handshake
 
-When a real-time safety enforcer vetoes or clips a motor command (e.g. stopping $5\text{ cm}$ before a collision), the physical machine's actual position ($s_{\text{actual}}$) diverges from what the VLA model predicted ($s_{\text{expected}}$).
+In an ideal world, the physical robot follows the planned trajectory with zero deviation. On a real factory workbench, however, unexpected physical events occur continuously:
 
-| Protocol Step | Handshake Substrate | Synchronization Mechanism & Action |
-| :--- | :--- | :--- |
-| **1. Proposal Emission** | MPU Linux Daemon | VLA policy emits action chunk $A_t$ assuming arm starts at predicted coordinate $p_0$. |
-| **2. Real-Time Intervention** | MCU 1 kHz Safety Loop | Enforcer detects dynamic obstacle, vetoes trajectory, and holds arm at safe coordinate $p_{\text{veto}}$. |
-| **3. Shared Veto Flag** | Shared SRAM Mailbox | MCU sets atomic `VETO_ACTIVE` hardware interrupt flag and posts true state $p_{\text{veto}}$. |
-| **4. Queue Flush & Re-anchor**| MPU Policy Pipeline | MPU aborts pending chunk buffer, flushes KV-cache, and re-seeds diffusion planner directly from $p_{\text{veto}}$. |
+1. A human operator reaches into the workcell, tripping a real-time Control Barrier Function (CBF) that halts the arm $5\text{ cm}$ in front of the worker.
+2. The end-effector makes unexpected contact with a rigid fixture, causing the motor controller to clamp torque to prevent exceeding current limits.
+3. An external payload is heavier than estimated, causing joint tracking error to exceed safe thresholds.
 
-Without an explicit re-anchoring handshake, the neural policy continues pushing against safety boundaries, accumulating integral windup and generating violent oscillatory snaps when limits are released.
+When the real-time MCU safety enforcer vetoes or clips a motor command, the physical arm stops at coordinate $q_{\text{actual}} = q_{\text{veto}}$. But the high-level neural policy on the Linux MPU—running open-loop in the background—continues computing future chunks assuming the arm is advancing along its uninhibited path ($q_{\text{expected}}$).
+
+**This mismatch creates Physical State Divergence: $\|q_{\text{actual}} - q_{\text{expected}}\| > \epsilon_{\text{diverge}}$.**
+
+```
+                 THE SNAP-BACK TRAP (WITHOUT RE-ANCHORING)
+                                          
+MPU Belief:    q0 ─────────> q1 ─────────> q2 ─────────> q3 (Target Pose)
+                              ▲
+Physical Arm:  q0 ─────────> [HALTED BY MCU CBF]
+                              │
+When Obstacle Clears:         └───────────────────────⚡ SNAP-BACK!
+                              Arm attempts to jump from q1 to q3 in 1 ms!
+                              Instantaneous acceleration -> Gearbox Destruction.
+```
+
+If the system naively resumes execution when the obstacle clears, the motor controller receives a setpoint corresponding to $q_3$ while physically sitting at $q_1$. The resulting step jump triggers catastrophic snap-back: commanding maximum velocity and tearing gearbox teeth.
+
+To resolve state divergence safely, Physical AI implements the **Asynchronous State Re-Anchoring Handshake** (@fig-reanchoring-handshake):
+
+![**The Asynchronous State Re-Anchoring Handshake under Safety Intervention.** When the real-time MCU safety enforcer vetoes a trajectory to avoid an obstacle, it sets an atomic hardware flag and posts the true physical state $q_{\text{actual}}$ to the shared SRAM mailbox. The Linux MPU flushes pending waypoints, clears the KV-cache, and re-seeds trajectory generation directly from $q_{\text{actual}}$, guaranteeing bumpless motion resumption.](figures/fig07_reanchoring_handshake.svg){#fig-reanchoring-handshake width=100%}
+
+### The 4-Phase Handshake Protocol
+
+1. **Phase 1: Proposal Emission:** The Linux MPU generates chunk $A_t$ assuming the arm begins at predicted coordinate $q_{\text{expected}}$ and pushes it into the shared SRAM queue.
+2. **Phase 2: Real-Time MCU Intervention:** The $1000\text{ Hz}$ safety enforcer detects an obstacle or limit breach ($h(x) < 0$), vetoes the incoming trajectory, overrides PWM timer registers, and holds the physical arm in a safe position hold at $q_{\text{veto}}$.
+3. **Phase 3: Shared SRAM Veto Flag & Telemetry Post:** The MCU writes the true measured physical state $[q_{\text{actual}}, \dot{q}_{\text{actual}}]$ into the shared SRAM mailbox, sets the atomic `VETO_ACTIVE = 1` hardware flag, and asserts a hardware mailbox interrupt (NMI) to the MPU.
+4. **Phase 4: Pipeline Flush & Bumpless Re-Anchoring:**
+   - The MPU Linux daemon intercepts the interrupt, immediately flushes all pending unexecuted waypoints from the SPSC ring buffer, and clears the diffusion/transformer KV-cache.
+   - The MPU re-initializes policy observation buffers using the true physical state $q_{\text{actual}}$ as the origin ($t=0$).
+   - The MPU synthesizes a new trajectory chunk $A_{t+1}$ starting from $q_{\text{actual}}$ with initial velocity matching current state ($\dot{q}_{\text{actual}} = 0$).
+   - The MCU clears `VETO_ACTIVE`, verifies $\mathcal{C}^2$ boundary continuity from $q_{\text{actual}}$, and resumes smooth motor execution with zero snap-back.
 
 ---
 
 ## Systems Fallacies and Pitfalls
 
 ::: {.callout-warning}
-### Common Engineering Fallacies
+### Common Engineering Fallacies in Trajectory Planning
+
 * **Fallacy 1:** *"Predicting single-step actions ($H=1$) provides the most responsive closed-loop control."*  
-  *Correction:* Single-step execution at 20 Hz starves motor controllers during inference latency spikes, causing destructive mechanical chatter.
+  *Correction:* Single-step execution at $20\text{ Hz}$ starves motor controllers during inference latency spikes, causing discrete velocity jumps, high-frequency torque shock, and destructive mechanical chatter. Multi-step chunking ($H=16$) with temporal ensembling provides continuous guidance while amortizing inference latency.
 * **Fallacy 2:** *"A neural network can be trained to produce jerk-bounded motion without external filtering."*  
-  *Correction:* Neural policies are stochastic function approximators; even minor output noise creates high-frequency jerk spikes that destroy mechanical gearboxes.
+  *Correction:* Neural policies are stochastic function approximators; even minor sampling noise or out-of-distribution visual tokens create high-frequency output jitter that destroys cycloidal and harmonic gearboxes. $\mathcal{C}^2$ quintic spline interpolation on the real-time MCU is mathematically required.
+* **Fallacy 3:** *"A longer chunk horizon $H$ is always better because it reduces MPU inference frequency."*  
+  *Correction:* Excessively long horizons ($H > 64$, spanning $>1.5\text{ s}$) operate open-loop for too long. If a dynamic obstacle enters the workspace midway through a long chunk, the robot continues blindly along its stale trajectory until the next inference, increasing collision risk and requiring emergency MCU safety vetoes.
 :::
 
 ---
 
 ::: {.callout-decision}
 ### Dossier Delta: Planning Schema (`PLAN-01`)
-Freeze the trajectory generation and action chunk contracts:
 
-1. The policy interface format (Task-Space $\Delta SE(3)$ vs. Joint Angles $\mathbb{R}^n$).
-2. The action chunk horizon $H$, execution sub-step $K$, and update frequency.
-3. The temporal ensembling weighting function and $\mathcal{C}^2$ jerk limits ($j_{\text{max}}$).
-4. The asynchronous re-anchoring handshake protocol upon safety interventions.
+We freeze the seventh milestone artifact of the Cumulative Design Dossier: **The Planning Schema (`PLAN-01`)**. This schema establishes the mathematical action space, prediction horizon $H$, temporal ensembling decay factor $\lambda$, derivative bounds ($v_{\text{max}}, a_{\text{max}}, j_{\text{max}}$), and the asynchronous state re-anchoring handshake parameters (@tbl-plan-01-schema).
+
+| Parameter Category | Field Identifier | Specification / Value | Systems Invariant & Enforcement |
+| :--- | :--- | :---: | :--- |
+| **Policy Interface** | `action_space` | `JOINT_ANGLES_RAD` | 6-DoF joint position array $\mathbf{q} \in \mathbb{R}^6$ in radians |
+| **Horizon Budget** | `prediction_horizon_steps` | $16\text{ steps}$ | $H=16$ waypoints at $\Delta t = 20.0\text{ ms}$ ($320\text{ ms}$ span) |
+| **Cadence Matching** | `planning_frequency_hz` | $20.0\text{ Hz}$ | Stride $K=4$ steps ($80\text{ ms}$ update window) |
+| **Temporal Ensembling**| `decay_lambda` | $0.15$ | Exponential weighting $w_i = \exp(-0.15 \cdot \Delta t_i)$ |
+| **Velocity Limit** | `max_joint_velocity_rad_s` | $2.0\text{ rad/s}$ | Continuous motor speed rating ceiling |
+| **Acceleration Limit** | `max_joint_accel_rad_s2` | $8.0\text{ rad/s}^2$ | Inverter continuous phase current limit |
+| **Jerk Bound** | `max_joint_jerk_rad_s3` | $25.0\text{ rad/s}^3$ | Cycloidal drive pin shear & resonance limit |
+| **State Re-Anchoring** | `divergence_threshold_rad` | $0.05\text{ rad}$ | Triggers atomic `VETO_ACTIVE` and queue flush |
+: **Summary Ledger for Planning Schema (`PLAN-01`).** Freezes the trajectory generation parameters, derivative limits, and re-anchoring contracts. {#tbl-plan-01-schema}
 
 ```yaml
 # DOSSIER CHECKPOINT: PLAN-01
+# Physical AI Agent Planning and Trajectory Generation Schema
+# System ID: PHYSICAL-AGENT-01
+# Milestone: Part II Sensory-Motor Organs (Stage 5)
+
 planning_schema:
   system_id: "PHYSICAL-AGENT-01"
   version: "1.0.0"
+  dossier_checkpoint: "PLAN-01"
+  
   policy_interface:
     action_space: "JOINT_ANGLES_RAD"
-    dimension: 3
+    dimension: 6
+    coordinate_frame: "ROBOT_BASE_FRAME"
     prediction_horizon_steps: 16
     chunk_step_dt_ms: 20.0
     planning_frequency_hz: 20.0
+    execution_stride_steps: 4
+
   temporal_ensembling:
     enabled: true
     weighting_type: "EXPONENTIAL_DECAY"
     decay_lambda: 0.15
+    max_history_chunks: 4
+
   derivative_limits:
+    interpolation_type: "C2_QUINTIC_SPLINE"
     max_joint_velocity_rad_s: 2.0
     max_joint_acceleration_rad_s2: 8.0
     max_joint_jerk_rad_s3: 25.0
+    spline_eval_frequency_hz: 1000.0
+
   reanchoring_protocol:
-    divergence_threshold_rad: 0.05
+    divergence_threshold_rad: 0.050
     handshake_timeout_ms: 100.0
+    mailbox_substrate: "SHARED_SRAM_SPSC"
+    veto_flag_address: "0x20004000"
+    flush_on_safety_intervention: true
+    fallback_hold_duration_ms: 250.0
 ```
 :::
 
 ::: {.callout-lab}
-### Hands-on Realization: Lab 8 — Action Chunking and Ensembling
-Deploy an action diffusion policy on the **Physical AI Kit (Arduino UNO Q)**. Compare raw chunk transitions against temporal ensembled trajectories on an oscilloscope. Measure motor current spikes and mechanical vibration to prove that $\mathcal{C}^2$ jerk limiting eliminates harmonic chatter while preserving task execution speed.
+### Hands-on Realization: Lab 7 — Action Chunking and Jerk Ensembling
+
+In **Lab 7 (`labs/07-action-chunking`)**, you will implement and validate the complete System 1.5 trajectory planning pipeline on the **Arduino UNO Q Dual-Brain Kit**:
+
+1. **Deploy Action Chunking on the Linux MPU:** Run a lightweight Action Chunking with Transformers (ACT) policy on the Qualcomm Snapdragon AP processor, streaming $H=16$ step action chunks at $20\text{ Hz}$ across shared SRAM.
+2. **Implement Temporal Ensembling & Quintic Spline Interpolation on the MCU:** Program the STM32 / ARM Cortex-M4 microcontroller in FreeRTOS to ingest chunks, compute exponential temporal ensembling ($\lambda = 0.15$), and evaluate $\mathcal{C}^2$ quintic splines at $1000\text{ Hz}$.
+3. **Capture Oscilloscope Telemetry Under Live Faults:** Connect an oscilloscope to motor current sense shunts. Compare raw chunk step commands against $\mathcal{C}^2$ quintic spline execution, proving that jerk limiting eliminates current spikes and mechanical chatter.
+4. **Trigger Live Safety Vetoes & Measure Re-Anchoring:** Inject an obstacle into the workspace to trigger the MCU Control Barrier Function. Verify that the system sets `VETO_ACTIVE`, flushes the queue, and re-anchors trajectory generation from $q_{\text{actual}}$ with zero snap-back.
 :::

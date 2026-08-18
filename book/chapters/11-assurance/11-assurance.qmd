@@ -5,108 +5,313 @@
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Specify Operational Design Domains (ODD):** Define explicit environmental, physical, and sensor boundaries within which the system is verified safe.
-2. **Execute the 4-Rung Qualification Ladder:** Progress candidate systems through Replay $\to$ Simulation $\to$ Hardware-in-the-Loop (HIL) $\to$ Shadow field evaluation.
-3. **Conduct Cross-Layer Fault Injection:** Inject unannounced camera dropouts, memory bus stalls, sensor lens occlusions, and MPU kernel panics.
-4. **Construct Claim-Argument-Evidence (CAE) Cases:** Structure safety arguments linking empirical test evidence to non-negotiable hazard mitigations.
-5. **Issue the Release Verdict (`REL-01`):** Complete the eleventh and final artifact of the Cumulative Design Dossier rendering an accountable **Deploy / Condition / Refuse** verdict.
+1. **Formalize Operational Design Domains (ODD):** Specify explicit environmental, kinematic, and sensor boundaries ($\mathcal{X}_{\text{ODD}}$) within which autonomous closed-loop operation is mathematically and physically verified.
+2. **Execute the 4-Rung Qualification Ladder:** Progress candidate physical AI policies systematically through Historical Replay $\to$ Domain-Randomized Physics Simulation $\to$ Hardware-in-the-Loop (HIL) Plant Emulation $\to$ Shadow Fleet Deployment.
+3. **Conduct System-Theoretic Process Analysis (STPA):** Identify causal losses, system hazards, and the four canonical classes of Unsafe Control Actions (UCAs) governing multi-rate embodied architectures.
+4. **Execute Cross-Layer Seeded Fault Injection:** Program automated bench campaigns injecting camera dropouts, PTP clock skews, DMA memory bus starvation, Linux kernel panics, and torque disturbances to verify $100\%$ real-time MCU safety containment.
+5. **Construct Claim-Argument-Evidence (CAE) Cases & Issue Release Verdicts (`REL-01`):** Synthesize empirical bench logs, latency tail profiles, and fault logs into an accountable **Deploy / Condition / Refuse** release verdict for the final milestone of the Cumulative Design Dossier.
 :::
 
 ::: {.callout-autopsy}
-* **System:** Autonomous Urban Delivery Rover (VLA Policy v1.0)
-* **Incident:** Rover crossed into oncoming bicycle lane; struck cyclist at $4.5\text{ m/s}$.
-* **Telemetry Snapshot:** System passed 500 hours of physics simulation with a $99.8\%$ task completion score. During real-world deployment on wet asphalt, road spray coated the depth camera lens, while tire friction coefficient dropped from $\mu=0.85$ to $\mu=0.28$.
-* **Root Cause:** The release review board relied on simulation metrics without executing Hardware-in-the-Loop (HIL) fault injection across degraded friction and lens mud.
-* **Architectural Flaw:** The team shipped a "Deploy" verdict without evidence-backed ODD qualification.
+* **System:** Fleet of 30 Autonomous Urban Delivery Rovers (Vision-Language-Action Policy v1.4)
+* **Incident:** Rover accelerated into an oncoming bicycle lane at $4.8\text{ m/s}$, colliding with a cyclist and causing severe orthopedic trauma and a total chassis destruction.
+* **Telemetry Snapshot:** The candidate policy achieved a $99.4\%$ task success rate across 10,000 hours of domain-randomized physics simulation. In field deployment on wet asphalt under sudden afternoon rain, road spray coated the stereo depth camera lenses, while tire-to-surface friction plummeted from nominal $\mu = 0.82$ to $\mu = 0.24$.
+* **Root Cause:** Mud occlusion induced high-frequency spatial hallucination in the Vision Transformer backbone, while reduced friction expanded physical stopping distance $d_{\text{stop}}$ from $0.45\text{ m}$ to $1.85\text{ m}$. The real-time microcontroller safety enforcer lacked an independent exteroceptive friction estimator and received no hardware camera-health fault signal from the Linux application processor.
+* **Architectural Flaw:** The release review board granted unconditional deployment authority based solely on simulation metrics without subjecting the target embedded silicon to cross-layer Hardware-in-the-Loop (HIL) fault injection or freezing an explicit Operational Design Domain (ODD).
 :::
 
 ::: {.callout-contract}
 | Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Target Operational Design Domain (ODD) matrix<br>• Model benchmark performance and simulation scores<br>• Release qualification candidate dossier |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Real-time out-of-ODD boundary monitor<br>• $100\%$ contained fault injection pass confirmation<br>• Final Deploy / Condition / Refuse release verdict |
-| **Failure Escalation** | *MCU Hardware Reflex* | If any HIL fault is uncontained, render a formal "REFUSE" verdict and block field deployment. |
+| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU / Edge NPU* | • Target Operational Design Domain ($\mathcal{X}_{\text{ODD}}$) matrix proposal<br>• Model benchmark scores and simulation rollout logs<br>• Candidate policy deployment package and execution request |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Real-time 1000 Hz interoceptive and exteroceptive ODD boundary monitor<br>• Zero-tolerance containment verification under $100\%$ of seeded HIL fault vectors<br>• Authority to issue formal **Deploy / Condition / Refuse** release gate verdict |
+| **Failure Escalation** | *MCU Hardware Reflex* | If any seeded fault escapes containment, latency tail exceeds $d_{\text{stop}}$ margin, or candidate operates outside $\mathcal{X}_{\text{ODD}}$, issue formal **REFUSE** verdict and inhibit actuator drive stages. |
 :::
 
 ::: {.callout-note icon=false}
 **The Sim-to-Real Delta:**
-* **What Simulation Assumes:** The simulation environment accurately models all physical corner cases; models that succeed in simulation will succeed on real hardware.
-* **What the Bench Measures:** Simulation suffers from domain gap; physical sensor noise, lens smudges, bus jitter, and mechanical wear reveal catastrophic failure modes never seen in simulation.
+* **What Simulation Assumes:** Physical environments follow deterministic differential equations; sensors deliver perfect pixel grids without optical glare or lens fouling; compute hardware is an idealized infinite-bandwidth Turing machine that never suffers bus contention, memory fragmentation, or operating system kernel panics.
+* **What the Bench Measures:** Real cameras suffer frame drops and blinding sunlight; direct memory access (DMA) streams saturate the shared memory bus, inflating inference tails from $P_{50} = 22\text{ ms}$ to $P_{99.9} = 185\text{ ms}$; surface friction changes unpredictably with temperature and moisture; and edge processors undergo thermal throttling that cuts compute clocks by $50\%$ under sustained motor vibration and ambient heat.
 :::
 
 ---
 
-## Operational Design Domain (ODD) Specification
+## Operational Design Domain (ODD) Specification and Boundary Freezing
 
-A physical machine cannot be guaranteed safe for "all possible environments." Safety is strictly contingent upon operating within a defined **Operational Design Domain (ODD)**:
+An autonomous physical AI agent cannot be certified as "universally safe." A neural network that manipulates warehouse boxes under diffuse indoor LED illumination will hallucinate wildly when struck by direct solar glare; a mobile base calibrated for dry concrete will slide uncontrollably on wet epoxy. Safety in physical systems is strictly contingent upon operating within a mathematically bounded and empirically verified **Operational Design Domain (ODD)** [@leveson2011engineering].
 
-| Environmental Dimension | Nominal In-ODD Range | Out-of-ODD Trigger (Safe Fallback) |
-| :--- | :--- | :--- |
-| **Ambient Illumination** | $150\text{--}2000\text{ Lux}$ | $< 50\text{ Lux}$ (Darkness) or $> 10,000\text{ Lux}$ (Direct Solar Glare) |
-| **Surface Friction ($\mu$)** | $\mu \ge 0.45$ (Dry concrete/wood) | $\mu < 0.25$ (Wet ice, oil slick, loose gravel) |
-| **Dynamic Obstacle Velocity** | $v_{\text{obstacle}} \le 1.2\text{ m/s}$ (Walking speed) | $v_{\text{obstacle}} > 2.5\text{ m/s}$ (Fast approaching hazard) |
-| **Workspace Temperature** | $0^\circ\text{C to }45^\circ\text{C}$ | $> 50^\circ\text{C}$ (Thermal derating threshold) |
+We define the Operational Design Domain $\mathcal{X}_{\text{ODD}}$ as a compact subset of the multi-dimensional environment, kinematic, and electrical state space:
 
-When an out-of-ODD condition is detected, the machine must refuse new learned proposals and transition to a safe state.
+$$\mathcal{X}_{\text{ODD}} = \left\{ \mathbf{x} \in \mathbb{R}^k \;\middle|\; x_{i,\text{min}} \le x_i \le x_{i,\text{max}}, \quad \forall i \in \{1, \dots, k\} \right\} \subset \mathbb{R}^k$$
 
----
+Operating outside $\mathcal{X}_{\text{ODD}}$ renders all learned spatial representations, forward-invariant control barrier functions, and stopping distance guarantees invalid.
 
-## The 4-Rung Qualification Ladder
+| Environmental & Physical Dimension | Unit | Nominal Operating Envelope ($\mathcal{X}_{\text{ODD}}$) | Out-of-ODD Boundary Trigger | Real-Time Monitor Substrate |
+| :--- | :---: | :---: | :---: | :--- |
+| **Ambient Illumination ($E_{\text{lux}}$)** | $\text{Lux}$ | $150 \le E_{\text{lux}} \le 2500$ | $E_{\text{lux}} < 50$ (Darkness) or $E_{\text{lux}} > 10{,}000$ (Blinding Glare) | Hardware Photodiode (MCU ADC, 1000 Hz) |
+| **Surface Friction Coefficient ($\mu$)** | — | $0.45 \le \mu \le 0.95$ | $\mu < 0.30$ (Wet epoxy, oil, gravel) | Proprioceptive Wheel Slip Estimator (MCU, 500 Hz) |
+| **Workspace Ambient Temp ($T_{\text{amb}}$)** | $^\circ\text{C}$ | $5.0 \le T_{\text{amb}} \le 40.0$ | $T_{\text{amb}} < 0.0$ or $T_{\text{amb}} > 50.0$ (Thermal derating knee) | On-board I2C Thermal Sensor (MCU, 10 Hz) |
+| **Motor Winding Temp ($T_{\text{motor}}$)** | $^\circ\text{C}$ | $20.0 \le T_{\text{motor}} \le 85.0$ | $T_{\text{motor}} > 105.0$ (Insulation degradation limit) | Motor Thermistor / ADC (MCU ISR, 1000 Hz) |
+| **Battery Bus Voltage ($V_{\text{bus}}$)** | $\text{V}$ | $11.8 \le V_{\text{bus}} \le 14.6$ | $V_{\text{bus}} < 10.5$ (Brownout / Inverter desaturation) | Inverter Voltage Telemetry (MCU SPI, 1000 Hz) |
+| **Dynamic Obstacle Velocity ($v_{\text{obs}}$)** | $\text{m/s}$ | $0.0 \le v_{\text{obs}} \le 1.2$ | $v_{\text{obs}} > 2.0$ (High-speed approaching hazard) | Time-of-Flight / Radar Tracker (MCU SPI, 100 Hz) |
+| **Maximum Payload Mass ($m_{\text{load}}$)** | $\text{kg}$ | $0.0 \le m_{\text{load}} \le 3.5$ | $m_{\text{load}} > 4.2$ (Structural / Torque limit breach) | Joint Torque Observer (MCU ISR, 1000 Hz) |
 
-Before physical deployment, every system must ascend a rigorous **4-Rung Qualification Ladder**:
+: **Operational Design Domain (ODD) specification for the autonomous handling agent.** Parameters are continuously monitored by dedicated hardware channels on the real-time microcontroller. {#tbl-odd-spec}
 
-| Qualification Rung | Target Environment & Execution Substrate | Mandatory Promotion Gate Requirement |
-| :--- | :--- | :--- |
-| **Rung 4: Live Shadow Mode** | Real physical robot in fleet; candidate model runs in background without actuator authority. | **Promotion Gate 3:** Zero uncontained divergent proposals over $500\text{ hours}$ of shadow fleet operations. |
-| **Rung 3: Hardware-in-the-Loop (HIL)** | Real target MPU \& MCU hardware wired to FPGA real-time physical plant emulator with injected faults. | **Promotion Gate 2:** $100\%$ containment of all seeded bus corruptions, MPU crashes, and sensor drops. |
-| **Rung 2: Domain-Randomized Simulation** | Physics simulator (e.g. MuJoCo / Isaac Sim) with randomized mass, friction ($\mu$), and lighting. | **Promotion Gate 1:** $> 98\%$ task success rate across $10,000$ randomized rollout episodes. |
-| **Rung 1: Deterministic Log Replay** | Offline logged sensor datasets evaluated against ground-truth labels and historical traces. | **Baseline Gate 0:** Mean spatial affordance localization error $< 2\text{ cm}$; zero inference exceptions. |
+### Dual-Tier ODD Monitoring and Graceful Degradation
 
-Passing Rung 1 (offline metrics) is a necessary prerequisite, but only Rung 3 (HIL) and Rung 4 (Shadow Mode) provide defensible evidence of physical safety.
+To enforce the ODD boundary without relying on the untrusted Linux application processor, the real-time microcontroller (MCU) executes a zero-allocation **ODD Health Monitor** inside its 1000 Hz timer interrupt service routine (ISR):
 
----
+1. **Interoceptive Health Monitors:** Direct hardware sampling of internal battery bus voltages, inverter gate-driver temperatures, motor winding temperatures, and memory buffer occupancies. If $T_{\text{motor}} > 85^\circ\text{C}$, the MCU derates maximum allowable continuous torque $\tau_{\text{cont}}$ via active thermal scaling.
+2. **Exteroceptive Boundary Monitors:** Low-overhead processing of photodiode illumination, wheel slip velocity differentials ($\Delta v_{\text{wheel}} = |r \omega - v_{\text{chassis}}| > \epsilon_{\text{slip}}$), and direct ultrasonic/radar distance fields.
 
-## STPA System-Theoretic Hazard Analysis
+When any state variable breaches its out-of-ODD trigger boundary ($x_i \notin \mathcal{X}_{\text{ODD}}$), the MCU safety core immediately revokes the MPU's proposal lease and transitions through a deterministic fallback escalation:
 
-Using Nancy Leveson's **System-Theoretic Process Analysis (STPA)**, we identify four causal Unsafe Control Actions (UCAs):
-
-1. **Not Providing Action:** Safety enforcer fails to command dynamic braking when obstacle is detected.
-2. **Providing Action Too Early / Too Late:** Deceleration command is issued after $d_{\text{gap}} < d_{\text{stop}}$.
-3. **Providing Wrong Action:** VLA policy commands positive torque when negative counter-torque is required.
-4. **Stopping Action Too Soon:** Dynamic braking is released before the machine comes to a complete physical stop.
-
----
-
-## Cross-Layer Fault Injection Campaigns
-
-To prove resilience, the candidate system must survive automated **cross-layer bench fault injection**:
-
-| Fault Category | Injected Benchmark Fault Condition | Expected Containment Mechanism |
-| :--- | :--- | :--- |
-| **1. Sensor Transduction Faults** | Instantaneous camera cable disconnect; optical glare; total lux drop. | PTP frame dropout detected; MCU falls back to blind proprioceptive position hold. |
-| **2. Compute & Runtime Faults** | Linux kernel panic; shared SRAM bit-flip; synthetic DMA memory bus flood. | Heartbeat lease expires ($> 50\text{ ms}$); hardware watchdog triggers Category 1 dynamic braking. |
-| **3. Learned Policy Faults** | Hallucinated target pose ($+500\%$ outside workspace); discontinuous trajectory step. | CBF invariant filter clips position to workspace hull; bounds jerk to $j_{\text{max}}$. |
-| **4. Physical & Electrical Faults** | Motor winding temperature $> 105^\circ\text{C}$; battery bus voltage drop ($< 10.5\text{ V}$). | Interoceptive health derater scales torque to $0\text{ Nm}$; opens inverter gate relays. |
-
-**Passing Criterion:** Under 100% of injected faults, the real-time MCU safety enforcer must prevent kinetic collision and transition the machine into a safe stop within the bounded reaction time $t_{\text{delay}}$.
+$$\text{ODD State Transition} = \begin{cases}
+\text{Nominal Autonomous Mode}, & \mathbf{x}(t) \in \mathcal{X}_{\text{ODD}} \\
+\text{Category 2 Controlled Speed Derating}, & \mathbf{x}(t) \in \partial \mathcal{X}_{\text{ODD}} \quad (\text{Boundary Proximity}) \\
+\text{Category 1 Dynamic Deceleration to Halt}, & \mathbf{x}(t) \notin \mathcal{X}_{\text{ODD}} \quad (\text{Out-of-ODD Fault}) \\
+\text{Category 0 Relay Cut \& Mechanical Lock}, & \text{Critical Hardware Electrical / Thermal Breach}
+\end{cases}$$
 
 ---
 
-## The Claim-Argument-Evidence (CAE) Release Case
+## The 4-Rung Qualification Ladder: From Offline Replay to Shadow Fleets
 
-The final deliverable is an industrial-grade **Claim-Argument-Evidence (CAE)** assurance case:
+A foundational error in machine learning is assuming that high benchmark score on a static test split translates to physical safety in closed-loop actuation. In physical AI, software verification requires ascending a rigorous **4-Rung Qualification Ladder**, moving progressively from offline datasets to production hardware in active fleets (@fig-qualification-ladder).
 
-| CAE Pillar | Argument & Claim Formulation | Empirical Bench Evidence Artifact |
-| :--- | :--- | :--- |
-| **Top-Level Claim** | *"The Physical Agent is safe for autonomous operations within Warehouse ODD-01."* | Master Cumulative Design Dossier (`REL-01`) signed by safety review board. |
-| **Argument 1: Fault Containment** | The Proposal-Permission architecture deterministically contains all MPU crashes and bus faults. | HIL fault injection log: $1000/1000$ Linux kernel panics safely arrested in $< 50\text{ ms}$ without contact. |
-| **Argument 2: Latency Tail Freshness** | Sense-to-actuation $P_{99.9}$ latency never violates dynamic stopping distance bounds $d_{\text{stop}}$. | Bench Metrology CDF: $P_{99.9} = 72\text{ ms}$ (Budget: $80\text{ ms}$, stopping clearance: $0.082\text{ m}$). |
-| **Argument 3: Unconditional Human Authority**| Human supervisors can bumplessly override autonomous execution at any millisecond. | $50/50$ successful bench joystick takeovers with peak override jerk $< 15\text{ rad/s}^3$. |
+![**The 4-Rung Qualification Ladder for Physical AI Systems.** Progressive promotion gates require passing static offline replay, domain-randomized physics simulation, real-time hardware-in-the-loop (HIL) fault containment, and passive shadow fleet operation before issuing an accountable release verdict.](figures/fig11_qualification_ladder.pdf){#fig-qualification-ladder width=100%}
+
+### Rung 1: Historical Deterministic Log Replay
+
+* **Execution Substrate:** High-performance offline GPU servers evaluating recorded, immutable multimodal sensor streams collected from historical operational runs.
+* **Systems Purpose:** Evaluates spatial affordance localization accuracy, latent JEPA world model prediction error, token loss convergence, and offline execution latency.
+* **The Fundamental Limitation:** Historical replay is purely open loop. The actions proposed by the candidate model cannot mutate the recorded sensory frames. If the model proposes an erroneous steering trajectory, the logged camera frames continue driving straight. Offline replay is completely blind to closed-loop dynamic divergence, cumulative error drift, and physical inertia ($W_t \to W_{t+1}$).
+* **Promotion Gate 0 Requirement:** Spatial 3D affordance error $< 2.0\text{ cm}$; zero unhandled exceptions or NaN tensor outputs over $100{,}000$ historical test frames.
+
+### Rung 2: Physics Simulation with Domain Randomization
+
+* **Execution Substrate:** Highly parallelized rigid-body physics engines (such as MuJoCo or Isaac Sim) executing thousands of concurrent closed-loop rollout episodes on server GPU clusters.
+* **Systems Purpose:** Tests closed-loop dynamical stability, obstacle collision avoidance, control barrier function compliance, and multi-modal policy generalization across randomized environmental distributions $\xi \sim \mathcal{D}_{\text{sim}}$.
+* **Domain Randomization Formulation:**
+
+$$\xi = \left\{ m_{\text{payload}} \sim \mathcal{U}(0.5, 3.5)\text{ kg}, \; \mu \sim \mathcal{U}(0.35, 0.95), \; \tau_{\text{delay}} \sim \mathcal{U}(15, 65)\text{ ms}, \; \mathbf{w}_{\text{ext}} \sim \mathcal{N}(0, \sigma_w^2) \right\}$$
+
+* **The Fundamental Limitation:** The Sim-to-Real Reality Gap. Contact dynamics, mechanical backlash, rolling friction hysteresis, non-linear motor saturation, and optical sensor noise are heavily idealized in simulation. Crucially, simulation executes on host CPU/GPU threads with idealized memory architectures, completely masking real-world silicon phenomena such as DMA bus contention, cache misses, SPI bus bit-flips, and Linux operating system jitter.
+* **Promotion Gate 1 Requirement:** $\ge 98.0\%$ task completion success rate and zero simulated kinematic collisions across $\ge 10{,}000$ randomized rollout episodes.
+
+### Rung 3: Hardware-in-the-Loop (HIL) with Plant Emulation
+
+* **Execution Substrate:** The actual target embedded production hardware—the production Linux MPU (e.g., ARM Cortex-A53/A72) and real-time safety MCU (e.g., ARM Cortex-M4/M7)—mounted on a test bench and wired over real physical buses (MIPI CSI-2, SPI, CAN-FD, RPMSG) to a deterministic $10\text{ kHz}$ FPGA/DSP plant emulator.
+* **Systems Purpose:** Exposes the physical silicon to genuine computational constraints, interconnect bus arbitration, shared SRAM access latency, realistic DMA bus saturation, and automated cross-layer fault injection.
+* **The HIL Plant Loop:** The FPGA real-time plant emulator executes stiff numerical integration of the physical robot's equations of motion at $10\text{ kHz}$:
+
+$$\mathbf{M}(\mathbf{q}) \ddot{\mathbf{q}} + \mathbf{C}(\mathbf{q}, \dot{\mathbf{q}})\dot{\mathbf{q}} + \mathbf{g}(\mathbf{q}) = \boldsymbol{\tau}_{\text{actuator}} + \boldsymbol{\tau}_{\text{disturb}}$$
+
+The emulator synthesizes physical encoder quadrature pulses, motor phase currents, and camera frame DMA packets in hard real time, responding directly to the PWM gate signals driven by the physical MCU.
+* **Promotion Gate 2 Requirement:** $100\%$ deterministic containment of all injected hardware, bus, compute, and sensory fault vectors across $\ge 1{,}000$ automated HIL test cycles; zero physical collision envelope breaches ($d_{\text{gap}} > 0$).
+
+### Rung 4: Shadow Fleet Deployment
+
+* **Execution Substrate:** Real physical robots operating inside the genuine target operational environment (e.g., active production warehouse), executing missions under the control of a certified baseline policy or human supervisor.
+* **Systems Purpose:** The candidate experimental physical AI model runs entirely in the background (Shadow Mode) on live onboard camera streams and proprioceptive sensors, emitting candidate trajectory buffers $\mathbf{p}_{\text{shadow}}(t)$ without actuator authority.
+* **Divergence Metrology:** Telemetry engines continuously compute the instantaneous divergence between the shadow model's proposals and the active baseline controller:
+
+$$\Delta_{\text{divergence}}(t) = \| \mathbf{p}_{\text{shadow}}(t) - \mathbf{u}_{\text{active}}(t) \|_2$$
+
+When $\Delta_{\text{divergence}}(t)$ exceeds an auditing threshold $\epsilon_{\text{audit}}$, the flight data recorder automatically preserves a 5-second synchronized telemetry snippet (sensor frames, latent embeddings, and kinematic traces) for human expert safety review.
+* **Promotion Gate 3 Requirement:** Zero uncontained divergent proposals that would violate Control Barrier Function invariants ($h(\mathbf{x}) \ge 0$) over $\ge 500$ cumulative operating hours in production shadow fleet operation.
+
+| Qualification Rung | Primary Execution Substrate | Closed-Loop Dynamics? | Target Silicon Timing? | Real Sensory Optics? | Promotion Gate Metric |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **Rung 1: Log Replay** | Offline GPU Server | No | No | Yes (Recorded) | Gate 0: Affordance error $< 2\text{ cm}$ |
+| **Rung 2: Physics Sim** | MuJoCo / Isaac Sim Cluster | Yes | No | No (Synthetic) | Gate 1: $> 98\%$ task success ($10^4$ seeds) |
+| **Rung 3: HIL Emulation** | Target MPU + MCU + FPGA | Yes | **Yes** | Emulated | Gate 2: **$100\%$ fault containment** ($10^3$ runs) |
+| **Rung 4: Shadow Fleet** | Physical Fleet in Real ODD | Yes | **Yes** | **Yes** | Gate 3: **0 safety breaches over $500\text{ hrs}$** |
+
+: **Summary of the 4-Rung Qualification Ladder.** Progressive promotion ensures that software metrics are systematically validated on embedded silicon before real-world actuation. {#tbl-qualification-ladder}
+
+---
+
+## System-Theoretic Process Analysis (STPA) for Physical AI
+
+Traditional hazard analysis methodologies like Failure Modes and Effects Analysis (FMEA) assume that system failures originate from individual mechanical or electrical component breakdowns (e.g., a broken wire or snapped bolt). In physical AI systems, catastrophic failures frequently occur when **every component operates exactly as designed**, but unsafe interactions emerge between stochastic neural policies, asynchronous multi-rate runtimes, and physical dynamics [@leveson2011engineering].
+
+We apply **System-Theoretic Process Analysis (STPA)** to systematically uncover unsafe control interactions across the 7 canonical organs of our physical AI architecture.
+
+```
++-----------------------------------------------------------------------------+
+|                          STPA HIERARCHICAL CONTROL STRUCTURE                |
++-----------------------------------------------------------------------------+
+|                                                                             |
+|   +---------------------------------------------------------------------+   |
+|   |                       HUMAN SUPERVISOR                              |   |
+|   |  - Commands Mission Intent & Workspace Boundaries                    |   |
+|   |  - Retains Unconditional Bumpless Joystick Override & E-Stop        |   |
+|   +---------------------------------------------------------------------+   |
+|                                     | Control Commands (Heartbeat, Consent) |
+|                                     v Feedback (Visual Telemetry, Audible)  |
+|   +---------------------------------------------------------------------+   |
+|   |             DELIBERATION & PLANNING (Linux MPU / NPU)               |   |
+|   |  - Ingests 30 Hz Camera DMA Pixels -> Spatial Tokens                |   |
+|   |  - Computes 20 Hz VLA Diffusion Action Chunks (p_t)                 |   |
+|   |  - Emits Expiring Intent Leases over Shared IPC Ring Buffer         |   |
+|   +---------------------------------------------------------------------+   |
+|                                     | Candidate Trajectory Proposals (p_t)  |
+|                                     v Enforcer Health / Status Echo         |
+|   +---------------------------------------------------------------------+   |
+|   |             REAL-TIME SAFETY ENFORCER (Bare-Metal MCU)              |   |
+|   |  - 1000 Hz Zero-Allocation Control Barrier Invariant: h(x) >= 0     |   |
+|   |  - Dynamic Stopping Distance Verification: d_gap > d_stop           |   |
+|   |  - Hardware Watchdog Timer & Category 0/1/2 Stop State Machine      |   |
+|   +---------------------------------------------------------------------+   |
+|                                     | Permitted Phase Voltages / Gate PWM   |
+|                                     v Inverter Current / Encoder Feedback   |
+|   +---------------------------------------------------------------------+   |
+|   |                     PHYSICAL ACTUATORS & PLANT                      |   |
+|   |  - Permanent Magnet Synchronous Motors + Inverters                  |   |
+|   |  - Spring-Loaded Electromagnetic Friction Brakes                    |   |
+|   |  - State Mutation: W_t -> W_{t+1} (Kinetic Momentum & Friction)     |   |
+|   +---------------------------------------------------------------------+   |
+|                                                                             |
++-----------------------------------------------------------------------------+
+```
+
+### System Losses and Hazards
+
+We define the primary catastrophic losses ($L$) and system-level hazards ($H$):
+
+* **Loss $L_1$:** Human fatality, physical injury, or occupational harm.
+* **Loss $L_2$:** Structural destruction of robot chassis, tooling, or facility equipment.
+* **Loss $L_3$:** Loss of mission operational integrity or catastrophic payload destruction.
+* **Hazard $H_1$:** Robot kinetic energy exceeds safe threshold ($E_k > 50\text{ J}$) during human co-occupancy within workspace clearance envelope ($d_{\text{clearance}} < 0.50\text{ m}$).
+* **Hazard $H_2$:** Actuator torque commands exceed structural limits, inducing joint over-travel or mechanical gearbox gear-tooth shear.
+* **Hazard $H_3$:** Mobile base velocity violates surface traction envelope ($v > \sqrt{\mu g R_{\text{turn}}}$), inducing uncontrolled skid or vehicle rollover.
+
+### The 4 Canonical Unsafe Control Actions (UCAs)
+
+STPA evaluates every control action issued across architectural interfaces against four canonical failure modes:
+
+| Control Action | UCA-1: Not Providing Action | UCA-2: Providing Too Early / Too Late / Out of Sequence | UCA-3: Providing Wrong Control Action | UCA-4: Stopping Action Too Soon / Applying Too Long |
+| :--- | :--- | :--- | :--- | :--- |
+| **MPU Action Chunk Proposal ($\mathbf{p}_t$)** | MPU hangs during obstacle avoidance maneuver, providing zero updated trajectory ($H_1$). | MPU emits trajectory chunk after stale observation deadline ($\Delta t > t_{\text{expire}}$), causing delayed reaction ($H_1$). | VLA policy hallucinates inverted coordinate frame, proposing positive acceleration toward obstacle ($H_1, H_2$). | MPU holds high-speed driving command after target waypoint has been reached ($H_2$). |
+| **MCU CBF Barrier Filter ($u_t = \text{QP}(\mathbf{p}_t)$)** | MCU fails to project violating candidate action onto safe set $\mathcal{C}$, permitting illegal torque command ($H_1, H_2$). | MCU applies barrier intervention after stopping distance has already exceeded available gap ($d_{\text{stop}} > d_{\text{gap}}$) ($H_1$). | MCU QP solver computes infeasible relaxation, outputting unbounded torque step that trips motor overcurrent ($H_2$). | MCU releases dynamic braking torque before the physical mechanism reaches zero velocity ($v > 0$) ($H_1, H_3$). |
+| **Human Joystick Takeover** | Supervisor fails to press E-stop during visible out-of-ODD excursion ($H_1$). | Human operator takes over without bumpless blending filter, inducing severe mechanical torque spike ($H_2$). | Operator deflects joystick in wrong direction during emergency maneuver ($H_1$). | Human releases dead-man consent switch before autonomous policy has safely re-armed ($H_1$). |
+| **Hardware E-Stop Relay** | Relay contacts weld shut, failing to disconnect motor DC bus power upon watchdog timeout ($H_1, L_1$). | Relay opens prematurely during high-speed turn, causing uncontrolled dynamic spin ($H_3$). | MCU commands software reset instead of opening physical power relays ($H_1$). | Mechanical friction brakes disengage before motor back-EMF has fully dissipated ($H_2$). |
+
+: **STPA Unsafe Control Action (UCA) matrix across the physical AI architecture.** Each UCA traces directly to a system-level hazard ($H_1, H_2, H_3$) and requires an independent hardware or algorithmic constraint. {#tbl-stpa-uca}
+
+---
+
+## Cross-Layer Seeded Fault Injection Campaigns
+
+Software unit testing verifies that functions return expected outputs under nominal arguments. It proves absolutely nothing about how an embedded physical system behaves when a memory bus saturates, a camera cable vibrates loose, or an operating system kernel panics while the robot is carrying a $3.5\text{ kg}$ payload at $1.5\text{ m/s}$.
+
+To establish defensible release assurance, the candidate system must be subjected to an automated **Cross-Layer Seeded Fault Injection Campaign** on the Hardware-in-the-Loop test bench (@fig-cross-layer-faults).
+
+![**Cross-Layer Seeded Fault Injection Architecture.** Faults are systematically injected across four distinct layers (Sensory, Compute/Bus, Model/VLA, and Electrical/Physical) into the target dual-brain platform (Linux MPU + Real-Time MCU). The real-time MCU safety reflex must deterministically contain $100\%$ of injected fault vectors without violating physical safety envelopes.](figures/fig11_cross_layer_faults.pdf){#fig-cross-layer-faults width=100%}
+
+### The 4 Fault Injection Layers
+
+Fault injection must traverse the entire vertical systems stack, targeting every physical and logical boundary:
+
+#### Layer 1: Sensory and Transduction Faults
+* **Injected Perturbations:** Intentional dropping of MIPI CSI-2 camera frames for durations $\Delta t \in [50, 500]\text{ ms}$; synthetic optical blooming/saturation ($E_{\text{lux}} \to 15{,}000\text{ Lux}$); IEEE-1588 PTP hardware clock skew ($\Delta t_{\text{skew}} > 5\text{ ms}$); simulated mud spatters obscuring $> 40\%$ of depth pixels.
+* **Containment Expectation:** The sensory pipeline detects missing frame timestamps via seqlock timeouts; the MPU invalidates its spatial affordance tokens and notifies the MCU; the MCU transitions to proprioceptive position hold within $20\text{ ms}$.
+
+#### Layer 2: Compute, Bus and Operating System Faults
+* **Injected Perturbations:** Forcible injection of Linux kernel panics (`kill -9` on vision daemon, kernel null-pointer dereference); synthetic DMA memory bus saturation flooding LPDDR5 channels at $4.5\text{ GB/s}$; non-deterministic dynamic allocation (`malloc`) latency stalls; intentional SPI/CAN-FD CRC checksum bit-flips.
+* **Containment Expectation:** The Linux MPU hangs or misses its heartbeat update. The dedicated hardware watchdog timer on the MCU expires ($t_{\text{watchdog}} > 50\text{ ms}$); the MCU executes a non-maskable interrupt (NMI), bypasses all software stacks, and triggers a Category 1 controlled dynamic stop.
+
+#### Layer 3: Model and Algorithmic Faults
+* **Injected Perturbations:** Synthetic injection of out-of-distribution visual adversarial noise causing the Vision-Language-Action (VLA) policy to hallucinate 3D target coordinates outside the workspace ($\|\mathbf{p}_{\text{target}}\| > 2.0\text{ m}$); insertion of discontinuous velocity steps ($\Delta \dot{\mathbf{q}} > 10\text{ rad/s}$); corrupted diffusion action chunks.
+* **Containment Expectation:** The candidate proposal passes to the MCU safety enforcer. The 1000 Hz Control Barrier Function (CBF) quadratic program clips the proposed action to the workspace bounding hull, while the jerk-limited rate limiter clamps the command to $j_{\text{max}} = 20\text{ rad/s}^3$.
+
+#### Layer 4: Electrical and Physical Faults
+* **Injected Perturbations:** Simulated motor driver over-temperature flag ($T_{\text{inverter}} > 105^\circ\text{C}$); battery DC bus voltage sag ($V_{\text{bus}} \to 9.8\text{ V}$); sudden external collision load torque spike ($\tau_{\text{ext}} > 35\text{ Nm}$); incremental optical encoder phase line disconnect.
+* **Containment Expectation:** Interoceptive ADC monitors on the MCU trip instantaneous hardware current derating; motor gate driver PWM outputs are pulled low within $150\,\mu\text{s}$; mechanical spring brakes engage.
+
+### Mathematical Containment Formulation and Pass Criteria
+
+Let $\mathcal{F}_{\text{injected}} = \{ f_1, f_2, \dots, f_N \}$ denote the set of all cross-layer injected fault scenarios. Let $\mathbf{x}(t)$ denote the physical state trajectory of the robot under fault $f_k$, and let $h(\mathbf{x}) \ge 0$ define the forward-invariant safety barrier certificate.
+
+The system satisfies the **Deterministic Fault Containment Contract** if and only if:
+
+$$\forall f_k \in \mathcal{F}_{\text{injected}}, \quad \begin{cases}
+h(\mathbf{x}(t)) \ge 0, & \forall t \ge 0 \\
+d_{\text{gap}}(t) > 0, & \forall t \ge 0 \quad (\text{Zero Physical Collision}) \\
+t_{\text{stop}} \le t_{\text{delay}} + \frac{v(t_{\text{fault}})}{a_{\text{max}}}, & (\text{Bounded Stopping Time})
+\end{cases}$$
+
+$$\text{Containment Rate } R_{\text{contain}} = \frac{N_{\text{safe}}}{N_{\text{total}}} = 1.0000 \quad (100.0\%)$$
+
+Any single uncontained fault scenario where $h(\mathbf{x}) < 0$, a physical collision occurs ($d_{\text{gap}} \le 0$), or the mechanism fails to come to a controlled halt represents an immediate, non-negotiable **Gate Failure** that triggers a **REFUSE** release verdict.
+
+---
+
+## Constructing the Claim-Argument-Evidence (CAE) Safety Case
+
+A pile of test logs is not a safety argument. Regulators, system safety certifiers, and cross-disciplinary review boards cannot evaluate unstructured telemetry files. Defensible engineering requires structuring assurance through a formal **Claim-Argument-Evidence (CAE)** framework [@bishop1998methodology], establishing an unbroken chain of reasoning from top-level claims down to measured bench data (@fig-cae-safety-case).
+
+![**The Claim-Argument-Evidence (CAE) Safety Case Architecture.** The top-level claim ($C_{\text{top}}$) decomposes into four rigorous argument pillars ($A_1$ through $A_4$), each backed by immutable bench metrology artifacts ($E_1$ through $E_4$). The complete structure terminates in an accountable release decision signed by the cross-disciplinary review board.](figures/fig11_cae_safety_case.pdf){#fig-cae-safety-case width=100%}
+
+### The 4 Pillars of the Physical AI Safety Case
+
+The safety case decomposes the top-level deployment claim into four load-bearing engineering arguments:
+
+#### Top-Level Safety Claim ($C_{\text{top}}$)
+> *"The Physical AI Agent (Model v1.0 / Firmware Bank A) is acceptably safe for autonomous manipulation and transport operations within the frozen Operational Design Domain $\mathcal{X}_{\text{ODD-01}}$."*
+
+#### Argument Pillar 1: Deterministic Fault Containment ($A_1$)
+* **Argument Formulation:** All single-point hardware, software, and communication failures on the untrusted Linux MPU or interconnect buses are deterministically arrested by the independent real-time MCU safety core within $t_{\text{contain}} \le 50\text{ ms}$ without kinematic collision.
+* **Supporting Evidence ($E_1$):** Complete automated HIL fault injection campaign logs: $1000/1000$ seeded faults safely contained ($R_{\text{contain}} = 1.000$); maximum observed stopping time under kernel panic $t_{\text{stop}} = 42\text{ ms}$; zero barrier violations ($h(\mathbf{x}) \ge 0$).
+
+#### Argument Pillar 2: Freshness and Tail Latency Bounds ($A_2$)
+* **Argument Formulation:** The end-to-end sense-to-actuation latency distribution satisfies hard real-time deadlines such that $P_{99.9}$ latency $\Delta t_{\text{wall}} \le 80\text{ ms}$, ensuring physical dynamic stopping distance $d_{\text{stop}}(v, \Delta t)$ never breaches environmental clearance margins.
+* **Supporting Evidence ($E_2$):** Empirical bench metrology latency CDF (from `REQ-01`): $P_{50} = 22.4\text{ ms}$, $P_{90} = 34.1\text{ ms}$, $P_{99.9} = 72.0\text{ ms} < 80.0\text{ ms}$; minimum verified physical stopping clearance margin $\Delta d_{\text{margin}} = +18.5\text{ cm}$.
+
+#### Argument Pillar 3: Unconditional Human Governance ($A_3$)
+* **Argument Formulation:** Human operators retain instantaneous, un-preemptible authority to override autonomous execution at any millisecond via hardware E-stop circuits and bumpless joystick intervention filters.
+* **Supporting Evidence ($E_3$):** Telemetry records (from `AUTH-01`): $50/50$ seamless joystick overrides executed under full actuator load; peak override jerk $\| \dddot{\mathbf{q}} \| = 12.4\text{ rad/s}^3 < 20.0\text{ rad/s}^3$; tamper-evident SHA-256 telemetry lineage log binding model weights to training runs.
+
+#### Argument Pillar 4: Real-Time ODD Boundary Enforcement ($A_4$)
+* **Argument Formulation:** Dedicated hardware interoceptive and exteroceptive monitors detect environmental or thermal excursions outside $\mathcal{X}_{\text{ODD}}$ and transition the machine into safe speed-derating or controlled stopping before hazardous dynamic regimes are reached.
+* **Supporting Evidence ($E_4$):** Bench ODD excursion logs: Optical blinding glare detected in $< 18\text{ ms}$; surface slip trigger engaged Category 1 braking in $< 25\text{ ms}$; thermal derating verified at $T_{\text{motor}} = 85^\circ\text{C}$.
+
+| CAE Pillar | Argument / Claim Formulation | Empirical Bench Evidence Artifact | Verification Tool |
+| :--- | :--- | :--- | :--- |
+| **Top-Level Claim ($C_{\text{top}}$)** | Autonomous operation safe inside $\mathcal{X}_{\text{ODD-01}}$. | Cumulative Design Dossier (`REL-01`). | Review Board Audit |
+| **Argument $A_1$ (Faults)** | $100\%$ containment of MPU / bus crashes. | HIL Fault Campaign Log ($1000/1000$ pass). | HIL Test Rig / FPGA |
+| **Argument $A_2$ (Freshness)** | $P_{99.9}$ latency $\le 80\text{ ms} \implies d_{\text{stop}} \le d_{\text{gap}}$. | Metrology Latency CDF ($P_{99.9} = 72\text{ ms}$). | Logic Analyzer / PTP |
+| **Argument $A_3$ (Governance)** | Unconditional bumpless human override. | Override Telemetry ($\text{Jerk} < 15\text{ rad/s}^3$). | Dual-Brain Test Bench |
+| **Argument $A_4$ (ODD)** | Hardware detection of out-of-ODD states. | ODD Excursion Logs ($< 25\text{ ms}$ fallback). | Environmental Chamber |
+
+: **Claim-Argument-Evidence (CAE) traceability matrix.** Every high-level claim is grounded directly in reproducible bench metrology and automated test logs. {#tbl-cae-matrix}
+
+---
+
+## The Accountable Release Review Board and Release Verdicts
+
+The culmination of the entire systems engineering process is the formal **Release Gate Review**. The review board brings together four distinct engineering perspectives, eliminating organizational blind spots:
+
+1. **Embedded Silicon & Real-Time Systems Lead:** Verifies zero dynamic memory allocation (`malloc`), bounded ISR execution cycles ($< 250\,\mu\text{s}$), hardware watchdog timer non-maskable interrupts, and memory bus QoS arbitration.
+2. **Embodied AI & Machine Learning Lead:** Verifies model affordance accuracy, dataset training lineage, domain-randomized simulation convergence, and shadow mode divergence statistics.
+3. **System Safety & Regulatory Lead:** Verifies STPA hazard mitigation traceability, Control Barrier Function mathematical proofs, HIL fault containment logs, and ODD boundary enforcement.
+4. **Human Factors & Operational UX Lead:** Verifies bumpless joystick transfer dynamics, dead-man consent switch timing, emergency stop ergonomics, and intervention logging schemas.
 
 ### The 3 Release Verdicts
-* **DEPLOY:** All evidence standards met; unconstrained release inside specified ODD.
-* **CONDITION:** Release permitted under restricted operating conditions (e.g. 50% max speed, human supervisor in visual line of sight).
-* **REFUSE:** System failed fault containment or latency tail budgets; deployment physically blocked until redesign.
+
+The review board evaluates the complete cumulative design dossier (`LOOP-01` through `REL-01`) and issues one of three formal, legally accountable verdicts:
+
+* **1. DEPLOY (Unconditional Production Release):**
+  * *Condition:* All four promotion gates passed; $100\%$ HIL fault containment achieved; $P_{99.9}$ latency tail strictly within budget; all four board leads vote "PASS".
+  * *Operational Authority:* The system is authorized for fully autonomous closed-loop physical operations within the frozen Operational Design Domain $\mathcal{X}_{\text{ODD}}$.
+* **2. CONDITION (Restricted / Conditional Release):**
+  * *Condition:* Core safety invariants ($h(\mathbf{x}) \ge 0$) and fault containment are verified, but edge-case ODD parameters (e.g., low-light performance or high-speed braking margins) require operational restrictions.
+  * *Operational Authority:* Release permitted under legally binding operational constraints: maximum speed derated to $v_{\text{max}} \le 0.25\text{ m/s}$; operation prohibited in ambient illumination $< 300\text{ Lux}$; designated safety supervisor required within visual line of sight with wireless E-stop.
+* **3. REFUSE (Deployment Blocked):**
+  * *Condition:* Any single uncontained fault in HIL testing; $P_{99.9}$ latency tail violates stopping distance envelope ($d_{\text{stop}} > d_{\text{gap}}$); missing data lineage hashes; or any board lead votes "REJECT".
+  * *Operational Authority:* Firmware flashing to production flash Bank A is cryptographically blocked. The system is returned to engineering with a mandatory architectural remedy notice.
 
 ---
 
@@ -114,48 +319,129 @@ The final deliverable is an industrial-grade **Claim-Argument-Evidence (CAE)** a
 
 ::: {.callout-warning}
 ### Common Engineering Fallacies
-* **Fallacy 1:** *"Achieving high accuracy on a public benchmark dataset proves a model is safe to deploy."*  
-  *Correction:* Benchmark datasets test static image recognition; they do not evaluate closed-loop dynamic stability, $P_{99}$ latency tails, or hardware fault containment.
-* **Fallacy 2:** *"A video demo of the robot executing a task flawlessly is sufficient proof of safety."*  
-  *Correction:* Video demos cherry-pick the happy path; defensible engineering requires proving safety under the worst-case $P_{99.9}$ failure conditions.
+* **Fallacy 1: "High benchmark accuracy on a static test dataset proves a model is safe to deploy."**  
+  *Correction:* Static datasets measure open-loop pattern recognition on fixed pixels. They evaluate zero closed-loop dynamics, cannot measure physical momentum, and are completely blind to DMA bus contention, sensor dropouts, and hardware latency tails.
+* **Fallacy 2: "If a robot succeeds across 10,000 simulation episodes, it will succeed on real hardware."**  
+  *Correction:* Physics simulators idealize contact dynamics, motor back-EMF, and compute timing. Simulation cannot reproduce real-world lens mud, thermal clock throttling, or operating system thread preemption. Simulation is Rung 2—only Rung 3 (HIL) and Rung 4 (Shadow Mode) provide physical evidence.
+* **Fallacy 3: "Safety can be added at the end of the project by wrapping the AI model in a Python guard script."**  
+  *Correction:* A software safety guard running in Python on a non-real-time Linux operating system is subject to the same kernel crashes, scheduling stalls, and memory corruption as the model itself. Safety must be architecturally isolated on dedicated bare-metal microcontroller hardware executing deterministic, zero-allocation barrier invariants.
 :::
 
 ---
 
 ::: {.callout-decision}
 ### Dossier Delta: Integrated Deployment Case (`REL-01`)
-Assemble the complete final release case:
+Freeze the final, eleventh artifact of the Cumulative Design Dossier:
 
-1. The formal Operational Design Domain (ODD) boundaries.
-2. The empirical HIL fault injection pass records across all 4 fault layers.
-3. The Claim-Argument-Evidence (CAE) structured safety argument.
-4. The signed release verdict: **DEPLOY**, **CONDITION**, or **REFUSE**.
+1. The frozen Operational Design Domain ($\mathcal{X}_{\text{ODD-01}}$) boundary specifications.
+2. The 4-Rung Qualification Ladder verification scorecard across all promotion gates.
+3. The empirical Cross-Layer HIL Fault Injection pass records ($1000/1000$ containment).
+4. The complete Claim-Argument-Evidence (CAE) safety case structure.
+5. The signed, accountable **Deploy / Condition / Refuse** release verdict.
+
+| Dossier Field | Verified Specification / Metric | Safety Baseline Threshold | Pass / Fail Status |
+| :--- | :--- | :--- | :---: |
+| **System ID & Version** | `PHYSICAL-AGENT-01` (v1.0.0) | Frozen Hardware/Firmware Stack | **VERIFIED** |
+| **ODD Ambient Illumination** | $150 \le E_{\text{lux}} \le 2500\text{ Lux}$ | Hardware photodiode monitor active | **PASS** |
+| **ODD Surface Friction** | $\mu \ge 0.35$ (Dry industrial flooring) | Dynamic slip estimator active | **PASS** |
+| **ODD Thermal Range** | $5.0^\circ\text{C} \le T \le 40.0^\circ\text{C}$ ($T_{\text{motor}} \le 85^\circ\text{C}$) | Active thermal derating enforcer | **PASS** |
+| **Rung 1: Replay Accuracy** | Affordance error $= 1.42\text{ cm}$ | Threshold: Error $< 2.0\text{ cm}$ | **PASS** |
+| **Rung 2: Sim Success Rate** | $98.6\%$ across $10{,}000$ seeds | Threshold: $\ge 98.0\%$ | **PASS** |
+| **Rung 3: HIL Fault Containment** | **$1000/1000$ faults contained ($100.0\%$)** | Threshold: $100.0\%$ (Zero escapes) | **PASS** |
+| **Rung 4: Shadow Fleet Hours** | $512.5\text{ hours}$ (0 uncontained divergences) | Threshold: $\ge 500.0\text{ hours}$ | **PASS** |
+| **$P_{99.9}$ Sense-to-Actuation Delay** | $72.0\text{ ms}$ (Stopping margin: $+18.5\text{ cm}$) | Threshold: $P_{99.9} \le 80.0\text{ ms}$ | **PASS** |
+| **Bumpless Override Peak Jerk** | $12.4\text{ rad/s}^3$ | Threshold: $\le 20.0\text{ rad/s}^3$ | **PASS** |
+| **Final Release Verdict** | **DEPLOY (Unconditional Production Release)** | Unanimous 4-Lead Sign-Off | **APPROVED** |
+
+: **Integrated Deployment Case (`REL-01`) summary scorecard.** {#tbl-rel01-dossier}
 
 ```yaml
-# DOSSIER CHECKPOINT: REL-01
+# =============================================================================
+# CUMULATIVE DESIGN DOSSIER: REL-01 (INTEGRATED DEPLOYMENT CASE)
+# =============================================================================
 deployment_case:
   system_id: "PHYSICAL-AGENT-01"
   version: "1.0.0"
+  timestamp_utc: "2026-08-18T19:50:00Z"
+  target_platform:
+    mpu: "ARM Cortex-A53 Quad-Core (Linux Real-Time Kernel)"
+    mcu: "ARM Cortex-M4 (Bare-Metal FreeRTOS)"
+    accelerator: "Edge NPU Systolic Array (16 TOPs INT8)"
+  
   odd_specification:
-    max_speed_mps: 0.50
-    min_illumination_lux: 150
-    min_friction_mu: 0.35
-    temperature_range_c: [10.0, 40.0]
-  qualification_results:
-    log_replay_accuracy: 0.965
-    sim_domain_randomization_pass_rate: 0.982
-    hil_fault_injection_contained_rate: 1.000 # 500/500 faults contained
-    shadow_mode_hours: 48.0
+    illumination_lux_range: [150.0, 2500.0]
+    min_surface_friction_mu: 0.35
+    ambient_temp_c_range: [5.0, 40.0]
+    max_motor_temp_c: 85.0
+    max_payload_mass_kg: 3.50
+    max_obstacle_velocity_mps: 1.20
+    out_of_odd_fallback: "CATEGORY_1_DYNAMIC_DECELERATION"
+
+  qualification_ladder_scorecard:
+    rung_1_historical_replay:
+      test_frames: 100000
+      spatial_affordance_rmse_cm: 1.42
+      unhandled_exceptions: 0
+      status: "PASS"
+    rung_2_domain_randomized_sim:
+      rollout_episodes: 10000
+      task_success_rate: 0.986
+      simulated_collisions: 0
+      status: "PASS"
+    rung_3_hardware_in_the_loop:
+      injected_fault_trials: 1000
+      faults_contained: 1000
+      containment_rate: 1.000
+      max_observed_stopping_time_ms: 42.0
+      status: "PASS"
+    rung_4_shadow_fleet:
+      cumulative_shadow_hours: 512.5
+      uncontained_divergence_count: 0
+      status: "PASS"
+
+  metrology_and_timing:
+    latency_p50_ms: 22.4
+    latency_p90_ms: 34.1
+    latency_p99_9_ms: 72.0
+    budget_p99_9_ms: 80.0
+    min_physical_stopping_clearance_cm: 18.5
+    override_peak_jerk_rad_s3: 12.4
+
+  provenance_and_security:
+    model_weights_sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    mcu_firmware_sha256: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+    active_firmware_bank: "BANK_A"
+    tamper_evident_log_signature: "ECDSA_P256_VERIFIED"
+
   release_verdict: "DEPLOY"
-  review_board_signatures:
-    embedded_silicon_lead: "PASS"
-    embodied_ml_lead: "PASS"
-    system_safety_lead: "PASS"
-    practitioner_ux_lead: "PASS"
+  operational_conditions: "Unconstrained autonomous operation within ODD-01"
+  
+  review_board_signoff:
+    embedded_silicon_lead:
+      identity: "Marcus Vance, PE (Lead Embedded Systems Architect)"
+      decision: "PASS"
+      rationale: "Zero-allocation 1 kHz ISR verified; watchdog timers and DMA priorities confirmed."
+    embodied_ml_lead:
+      identity: "Dr. Elena Rostova (Head of Embodied Learning)"
+      decision: "PASS"
+      rationale: "98.6% sim success and 512.5 hours shadow fleet operation with zero uncontained divergence."
+    system_safety_lead:
+      identity: "Dr. Sarah Chen, FS-Eng (Principal Safety Assessor)"
+      decision: "PASS"
+      rationale: "STPA hazard traceability complete; 1000/1000 HIL fault containment achieved."
+    human_factors_lead:
+      identity: "Thomas Keller, CPE (Human Governance Specialist)"
+      decision: "PASS"
+      rationale: "Bumpless joystick override verified with peak jerk < 15 rad/s^3 across 50/50 test takeovers."
 ```
 :::
 
 ::: {.callout-lab}
-### Hands-on Realization: Labs 12 and 13 — Hardware Fault Injection and Release Defense
-Subject the completed **Physical AI Kit (Arduino UNO Q)** to an automated fault injection campaign. Inject camera frame dropouts, Linux kernel panics, and out-of-bounds VLA proposals. Assemble the empirical telemetry logs into the final **Design Dossier** (`REL-01`) and defend your release verdict before the expert review board.
+### Hands-on Realization: Lab 11 — The Cross-Layer Fault Injection Rig
+Deploy the complete physical AI software stack onto the **Arduino UNO Q Dual-Brain Kit** (Linux MPU + ARM Cortex-M4 MCU). Using the companion laboratory rig ([`labs/11-fault-injection-rig`](../../../labs/11-authority-paths/CONTRACT.md)), execute an automated cross-layer fault injection campaign:
+
+1. **Sensory Dropout:** Programmatically drop camera MIPI CSI-2 buffers for $200\text{ ms}$ while commanding high-speed trajectory tracking. Observe how the MCU transitions to proprioceptive position hold.
+2. **Compute Crash:** Trigger an intentional Linux kernel panic (`echo c > /proc/sysrq-trigger`) during closed-loop motion. Measure the exact latency from MPU freeze to hardware watchdog trip and motor current cutoff using a digital logic analyzer.
+3. **Algorithmic Hallucination:** Inject out-of-workspace trajectory steps ($+300\%$ coordinate step) into the shared IPC ring buffer. Verify that the 1000 Hz MCU Control Barrier Function projects candidate commands onto the safe workspace boundary without mechanical gearbox impact.
+4. **Dossier Defense:** Extract the microsecond PTP telemetry logs, construct the complete **Integrated Deployment Case** (`REL-01`), and defend your release verdict before the peer review jury.
 :::
