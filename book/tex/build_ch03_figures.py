@@ -12,9 +12,8 @@ import os
 import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BOOK_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
-CH03_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "03-runtime", "figures")
-os.makedirs(CH03_FIG_DIR, exist_ok=True)
+CH03_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "03-workflow", "figures")
+
 
 # -----------------------------------------------------------------------------
 # 1. FIG 03.1: THE GREAT TUG-OF-WAR (AI DELIBERATION VS PHYSICAL DYNAMICS)

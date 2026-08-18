@@ -7,12 +7,14 @@ Generate publication-grade SVG and PDF figures for:
 import os
 import subprocess
 
-BOOK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BOOK_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 ASSETS_FIG_DIR = os.path.join(BOOK_DIR, "assets", "figures")
-CH03_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "03-runtime", "figures")
+CH03_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "03-workflow", "figures")
 
 os.makedirs(ASSETS_FIG_DIR, exist_ok=True)
 os.makedirs(CH03_FIG_DIR, exist_ok=True)
+
 
 # -----------------------------------------------------------------------------
 # 1. Dual-Brain Architecture Figure

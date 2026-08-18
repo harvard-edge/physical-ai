@@ -12,9 +12,8 @@ import os
 import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BOOK_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
-CH02_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "02-metrology", "figures")
-os.makedirs(CH02_FIG_DIR, exist_ok=True)
+CH02_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "02-latency", "figures")
+
 
 # -----------------------------------------------------------------------------
 # 1. FIG 02.1: SENSE-TO-ACTUATION LATENCY WATERFALL (P50 vs P99 TAILS)
