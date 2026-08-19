@@ -1,42 +1,85 @@
-% Physical AI Systems — Master LaTeX Preamble (LuaLaTeX + KOMA-Script scrbook)
-% Academic Textbook Design: Harvard Crimson & ETH Zurich Colorway, Proposal-Permission Architecture.
+% ===========================================================================
+% Physical AI Systems, LaTeX preamble
+% ===========================================================================
+%
+% Engine:  LuaLaTeX
+% Class:   KOMA-Script scrbook (set in _quarto.yml)
+% Loaded:  first of the include-in-header files. tex/cover.tex follows and
+%          depends on the palette defined here.
+%
+% RULES FOR EDITING THIS FILE
+%
+%   1. Every setting is declared exactly once. To change a value, change it
+%      where it lives. Do not append an override at the bottom. This file
+%      previously carried two \setlist declarations, two \arraystretch values,
+%      two \emergencystretch values, and fvextra loaded twice, all because
+%      changes were bolted on rather than integrated.
+%   2. Sections run in dependency order: packages, palette, page, type,
+%      floats, code, notes, links, utilities. Put new settings in the section
+%      they belong to.
+%   3. Anything that draws something belongs in cover.tex or in a figure
+%      source, not here.
+%   4. Comment the intent, not the syntax. A future reader needs to know why a
+%      value is what it is, not that \setlength sets a length.
+%
+% Page geometry, font size, and leading live in _quarto.yml, because Quarto
+% owns the geometry package options. This file assumes them, never sets them.
+%
+% ===========================================================================
 
-\usepackage{microtype}
-\usepackage{tikz}
+
+% ---------------------------------------------------------------------------
+% 1. Packages
+% ---------------------------------------------------------------------------
+
+\usepackage{microtype}          % Optical margins and glyph expansion.
+\usepackage{scrlayer-scrpage}   % KOMA page styles, for running heads.
+\usepackage{etoolbox}           % Patching KOMA and Quarto internals.
+\usepackage{array}              % Column specifiers used by pandoc tables.
+\usepackage{booktabs}           % \toprule and friends in pandoc tables.
+\usepackage{enumitem}           % List spacing control.
+\usepackage{framed}             % Backing for the Shaded code environment.
+\usepackage{fancyvrb}           % Verbatim engine that pandoc emits into.
+\usepackage{fvextra}            % Line breaking inside listings.
+\usepackage{marginnote}         % Margin column content.
+\usepackage{environ}            % \NewEnviron, used by the fullwidth utility.
+\usepackage{tikz}               % Cover artwork.
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc}
-\usepackage{scrlayer-scrpage}
-\usepackage{needspace}
-\usepackage{fancyvrb}
-\usepackage{fvextra}
-\usepackage{booktabs}
-\usepackage{colortbl}
-\usepackage{etoolbox}
 
-% -----------------------------------------------------------------------------
-% Harvard Crimson & ETH Zurich Academic Semantic Palette
-% -----------------------------------------------------------------------------
-\definecolor{harvardcrimson}{HTML}{A51C30} % Harvard Crimson (Primary accent, autopsies, faults)
-\definecolor{ethdarkblue}{HTML}{1F407A}    % ETH Zurich Dark Blue (Headings, primary structure)
-\definecolor{ethblue}{HTML}{215CAF}        % ETH Blue (Secondary accent)
-\definecolor{ethpetrol}{HTML}{007A87}      % ETH Petrol / Measured Teal (Rules, metrics)
-\definecolor{ethbronze}{HTML}{B87333}      % ETH Bronze / Warm Gold (Proposals, contracts)
-\definecolor{ethpurple}{HTML}{5B4B8A}      % Governance / Authority Violet
-\definecolor{ethslate}{HTML}{4A5568}       % Muted slate / Secondary text
-\definecolor{ink}{HTML}{1A202C}            % Deep Charcoal: body text
-\definecolor{softink}{HTML}{4A5568}        % Muted Ink: captions, headers, secondary text
-\definecolor{paleink}{HTML}{A0AEC0}        % Pale Ink: subtle rules, page dividers
-\definecolor{cardbg}{HTML}{F8FAFC}         % Card background: ultra-light cool grey
-\definecolor{codebg}{HTML}{F3F5F8}         % Code background: clean light grey
-\definecolor{codeborder}{HTML}{DFE3E8}     % Code border
 
-% Semantic aliases
-\definecolor{structural}{HTML}{1F407A}     % ETH Dark Blue
-\definecolor{measured}{HTML}{007A87}       % ETH Petrol
-\definecolor{proposal}{HTML}{B87333}       % ETH Bronze / Gold
-\definecolor{consequence}{HTML}{A51C30}    % Harvard Crimson
-\definecolor{authority}{HTML}{5B4B8A}      % Authority Violet
+% ---------------------------------------------------------------------------
+% 2. Palette
+%
+% Harvard crimson and ETH Zurich blue, plus a semantic layer. Prose, callouts,
+% and figures reference the semantic names, so a palette change happens in one
+% place. The raw names stay because the TikZ figure sources use them directly.
+% ---------------------------------------------------------------------------
 
-% Quarto standard callout color harmonizations
+\definecolor{harvardcrimson}{HTML}{A51C30}
+\definecolor{ethdarkblue}{HTML}{1F407A}
+\definecolor{ethblue}{HTML}{215CAF}
+\definecolor{ethpetrol}{HTML}{007A87}
+\definecolor{ethbronze}{HTML}{B87333}
+\definecolor{ethpurple}{HTML}{5B4B8A}
+
+% Semantic layer. These encode the book's argument: what is structural, what
+% is measured, what is only proposed, what has consequences, who has authority.
+\colorlet{structural}{ethdarkblue}
+\colorlet{measured}{ethpetrol}
+\colorlet{proposal}{ethbronze}
+\colorlet{consequence}{harvardcrimson}
+\colorlet{authority}{ethpurple}
+
+% Ink levels for body, secondary, and hairline material.
+\definecolor{ink}{HTML}{1A202C}
+\definecolor{softink}{HTML}{4A5568}
+\definecolor{paleink}{HTML}{A0AEC0}
+
+% Surfaces. shadecolor is named by the framed/Shaded contract, not by us.
+\definecolor{cardbg}{HTML}{F8FAFC}
+\definecolor{shadecolor}{HTML}{F4F6F9}
+
+% Quarto's standard callouts, harmonized to the semantic layer.
 \definecolor{quarto-callout-note-color}{HTML}{1F407A}
 \definecolor{quarto-callout-note-color-frame}{HTML}{1F407A}
 \definecolor{quarto-callout-tip-color}{HTML}{007A87}
@@ -48,33 +91,131 @@
 \definecolor{quarto-callout-caution-color}{HTML}{A51C30}
 \definecolor{quarto-callout-caution-color-frame}{HTML}{A51C30}
 
-% Links: deferred so hyperref loads first
-\AtBeginDocument{%
-  \hypersetup{
-    colorlinks=true,
-    linkcolor=ethdarkblue,
-    urlcolor=ethpetrol,
-    citecolor=ethpetrol,
-    filecolor=ethpetrol
-  }%
-}
 
-% -----------------------------------------------------------------------------
-% Typography & Body Rhythm
-% -----------------------------------------------------------------------------
+% ---------------------------------------------------------------------------
+% 3. Page furniture
+%
+% Chapter title on the outside, page number inside, hairline beneath. The
+% footer stays empty; the page number is already in the head.
+% ---------------------------------------------------------------------------
+
+\clearpairofpagestyles
+\automark[chapter]{chapter}
+\renewcommand*{\chaptermarkformat}{}    % No "Chapter 3." prefix in the head.
+
+\setkomafont{pagehead}{\normalfont\sffamily\footnotesize\color{softink}}
+\setkomafont{pagenumber}{\normalfont\sffamily\bfseries\small\color{structural}}
+
+\ihead{\headmark}
+\ohead{\pagemark}
+\KOMAoptions{headsepline=0.35pt}
+\addtokomafont{headsepline}{\color{paleink!60}}
+
+
+% ---------------------------------------------------------------------------
+% 4. Typography
+%
+% Serif body at a 5.30in measure, sans headings. That contrast is what
+% separates structure from argument at a glance.
+%
+% Paragraphs are indented rather than separated by vertical space. Vertical
+% space marks structure here, not every paragraph break, which is most of the
+% difference between a report and a textbook.
+% ---------------------------------------------------------------------------
+
 \frenchspacing
-\setlength{\emergencystretch}{2.5em}
 \microtypesetup{protrusion=true, expansion=true, final}
 
-% Prevent pandoc margin citation/footnote linebreak errors
+\setlength{\parskip}{0pt plus 0.6pt}
+\setlength{\parindent}{1.2em}
+
+% Justification. Long technical compounds at this measure produce ladders of
+% hyphens. Loosen the badness tolerance rather than the word spacing, so the
+% grey of the page stays even.
+\hyphenpenalty=180
+\tolerance=1400
+\setlength{\emergencystretch}{2.2em}
+
+% Pandoc emits \linebreak inside margin material where it is invalid.
 \let\origlinebreak\linebreak
 \renewcommand{\linebreak}[1][4]{\ifhmode\origlinebreak[#1]\fi}
 
-% Code and Verbatim font scaling & wrapping
-\usepackage{fvextra}
-% commandchars is what lets the \CommentTok / \NormalTok macros pandoc emits be
-% interpreted rather than printed. Omitting it prints raw LaTeX in every
-% highlighted listing in the book.
+% --- Headings -------------------------------------------------------------
+
+\setkomafont{disposition}{\normalfont\sffamily\color{structural}}
+\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{22}{26}\selectfont\color{structural}}
+\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{13}{16}\selectfont\color{structural}}
+\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{10.5}{13.5}\selectfont\color{structural}}
+\setkomafont{subsubsection}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{softink}}
+
+% Chapter opener: small crimson chapter number, title, hairline.
+\renewcommand*{\chapterformat}{%
+  {\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont
+   \color{consequence}\MakeUppercase{Chapter~\thechapter}}\par
+  \vspace{0.3\baselineskip}%
+}
+\renewcommand*{\chapterlinesformat}[3]{%
+  \vspace*{0.02in}%
+  #2{\normalfont\sffamily\bfseries\fontsize{22}{26}\selectfont\color{structural}#3}\par\nobreak
+  \vspace{0.45\baselineskip}%
+  {\color{paleink!45}\hrule height 0.5pt}\par
+  \vspace{0.65\baselineskip}%
+}
+
+% Part opener, same grammar one size up.
+\setkomafont{part}{\normalfont\sffamily\bfseries\fontsize{24}{28}\selectfont\color{structural}}
+\renewcommand*{\partformat}{%
+  {\normalfont\sffamily\bfseries\fontsize{11}{13}\selectfont
+   \color{consequence}\MakeUppercase{Part~\thepart}}\par
+  \vspace{0.4\baselineskip}%
+}
+
+% Heading spacing. Space above a heading belongs to the heading, so the
+% before-skip runs roughly three times the after-skip at every level.
+\RedeclareSectionCommand[beforeskip=1.3\baselineskip,afterskip=0.35\baselineskip]{section}
+\RedeclareSectionCommand[beforeskip=0.9\baselineskip,afterskip=0.22\baselineskip]{subsection}
+\RedeclareSectionCommand[beforeskip=0.7\baselineskip,afterskip=0.18\baselineskip]{subsubsection}
+
+% --- Lists ----------------------------------------------------------------
+
+\setlist[itemize]{leftmargin=1.2em,topsep=3pt,itemsep=1.5pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.5em,topsep=3pt,itemsep=1.5pt,parsep=0pt}
+
+% --- Table of contents ----------------------------------------------------
+
+\setkomafont{partentry}{\normalfont\sffamily\bfseries\fontsize{10}{13}\selectfont\color{structural}}
+\setkomafont{partentrypagenumber}{\normalfont\sffamily\bfseries\fontsize{10}{13}\selectfont\color{consequence}}
+\setkomafont{chapterentry}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{structural}}
+\setkomafont{chapterentrypagenumber}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{consequence}}
+\RedeclareSectionCommand[tocbeforeskip=0.18\baselineskip]{chapter}
+\RedeclareSectionCommand[tocbeforeskip=0.50\baselineskip]{part}
+
+
+% ---------------------------------------------------------------------------
+% 5. Floats: captions and tables
+%
+% Captions lead with a bold takeaway, so the label sits in structural blue and
+% the caption text drops to secondary ink.
+% ---------------------------------------------------------------------------
+
+\setkomafont{captionlabel}{\normalfont\sffamily\bfseries\small\color{structural}}
+\setkomafont{caption}{\normalfont\sffamily\small\color{softink}}
+
+% Tables carry a lot of this book's argument. Rows get air without ballooning.
+\renewcommand{\arraystretch}{1.14}
+\setlength{\tabcolsep}{5pt}
+
+
+% ---------------------------------------------------------------------------
+% 6. Code listings
+%
+% commandchars is load bearing. Pandoc emits \CommentTok{...} and
+% \NormalTok{...} inside Highlighting, and without commandchars those macros
+% are typeset as literal text instead of applied. Redefining Highlighting
+% without it silently breaks every syntax-highlighted block in the book,
+% including the dossier YAML, which is exactly what happened before.
+% ---------------------------------------------------------------------------
+
 \DefineVerbatimEnvironment{Highlighting}{Verbatim}{
   commandchars=\\\{\},
   fontsize=\fontsize{7.6pt}{9.4pt}\ttfamily\selectfont,
@@ -83,6 +224,8 @@
   xleftmargin=3pt,
   xrightmargin=3pt
 }
+
+% Plain verbatim carries no tokens, so it takes no commandchars.
 \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
   fontsize=\fontsize{7.6pt}{9.4pt}\ttfamily\selectfont,
   breaklines=true,
@@ -91,230 +234,51 @@
   xrightmargin=3pt
 }
 
-% Code Listings and Shaded Environments
-\definecolor{shadecolor}{HTML}{F4F6F9}
-\usepackage{framed}
-
-% -----------------------------------------------------------------------------
-% Margin Notes, Footnotes & Sidenotes
-% -----------------------------------------------------------------------------
-\usepackage{marginnote}
-\renewcommand*{\marginfont}{\normalfont\sffamily\fontsize{7.8pt}{10.2pt}\selectfont\color{softink}}
-\setkomafont{footnote}{\normalfont\sffamily\fontsize{8pt}{10.5pt}\selectfont\color{softink}}
-\setkomafont{footnotemark}{\normalfont\sffamily\bfseries\fontsize{8pt}{10pt}\selectfont\color{harvardcrimson}}
-\setkomafont{captionlabel}{\normalfont\sffamily\bfseries\small\color{ethdarkblue}}
-\setkomafont{caption}{\normalfont\sffamily\small\color{softink}}
-
-% -----------------------------------------------------------------------------
-% Headings & Disposition (Avenir Next sans-serif)
-% -----------------------------------------------------------------------------
-\setkomafont{disposition}{\normalfont\sffamily\color{ethdarkblue}}
-\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{22}{26}\selectfont\color{ethdarkblue}}
-\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{13}{16}\selectfont\color{ethdarkblue}}
-\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{10.5}{13.5}\selectfont\color{ethdarkblue}}
-\setkomafont{subsubsection}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{softink}}
-
-% Chapter Opener Format (Clean & Modern)
-\renewcommand*{\chapterformat}{%
-  {\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{harvardcrimson}\MakeUppercase{Chapter~\thechapter}}\par
-  \vspace{0.3\baselineskip}%
-}
-
-\renewcommand*{\chapterlinesformat}[3]{%
-  \vspace*{0.02in}%
-  #2{\normalfont\sffamily\bfseries\fontsize{22}{26}\selectfont\color{ethdarkblue}#3}\par\nobreak
-  \vspace{0.45\baselineskip}%
-  {\color{paleink!45}\hrule height 0.5pt}\par
-  \vspace{0.65\baselineskip}%
-}
-
-% Part Opener Format
-\setkomafont{part}{\normalfont\sffamily\bfseries\fontsize{24}{28}\selectfont\color{ethdarkblue}}
-\renewcommand*{\partformat}{%
-  {\normalfont\sffamily\bfseries\fontsize{11}{13}\selectfont\color{harvardcrimson}\MakeUppercase{Part~\thepart}}\par
-  \vspace{0.4\baselineskip}%
-}
-
-% Section Spacing
-\RedeclareSectionCommand[beforeskip=1.3\baselineskip,afterskip=0.35\baselineskip]{section}
-\RedeclareSectionCommand[beforeskip=0.9\baselineskip,afterskip=0.22\baselineskip]{subsection}
-\RedeclareSectionCommand[beforeskip=0.7\baselineskip,afterskip=0.18\baselineskip]{subsubsection}
-
-% -----------------------------------------------------------------------------
-% Running Headers & Footers
-% -----------------------------------------------------------------------------
-\clearpairofpagestyles
-\automark[chapter]{chapter}
-\renewcommand*{\chaptermarkformat}{}
-\setkomafont{pagehead}{\normalfont\sffamily\footnotesize\color{softink}}
-\setkomafont{pagenumber}{\normalfont\sffamily\bfseries\small\color{ethdarkblue}}
-
-\ihead{\headmark}
-\ohead{\pagemark}
-\KOMAoptions{headsepline=0.35pt}
-\addtokomafont{headsepline}{\color{paleink!60}}
-
-% -----------------------------------------------------------------------------
-% Table of Contents Styling
-% -----------------------------------------------------------------------------
-\setkomafont{chapterentry}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{ethdarkblue}}
-\setkomafont{chapterentrypagenumber}{\normalfont\sffamily\bfseries\fontsize{9.5}{12}\selectfont\color{harvardcrimson}}
-\setkomafont{partentry}{\normalfont\sffamily\bfseries\fontsize{10}{13}\selectfont\color{ethdarkblue}}
-\setkomafont{partentrypagenumber}{\normalfont\sffamily\bfseries\fontsize{10}{13}\selectfont\color{harvardcrimson}}
-\RedeclareSectionCommand[tocbeforeskip=0.18\baselineskip]{chapter}
-\RedeclareSectionCommand[tocbeforeskip=0.50\baselineskip]{part}
-
-% -----------------------------------------------------------------------------
-% Visual Motif Transition Marker
-% -----------------------------------------------------------------------------
-\newcommand{\patransition}{%
-  \begin{center}%
-    \vspace{0.4\baselineskip}%
-    \begin{tikzpicture}[x=0.25in, y=0.15in, line width=0.8pt]
-      \node[font=\sffamily\scriptsize\bfseries\color{ethdarkblue}] at (0,0) {SENSE};
-      \draw[-{Stealth[length=2mm]}, ethpetrol] (0.8,0) -- (1.5,0);
-      \node[font=\sffamily\scriptsize\bfseries\color{ethbronze}] at (2.4,0) {PROPOSE};
-      \draw[-{Stealth[length=2mm]}, harvardcrimson] (3.3,0) -- (4.0,0);
-      \node[font=\sffamily\scriptsize\bfseries\color{ethdarkblue}] at (4.9,0) {PERMIT};
-      \draw[-{Stealth[length=2mm]}, ethpetrol] (5.7,0) -- (6.4,0);
-      \node[font=\sffamily\scriptsize\bfseries\color{harvardcrimson}] at (7.1,0) {ACT};
-    \end{tikzpicture}%
-    \vspace{0.4\baselineskip}%
-  \end{center}%
-}
-
-% -----------------------------------------------------------------------------
-% Cover & Title Page Generation (Harvard Crimson & ETH Zurich Edition)
-% -----------------------------------------------------------------------------
-\makeatletter
-\renewcommand*{\maketitle}{%
-  % --- Cover Page ---
-  \begin{titlepage}\thispagestyle{empty}%
-    \newgeometry{margin=0pt}%
-    \begin{tikzpicture}[remember picture,overlay]
-      % Deep dignified ETH Dark Blue canvas
-      \fill[fill=ethdarkblue!95!black] (current page.south west) rectangle (current page.north east);
-
-      % Top Harvard Crimson header bar
-      \fill[harvardcrimson] ([yshift=-0.5in]current page.north west) rectangle ([yshift=-0.58in]current page.north east);
-
-      % Book Series / Category Label
-      \node[anchor=north west, text width=6.5in, align=left]
-        at ([xshift=1.0in, yshift=-1.05in]current page.north west)
-        {\sffamily\bfseries\fontsize{10}{12}\selectfont\color{white!80}\MakeUppercase{A Systems Engineering Textbook}};
-
-      % Main Title & Subtitle Block
-      \node[anchor=north west, text width=6.5in, align=left]
-        at ([xshift=1.0in, yshift=-1.6in]current page.north west)
-        {\sffamily\bfseries\fontsize{44}{48}\selectfont\color{white}Physical\hspace{0.16em} AI\par
-         \vspace{0.2in}%
-         {\sffamily\bfseries\fontsize{16}{22}\selectfont\color{white!95}Machine Learning Systems That Sense and Act}\par
-         \vspace{0.14in}%
-         {\sffamily\fontsize{10.5}{14.5}\selectfont\color{white!80}What must the system know, measure, enforce, and prove before software moves matter?}\par
-        };
-
-      % Signature Proposal-Permission Dual Brain Architecture Diagram
-      \node[anchor=center] at ([yshift=-0.15in]current page.center) {
-        \begin{tikzpicture}[
-          scale=0.92,
-          box/.style={draw=white!40, fill=ethdarkblue!60!black, text=white, rounded corners=3pt, inner sep=6pt, font=\sffamily\small, align=center},
-          mcu/.style={draw=ethpetrol, fill=ethpetrol!25!ethdarkblue, text=white, rounded corners=3pt, inner sep=6pt, font=\sffamily\small, align=center, line width=1.2pt},
-          prop/.style={draw=ethbronze, fill=ethbronze!20!ethdarkblue, text=white, rounded corners=3pt, inner sep=6pt, font=\sffamily\small, align=center, line width=1.2pt}
-        ]
-          \node[box, text width=3.4in] (mpu) {
-            \textbf{\color{ethbronze!90!white}LINUX MPU (Untrusted Proposal Engine)}\\
-            {\footnotesize Foundation Models $\cdot$ Spatial Tokens $\cdot$ Expiring Leases ($p_t$)}
-          };
-          \node[mcu, text width=3.4in, below=0.6in of mpu] (mcu) {
-            \textbf{\color{ethpetrol!70!white}REAL-TIME MCU (Trusted Permission Authority)}\\
-            {\footnotesize 1 kHz Reflex Timing Loop $\cdot$ Stopping Distance $d_{\text{stop}}$ $\cdot$ Hardware Veto ($u_t$)}
-          };
-          \node[box, text width=3.4in, below=0.6in of mcu] (act) {
-            \textbf{PHYSICAL WORLD ($W_t \longrightarrow W_{t+1}$)}\\
-            {\footnotesize Kinetic Momentum $\cdot$ Matter Mutation $\cdot$ Endogenous Sensory Shift}
-          };
-
-          \draw[ethbronze!90!white, dashed, line width=1.4pt, -{Stealth[length=3mm]}] (mpu) -- node[right=4pt, font=\sffamily\bfseries\scriptsize\color{ethbronze!90!white}]{Expiring Proposal $p_t$} (mcu);
-          \draw[ethpetrol!80!white, line width=1.6pt, -{Stealth[length=3mm]}] (mcu) -- node[right=4pt, font=\sffamily\bfseries\scriptsize\color{ethpetrol!80!white}]{Permitted Action $u_t = \text{permit}(p_t)$} (act);
-          \draw[white!75, line width=1.0pt, -{Stealth[length=2.5mm]}] (act.west) to[out=180,in=180] node[left=6pt, font=\sffamily\scriptsize\color{white!80}]{Endogenous Feedback $O_{t+1}$} (mpu.west);
-        \end{tikzpicture}
-      };
-
-      % Author & Affiliation Block (Bottom)
-      \node[anchor=south west, text width=6.5in, align=left]
-        at ([xshift=1.0in, yshift=0.85in]current page.south west)
-        {{\sffamily\bfseries\fontsize{16}{19}\selectfont\color{white}Vijay Janapa Reddi}\par
-         \vspace{3pt}%
-         {\sffamily\fontsize{11}{14}\selectfont\color{white!90}\textbf{\textcolor{harvardcrimson!90!white}{Harvard University}} \ $\cdot$\  \textbf{\textcolor{ethblue!80!white}{ETH Zurich}}}\par
-         \vspace{6pt}%
-         {\sffamily\fontsize{8.5}{11}\selectfont\color{white!70}Open Curriculum $\cdot$ Arduino Dual-Brain Kit $\cdot$ Cumulative Design Dossier}\par
-        };
-
-      % Bottom Harvard Crimson accent bar
-      \fill[harvardcrimson] ([yshift=0.35in]current page.south west) rectangle ([yshift=0.40in]current page.south east);
-    \end{tikzpicture}%
-    \restoregeometry
-  \end{titlepage}%
-
-  % --- Title Page ---
-  \begin{titlepage}\thispagestyle{empty}%
-    \raggedright
-    \vspace*{0.9in}
-    {\textcolor{harvardcrimson}{\rule{2.8in}{1.6pt}}\par}
-    \vspace{0.35in}
-    {\sffamily\bfseries\fontsize{28}{32}\selectfont\color{ethdarkblue}\@title\par}
-    \vspace{0.12in}
-    {\sffamily\bfseries\fontsize{13}{17}\selectfont\color{harvardcrimson}\@subtitle\par}
-    \vspace{0.8in}
-    {\sffamily\large\bfseries\color{ethdarkblue}\@author\par}
-    \vspace{0.06in}
-    {\sffamily\normalsize\color{softink}Harvard University \ $\cdot$\  ETH Zurich\par}
-    \vspace{0.25in}
-    {\sffamily\small\color{softink}\@date\par}
-    \vfill
-    {\sffamily\bfseries\color{harvardcrimson}$W_t \longrightarrow W_{t+1}$\par}
-    \vspace{0.15in}
-    {\sffamily\footnotesize\color{paleink}Learned proposals, deterministic permission, and defensible physical release.\par}
-    \vspace{0.4in}
-  \end{titlepage}%
-}
-\makeatother
-
-% Fix table padding and column spacing globally
-\usepackage{array}
-\renewcommand{\arraystretch}{1.25}
-\setlength{\tabcolsep}{7pt}
-
-% Ensure tight lists inside table cells
-\usepackage{enumitem}
-\setlist[itemize]{leftmargin=*,nosep,topsep=0pt,partopsep=0pt}
 
 % ---------------------------------------------------------------------------
-% Textbook density.
-% The book previously used parskip=half with a 4.80in measure, which reads
-% loose and airy. A textbook wants indented paragraphs, a wider measure, and
-% tighter leading. Vertical space is reserved for structure, not for every
-% paragraph break.
+% 7. Margin notes and footnotes
+%
+% Footnotes are set in the margin (reference-location: margin in _quarto.yml),
+% so both read as one register: small, sans, secondary ink.
 % ---------------------------------------------------------------------------
-\setlength{\parskip}{0pt plus 0.6pt}
-\setlength{\parindent}{1.2em}
 
-% Lists sit closer to the text they belong to.
-\setlist[itemize]{leftmargin=1.2em,topsep=3pt,itemsep=1.5pt,parsep=0pt}
-\setlist[enumerate]{leftmargin=1.5em,topsep=3pt,itemsep=1.5pt,parsep=0pt}
+\renewcommand*{\marginfont}{%
+  \normalfont\sffamily\fontsize{7.8pt}{10.2pt}\selectfont\color{softink}}
+\setkomafont{footnote}{%
+  \normalfont\sffamily\fontsize{8pt}{10.5pt}\selectfont\color{softink}}
+\setkomafont{footnotemark}{%
+  \normalfont\sffamily\bfseries\fontsize{8pt}{10pt}\selectfont\color{consequence}}
 
-% Tables carry a lot of this book's argument. Give the rows air without
-% the balloon that arraystretch 1.25 produced at the old measure.
-\renewcommand{\arraystretch}{1.14}
-\setlength{\tabcolsep}{5pt}
 
 % ---------------------------------------------------------------------------
-% Wide tables and figures may use the margin column.
-% The co-design matrix is five columns wide and is illegible inside a 5.30in
-% measure. `fullwidth` spans text plus margin, which is the natural home for
-% any artifact the reader is meant to scan across.
+% 8. Links
+%
+% Deferred to \AtBeginDocument so hyperref has loaded and Quarto has finished
+% its own \hypersetup.
 % ---------------------------------------------------------------------------
-\usepackage{environ}
+
+\AtBeginDocument{%
+  \hypersetup{
+    colorlinks=true,
+    linkcolor=structural,
+    urlcolor=measured,
+    citecolor=measured,
+    filecolor=measured
+  }%
+}
+
+
+% ---------------------------------------------------------------------------
+% 9. Utilities
+% ---------------------------------------------------------------------------
+
+% fullwidth spans the text block plus the margin column, for an artifact the
+% reader scans across rather than reads down.
+%
+%   \begin{fullwidth} ... \end{fullwidth}
+%
+% Use it sparingly, and only for genuinely wide material. A table of sentences
+% does not become legible by getting wider; it needs shorter cells.
 \newlength{\fullwidthlen}
 \setlength{\fullwidthlen}{\dimexpr\textwidth+\marginparsep+\marginparwidth\relax}
 \NewEnviron{fullwidth}{%
@@ -323,12 +287,3 @@
     \begin{minipage}{\fullwidthlen}\BODY\end{minipage}%
   }\par
 }
-
-% Quarto emits .column-page / .column-body-outset divs for wide content.
-\providecommand{\columnpage}[1]{\begin{fullwidth}#1\end{fullwidth}}
-
-% Hyphenation: a narrow measure with long technical compounds produces a
-% ladder of hyphens. Loosen the penalty rather than the justification.
-\hyphenpenalty=180
-\tolerance=1400
-\emergencystretch=2.2em
