@@ -54,6 +54,18 @@ The central systems insight of Physical AI is that we do not attempt to make neu
 | **Shared SRAM Mailbox** | Pinned, non-cached internal memory buffer with atomic hardware sequence counters | Lock-free IPC boundary isolating MPU stalls from real-time execution |
 | **Bare-Metal MCU (System 1)** | Deterministic 1000 Hz zero-heap Control Barrier Function QP solver on Cortex-M / RISC-V core | **Permitted PWM Setpoints ($u_t$):** Sole electrical authority over inverter gate-driver hardware |
 
+: Heterogeneous Silicon Partitioning across the Proposal-Permission Privilege Boundary. Structural separation of non-deterministic deliberation from hard real-time safety enforcement. {#tbl-silicon-partitioning}
+
+::: {.callout-note title="Cross-Embodiment Anchor: 1 kHz Safety Enforcement Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (High-Speed Drone & Autonomous Vehicle):**  
+  At $20\text{ m/s}$ flight speed, a drone's neural navigation policy proposes a high-bank turn. The 1 kHz MCU enforcer evaluates an Exponential Control Barrier Function (ECBF) encoding geofence boundaries ($h_{\text{geo}}(\mathbf{p}, \mathbf{v}) \ge 0$) and dynamic stopping envelopes ($d_{\text{stop}}(v) \le d_{\text{clear}}$). If an unmodeled obstacle appears within $d_{\text{stop}}$, the QP solver minimally projects the attitude command, executing an emergency flare to arrest forward flight before boundary penetration.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  During an automated peg-in-hole assembly, an ACT action chunk commands a downward step into a misaligned fixture. The Cortex-M4 microcontroller's 1 kHz loop detects an axial force spike ($F_z > F_{\text{contact\_max}}$), trips the contact barrier constraint ($h_{\text{force}} \ge 0$), and clamps motor currents in under $175\,\mu\text{s}$. It asserts `IS_INTERVENTION = 1`, flushes the pending action chunk, and safely transitions to a compliant position hold, protecting harmonic drive gears from tooth shear.
+* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter Protection):**  
+  A learned neural inverter controller proposes aggressive reactive power injection during a grid voltage sag. The bare-metal digital signal controller (DSC) runs an inverter barrier filter evaluating semiconductor die junction temperature ($T_j \le 150^\circ\text{C}$) and AC voltage distortion ($V_{\text{THD}} \le 5\%$). If the candidate modulation index would push IGBT currents beyond Safe Operating Area (SOA) curves, the enforcer clamps PWM gate duty cycles in $<5\,\mu\text{s}$, preventing explosive semiconductor bridge shoot-through.
+:::
+
+
 
 ### The Non-Deterministic Operating System Trap
 
@@ -417,6 +429,9 @@ To maintain consistency across the Proposal–Permission boundary, the dual-brai
 | **4** | Real-Time MCU | Linux MPU | Asserts hardware IPCC mailbox interrupt (`VETO_ACTIVE_IRQ`) |
 | **5** | Linux MPU | Internal Runtime | Flushes stale action chunk queue, resets KV-cache, and re-seeds planner from $\mathbf{x}_{\text{veto}}$ |
 | **6** | Linux MPU | Real-Time MCU | Emits newly re-anchored action chunk $\mathbf{A}(t+1)$ originating from $\mathbf{x}_{\text{veto}}$ |
+
+: Asynchronous Re-Anchoring Handshake Protocol. Step-by-step state machine synchronizing the MPU neural planner following an MCU safety intervention. {#tbl-reanchoring-protocol}
+
 
 1. **Intervention Assertion:** When the MCU modifies a proposal ($\|u_t^* - p_t\| > \epsilon$) or executes a deceleration halt, it asserts the atomic hardware flag `IS_INTERVENTION = 1` in shared SRAM and latches the exact resting state $x_{\text{veto}}$.
 2. **Mailbox Interrupt Notification:** The MCU asserts a hardware inter-processor communication (IPCC) interrupt line, notifying the Linux kernel that an intervention has occurred.
