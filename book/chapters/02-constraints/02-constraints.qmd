@@ -211,7 +211,9 @@ The ultimate physical metric connecting computational delay to physical safety i
 
 ![**Dynamic Stopping Distance Physics ($d_{\text{stop}}$).** Translating milliseconds of computational delay into physical centimeters of collision hazard. The total stopping distance is the sum of the linear reaction phase ($v \cdot \Delta t_{\text{delay}}$) and the quadratic braking phase ($\frac{v^2}{2a_{\text{max}}}$). While the nominal case ($t_{\text{delay}} = 30\text{ ms}$) stops safely within the $0.35\text{ m}$ clearance barrier, a $P_{99}$ latency tail spike ($t_{\text{delay}} = 230\text{ ms}$) expands the blind reaction travel by $+20\text{ cm}$, causing a severe collision.](figures/fig02_stopping_distance.svg){#fig-stopping-distance width=100%}
 
-### Mathematical Derivation of the Stopping Envelope
+### Deriving the Stopping Budget
+
+Stopping distance is the budget that converts every millisecond in the latency ledger into centimeters on the floor. It is worth deriving once, carefully, because every later safety margin in this book is an instance of it.
 
 Consider a physical mechanism of mass $m$ moving with initial velocity $v(0) = v_0$ toward an obstacle. At $t = 0$, an obstacle appears in the sensory field. The stopping envelope is split into two distinct physical phases:
 
@@ -293,9 +295,11 @@ Software algorithms frequently treat motor actuators as ideal torque sources cap
 
 This column governs how fast a command may change. The energy that command dissipates is a separate constraint with a different reach, and it gets its own column next.
 
-### Commanded Torque Rate and Gearbox Shear Limits
+### The Torque Command Carries a Rate Limit
 
-An electric motor generates electromagnetic torque $\boldsymbol{\tau}$ through Lorentz forces on rotor magnets. When high-ratio reduction gearboxes (such as harmonic drives, cycloidal drives, or planetary gearheads) are attached to motor shafts, the mechanical teeth experience shear stress proportional to transmitted torque:
+The interface between a planner and a drivetrain is a torque command, and that interface has two limits, not one. The magnitude limit is familiar and almost always enforced. The rate limit is the one software forgets, and exceeding it does not degrade performance. It destroys the transmission.
+
+The reason is that a gear train is elastic. Torque reaches the load through teeth that deflect under stress, and stress is proportional to the torque transmitted:
 
 $$\sigma_{\text{shear}} = \frac{\boldsymbol{\tau}}{W_p} \le \sigma_{\text{yield}}$$
 
@@ -305,9 +309,11 @@ Commanding an abrupt step change in motor torque creates an extreme torque deriv
 
 $$\|\dot{\boldsymbol{\tau}}(t)\| \le \dot{\tau}_{\text{max}}$$
 
-### Jerk Continuity ($\dddot{\mathbf{q}}$) and $\mathcal{C}^2$ Trajectory Splines
+### What the Mechanism Receives Is Not What the Planner Sent
 
-In kinematics, **jerk** is the third time derivative of joint position $\mathbf{q}(t)$ (the rate of change of acceleration):
+A policy emits waypoints. The mechanism does not experience waypoints; it experiences their derivatives, and the damage happens three levels down from position.
+
+That third derivative is **jerk**, the rate of change of acceleration:
 
 $$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3 \mathbf{q}}{dt^3} = \frac{d\mathbf{a}}{dt}$$
 
@@ -341,9 +347,11 @@ Every command this system issues is a request to move energy. Some of that energ
 
 The two are governed by the same first-order law. A resistance dissipates power, a thermal mass absorbs it, and a thermal resistance carries it away. Only the constants change.
 
-### Copper Winding Thermal Dissipation Balance
+### The Continuous Rating Is a Thermal Budget
 
-When electric current $I(t)$ flows through motor stator copper windings of phase resistance $R$, electrical power is dissipated as Joule heat ($P_{\text{loss}} = I^2 R$).
+A motor's continuous rating is not an electrical limit. It is a thermal budget, and the distinction decides how you spend it. A winding does not fail because too much current passed through it. It fails because heat arrived faster than it left, for long enough that the insulation gave up.
+
+The arrival rate is set by Joule dissipation in the copper ($P_{\text{loss}} = I^2 R$).
 
 The temperature rise $\Delta T(t) = T_{\text{winding}}(t) - T_{\text{ambient}}$ of the motor stator assembly is governed by the **first-order thermal differential equation**:
 
