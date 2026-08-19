@@ -1,112 +1,146 @@
-# Physical AI Systems
+# Physical AI Systems: Machine Learning Systems That Sense and Act
 
-**Physical AI: Machine Learning Systems That Sense and Act**  
-Author & Lecturer: **Prof. Vijay Janapa Reddi** (Harvard University / Visiting Professor, ETH Zurich)  
-Kit & Studio Lead: **Dr. Andrea Mattia Garavagno** (Integrated Systems Laboratory, IIS, D-ITET, ETH Zurich)  
-Course & Book Site: [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
+**An Open Textbook, Curriculum, and Hardware Studio on Engineering Autonomous Physical Agents**
 
-> *TinyML taught you how to deploy a neural model to a microchip. Physical AI teaches you how to build an intelligent, safe machine under physical and resource laws.*
+* **Author & Lecturer:** **Prof. Vijay Janapa Reddi** (Harvard University / Visiting Professor, ETH Zurich)
+* **Kit & Studio Lead:** **Dr. Andrea Mattia Garavagno** (Integrated Systems Laboratory, IIS, D-ITET, ETH Zurich)
+* **Book & Course Portal:** [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
+
+> *"TinyML taught you how to deploy a neural model to a microchip. Physical AI teaches you how to build an intelligent, safe machine under physical and resource laws."*
 
 ---
 
-## The North Star
+## The Big Picture: What is Physical AI Systems?
 
-Standard machine learning ends at digital output. A classifier emits a label; a language model emits text. In the digital world, software errors are harmlessly contained behind glass: transactions roll back, exceptions are caught, and dropped packets are retried.
+Standard machine learning ends at digital output. A classifier emits a label; a large language model emits text. In the digital realm, errors are harmlessly contained behind glass: transactions roll back, exceptions are caught, and dropped packets are retried.
 
-**Physical AI Systems** begin at the exact moment software crosses the boundary into the physical world ($W_t \to W_{t+1}$)—commanding pulse-width modulated gate drivers, accelerating kilograms of mass, consuming kinetic energy, interacting with humans, and permanently altering the physical environment.
+**Physical AI Systems begin at the exact moment digital software commands physical actuators—accelerating mass, consuming energy, and permanently altering the state of the world ($W_t \to W_{t+1}$).**
 
-Because physical actions cannot be rewound (**you cannot `ctrl+z` kinetic energy**), the central question governing this curriculum, reference book, and hardware lab track is:
+Because physical actions cannot be rewound (**you cannot `ctrl+z` kinetic momentum or Joule heat**), this textbook and course answer one central systems question:
 
 > **"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"**
 
 ---
 
-## The 4 Bedrock Laws of Physical AI Systems
+## The Three Universal Defining Properties of Physical AI
 
-Every chapter, architectural interface, and laboratory in this project is anchored in 4 inescapable physical and systems laws:
+Across robotics, autonomous mobility, smart energy grids, and industrial automation, an engineered system is defined as **Physical AI** if and only if it satisfies three universal criteria:
 
-1. **The Law of Physical Causality & Irreversibility:** Software bits can be snapshot and retried with `try/catch`. Physical actions governed by inertia, friction ($\mu$), Joule heating ($I^2R$), and momentum cannot. Every actuation permanently mutates the world ($W_t \to W_{t+1}$) and alters all future sensory observations endogenously ($A_t \to W_{t+1} \to O_{t+1}$).
-2. **The Law of Information Freshness (The Time Law):** The physical world does not pause for computation. Sensor data decays the instant photons hit the photodiode. Mean latency ($P_{50}$) is an illusion; tail latency ($P_{99}$), DRAM memory bus contention, and information age ($\Delta t$) dictate dynamic stopping distances ($d_{\text{stop}}$) and physical stability.
-3. **The Law of Proposal–Permission Privilege (The Architecture Law):** No stochastic foundation model (VLM, VLA, Diffusion Policy) may hold direct motor authority. Learned models running on application processors (MPU) are *untrusted proposal services*. Deterministic real-time permission belongs to dedicated, zero-allocation microcontrollers (MCU) running mathematical safety enforcers (Control Barrier Functions) and physical fallbacks.
-4. **The Law of Governed Change & Defensible Release (The Safety Law):** Simulation demos and benchmark leaderboards are not proof of safety. A physical agent shapes its own future data distribution. Defensible release requires cross-layer fault injection, formal safety cases, and an evidence-backed **Deploy / Condition / Refuse** release verdict.
+| Property | Core Physical & Computational Principle | Systems Reality & Contrast |
+| :--- | :--- | :--- |
+| **1. Learned Foundation Component** | Incorporates high-capacity learned foundation models (Vision-Language-Action models, Latent World Models, Diffusion Policies) | Does not rely on rigid hardcoded if-then state machines; generalizes over unstructured, open-world environmental variability. |
+| **2. Operations Across the Analog $\longleftrightarrow$ Digital Boundary** | Discrete software representations (tokens, embeddings, floating-point tensors) directly govern continuous analog energy fluxes | Digital clock ticks command 3-phase inverter MOSFETs, electromagnetic coil flux, hydraulic valves, and kinetic momentum. |
+| **3. Governed by Irreversible Physical Laws** | Operates under strict physical conservation laws (conservation of energy, momentum $p=mv$, Joule heating $I^2R$, kinematic friction) | **Zero undo mechanism:** You cannot roll back a physical collision, rewind motor coil overheating, or catch a dropped glass with a software exception handler. |
 
----
-
-## The Core Architecture: Proposal–Permission (Dual-Brain)
-
-Learned foundation models are non-deterministic and lack intrinsic awareness of physical inertia, memory bus contention, or clock skew. The **Dual-Brain Architecture** cleanly decouples best-effort cognitive proposals from deterministic bare-metal permission:
-
-```text
-       ┌─────────────────────────────────────────────────────────────┐
-       │                   THE DUAL-BRAIN ARCHITECTURE               │
-       │                                                             │
-       │       LINUX MPU (Best-Effort Cognitive Cortex)              │
-       │       • Vision Encoders (ViT, DINOv2), VLMs, ACT Chunking   │
-       │       • Frequency: 1 Hz (Deliberation) → 20–50 Hz (Planning)│
-       │       • Role: UNTRUSTED PROPOSAL ENGINE                     │
-       │       • Output: Expiring Intent Leases (3D Bounds, TTL)     │
-       └──────────────────────────────┬──────────────────────────────┘
-                                      │
-                                      │  Expiring Intent Proposal (pt)
-                                      ▼
-       ┌─────────────────────────────────────────────────────────────┐
-       │       REAL-TIME MCU (Deterministic Safety Reflex)           │
-       │       • 1 kHz Bare-Metal Loop, Zero-Dynamic Allocation      │
-       │       • Control Barrier Functions (h(x) ≥ 0), d_stop Bounds │
-       │       • Independent Safety Geofencing & Hard Watchdogs      │
-       │       • Role: TRUSTED PERMISSION AUTHORITY                  │
-       │       • Output: Permitted Actuation (ut = permit(pt))       │
-       └──────────────────────────────┬──────────────────────────────┘
-                                      │
-                                      ▼
-                              PHYSICAL MOTORS / WORLD
-```
+: The Three Universal Defining Properties of Physical AI. {#tbl-defining-properties}
 
 ---
 
-## The Three Engineering Tribes
+## The Three Canonical Archetypes
 
-Physical AI is the grand synthesis of three engineering cultures, each bringing essential strengths and dangerous blindspots:
+To ensure broad engineering generalization beyond any single robotics niche, every concept in this curriculum is anchored across **Three Canonical Archetypes** and a dedicated **Desk Bench Twin**:
 
-```text
-┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
-│     THE BRAIN (ML / CS)      │  THE NERVOUS SYSTEM (ECE)    │ THE BODY & CONTROL (ROBOTICS)│
-├──────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
-│ • High-Capacity Models       │ • Microsecond Clock Sync     │ • Dynamics & Inertia M(q)    │
-│ • Spatial Token Embeddings   │ • Zero-Copy DMA Pipelines    │ • Control Barrier Functions  │
-│ • Diffusion Action Chunks    │ • Lock-Free Shared SRAM      │ • Classical Safe Sets        │
-├──────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
-│ Blindspot: Digital Sandbox   │ Blindspot: Static Automation │ Blindspot: Closed-World CAD  │
-│ (Ignores tails & crashes)    │ (Cannot parse open worlds)   │ (Distrusts learned models)   │
-└──────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
-                                              │
-                                              ▼
-                         THE PHYSICAL AI SYSTEMS SYNTHESIS
-      Universal Success Metric: Open-World Semantic Competence AND Strict Invariant Survival
-```
-
----
-
-## Book Structure & Cumulative Design Dossier
-
-The book is organized into **3 Foundational Parts (11 substantive chapters + Capstone)**. Across the spine, readers build an accumulating, versioned **Cumulative Design Dossier** for a physical handling system:
-
-| Part | Chapter | Focus / Organ | Design Dossier Artifact |
+| Archetype | Primary Physical Action | Representative Industrial Systems | Core Systems Challenge |
 | :--- | :--- | :--- | :--- |
-| **Part I: Foundations & Co-Design Matrix** | `01-boundary` | **The Causal Boundary & The Co-Design Challenge** | `LOOP-01` (Loop Charter) |
-| | `02-constraints` | **The Physical Constraints (The Columns)** | `REQ-01` (Requirements & Latency Ledger) |
-| | `03-cognition` | **The Cognitive Dimensions (The Rows & Matrix)** | `FLOW-01` (Workflow & Multi-Rate Charter) |
-| **Part II: The Embodied Lifecycle** | `04-perception`| **Stage 1: Perceive · VLA Spatial Tokens & Ingestion** | `OBS-01` (Observation Contract) |
-| | `05-state` | **Stage 2: Remember · Latent World Models & SE(3) Trees** | `STATE-01` (State & Timing Model) |
-| | `06-intent` | **Stage 3: Reason · Multimodal VLMs & Intent Leases** | `INTENT-01` (Intent Schema & Leases) |
-| | `07-planning` | **Stage 4: Plan · Diffusion Action Chunking & C2 Jerk** | `PLAN-01` (Trajectory Planning Schema) |
-| | `08-enforcement`| **Stage 5: Execute · 1 kHz MCU Safety Invariants** | `ENF-01` (Safety Enforcer & CBF) |
-| **Part III: Placement, Governance & Release** | `09-placement` | **Workload Placement · Heterogeneous Silicon & QoS** | `PLACE-01` (Heterogeneous Silicon Ledger)|
-| | `10-governance` | **Human Governance · Bumpless Takeover & Data** | `AUTH-01` (Governance Record & Lineage) |
-| | `11-assurance` | **Defensible Assurance · Seeded Faults & Safety Cases**| `REL-01` (Claim-Argument-Evidence Case) |
-| **Capstone** | `99-capstone` | **Whole-System Bench Defense Under Seeded Faults** | Full Dossier Defense & Release Verdict |
+| **Archetype 1: Locomotion & Mobility** | Free-Space Movement & Spatial Navigation | Autonomous Vehicles (Waymo), High-Speed Delivery Drones (Skydio), Quadrupeds (Spot) | Tail latency ($P_{99}$) and dynamic stopping envelopes ($d_{\text{stop}}$) under high-speed kinetic momentum. |
+| **Archetype 2: Contact Manipulation** | Touching, Shaping & Assembling Matter | Humanoid Robots (Optimus, Figure), 6-DoF Industrial Arms, Surgical Robots | Discontinuous contact transitions, torque rate limits ($\dot{\boldsymbol{\tau}}$), and harmonic drive gearbox shear. |
+| **Archetype 3: Cybernetic Process & Energy** | Continuous State & Flow Regulation | Smart Grid Power Inverters, EV Battery Management Systems (BMS), Dialysis Pumps | Microsecond AC phase tracking, $I^2R$ Joule heating, and electrochemical thermal runaway prevention. |
+| **The Desk Bench Twin (The Lab Kit)** | Precision Dual-Brain Desktop Pick-and-Place | **Arduino UNO Q Dual-Brain Kit** (Linux Application MPU + Cortex-M4 MCU + MIPI Camera) | Zero-magic laboratory realization grounding every architectural contract on real bench silicon. |
 
+: The Three Canonical Archetypes and the Desk Bench Twin. {#tbl-canonical-archetypes}
 
+---
+
+## The Grand Systems Conflict: Less Time vs. More Time
+
+The foundational tension of Physical AI is the structural collision between two opposing vectors:
+
+```
+                  THE FUNDAMENTAL TUG-OF-WAR IN PHYSICAL AI
+                  
+     PHYSICS & HARDWARE LAWS                 COGNITIVE FOUNDATION MODELS
+     (Chapter 2: The Physical Columns)       (Chapter 3: The Cognitive Rows)
+   ─────────────────────────────────────   ─────────────────────────────────────
+   • LESS TIME IS BETTER ($t \to 0$)       • MORE TIME IS BETTER ($t \to \infty$)
+   • Moving mass travels ($v \cdot \Delta t$)      • Foundation models need FLOPs & tokens
+   • Stator coils heat ($I^2 R$)           • Spatial transformers need self-attention
+   • Sensor evidence decays instantly      • Diffusion policies need denoising steps
+   • Phase margin erodes ($e^{-s T_d}$)    • VLMs need chain-of-thought reasoning
+   • "Act in 1 ms or the arm collides!"    • "Give me 500 ms to resolve ambiguity!"
+```
+
+### The Resolution: The Three Cadences of Intelligence
+
+Physical AI reconciles this conflict by decoupling execution across **three asynchronous temporal cadences** hosted on heterogeneous silicon:
+
+| Temporal Tier | Cadence & Frequency | Silicon Substrate | Operating System | Primary Systems Role | Privilege Tier |
+| :--- | :---: | :--- | :--- | :--- | :--- |
+| **System 2: Semantic Deliberation** | $0.5\text{--}2\text{ Hz}$ ($500\text{--}2000\text{ ms}$) | Multi-Core Host (Linux MPU / Cloud) | Embedded Linux (`PREEMPT_RT`) | Open-world goal decomposition & VLM scene reasoning | **Untrusted Proposal Service** (Emits Expiring Intent Leases $\mathcal{L}_{\text{intent}}$) |
+| **System 1.5: Trajectory Decoding** | $20\text{--}50\text{ Hz}$ ($20\text{--}50\text{ ms}$) | Edge NPU / Tensor Accelerator | Linux User Space (`SCHED_FIFO`) | Multi-step action chunking (ACT / Diffusion) & $\mathcal{C}^2$ jerk splines | **Candidate Trajectory Generator** (Emits $H=16$ Waypoint Chunks) |
+| **System 1: Real-Time Reflex** | $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | Dedicated Bare-Metal MCU (Cortex-M4) | Bare-Metal / FreeRTOS (Static Memory) | 1 kHz Control Barrier Functions (CBF), dynamic stopping ($d_{\text{stop}}$), & $20\text{ kHz}$ FOC | **Sole Hardware Permission Authority** (Holds Inverter PWM Locks) |
+
+: The Three Cadences of Intelligence. Decoupling cognitive speeds across heterogeneous silicon. {#tbl-three-cadences}
+
+---
+
+## The Grand Map: The Physical AI Co-Design Matrix
+
+The curriculum and book are organized around the **$5 \times 4$ Co-Design Matrix**, formed by crossing the **Five Cognitive Work Dimensions (Chapter 3 Rows)** with the **Four Physical Constraints (Chapter 2 Columns)**:
+
+| Cognitive Row | Column 1: Time & Freshness | Column 2: Inertia & Momentum | Column 3: Jerk & Thermal | Column 4: Silicon & Memory Bus | Owning Part II Chapter |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Optical exposure time & IEEE 1588 PTP sync | Motion blur smear bounds ($\Delta x = v \cdot t_{\text{exp}}$) | Rolling shutter angular shear compensation | $1.5\text{ GB/s}$ MIPI DMA DRAM bus ingestion tax | **Chapter 4** (`04-perception`) |
+| **Row 2: Remember** | Latent belief age decay & TTL state leases | Occlusion spatial drift ($\sigma = \sigma_0 + v\Delta t$) | Stator winding thermal state memory ($I^2t$) | $SE(3)$ dynamic frame tree SRAM caching | **Chapter 5** (`05-state`) |
+| **Row 3: Reason** | Slow 1 Hz MPU deliberation timeout containment | Kinematic reachability & workspace bounding $\mathcal{B}$ | Commanded speed clamps ($v_{\text{max}}$) in intent leases | Isolated MPU user-space proposal sandbox | **Chapter 6** (`06-intent`) |
+| **Row 4: Plan** | Action Chunking delay amortization ($H=16$) | Multi-waypoint dynamic stopping profiles | $\mathcal{C}^2$ quintic splines bounding jerk ($\dddot{\mathbf{q}}$) | Lock-free shared SRAM ring buffers | **Chapter 7** (`07-planning`) |
+| **Row 5: Execute** | Deterministic 1 kHz ($1.0\text{ ms}$) bare-metal tick | Dynamic stopping audit ($d_{\text{stop}} \le d_{\text{clear}}$) | Torque rate clamps ($\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$) & $I_{\text{cont}}$ derating | **Zero dynamic heap allocation (`malloc = 0`)** | **Chapter 8** (`08-enforcement`) |
+
+: The Physical AI Co-Design Matrix. Crossing the 5 cognitive rows against the 4 physical columns. {#tbl-codesign-matrix}
+
+---
+
+## The 4-Pillar Pedagogical Formula for Part II (Chapters 4–8)
+
+Every chapter in Part II systematically conquers one row of the matrix using a standardized **4-Pillar Pedagogical Formula**:
+
+1. **The Model Standpoint:** The machine learning representation, foundation model algorithm, and mathematical formulation (ViTs, latent JEPAs, VLMs, ACT/Diffusion, CBFs).
+2. **The Silicon & System Substrate:** The physical execution target (MPU vs. NPU vs. MCU), DRAM crossbar contention, DMA memory channels, cache line invalidations, and allocation rules.
+3. **The Timing Cadence & Multi-Rate Mapping:** The operational clock frequency, synchronization mechanisms (PTP exposure midpoints, delay amortization), and IPC mailboxes.
+4. **The Physical Invariant & Safety Constraint:** The mathematical conservation laws, geometric bounds, and safety filters that prevent physical destruction.
+
+---
+
+## Textbook Structure & Cumulative Design Dossier
+
+Across the 12 chapters, students and engineers construct an 11-artifact **Cumulative Design Dossier** for an embodied physical system:
+
+| Part | Chapter | Title / Subsystem Focus | Design Dossier Deliverable | Companion Lab |
+| :--- | :--- | :--- | :--- | :--- |
+| **Part I: Foundations & Co-Design Matrix** | Chapter 1 | **The Causal Boundary & The Co-Design Challenge** | `LOOP-01` (Loop Charter & Invariants) | `labs/01-close-the-loop` |
+| | Chapter 2 | **The Physical Constraints: Freshness, Stopping & Silicon** | `REQ-01` (Requirements & Latency Ledger) | `labs/02-metrology-wall` |
+| | Chapter 3 | **The Cognitive Dimensions: The 5 Stages & Co-Design Matrix** | `FLOW-01` (Workflow & Multi-Rate Charter) | `labs/03-agent-workflow` |
+| **Part II: The Embodied Lifecycle** | Chapter 4 | **Perception: Spatial Grounding & Ingestion Taxes** | `OBS-01` (Observation Contract & 3D Tokens) | `labs/04-dma-tokens` |
+| | Chapter 5 | **Memory & State: Latent World Models & SE(3) Trees** | `STATE-01` (State & Timing Model) | `labs/05-latent-state` |
+| | Chapter 6 | **Semantic Intent: Multimodal VLMs & Expiring Leases** | `INTENT-01` (Policy & Intent Schema) | `labs/06-vlm-intent` |
+| | Chapter 7 | **Planning & Chunking: Diffusion Policies & C2 Jerk** | `PLAN-01` (Planning Schema & Chunking) | `labs/07-action-chunking` |
+| | Chapter 8 | **Execution & Safety: 1 kHz MCU Safety Invariants** | `ENF-01` (Enforcement Design & CBFs) | `labs/08-cbf-enforcer` |
+| **Part III: Placement, Governance & Release** | Chapter 9 | **Placement: Heterogeneous Silicon & Memory Bus QoS** | `PLACE-01` (Placement Map & Resource Ledger) | `labs/09-heterogeneous-placement` |
+| | Chapter 10 | **Governance: Bumpless Transfer & Governed Flywheels** | `AUTH-01` (Authority & Governance Record) | `labs/10-bumpless-governance` |
+| | Chapter 11 | **Assurance & Release: Seeded Faults & Safety Cases** | `REL-01` (Claim-Argument-Evidence Case) | `labs/11-fault-injection-rig` |
+| **Capstone** | Chapter 12 | **Whole-System Bench Defense Under Seeded Faults** | **Full Dossier Sign-Off & Release Verdict** | `labs/99-capstone-defense` |
+
+: The Complete 12-Chapter Textbook Curriculum and Cumulative Design Dossier Milestones. {#tbl-curriculum-dossier}
+
+---
+
+## Hardware Lab Track: The Arduino UNO Q Dual-Brain Kit
+
+The laboratory track grounds every theoretical concept on zero-magic, reproducible bench hardware:
+
+* **Host Brain (MPU):** Qualcomm Linux Application Processor running PyTorch, TensorRT, Vision-Language Models (VLMs), and ACT Action Chunk decoders.
+* **Reflex Brain (MCU):** Dedicated ARM Cortex-M4 Microcontroller running bare-metal / FreeRTOS with strictly **zero dynamic heap allocation (`malloc = 0`)**, executing 1 kHz Control Barrier Functions and hardware emergency braking.
+* **Sensory Suite:** MIPI CSI-2 camera with hardware DMA ring buffers, high-resolution optical encoders, and 6-DoF IMU.
+* **Actuation Suite:** Multi-axis precision motion stage with phase current telemetry, thermal sensing, and hardware Safe Torque Off (STO) relays.
 
 ---
 
@@ -114,87 +148,64 @@ The book is organized into **3 Foundational Parts (11 substantive chapters + Cap
 
 ```text
 PhysicalAI/
-├── README.md               # Project overview, architecture & quickstart
-├── NEXT_STEPS.md           # Engineering status handoff & immediate roadmap
+├── README.md               # Master course & textbook overview
+├── NEXT_STEPS.md           # Engineering roadmap & active milestones
 │
 ├── course/                 # Academic administration & syllabus
-│   └── syllabus.md         # Official 14-week ETH Zurich course syllabus (6 ECTS)
+│   └── syllabus.md         # Official 14-week ETH Zurich syllabus (6 ECTS)
 │
-├── slides/                 # Weekly lecture & seminar slide decks
-│   └── README.md           # Slide deck index
+├── book/                   # Quarto publication source
+│   ├── index.qmd           # Preface & Manifesto (3 Defining Properties, 3 Archetypes)
+│   ├── chapters/           # 12 Chapter manuscripts (01-boundary through 99-capstone)
+│   │   ├── 01-boundary/    # Chapter 1: The Causal Boundary
+│   │   ├── 02-constraints/ # Chapter 2: The Physical Constraints (The Columns)
+│   │   ├── 03-cognition/   # Chapter 3: The Cognitive Dimensions (The Rows)
+│   │   ├── 04-perception/  # Chapter 4: Stage 1 — Perceive (Spatial Tokens & DMA)
+│   │   ├── 05-state/       # Chapter 5: Stage 2 — Remember (Latent World Models)
+│   │   ├── 06-intent/      # Chapter 6: Stage 3 — Reason (VLMs & Intent Leases)
+│   │   ├── 07-planning/    # Chapter 7: Stage 4 — Plan (Diffusion Chunking & Jerk)
+│   │   ├── 08-enforcement/ # Chapter 8: Stage 5 — Execute (1 kHz CBF Enforcers)
+│   │   ├── 09-placement/   # Chapter 9: Workload Placement & Bus QoS
+│   │   ├── 10-governance/  # Chapter 10: Human Authority & Data Flywheels
+│   │   ├── 11-assurance/   # Chapter 11: Seeded Faults & Defensible Release
+│   │   └── 99-capstone/    # Chapter 12: Whole-System Defense
+│   ├── appendix/           # Dossier templates, hardware schematics & math reference
+│   └── _quarto.yml         # Master Quarto configuration (Web + PDF LuaLaTeX)
 │
-├── book/                   # The Architectural Reference Text (Quarto source)
-│   ├── index.qmd           # Preface & Manifesto (Four Eras, Three Tribes, 4 Laws)
-│   ├── front-matter/       # About the Author, Prerequisites & How to Use
-│   ├── parts/              # Architectural part overview files (Parts 1–3)
-│   ├── chapters/           # 12 Chapter manuscripts with localized TikZ figures/
-│   ├── appendix/           # Dossier templates, Uno Q reference, math & glossary
-│   ├── tex/                # TikZ figure generation scripts & LaTeX preambles
-│   └── _quarto.yml         # Master Quarto configuration (HTML web + publication PDF)
-│
-└── labs/                   # Hardware Lab Track on Arduino UNO Q Dual-Brain
-    ├── 00-kit-bringup/     # Board bring-up, IPC link & safe idle state
-    ├── 01-close-the-loop/  # Advisory mode vs. closed-loop state mutation
-    ├── 02-freshness-wall/  # Information age vs. task efficacy collapse
-    ├── 03-measure-both-brains/ # Complete-path latency tail metrology (P99, DMA)
-    ├── 04-runtime-fault-containment/ # Multi-rate scheduling & MPU crash survival
-    ├── 05-perception-frontier/ # DMA ingestion tax & spatial affordance tokens
-    ├── 06-belief-drift/    # SE(3) frame graphs & temporal belief TTL leases
-    ├── 07-two-speed-intent/# VLM 3D bounding boxes & expiring intent leases
-    ├── 08-mcu-enforcer/    # Signature Lab: 1 kHz MCU safety vetoes & d_stop
-    ├── 09-placement-ripple/# Heterogeneous resource allocation & bus QoS
-    ├── 10-shadow-and-faults/# Seeded fault injection & shadow runtime auditing
-    ├── 11-authority-paths/ # Bumpless human overrides & joystick handoff
-    ├── 12-learning-turn/   # Closed-loop policy refinement & covariate shift
-    ├── 13-ship-gate/       # Release gate defense & Deploy/Condition/Refuse verdict
-    ├── 99-design-review/   # Capstone dossier jury defense
-    └── shared/             # Shared MPU/MCU headers, contracts & schemas
+└── labs/                   # Hands-on Dual-Brain Laboratory Track
+    ├── 01-close-the-loop/  # Lab 1: Advisory open-loop vs closed-loop state mutation
+    ├── 02-metrology-wall/  # Lab 2: Tail latency metrology (P99, P99.9) & stopping bounds
+    ├── 03-agent-workflow/  # Lab 3: Multi-rate scheduling & proposal-permission split
+    ├── 04-dma-tokens/      # Lab 4: MIPI DMA bus contention & 3D spatial tokenization
+    ├── 05-latent-state/    # Lab 5: SE(3) frame trees & belief persistence under occlusion
+    ├── 06-vlm-intent/      # Lab 6: VLM prompt grounding & expiring intent leases
+    ├── 07-action-chunking/ # Lab 7: ACT trajectory decoding & C2 quintic jerk splines
+    ├── 08-cbf-enforcer/    # Lab 8: 1 kHz MCU Control Barrier Function safety filtering
+    ├── 09-heterogeneous-placement/ # Lab 9: UMA memory arbitration & thermal derating
+    ├── 10-bumpless-governance/     # Lab 10: Bumpless joystick takeover & policy flywheels
+    ├── 11-fault-injection-rig/     # Lab 11: Cross-layer seeded fault injection & safety cases
+    └── 99-capstone-defense/        # Lab 12: Whole-system oral jury defense
 ```
-
----
-
-## Reference Hardware Kit: The Physical AI Kit (Arduino UNO Q)
-
-The course and laboratory track ground all theoretical concepts on zero-magic bench hardware:
-
-* **Host Brain (MPU):** Qualcomm-based Linux application processor running PyTorch, TensorRT, Vision-Language Models (VLMs), and ACT Action Chunk decoders.
-* **Reflex Brain (MCU):** Dedicated 32-bit Cortex-M4 microcontroller running bare-metal / FreeRTOS, executing 1 kHz Control Barrier Functions, hardware watchdog leases, and emergency power interlocks.
-* **Actuator Subsystem:** Multi-axis precision motion stage with current-sense telemetry and hardware emergency interlock relay.
-* **Sensor Suite:** MIPI CSI-2 camera with DMA hardware capture, high-speed optical encoders, and 6-DoF IMU.
 
 ---
 
 ## Building the Book
 
-The book is written in [Quarto](https://quarto.org) and compiles into both an interactive web edition and a publication-quality PDF via LuaLaTeX:
+The book is authored in [Quarto](https://quarto.org) and compiles cleanly to both an interactive website and a publication-quality PDF via LuaLaTeX:
 
 ```bash
 cd book
 
-# 1. Live local HTML preview server (with hot reload)
+# 1. Live preview local web server with hot reload
 quarto preview
 
-# 2. Render complete HTML website and publication PDF deliverable
+# 2. Render complete HTML book and publication PDF
 quarto render
-```
-
-### Compiling TikZ Vector Figures
-
-All architectural figures are standalone, publication-grade vector graphics using `TeX Gyre Heros` and `sfmath`:
-
-```bash
-cd book
-
-# Build core figures (Eras Evolution, Agent Anatomy, Three Tribes)
-python3 tex/polish_figures.py
-
-# Build recurring pipeline locator figures across all 12 chapters
-python3 tex/build_locators.py
 ```
 
 ---
 
-## Teaching Team & Credits
+## Teaching Team & Academic Credits
 
 * **Prof. Vijay Janapa Reddi** — Author & Course Lecturer  
   *Gordon McKay Professor of Electrical Engineering, Harvard University*  
