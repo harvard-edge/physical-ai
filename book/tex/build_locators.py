@@ -8,8 +8,8 @@ import subprocess
 
 CHAPTER_ACTIVE_ORGAN = {
     "01-boundary": 0,    # Whole-system causal boundary
-    "02-latency": 0,     # Whole-system time & latency profiling
-    "03-workflow": 0,    # Whole-system multi-rate runtime & workflow
+    "02-constraints": 0, # Whole-system physical constraints & columns
+    "03-cognition": 0,   # Whole-system cognitive dimensions & rows
     "04-perception": 2,  # Stage 2: Perception (and Stage 1 Sensing)
 
     "05-state": 3,       # Stage 3: Memory & State
