@@ -79,8 +79,10 @@ If a robotic manipulator sweeps its camera at $1.5\text{ m/s}$ under dim warehou
 ::: {.callout-note title="Cross-Embodiment Anchor: Sensor Transduction Across the 3 Archetypes"}
 * **Archetype 1: Locomotion & Mobility (High-Speed Drone):**  
   At $15\text{ m/s}$ forward flight speed, a $15\text{ ms}$ camera exposure causes **$22.5\text{ cm}$ of optical motion blur smear** along the velocity vector. A thin $2\text{ cm}$ tree branch is rendered as a faint, low-contrast streak that fails DINOv2 patch activation thresholds, leading to unperceived obstacle collisions.
+
 * **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
   During a rapid wrist rotation ($\dot{\boldsymbol{\omega}} = 3.0\text{ rad/s}$), a rolling shutter camera reads out pixel lines sequentially over $16\text{ ms}$. This line-by-line delay induces geometric shear: a circular screw hole deforms into an elliptical profile tilted by $4.8^\circ$, corrupting the estimated $SE(3)$ grasp quaternion.
+
 * **Archetype 3: Cybernetic Energy (Smart Grid Substation Monitoring):**  
   Optical current transformers and voltage transducers sample AC waveforms at $20\text{ kHz}$. Temperature drift in optical fiber sensing heads alters light polarization (Faraday effect scale factor), introducing a $0.5\%$ phase calibration error that corrupts active/reactive power dispatch calculations.
 :::
@@ -273,6 +275,7 @@ To eliminate the software timestamp illusion, Physical AI systems implement hard
 2. **Hardware Strobe Triggering:** Rather than letting camera sensors free-run on internal crystal oscillators, the MCU emits a periodic hardware pulse ($30.0\text{ Hz}$) on a dedicated GPIO trigger line connected to the camera's `FSYNC` pin.
 3. **Hardware Timestamp Capture:** At the precise clock cycle the exposure begins, a hardware input-capture register latches the master PTP timestamp ($t_{\text{start}}$). The true observation midpoint timestamp is computed deterministically in silicon:
    $$t_{\text{obs\_midpoint}} = t_{\text{start}} + \frac{1}{2} t_{\text{exp\_programmed}}$$
+
 4. **Cross-Modal Kinematic Unwarping:** When fusing visual tokens with high-rate IMU states, the state estimator propagates the IMU state vector across the known temporal skew $\Delta t_{\text{skew}} = t_{\text{imu}} - t_{\text{obs\_midpoint}}$ using Lie algebra integration:
    $$\mathbf{T}_{W}^{B}(t_{\text{obs\_midpoint}}) = \mathbf{T}_{W}^{B}(t_{\text{imu}}) \cdot \exp\left( -\boldsymbol{\xi}^{\wedge} \cdot \Delta t_{\text{skew}} \right)$$
 

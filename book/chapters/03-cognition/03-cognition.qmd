@@ -77,10 +77,12 @@ As illustrated in @fig-agent-workflow, an embodied task traverses nine concrete 
 5. **Station 5 (Semantic Deliberation and Intent Leases):** Operating at a deliberate cadence ($1\text{ Hz}$), a multimodal Vision-Language Model (VLM) reasons over the spatial affordance tokens and task goals. It emits an **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$):
    $$\mathcal{L}_{\text{intent}} = \left\langle \mathbf{T}_{\text{target}} \in SE(3), \; \mathcal{B}_{\text{workspace}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
    This lease bounds the geometric workspace and operational speed, granting provisional authority that automatically expires after $\Delta t_{\text{TTL}}$ unless renewed.
+
 6. **Station 6 (Trajectory Decoding and Action Chunking):** An intermediate diffusion policy [@chi2023diffusionpolicy] or Action Chunking Transformer (ACT [@zhao2023learning]) consumes the active intent lease and current joint proprioception. It generates an action chunk of $H$ future waypoints ($\mathbf{A}_{t:t+H}$) spanning $0.5\text{--}1.0\text{ seconds}$ of smooth physical trajectory.
 7. **Station 7 (Real-Time Safety Reflex and Control Barrier Veto):** Running deterministically at $1000\text{ Hz}$ on a bare-metal microcontroller (MCU), the safety supervisor intercepts the candidate action chunk. It executes a minimal-intervention Quadratic Program (QP) to project candidate setpoints onto the forward-invariant safe set ($\mathcal{C}$), ensuring that joint limits, stopping clearances ($d_{\text{stop}} \le d_{\text{clear}}$), and jerk thresholds ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$) are strictly obeyed [@ames2019control].
 8. **Station 8 (Actuation and Physical Mutation):** Validated torque setpoints ($u_t$) are written to hardware timer capture/compare registers, pulsing 3-phase inverter MOSFETs across the DC power bus. Current rises across stator coil inductance ($L/R$), generating magnetic flux that physically moves mechanical linkages:
    $$A_t \implies \text{Matter, Momentum, and Energy Mutate } (W_t \longrightarrow W_{t+1})$$
+
 9. **Station 9 (Endogenous Sensory Feedback):** The displaced mechanism alters the physical environment into state $W_{t+1}$. This mutated state immediately generates the subsequent optical, tactile, and proprioceptive observation stream $O_{t+1}$, closing the causal loop.
 
 ---
@@ -104,6 +106,7 @@ The primary job of perception is **spatial grounding**: converting high-dimensio
 In digital machine learning, object detection returns 2D bounding boxes in pixel coordinates ($[u_{\text{min}}, v_{\text{min}}, u_{\text{max}}, v_{\text{max}}]$). On a physical robot, a 2D bounding box is useless for manipulation because it contains no depth, no metric orientation, and no surface normal information. If a robotic gripper attempts to close on an object based on pixel coordinates alone, it will either grasp empty air or collide with the supporting tabletop.
 
 Perception in Physical AI transforms raw sensory tensors into **3D Spatial Affordance Tokens** ($o_t \in \mathbb{R}^{N \times D_{\text{token}}}$). Each token encapsulates:
+
 1. **Metric Pose:** A rigid body transformation matrix $\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$ representing the 3D position $\mathbf{p} \in \mathbb{R}^3$ and orientation $\mathbf{R} \in SO(3)$.
 2. **Contact Geometry:** Surface normal vectors $\hat{\mathbf{n}} \in \mathbb{R}^3$ and estimated contact friction coefficients $\mu$.
 3. **Spatial Clearance Boundaries:** Oriented 3D bounding boxes ($OBB \subset \mathbb{R}^3$) defining keep-out zones for collision avoidance.
@@ -119,8 +122,10 @@ Sensors are intermittent, noisy, and subject to line-of-sight occlusions. When a
 The second cognitive dimension is **temporal world modeling**: maintaining an internal belief state ($\mathbf{s}_t$) that preserves knowledge of the physical environment across time, occlusions, and sensor dropouts.
 
 A world model performs three distinct functions:
+
 1. **Belief Persistence Under Occlusion:** When an object disappears behind an obstacle, the world model propagates its estimated position forward in time using kinematic motion priors. The spatial uncertainty bounds expand over elapsed time $\Delta t$:
    $$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t$$
+
 2. **Coordinate Frame Graph Maintenance:** It tracks the tree of dynamic coordinate transformations ($SE(3)$ frame tree) relating the base frame, camera frames, tool center point (TCP), and manipulated objects.
 3. **Latent Predictive State Estimation:** Instead of hallucinating full-resolution future camera frames, modern world models (such as JEPAs [@assran2023self] and DreamerV3 [@hafner2023mastering]) predict compact latent embeddings ($\mathbf{z}_{t+1} = f_{\phi}(\mathbf{z}_t, \mathbf{a}_t)$), dramatically reducing computational overhead while retaining physical dynamics.
 
@@ -131,6 +136,7 @@ A world model performs three distinct functions:
 While classical automation relies on hardcoded state machines, Physical AI agents must operate in unstructured environments where tasks are specified via open-vocabulary natural language. The third cognitive dimension is **semantic deliberation**: parsing human intent, decomposing abstract goals into ordered sub-goals, and resolving environmental ambiguities.
 
 Semantic reasoning is typically executed by high-capacity multimodal Vision-Language Models ($7\text{B}\text{--}70\text{B}$ parameters) hosted on application processors (MPUs) or edge accelerators:
+
 * **Goal Parsing:** Translating ambiguous prompts (*"Clear the workspace"*) into concrete physical actions (*"Move the blue canister into the yellow recycling bin"*).
 * **Affordance Reasoning:** Identifying which physical objects can be grasped, pushed, poured, or assembled based on visual geometry and material properties.
 * **Emitting Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$):** Because large language models are stochastic and non-deterministic, they must never directly command actuator voltages. Instead, System 2 emits a structured, time-bounded **Intent Lease**:
@@ -150,6 +156,7 @@ $$\mathbf{A}_{t:t+H} = \pi_{\theta}(\mathbf{o}_t, \mathbf{s}_t, \mathcal{L}_{\te
 where $\mathbf{q}_k$ represents joint positions, $\dot{\mathbf{q}}_k$ represents joint velocities, and $\mathbf{g}_k$ represents gripper closure states.
 
 Action chunking delivers three decisive systems advantages:
+
 1. **Delay Amortization:** A single neural inference taking $40\text{ ms}$ generates $800\text{ ms}$ of continuous trajectory ($H=16$ steps at $20\text{ Hz}$), amortizing heavy neural compute delay across continuous physical time.
 2. **$\mathcal{C}^2$ Jerk Continuity:** Waypoints are fitted with quintic polynomial splines, guaranteeing continuous second derivatives of acceleration ($\dddot{\mathbf{q}}$) to prevent mechanical shock and gearbox tooth shear.
 3. **Temporal Ensembling:** Overlapping action chunks are smoothly blended across a receding horizon, preventing discrete deceleration pauses at chunk boundaries.
@@ -170,6 +177,7 @@ u_t^* = \arg\min_{u \in \mathcal{U}} \quad & \frac{1}{2} \|u - p_t\|^2 \\
 \end{aligned}$$
 
 The execution engine guarantees:
+
 1. **Minimal Intervention:** As long as the proposed action $p_t$ is safe ($h(\mathbf{x}) \ge 0$), the optimizer outputs $u_t^* = p_t$ without modification.
 2. **Forward Invariance:** If a proposal would drive the mechanism toward collision, joint limits, or over-temperature conditions, the QP minimally alters the command, projecting it onto the safe boundary $\partial\mathcal{C}$.
 3. **Hardware Watchdog Interlocks:** If the application processor fails to refresh its heartbeat ($\tau_{\text{watchdog}} > 20\text{ ms}$), the MCU immediately overrides all software, executing an active Category 1 dynamic deceleration halt before tripping Safe Torque Off (STO).
@@ -366,19 +374,19 @@ The boundary between Plan and Execute follows the same logic. It is not a mathem
 
 ![**The Physical AI Co-Design Matrix.** Five cognitive obligations crossed with five physical constraint columns. Each cell is a question this book has to answer, and the cells are not equally hard.](figures/fig03_codesign_matrix.svg){#fig-codesign-matrix-ch3 width=100%}
 
-@tbl-codesign-matrix-summary states the twenty-five cells as questions. It does not answer them. Each answer is a chapter section in Part II, and the reader who wants the answer to a given cell now is being asked to wait for the chapter that earns it.
+@fig-codesign-matrix-ch3 states the twenty-five cells as questions. It does not answer them. Each answer is a chapter section in Part II, and the reader who wants a given cell resolved now is being asked to wait for the chapter that earns it.
 
-Each cell also carries a weight. **Dominant** cells are where a chapter spends most of its length, because that is where the physics bites hardest. **Thin** cells are real but small. **Not binding** means the column does not reach the stage, and that is a finding rather than a gap.
+Each cell also carries a weight. **Dominant** cells are where a chapter spends most of its length, because that is where the physics bites hardest. **Thin** cells are real but small. **Not binding** means the column does not reach the stage, and that is a finding rather than a gap. @tbl-codesign-matrix-summary is the index to those weights.
 
-| Obligation (Row) | C1 Time and Freshness | C2 Inertia and Stopping | C3 Actuation Limits | C4 Energy and Thermal | C5 Silicon Determinism |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Perceive (Ch 4)** | When did this observation happen, and how do you know? | How far ahead must you see, given what you already cannot stop within? | *Not binding.* Perception commands nothing. | What does the sensor's own temperature do to the geometry you trust? | **Dominant.** What does moving the pixels cost the machine that must reason about them? |
-| **Remember (Ch 5)** | **Dominant.** What is a belief worth after $\Delta t$ without a measurement? | How much of the world must you hold, given how much of it you are committed to crossing blind? | *Thin.* What does a relocalization jump do to the controller consuming it? | Which parts of the body's own calibration drift with heat, and how would you notice? | How do you keep unbounded state in a system that may not allocate? |
-| **Reason (Ch 6)** | **Dominant.** How long may an intent outlive the world it was formed in? | *Not binding at this cadence.* Momentum reaches reasoning only through the bound the lease carries. | *Not binding.* Reasoning commands no torque. | What happens to a deadline when sustained inference throttles the clock that meets it? | How do you keep a large model's memory behavior away from a real-time core? |
-| **Plan (Ch 7)** | How does a plan outlive the latency of the thinking that produced it? | What makes a trajectory one the machine can still abandon? | **Dominant.** What shapes may a command take without destroying the mechanism executing it? | What does a legal motion cost over a shift, rather than over a second? | *Thin.* How much compute may one decision consume, and who decides? |
-| **Execute (Ch 8)** | What is the deadline, and what happens on the cycle it is missed? | **Dominant.** How much margin does stopping require when latency is measured at the tail? | Can the enforcement action itself violate the limit it protects? | What clamps current when the policy asks for more than the machine can sustain? | What must be true of code that is never allowed to pause? |
+| Obligation | C1 Time | C2 Inertia | C3 Actuation | C4 Thermal | C5 Silicon |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Perceive** (Ch 4) | full | full | not binding | thin | **dominant** |
+| **Remember** (Ch 5) | **dominant** | full | thin | full | full |
+| **Reason** (Ch 6) | **dominant** | not binding | not binding | full | full |
+| **Plan** (Ch 7) | full | full | **dominant** | full | thin |
+| **Execute** (Ch 8) | full | **dominant** | full | full | full |
 
-: **The Twenty-Five Questions of the Physical AI Co-Design Matrix.** Five cognitive obligations against five physical constraint columns. The grid is deliberately uneven: three cells do not bind at all, and naming them is part of the argument. {#tbl-codesign-matrix-summary}
+: **The Weight of Each Cell.** Fifteen cells carry a full section, four are thin, and three do not bind at all. Chapter length follows this table, not an even split across the grid. {#tbl-codesign-matrix-summary}
 
 ### How to Read an Uneven Grid
 

@@ -86,6 +86,7 @@ As established in Chapter 2, physical systems operate under strict physical worl
 
 #### 2. The Visual Hallucination Tax
 Pixel generation forces the neural network to expend $>99\%$ of its representational capacity predicting task-irrelevant high-frequency textures: the intricate weave of a carpet, flickering fluorescent light ripples, dust particles floating in the air, or turbulent fluid swirls. Because autoregressive pixel predictors minimize perceptual or mean-squared pixel reconstruction losses, they frequently suffer from **non-rigid hallucinations**:
+
 * Rigid aluminum fixtures subtly morph and stretch across frames.
 * Thin obstacles (such as glass walls or wire cables) vanish and reappear.
 * Objects pass through one another because the diffusion prior lacks rigid contact constraints.
@@ -135,8 +136,10 @@ Because the entire predictive loop operates in compact latent space without pixe
 ::: {.callout-note title="Cross-Embodiment Anchor: World Modeling and State Persistence Across the 3 Archetypes"}
 * **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
   At $25\text{ m/s}$ highway cruising speed, entering an unmapped tunnel or experiencing heavy camera glare blinds optical perception for $1.5\text{ seconds}$. High-rate IMU dead-reckoning integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) sustains vehicle trajectory estimation. However, uncorrected accelerometer bias drift causes spatial uncertainty covariance $\text{Tr}(\Sigma_t)$ to swell to $\pm 1.8\text{ meters}$, triggering pre-emptive lane-centering and speed derating before visual TTL leases expire.
+
 * **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
   When a 6-DoF robot arm lowers a vacuum gripper toward an electronic component, the mechanical wrist inevitably occludes overhead camera line-of-sight for $250\text{ ms}$. The dynamic $SE(3)$ transform graph queries historical $T_{\text{camera}}^{\text{base}}(t_{\text{capture}})$, locks the component's metric position in the base coordinate frame, and uses high-rate joint encoder kinematics ($1000\text{ Hz}$) to complete sub-millimeter component placement without stalling.
+
 * **Archetype 3: Cybernetic Energy (Smart Grid Battery Storage & Power Inverters):**  
   Internal electrochemical state variables—such as lithium-ion State of Charge (SoC) and State of Health (SoH)—cannot be observed with optical cameras. An Equivalent Circuit Model (ECM) combined with an Extended Kalman Filter estimates internal polarization overpotentials ($V_{\text{polarization}}$) while continuously evaluating winding and cell thermal diffusion equations ($C_{\text{th}} \frac{dT}{dt}$) to enforce current limits before thermal runaway thresholds are breached.
 :::
@@ -159,6 +162,7 @@ In Euclidean three-dimensional space, the position and orientation of any rigid 
 $$T_B^A = \begin{bmatrix} R_B^A & \mathbf{p}_B^A \\ \mathbf{0}_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
 
 Where:
+
 * $R_B^A \in SO(3)$ is a $3 \times 3$ orthonormal rotation matrix satisfying $R^T R = I$ and $\det(R) = +1$.
 * $\mathbf{p}_B^A = [x, y, z]^T \in \mathbb{R}^3$ is the translation vector pointing from origin $A$ to origin $B$.
 
@@ -175,6 +179,7 @@ $$\left(T_B^A\right)^{-1} = T_A^B = \begin{bmatrix} (R_B^A)^T & -(R_B^A)^T \math
 In introductory robotics and computer graphics, orientation is frequently parameterized using three Euler angles (Roll, Pitch, Yaw: $\phi, \theta, \psi$). **Euler angles are forbidden in production Physical AI systems.**
 
 Euler angle parameterizations suffer from two fatal mathematical flaws:
+
 1. **Gimbal Lock Singularities:** When pitch reaches $\theta = \pm 90^\circ$, the roll and yaw axes align, causing the loss of one rotational degree of freedom. At this singularity, infinitesimal physical rotations require infinite angular rates in Euler space, causing numerical integration routines to crash or explode.
 2. **Non-Euclidean Topology:** Rotations form a curved manifold ($SO(3)$), not a vector space. You cannot add angular velocities directly ($\theta(t+\Delta t) \neq \theta(t) + \dot{\theta}\Delta t$).
 
@@ -216,8 +221,10 @@ When a delayed vision token arrives stamped at historical capture time $t_{\text
 1. **Historical Transform Lookup:** The buffer retrieves the exact kinematic base-to-camera transform at the historical capture time: $T_{\text{camera}}^{\text{base}}(t_{\text{capture}})$ (using spherical linear interpolation [SLERP] between adjacent buffer keys).
 2. **Historical Frame Composition:** The target's historical metric position in world coordinates is computed:
    $$T_{\text{target}}^{\text{world}}(t_{\text{capture}}) = T_{\text{base}}^{\text{world}} \cdot T_{\text{camera}}^{\text{base}}(t_{\text{capture}}) \cdot T_{\text{target}}^{\text{camera}}(t_{\text{capture}})$$
+
 3. **Forward Lie Propagation:** The spatial state estimator uses the high-rate velocity twist $\boldsymbol{\xi}_{\text{target}}$ to forward-propagate the target pose from $t_{\text{capture}}$ to the current physical instant $t_{\text{now}}$:
    $$T_{\text{target}}^{\text{world}}(t_{\text{now}}) = T_{\text{target}}^{\text{world}}(t_{\text{capture}}) \cdot \exp\left(\boldsymbol{\xi}_{\text{target}}^\wedge \cdot (t_{\text{now}} - t_{\text{capture}})\right)$$
+
 4. **Current Kinematic Clearance:** The clearance vector is evaluated against the *current* end-effector position $T_{\text{EE}}^{\text{base}}(t_{\text{now}})$ computed at $1000\text{ Hz}$ on the MCU.
 
 ---
@@ -243,6 +250,7 @@ In the full multivariate Extended Kalman Filter (EKF) formulation, the spatial c
 $$P_t = F_t P_{t-1} F_t^T + Q_t$$
 
 Where:
+
 * $F_t = \left.\frac{\partial f}{\partial \mathbf{x}}\right|_{\hat{\mathbf{x}}_{t-1}}$ is the Jacobian of the continuous physical transition model.
 * $Q_t = \mathbb{E}[\mathbf{w}_t \mathbf{w}_t^T]$ is the process noise covariance matrix representing unmodeled physical disturbances (vibration, motor cogging, air turbulence).
 
@@ -273,6 +281,7 @@ $$\text{Measurement Accepted If: } d_M \le 3.0 \quad (\text{Inside } 99.7\% \tex
 $$\text{Measurement VETOED / Flagged If: } d_M > 3.0 \quad (\text{Out-of-Distribution Anomaly / Mechanical Collision})$$
 
 If $d_M > 3.0$, the measurement is rejected. A sudden, massive innovation residual indicates one of three physical failure modes:
+
 1. **False Positive Perception:** Optical glare or background clutter caused the vision model to detect an erroneous bounding box.
 2. **Mechanical Slippage / Jam:** The robot's end-effector struck an unmodeled obstacle, causing joint motor encoders to slip or stall while internal kinematics assumed free-space motion.
 3. **Severe Coordinate Frame Drift:** A camera mounting bracket was bumped or deformed, corrupting the extrinsic calibration matrix $T_{\text{camera}}^{\text{base}}$.
@@ -338,6 +347,7 @@ The temperature rise $\Delta T(t)$ in a brushless DC (BLDC) motor stator winding
 $$C_{\text{th}} \frac{d(\Delta T)}{dt} = I^2(t) R(T) - \frac{\Delta T(t)}{R_{\text{th}}}$$
 
 Where:
+
 * $I(t)$ is the root-mean-square (RMS) motor phase current.
 * $R(T) = R_0 [1 + \alpha_{\text{cu}}(T - T_0)]$ is the temperature-dependent copper winding resistance ($\alpha_{\text{cu}} \approx 0.00393 / ^\circ\text{C}$).
 * $C_{\text{th}}$ is the thermal capacitance of the stator assembly ($\text{J}/^\circ\text{C}$).
