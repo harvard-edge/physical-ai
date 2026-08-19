@@ -51,6 +51,8 @@ Every physical sensor converts a specific environmental phenomenon into microvol
 | **IMU (Accel / Gyro)** | Capacitive micro-cantilever deflection under inertia | Thermal Johnson noise, Coriolis acceleration, mechanical resonance | Thermal bias drift, vibration rectification, integration drift ($\propto t^2, t^3$) |
 | **Tactile Array** | Piezoresistive / GelSight elastomeric shear | Contact pressure saturation, elastomer viscoelastic relaxation | Shear hysteresis, mechanical tear, optical contact degradation |
 
+: Sensor Modalities and Transduction Physics. Physical mechanisms, fundamental operational limits, and environmental failure modes across embodied sensor modalities. {#tbl-sensor-physics}
+
 ### CMOS Photodiode Exposure and Optical Degradation
 
 A CMOS image sensor does not capture an instant in time; it integrates incoming photon flux over an exposure duration ($t_{\text{exp}} \approx 2\text{--}20\text{ ms}$). The accumulated charge in each photodiode well follows the physical integral:
@@ -70,6 +72,16 @@ If a robotic manipulator sweeps its camera at $1.5\text{ m/s}$ under dim warehou
 | **Static Workpiece ($\mathbf{v}=0$)** | Sharp spatial boundary | Step function | $\pm 0.5\text{ mm}$ | Clean grasp engagement |
 | **Moving Workpiece ($1.5\text{ m/s}$)** | Smeared $22.5\text{ mm}$ gradient | Diffuse ramp | $\pm 22.5\text{ mm}$ | **Mechanical Collision / Miss** |
 
+: Optical Exposure vs. Motion Blur Smear. Impact of sensor exposure integration time on spatial edge gradients and grasp localization accuracy. {#tbl-motion-blur}
+
+::: {.callout-note title="Cross-Embodiment Anchor: Sensor Transduction Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (High-Speed Drone):**  
+  At $15\text{ m/s}$ forward flight speed, a $15\text{ ms}$ camera exposure causes **$22.5\text{ cm}$ of optical motion blur smear** along the velocity vector. A thin $2\text{ cm}$ tree branch is rendered as a faint, low-contrast streak that fails DINOv2 patch activation thresholds, leading to unperceived obstacle collisions.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  During a rapid wrist rotation ($\dot{\boldsymbol{\omega}} = 3.0\text{ rad/s}$), a rolling shutter camera reads out pixel lines sequentially over $16\text{ ms}$. This line-by-line delay induces geometric shear: a circular screw hole deforms into an elliptical profile tilted by $4.8^\circ$, corrupting the estimated $SE(3)$ grasp quaternion.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Monitoring):**  
+  Optical current transformers and voltage transducers sample AC waveforms at $20\text{ kHz}$. Temperature drift in optical fiber sensing heads alters light polarization (Faraday effect scale factor), introducing a $0.5\%$ phase calibration error that corrupts active/reactive power dispatch calculations.
+:::
 
 Furthermore, most consumer and mobile CMOS sensors use a **rolling shutter**, where pixel rows are reset and read out sequentially from top to bottom at line intervals ($\Delta t_{\text{row}} \approx 10\text{--}30\,\mu\text{s}$). If the camera rotates at angular velocity $\boldsymbol{\omega}$ during frame readout, the scene undergoes geometric shear: straight vertical fixtures appear tilted, and circles deform into ellipses. For precision physical manipulation, perception architectures must enforce **global shutter** image sensors or apply hardware-synchronized IMU gyro integration to unwarp rolling shutter shear before neural tokenization.
 
@@ -121,6 +133,9 @@ Consider a physical handling agent streaming dual $1080\text{p}$ stereo cameras 
 | **Wrist RGB-D Camera** | $1280 \times 720 \times 4$ (RGBA + Depth16) | $(1280 \times 720 \times 6) \times 60\text{ Hz}$ | **$331.8\text{ MB/s}$** |
 | **LiDAR Pointcloud Stream** | $300\text{k points/s} \times 32\text{ bytes}$ | $300{,}000 \times 32\text{ bytes/s}$ | **$9.6\text{ MB/s}$** |
 | **Total Ingestion Load** | **Multi-Modal Sensor Suite** | $\sum \text{Bandwidth}$ | **$1{,}087.9\text{ MB/s} \approx \mathbf{1.1\text{ GB/s}}$** |
+
+: Multi-Modal Sensor Ingestion Bandwidth Ledger. Quantifying raw DMA streaming throughput across shared LPDDR5 DRAM memory channels. {#tbl-ingestion-tax}
+
 
 Every second, hardware Direct Memory Access (DMA) engines dump over **$1.1\text{ GB}$ of raw pixel payloads directly into shared LPDDR5 DRAM**.
 
@@ -217,6 +232,8 @@ How downstream policies consume these spatial tokens marks a major architectural
 | **Discrete Action Bins** | RT-1, RT-2, PaLM-E [@brohan2023rt2] | Coordinates discretized into 256 uniform bins per DoF | Leverages standard autoregressive LLM heads; exhibits spatial discretization error and high token count. |
 | **Continuous Diffusion Decoders** | Diffusion Policy, ACT [@chi2023diffusionpolicy; @zhao2023learning] | Continuous trajectories decoded via denoising score matching | High geometric precision ($\pm 1\text{ mm}$), captures multi-modal distributions, smooth trajectory chunking. |
 
+: Spatial Action Decoders Comparison. Contrasting discrete token classification heads against continuous diffusion and flow matching decoders. {#tbl-decoder-comparison}
+
 By translating raw pixels into metric $SE(3)$ affordance tokens, the perception organ provides a clean, standardized abstraction layer that shields downstream planning and reasoning organs from raw sensor noise and camera calibration shifts.
 
 ---
@@ -292,6 +309,8 @@ The following ledger compares four candidate perception configurations evaluated
 | **Optimal Benchmark** | $1080\text{p} @ 30\text{ Hz}$ | $24.8\text{ MB/s}$ | $7.2\text{ ms}$ | $14.8\text{ ms}$ | **$22.0\text{ ms}$** | **Optimal Physical AI Design Target:** Sub-millimeter grasp accuracy with bounded bus contention and healthy closed-loop margin. |
 | **High-Resolution 4K** | $4\text{K} @ 60\text{ Hz}$ | $199.0\text{ MB/s}$ | $28.5\text{ ms}$ | $112.0\text{ ms}$ | **$140.5\text{ ms}$** | **UNSTABLE / REJECTED:** Saturates UMA memory bus, breaches the Freshness Wall ($\Delta t_{\text{wall}}$), and induces motor chatter. |
 
+: Perception Operating Regimes and Performance Ledger. Evaluating spatial resolution, memory traffic, latency, and closed-loop viability across embedded operating points. {#tbl-perception-pareto}
+
 The fundamental lesson of physical perception engineering is clear: **more pixels do not make a safer robot**. Uncontrolled visual resolution inflates information age $\Delta t$, forcing dynamic stopping distance $d_{\text{stop}}$ to expand and destabilizing the closed-loop physical plant.
 
 ---
@@ -324,6 +343,9 @@ We freeze the fourth formal artifact of the Cumulative Design Dossier—the **Ob
 | **Timing & Synchronization** | Hardware PTP (IEEE 1588) exposure midpoint strobe | Synchronization skew $\Delta t_{\text{skew}} \le 500\,\mu\text{s}$, jitter $\le 50\,\mu\text{s}$ |
 | **Spatial Token Schema** | 3D Affordance Tokens ($SE(3)$ grasp target + normal + friction) | $N=64$ tokens, $D_{\text{token}}=128$, sense-to-token budget $\le 20\text{ ms}$ |
 | **Dropout & Glare Fallback** | Deterministic state machine upon optical corruption | Safe hold after 2 dropped frames; switch to blind proprioception |
+
+: Observation Contract Specification (`OBS-01`). Formal interface parameters, DMA allocations, and timing invariants. {#tbl-obs-contract}
+
 
 ```yaml
 # CUMULATIVE DESIGN DOSSIER: CHECKPOINT OBS-01
