@@ -103,9 +103,19 @@ Furthermore, background operating system services, garbage collection in high-le
 
 Because the VLM takes nearly a full second to formulate a single thought, **the VLM must operate as an asynchronous proposal service**. It cannot reside on the hot path of motor actuation. Instead, it runs in a background thread on the Linux MPU, generating coarse semantic intent targets that are asynchronously buffered, validated, and handed off to mid-rate ($20\text{--}50\text{ Hz}$) trajectory planners.
 
+::: {.callout-note title="Cross-Embodiment Anchor: Semantic Intent and Deliberation Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Delivery Drone & Autonomous Vehicle):**  
+  An autonomous delivery drone receives a natural language re-route command (*"deliver to the backyard gazebo instead"*). The onboard VLM parses the instruction and proposes a landing coordinate $T_{\text{gazebo}}^{\text{world}} \in SE(3)$. The intent proposal is bound inside an expiring intent lease ($\mathcal{L}_{\text{intent}}$) with a 3D altitude bounding box $\mathcal{B}$ and a hard $1.5\text{ s}$ expiration deadline. If the drone encounters unexpected wind gusts or GPS drift, the real-time flight MCU instantly revokes the lease and commands a stationary hover hold.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  A 6-DoF robot arm is instructed to *"pick up the heated hex bolt behind the aluminum bracket"*. The VLM proposes an approach vector that forces the wrist into a kinematic singularity ($\kappa(J) = 142 > 50$). The 3-Gate Morphological Validator intercepts the proposal before trajectory execution, detects the ill-conditioned Jacobian, and rejects the intent with `ABSTAIN_SINGULAR_POSTURE`, prompting the VLM for an alternate orthogonal grasp angle without moving the motors.
+* **Archetype 3: Cybernetic Energy (Smart Grid Energy Dispatch):**  
+  An AI grid optimization assistant receives an open-vocabulary directive (*"maximize solar inverter curtailment while maintaining voltage stability across feeder 4"*). The deliberative model proposes a 3-phase active power setpoint vector $\mathbf{P}_{\text{dispatch}}$. The grid supervisor passes this proposal through a power-flow feasibility filter checking bus voltage bounds ($0.95 \le V_{\text{pu}} \le 1.05$) and transformer thermal ratings ($I^2R$) before emitting modulation commands to the inverter gate drivers.
+:::
+
 ---
 
 ## Grounding Open-Vocabulary Instructions into Metric $SE(3)$ Affordance Targets
+
 
 A natural language command such as *"pick up the heated bolt"* contains rich semantic meaning but zero geometric coordinates, physical units, or contact vectors. The primary job of Stage 4 is **Spatial Affordance Grounding**: lifting symbolic language tokens and 2D camera pixels into metric coordinate frames in the Special Euclidean group $SE(3)$.
 
