@@ -136,15 +136,27 @@ Action Chunking fundamentally alters the latency economics of Physical AI. If a 
 
 While the real-time MCU executes the waypoints of Chunk $k$, the MPU computes Chunk $k+1$ in the background. The computational delay of the neural network is completely amortized across the physical duration of the previously planned trajectory.
 
-```
-Time: 0 ms       50 ms            100 ms           150 ms           200 ms
-MPU:  [Infer A0] ───────────────> [Infer A1] ────────────────────> [Infer A2]
-MCU:             [Execute A0...]  [Blend A0+A1...] [Blend A1+A2...] [Execute A2...]
-                 ▲                ▲                ▲
-                 Zero Starvation  Seamless Stride  Continuous Motion
-```
+| Timeline (ms) | Host Linux MPU (System 1.5 Planning) | Real-Time MCU (System 1 Execution) | Synchronization State |
+| :---: | :--- | :--- | :--- |
+| **$0\text{ ms}$** | Ingest $o_0 \to$ Compute Chunk $A_0$ | Standing hold at initial posture $q_0$ | Pipeline warmup |
+| **$50\text{ ms}$** | Emit $A_0 \to$ Ingest $o_1 \to$ Compute $A_1$ | Execute Chunk $A_0$ waypoints $[0\dots 2]$ | Zero starvation / First stride |
+| **$100\text{ ms}$** | Emit $A_1 \to$ Ingest $o_2 \to$ Compute $A_2$ | Blend Chunk $A_0 + A_1$ via temporal ensemble | Seamless continuous stride |
+| **$150\text{ ms}$** | Emit $A_2 \to$ Ingest $o_3 \to$ Compute $A_3$ | Blend Chunk $A_1 + A_2$ via temporal ensemble | Continuous steady-state motion |
+| **$200\text{ ms}$** | Emit $A_3 \to$ Ingest $o_4 \to$ Compute $A_4$ | Blend Chunk $A_2 + A_3$ via temporal ensemble | Continuous steady-state motion |
+
+: Pipelined Delay Amortization Timeline. Overlapping asynchronous neural inference on the MPU with real-time trajectory execution and temporal ensembling on the MCU. {#tbl-delay-amortization-timeline}
+
+::: {.callout-note title="Cross-Embodiment Anchor: Action Chunking and Jerk Continuity Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
+  At $20\text{ m/s}$ forward flight speed, a quadrotor trajectory policy predicts an $H=32$ waypoint action chunk ($1.6\text{ s}$ horizon). Exponential temporal ensembling ($\lambda = 0.20$) blends new avoidance waypoints with previous flight plans, preventing abrupt collective pitch or attitude steps ($\dot{\boldsymbol{\omega}}$) that would induce aerodynamic stall or rotor blade vortex-ring state instability.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  During a rapid pick-and-place cycle, an ACT policy emits $H=16$ joint position waypoints at $25\text{ Hz}$. The Cortex-M4 MCU fits real-time $\mathcal{C}^2$ quintic splines across consecutive waypoints, bounding joint jerk to $\|\dddot{\mathbf{q}}\| \le 25\text{ rad/s}^3$. This eliminates high-frequency torsional resonance ($15\text{--}45\text{ Hz}$) that would otherwise shear cycloidal pins and shake loose optical calibration targets.
+* **Archetype 3: Cybernetic Energy (Grid Battery Inverter Dispatch):**  
+  Grid-scale battery storage controllers predict multi-second active and reactive power profiles ($P(t), Q(t)$). Diffusion trajectory decoders predict continuous 10-second power dispatch trajectories ($H=50$ at $5\text{ Hz}$). $\mathcal{C}^2$ power ramping constraints bound current slew rates ($\frac{dI}{dt} \le 500\text{ A/s}$), preventing DC-link capacitor voltage ringing and protecting IGBT switching semiconductor dies from thermal fatigue.
+:::
 
 ### Receding-Horizon Temporal Ensembling
+
 
 Because neural network inference is stochastic, consecutive action chunks ($A^{(t)}$ and $A^{(t+1)}$) computed at successive time intervals will rarely align with mathematical perfection. If the system simply switched from Chunk $k$ to Chunk $k+1$ when Chunk $k$ expired, the robot would experience a discrete jump in commanded velocity at the chunk boundary (@fig-chunking-ensembling).
 
