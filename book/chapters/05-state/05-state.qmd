@@ -127,11 +127,22 @@ Because the entire predictive loop operates in compact latent space without pixe
 | **Real-Time Viability** | **Failed** ($t_{\text{infer}} \gg \tau_{\text{world}}$) | **Viable for 20 Hz Planning** (System 1.5) | **Viable for 1 kHz Reflex** (System 1) |
 | **Geometric Fidelity** | Stochastic / Hallucinatory | Abstract semantic affordance | Exact millimetric metric space |
 | **Handling of Occlusion** | Non-rigid visual drift | Recurrent memory persistence | Explicit covariance inflation ($\sigma_{\text{pos}}(t)$) |
-: **Quantitative comparison of physical world modeling paradigms.** Generative pixel diffusion is computationally unviable on embedded edge silicon and lacks metric precision. Physical AI systems combine Latent World Models (for semantic forward rollouts on the MPU/NPU) with Metric $SE(3)$ Frame Trees (for millimetric safety enforcement on the MCU). {#tbl-world-model-comparison}
+
+: Quantitative Comparison of Physical World Modeling Paradigms. Contrasting generative pixel diffusion, latent world models (JEPAs, RSSMs), and metric kinematic trees across compute, latency, and geometric fidelity. {#tbl-world-model-comparison}
+
+::: {.callout-note title="Cross-Embodiment Anchor: World Modeling and State Persistence Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
+  At $25\text{ m/s}$ highway cruising speed, entering an unmapped tunnel or experiencing heavy camera glare blinds optical perception for $1.5\text{ seconds}$. High-rate IMU dead-reckoning integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) sustains vehicle trajectory estimation. However, uncorrected accelerometer bias drift causes spatial uncertainty covariance $\text{Tr}(\Sigma_t)$ to swell to $\pm 1.8\text{ meters}$, triggering pre-emptive lane-centering and speed derating before visual TTL leases expire.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  When a 6-DoF robot arm lowers a vacuum gripper toward an electronic component, the mechanical wrist inevitably occludes overhead camera line-of-sight for $250\text{ ms}$. The dynamic $SE(3)$ transform graph queries historical $T_{\text{camera}}^{\text{base}}(t_{\text{capture}})$, locks the component's metric position in the base coordinate frame, and uses high-rate joint encoder kinematics ($1000\text{ Hz}$) to complete sub-millimeter component placement without stalling.
+* **Archetype 3: Cybernetic Energy (Smart Grid Battery Storage & Power Inverters):**  
+  Internal electrochemical state variables—such as lithium-ion State of Charge (SoC) and State of Health (SoH)—cannot be observed with optical cameras. An Equivalent Circuit Model (ECM) combined with an Extended Kalman Filter estimates internal polarization overpotentials ($V_{\text{polarization}}$) while continuously evaluating winding and cell thermal diffusion equations ($C_{\text{th}} \frac{dT}{dt}$) to enforce current limits before thermal runaway thresholds are breached.
+:::
 
 ---
 
 ## Spatial Persistence Under Occlusion: Metric $SE(3)$ Frame Trees
+
 
 While Latent World Models excel at semantic prediction and affordance planning, motor controllers and safety filters require exact metric geometry. When an arm closes its gripper, the contact point must be specified not in abstract embedding dimensions, but in millimeters relative to the workpiece fixture.
 
@@ -307,7 +318,8 @@ A robust physical architecture isolates state memory into three decoupled execut
 | **Domain 1: Fast Proprioception** | Real-Time MCU (FreeRTOS / Bare Metal) | $q, \dot{q}, I_{\text{phase}}, T_{\text{motor}}, \mathbf{a}_{\text{imu}}, \boldsymbol{\omega}_{\text{imu}}$ | $1000\text{ Hz}$ | Static internal SRAM (Zero heap) | $5\text{ ms}$ |
 | **Domain 2: Kinematic Frames** | Real-Time Linux MPU (`PREEMPT_RT`) | $T_B^A \in SE(3)$, Twist $\boldsymbol{\xi} \in \mathfrak{se}(3)$, `tf2` Tree | $200\text{ Hz}$ | Pinned Shared Memory (`mlockall`) | $20\text{ ms}$ |
 | **Domain 3: Latent Semantic Belief** | Linux MPU + NPU / GPU Accelerator | JEPA $\mathbf{z}_t$, RSSM $h_t$, 3D Bounding Boxes | $10\text{--}30\text{ Hz}$ | DMA-mapped Unified DRAM (UMA) | $100\text{ ms}$ |
-: **Three-tiered memory domain isolation architecture.** High-level stochastic semantic representations (Domain 3) are strictly isolated from high-rate deterministic proprioception (Domain 1). Even if Linux or the NPU experiences an OS stall, the MCU maintains continuous proprioceptive control and safety enforcement. {#tbl-memory-domains}
+
+: Three-Tiered Memory Domain Isolation Architecture. High-level stochastic semantic representations (Domain 3) are strictly isolated from high-rate deterministic proprioception (Domain 1). Even if Linux or the NPU experiences an OS stall, the MCU maintains continuous proprioceptive control and safety enforcement. {#tbl-memory-domains}
 
 ---
 
@@ -342,7 +354,8 @@ $$\tau_{\text{max}}(T_{\text{motor}}) = \begin{cases} \tau_{\text{nom}} & \text{
 | **1. Nominal Operating Zone** | $T_{\text{motor}} < 85^\circ\text{C}$ | $100\%$ Rated Continuous Torque | Full autonomous capability; high-speed trajectory proposals permitted. |
 | **2. Linear Derating Zone** | $85^\circ\text{C} \le T_{\text{motor}} \le 105^\circ\text{C}$ | Linearly derated from $100\%$ down to $0\%$ | MPU motion planner scales down maximum acceleration; fan cooling forced to $100\%$. |
 | **3. Thermal Emergency Cutoff** | $T_{\text{motor}} > 105^\circ\text{C}$ | $0\text{ Nm}$ (Inverter tri-state disconnect) | **Hardware Reflex:** Disables PWM gate drivers to prevent permanent winding demagnetization. |
-: **Actuator thermal derating ledger.** As motor winding temperatures approach physical insulation limits, available torque authority is dynamically throttled, protecting mechanical actuators from permanent degradation. {#tbl-thermal-derating}
+
+: Actuator Thermal Derating Ledger. Dynamic torque throttling regimes as motor winding temperatures approach physical insulation limits. {#tbl-thermal-derating}
 
 By incorporating winding temperature, battery bus voltage ($V_{\text{bus}}$), and inverter current into the core state schema (`STATE-01`), high-level foundation models and motion planners are prevented from commanding aggressive physical maneuvers that the physical hardware cannot thermally sustain.
 
@@ -379,7 +392,9 @@ Freeze the fifth artifact of the Cumulative Design Dossier establishing spatial 
 | **Anomaly Innovation Gate** | `anomaly_detection.mahalanobis_gate` | $3.0\sigma$ ($d_M \le 3.0$) | Rejects corrupt sensory detections / collisions |
 | **Thermal Warning Knee** | `thermal_limits.warning_temp_c` | $85.0^\circ\text{C}$ | Initiates linear torque derating |
 | **Thermal Emergency Cutoff** | `thermal_limits.critical_cutoff_c` | $105.0^\circ\text{C}$ | Immediate inverter bridge shutdown ($0\text{ Nm}$) |
-: **Quantitative specification parameters for the State & Timing Model (`STATE-01`).** {#tbl-dossier-state-01}
+
+: Quantitative Specification Parameters for the State and Timing Model (`STATE-01`). Coordinate frame configurations, TTL leases, uncertainty bounds, and thermal limits. {#tbl-dossier-state-01}
+
 
 ```yaml
 # DOSSIER CHECKPOINT: STATE-01
