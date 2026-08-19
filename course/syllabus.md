@@ -1,131 +1,101 @@
-# Physical AI Systems — Course Syllabus
+# Physical AI Systems: Machine Learning Systems That Sense and Act
 
-**ETH Zurich · Project-Based Course · 6 ECTS**  
-**Online / Partner Offering:** [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
+**ETH Zurich · Project-Based Seminar & Hardware Studio · 6 ECTS**  
+**Online / Open Portal:** [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
 
-| Parameter | Specification |
+| Parameter | Course Specification |
 | :--- | :--- |
-| **Course** | Physical AI Systems (*Physical AI: Machine Learning Systems That Sense and Act*) |
+| **Course** | Physical AI Systems (*Machine Learning Systems That Sense and Act*) |
 | **Credits** | 6 ECTS (≈ 150–180 total workload hours) |
-| **Format** | Project seminar + hardware studio / group project · **No written final exam** |
-| **Language** | English |
-| **Level** | Advanced Bachelor (3rd/4th year) & Master (D-ITET, D-INFK, Robotics/CPS) |
-| **Contact** | Weekly Seminar (2 h / week) + Hands-On Studio / Lab Time |
-| **Reference Book** | *Physical AI: Machine Learning Systems That Sense and Act* (Vijay Janapa Reddi) |
-| **Hardware Kit** | **Physical AI Kit** (Arduino UNO Q Dual-Brain: Linux MPU + Real-Time MCU) |
+| **Format** | Weekly Lecture/Seminar + Hands-On Hardware Studio · **No written final exam** |
+| **Target Audience** | Advanced Bachelor (3rd/4th year) & Master students (D-ITET, D-INFK, Robotics, Systems) |
+| **Instructors** | **Prof. Vijay Janapa Reddi** (Harvard / Visiting Prof, ETH Zurich) & **Dr. Andrea Mattia Garavagno** (ETH Zurich) |
+| **Hardware Kit** | **Physical AI Kit** (Arduino UNO Q Dual-Brain: Linux MPU + Real-Time MCU + Camera + Motion Stage) |
 
 : Course Logistics and Parameters. {#tbl-course-logistics}
 
 ---
 
-## 1. Teaching Team
+## 1. The North Star: What is Physical AI?
 
-### Prof. Vijay Janapa Reddi — Lecturer
-* Gordon McKay Professor of Electrical Engineering, Harvard University
-* Visiting Professor, ETH Zurich (Integrated Systems Laboratory, IIS, D-ITET)
-* **Office:** ETZ F 83 · **Email:** [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) · **Web:** [Homepage](https://profvjreddi.github.io/homepage)
+Standard machine learning ends at digital output. A classifier emits a label; a large language model emits text. In the digital realm, software bugs are safely contained behind glass: transactions roll back, exceptions are caught, and dropped packets are retried.
 
-### Dr. Andrea Mattia Garavagno — Co-Teacher & Studio Lead
-* Postdoctoral Researcher, ETH Zurich (Integrated Systems Laboratory, IIS, D-ITET)
-* Runs day-to-day Physical AI Kit bring-up, studio hours, and hardware milestone checkpoints.
+**Physical AI Systems begin at the exact moment digital software commands physical actuators—accelerating mass, consuming energy, interacting with humans, and permanently altering the physical world ($W_t \to W_{t+1}$).**
 
-**Office Hours:** By appointment (email instructors with subject `[Physical AI]`).
+Because physical actions cannot be rewound (**you cannot `ctrl+z` kinetic momentum or Joule heat**), this course answers one central systems question:
+
+> **"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"**
 
 ---
 
-## 2. Course Overview & Three Defining Properties
+## 2. The Three Defining Properties & Canonical Archetypes
 
-Standard machine learning ends at digital output. A classifier emits a label; a language model emits text. **Physical AI Systems** begin when that output moves matter, consumes kinetic energy, affects humans, and alters all future sensory observations ($W_t \to W_{t+1}$). **You cannot `ctrl+z` kinetic energy.**
+An engineered system is defined as **Physical AI** if and only if it satisfies three universal criteria:
 
-An engineered system is defined as **Physical AI** if and only if it satisfies three criteria:
-1. **Learned Foundation Component:** High-capacity learned models (VLMs, World Models, Diffusion Policies) capable of open-world generalization.
-2. **Operations Across the Analog $\longleftrightarrow$ Digital Boundary:** Digital tensors and tokens directly governing continuous analog energy fluxes (inverters, motor coils, valves).
+1. **Learned Foundation Component:** High-capacity learned models (Vision-Language-Action models, Latent World Models, Diffusion Policies) that generalize over open-world environmental variability.
+2. **Operations Across the Analog $\longleftrightarrow$ Digital Boundary:** Discrete digital tensors and tokens directly commanding continuous physical energy fluxes (inverters, motor coils, valves, momentum).
 3. **Governed by Irreversible Physical Laws:** Conservation of energy, momentum ($p=mv$), Joule heating ($I^2R$), and friction.
 
-### The Three Canonical Archetypes & The Desk Bench Twin
-* **Archetype 1: Locomotion & Mobility:** Autonomous vehicles (Waymo), delivery drones (Skydio), quadrupeds ($P_{99}$ latency tails & dynamic stopping $d_{\text{stop}}$).
-* **Archetype 2: Contact Manipulation:** Humanoid hands, robot arms, surgical tools (Torque rates $\dot{\boldsymbol{\tau}}$, harmonic drive flexspline shear).
-* **Archetype 3: Cybernetic Process & Energy:** Smart grid inverters, EV battery thermal management ($I^2R$ Joule heating & AC phase synchronization).
-* **The Desk Bench Twin:** Arduino UNO Q Dual-Brain Kit (Linux Application MPU + Real-Time Cortex-M4 MCU).
+### The Three Canonical Archetypes
+Every concept in this course is anchored across three real-world archetypes and a desk bench realization:
 
-### What This Course Is (and Is Not)
-
-| What This Course Is NOT | What This Course IS |
-| :--- | :--- |
-| ✗ A compressed classical robotics kinematics / ROS course | ✓ A **systems engineering discipline** for learned, acting machines |
-| ✗ TinyML “quantize and deploy” alone | ✓ Bridging **high-level foundation models to real-time safety** |
-| ✗ A cloud LLM prompt-chaining / chatbot lab | ✓ **Multi-rate runtimes, zero-copy DMA, IPC, and watchdogs** |
-| ✗ A purely theoretical or simulation-only seminar | ✓ Real hardware with **mass, inertia, bus contention, and tails** |
-
-: Course Boundary and Scope. {#tbl-course-scope}
+* **1. Locomotion & Mobility (Free-Space Navigation):** Autonomous vehicles (Waymo), high-speed delivery drones (Skydio), quadrupeds. *Core Challenge:* $P_{99}$ latency tails and dynamic stopping envelopes ($d_{\text{stop}}$).
+* **2. Contact Manipulation (Touching & Shaping Matter):** Humanoid hands (Optimus, Figure), 6-DoF robot arms, surgical tools. *Core Challenge:* Discontinuous contact, torque rates ($\dot{\boldsymbol{\tau}}$), and harmonic drive gearbox shear.
+* **3. Cybernetic Process & Energy (Continuous State Flows):** Smart grid inverters, EV battery thermal management systems. *Core Challenge:* Microsecond AC phase tracking, $I^2R$ thermal accumulation, and runaway prevention.
+* **The Desk Bench Twin:** The **Arduino UNO Q Dual-Brain Kit** bringing each archetype to life on real bench hardware.
 
 ---
 
-## 3. The 14-Week Schedule
+## 3. The Grand Systems Conflict & The Three Cadences
 
-The curriculum follows the **Physical AI Co-Design Matrix**, moving from physical and cognitive foundations to internal spatial belief, deliberative reasoning, real-time safety vetoes, heterogeneous placement, and defensible release:
+The foundational tension of Physical AI is the structural collision between two opposing vectors:
 
-| Week | Seminar & Chapter Topic | Project & Kit Milestone | Due Artifact Checkpoint |
-| :---: | :--- | :--- | :---: |
-| **W01** | **Kickoff & The Dual-Brain Architecture** | Team formation & UNO Q kit bring-up | **M0: Roster + Kit Setup** |
-| **W02** | **Ch 1: The Causal Boundary & Co-Design Matrix** | Matter, momentum & power isolation sandbox | **M1: `LOOP-01` (Loop Charter)** |
-| **W03** | **Ch 2: The Physical Constraints (The Columns)** | Sense-to-actuation $P_{99}$ tail metrology & stopping bounds | **M2: `REQ-01` (Requirements Ledger)** |
-| **W04** | **Ch 3: The Cognitive Dimensions (The Rows & Matrix)** | Multi-rate 3-cadence runtime & watchdog crash survival | **M3: `FLOW-01` (Workflow Charter)** |
-| **W05** | **Ch 4: Stage 1 — Perceive (Spatial Tokens & Ingestion)**| Zero-copy DMA ring buffers & DINOv2 spatial tokens | **M4: `OBS-01` (Observation Contract)** |
-| **W06** | **Ch 5: Stage 2 — Remember (World Models & SE(3))** | $SE(3)$ frame graph trees & uncertainty decay leases | **M5: `STATE-01` (State & Timing Model)** |
-| **W07** | **MIDTERM DESIGN REVIEWS & LIVE DEMOS** | **Team Talks:** Proposal–Permission closed-loop bench demo | **M6: Midterm System Review** |
-| **W08** | **Ch 6: Stage 3 — Reason (VLMs & Intent Leases)** | Multimodal VLM grounding & expiring intent leases | **M7: `INTENT-01` (Intent Schema)** |
-| **W09** | **Ch 7: Stage 4 — Plan (Diffusion Action Chunking)** | Receding-horizon ACT rollouts & $\mathcal{C}^2$ jerk splines | **M8: `PLAN-01` (Planning Schema)** |
-| **W10** | **Ch 8: Stage 5 — Execute (1 kHz MCU Safety Reflex)**| 1 kHz Control Barrier Functions & dynamic stop halts | **M9: `ENF-01` (Signature Lab)** |
-| **W11** | **Ch 9: Heterogeneous Silicon Placement & UMA QoS** | Compute, SRAM, and bus arbitration resource ledger | **M10: `PLACE-01` (Placement Map)** |
-| **W12** | **Ch 10: Human Governance & Governed Data Flywheels**| $\mathcal{C}^2$ bumpless transfer & truncated episode slicing | **M11: `AUTH-01` (Governance Record)** |
-| **W13** | **Ch 11: Defensible Assurance & Seeded Fault Trials** | Cross-layer fault injection rig & CAE safety case | **M12: `REL-01` (Release Case)** |
-| **W14** | **FINAL CAPSTONE DEFENSE & DOSSIER SUBMISSION** | **Oral defense under unannounced seeded bench faults** | **M13: Capstone Release Verdict** |
+* **Physics Demands *Less Time* ($t \to 0$):** Kinetic momentum carries mass forward; coils accumulate heat; sensor data ages instantly; transport delays erode phase margin.
+* **Cognition Demands *More Time* ($t \to \infty$):** Foundation models, spatial transformers, and diffusion decoders need time and compute to deliberate over open-world ambiguity.
 
-: 14-Week Master Schedule and Milestones. {#tbl-master-schedule}
+![**The Three Cadences of Physical AI.** Decoupling slow semantic deliberation ($0.5\text{--}2\text{ Hz}$), intermediate trajectory decoding ($20\text{--}50\text{ Hz}$), and bare-metal safety reflexes ($1000\text{ Hz}$) across heterogeneous silicon.](figures/fig03_three_cadences.svg){#fig-three-cadences width=100%}
+
+### The Three Cadences of Intelligence
+We resolve this conflict by decoupling execution across three asynchronous temporal tiers:
+
+1. **System 2 (Slow · $0.5\text{--}2\text{ Hz}$ · Linux MPU):** Semantic deliberation and open-world goal decomposition. Operates as an *untrusted proposal service* emitting expiring intent leases.
+2. **System 1.5 (Medium · $20\text{--}50\text{ Hz}$ · Edge NPU):** Trajectory decoding and action chunking (ACT / Diffusion), amortizing compute latency across physical time using $\mathcal{C}^2$ jerk splines.
+3. **System 1 (Fast · $1000\text{ Hz}$ · Bare-Metal MCU):** Real-time safety reflexes and Control Barrier Functions (CBF). Operates with strictly **zero dynamic heap allocation (`malloc = 0`)** as the sole hardware permission authority.
 
 ---
 
-## 4. Assessment & The Cumulative Design Dossier
+## 4. The Curriculum Arc: The Co-Design Matrix
 
-There is **no written final exam**. Graded semester performance is evaluated based on continuous engineering progress, oral defense, and the written engineering record:
+The course is structured into three progressive thematic parts, systematically exploring the **Physical AI Co-Design Matrix**:
 
-| Component | Weight | Description |
-| :--- | :---: | :--- |
-| **Process & Studio Checkpoints** | **20%** | Weekly milestone progress, active studio debugging, and team collaboration. |
-| **Midterm Presentation (W07)** | **15%** | 10-minute talk + live demo of the working observe $\to$ propose $\to$ permit loop. |
-| **Final Design Defense (W14)** | **25%** | Oral capstone defense and live diagnosis of an instructor-seeded bench fault. |
-| **Cumulative Design Dossier (W14)** | **40%** | The complete versioned engineering dossier (`LOOP-01` through `REL-01`). |
+![**The Physical AI Co-Design Matrix.** Crossing Cognitive Agency (the 5 lifecycle stages) against Physical Constraints (the 4 hardware columns).](figures/fig01_codesign_matrix.svg){#fig-codesign-matrix width=100%}
 
-: Grade Weighting Breakdown. {#tbl-grade-breakdown}
+### Part I: Foundations & The Co-Design Challenge
+* **The Causal Boundary:** Closed-loop state mutation ($W_t \to W_{t+1}$) vs. open-loop digital inference.
+* **The Physical Constraints:** Time constants ($\tau_{\text{world}}$), $P_{99}$ latency tails, dynamic stopping distance ($d_{\text{stop}}$), jerk ($\dddot{\mathbf{q}}$), Joule heating ($I^2R$), and UMA DRAM bus contention.
+* **The Cognitive Dimensions:** Spatial tokens, world models, semantic intent, action chunking, and safety reflexes.
 
-### The 11 Cumulative Design Dossier Milestones
-1. `LOOP-01`: **Loop Charter** (Scope, boundary, and authority)
-2. `REQ-01`: **Requirements Ledger** (World deadlines and $P_{99}$ latency budgets)
-3. `FLOW-01`: **Workflow Charter** (Three-cadence timing model, IPC mailboxes, and watchdog protocol)
-4. `OBS-01`: **Observation Contract** (Sensor rates, DMA channels, and timestamps)
-5. `STATE-01`: **State & Timing Model** ($SE(3)$ frame tree and TTL validity leases)
-6. `INTENT-01`: **Policy & Intent Schema** (VLM 3D bounding boxes and expiration leases)
-7. `PLAN-01`: **Planning Schema** (Action chunk horizons $H$ and temporal ensembling)
-8. `ENF-01`: **Enforcement Design** (MCU 1 kHz safety filters and physical fallback states)
-9. `PLACE-01`: **Placement Map & Resource Ledger** (Whole-system compute/memory/power budgets)
-10. `AUTH-01`: **Human-Authority & Governance Record** (Bumpless overrides and truncated logs)
-11. `REL-01`: **Integrated Deployment Case** (Claim-Argument-Evidence case and **Deploy / Condition / Refuse** release verdict)
+### Part II: The Embodied Lifecycle (Perceive $\to$ Act)
+* **Stage 1 (Perceive):** 3D spatial affordance tokens in $SE(3)$, CMOS exposure limits, and MIPI DMA ingestion taxes.
+* **Stage 2 (Remember):** Latent world models (JEPAs), dynamic $SE(3)$ frame trees, and occlusion uncertainty decay.
+* **Stage 3 (Reason):** Multimodal Vision-Language Models (VLMs) and expiring intent leases.
+* **Stage 4 (Plan):** Diffusion Policies and Action Chunking with Transformers (ACT) with $\mathcal{C}^2$ jerk splines.
+* **Stage 5 (Execute):** 1 kHz bare-metal Control Barrier Functions, dynamic stopping vetoes, and STO interlocks.
+
+### Part III: Placement, Governance & Defensible Release
+* **Heterogeneous Placement:** Partitioning workloads across MPU, NPU, and MCU substrates under thermal and bus QoS limits.
+* **Human Governance:** Bumpless human takeover, shared autonomy, and governed policy flywheels.
+* **Assurance & Release:** Cross-layer fault injection trials, safety cases, and the final capstone defense.
 
 ---
 
-## 5. Prerequisites & The Two On-Ramps
+## 5. The Hardware Studio & Assessment
 
-We pair students with complementary backgrounds into **2–3 person teams**:
+Students work in interdisciplinary pairs (combining ML/software with embedded/hardware backgrounds) to build, profile, and defend a complete physical agent on the **Arduino UNO Q Dual-Brain Kit**:
 
-* **On-Ramp 1 (ML & Software / D-INFK):** Strong Python/PyTorch background; learns real-time MCU enforcers, DMA bus contention, and hardware watchdogs.
-* **On-Ramp 2 (Embedded & CPS / D-ITET):** Strong C/C++, FreeRTOS, and electronics background; learns VLM spatial grounding, action chunk unrolling, and governed data flywheels.
+* **Process & Studio Checkpoints (20%):** Weekly hands-on lab progress and firmware bring-up.
+* **Midterm System Review (15%):** Live bench demonstration of the closed-loop proposal-permission pipeline.
+* **Final Capstone Defense (25%):** Oral jury defense with live recovery from an instructor-seeded bench fault.
+* **Cumulative Design Dossier (40%):** The evolving, versioned engineering record documenting the system's requirements, contracts, safety bounds, and release case.
 
----
-
-## 6. Course Policies & Safety Invariants
-
-* **Safety Invariant:** All autonomous machines must run with an active MCU safety enforcer. Intentionally bypassing the hardware enforcer for a demo is an immediate failure.
-* **Collaboration:** High-level architectural discussion between teams is encouraged; firmware and dossier schemas must be the team's own original work.
-* **Materials & Kit Loan:** Kits are provided on loan for the duration of the semester. Open follow-along materials are available at [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai).
 
