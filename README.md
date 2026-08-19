@@ -85,17 +85,19 @@ Physical AI reconciles this conflict by decoupling execution across **three asyn
 
 ## The Grand Map: The Physical AI Co-Design Matrix
 
-The curriculum and book are organized around the **$5 \times 4$ Co-Design Matrix**, formed by crossing the **Five Cognitive Work Dimensions (Chapter 3 Rows)** with the **Four Physical Constraints (Chapter 2 Columns)**:
+The curriculum and book are organized around the **$5 \times 5$ Co-Design Matrix**, formed by crossing the **five cognitive obligations (Chapter 3 rows)** with the **five physical constraints (Chapter 2 columns)**. Each cell is a question Part II answers, and the grid is deliberately uneven: where a column does not reach a row, saying so is part of the lesson.
 
-| Cognitive Row | Column 1: Time & Freshness | Column 2: Inertia & Momentum | Column 3: Jerk & Thermal | Column 4: Silicon & Memory Bus | Owning Part II Chapter |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Row 1: Perceive** | Optical exposure time & IEEE 1588 PTP sync | Motion blur smear bounds ($\Delta x = v \cdot t_{\text{exp}}$) | Rolling shutter angular shear compensation | $1.5\text{ GB/s}$ MIPI DMA DRAM bus ingestion tax | **Chapter 4** (`04-perception`) |
-| **Row 2: Remember** | Latent belief age decay & TTL state leases | Occlusion spatial drift ($\sigma = \sigma_0 + v\Delta t$) | Stator winding thermal state memory ($I^2t$) | $SE(3)$ dynamic frame tree SRAM caching | **Chapter 5** (`05-state`) |
-| **Row 3: Reason** | Slow 1 Hz MPU deliberation timeout containment | Kinematic reachability & workspace bounding $\mathcal{B}$ | Commanded speed clamps ($v_{\text{max}}$) in intent leases | Isolated MPU user-space proposal sandbox | **Chapter 6** (`06-intent`) |
-| **Row 4: Plan** | Action Chunking delay amortization ($H=16$) | Multi-waypoint dynamic stopping profiles | $\mathcal{C}^2$ quintic splines bounding jerk ($\dddot{\mathbf{q}}$) | Lock-free shared SRAM ring buffers | **Chapter 7** (`07-planning`) |
-| **Row 5: Execute** | Deterministic 1 kHz ($1.0\text{ ms}$) bare-metal tick | Dynamic stopping audit ($d_{\text{stop}} \le d_{\text{clear}}$) | Torque rate clamps ($\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$) & $I_{\text{cont}}$ derating | **Zero dynamic heap allocation (`malloc = 0`)** | **Chapter 8** (`08-enforcement`) |
+| Cognitive Row | C1: Time & Freshness | C2: Inertia & Stopping | C3: Actuation Limits | C4: Energy & Thermal | C5: Silicon Determinism | Owning Chapter |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Perceive** | When did this observation happen? | How far ahead must you see? | *Not binding* | What does sensor heat do to geometry? | **What does moving the pixels cost?** | **Ch 4** |
+| **Remember** | **What is a belief worth after $\Delta t$?** | How much world must you hold? | *Thin* | Which calibration drifts with heat? | Bounded state without allocation | **Ch 5** |
+| **Reason** | **How long may intent outlive its world?** | *Not binding at this cadence* | *Not binding* | What does throttling do to a deadline? | Keeping a large model off the real-time core | **Ch 6** |
+| **Plan** | Outliving the latency that produced it | What makes a plan abandonable? | **What shapes may a command take?** | What does a legal motion cost per shift? | *Thin* | **Ch 7** |
+| **Execute** | The deadline, and the cycle it is missed | **How much margin does stopping need?** | Can the veto violate the limit it protects? | What clamps current the policy asked for? | Code that may never pause | **Ch 8** |
 
-: The Physical AI Co-Design Matrix. Crossing the 5 cognitive rows against the 4 physical columns. {#tbl-codesign-matrix}
+: The Physical AI Co-Design Matrix. Five cognitive obligations against five physical constraints. Bold marks each chapter's dominant cell. {#tbl-codesign-matrix}
+
+Columns 3 and 4 are often taught as one. They are separated because they bind different rows: actuation limits reach only the stages that command motion, while heat reaches the sensor mount, the inference accelerator, and the motor alike.
 
 ---
 
@@ -149,7 +151,7 @@ The laboratory track grounds every theoretical concept on zero-magic, reproducib
 ```text
 PhysicalAI/
 ├── README.md               # Master course & textbook overview
-├── NEXT_STEPS.md           # Engineering roadmap & active milestones
+├── PERMITTER-CHECKLIST.md  # The audit Part II is derived from
 │
 ├── course/                 # Academic administration & syllabus
 │   └── syllabus.md         # Official 14-week ETH Zurich syllabus (6 ECTS)

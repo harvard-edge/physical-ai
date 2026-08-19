@@ -19,6 +19,8 @@ By the conclusion of this chapter, you will be able to:
 * **Telemetry Snapshot:** Operator commanded *"retrieve the heated calibration bolt behind the fixture."* The Vision-Language Model ingested camera frame $O(t_0)$ and emitted target coordinate $p_{\text{target}} = [1.32, 0.45, 0.78]^T\text{ m}$ relative to the robot base. The physical arm reach boundary was $R_{\max} = 0.85\text{ m}$.
 * **Root Cause:** The target coordinate lay $0.47\text{ m}$ beyond the physical reach envelope. The inverse kinematics (IK) solver attempted to invert an ill-conditioned Jacobian ($\kappa(J) = 1{,}840 \gg \kappa_{\text{thresh}}$) near the workspace boundary, causing joint velocities to explode ($\dot{q}_5 > 450^\circ/\text{s}$) into the partition.
 * **Architectural Flaw:** Monolithic trust—the system treated raw autoregressive VLM token outputs as executable physical setpoints without validating morphological reachability, Jacobian conditioning, or scene freshness leases.
+* **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
+
 :::
 
 ::: {.callout-contract title="The Proposal–Permission Privilege Contract"}
@@ -106,8 +108,10 @@ Because the VLM takes nearly a full second to formulate a single thought, **the 
 ::: {.callout-note title="Cross-Embodiment Anchor: Semantic Intent and Deliberation Across the 3 Archetypes"}
 * **Archetype 1: Locomotion & Mobility (Delivery Drone & Autonomous Vehicle):**  
   An autonomous delivery drone receives a natural language re-route command (*"deliver to the backyard gazebo instead"*). The onboard VLM parses the instruction and proposes a landing coordinate $T_{\text{gazebo}}^{\text{world}} \in SE(3)$. The intent proposal is bound inside an expiring intent lease ($\mathcal{L}_{\text{intent}}$) with a 3D altitude bounding box $\mathcal{B}$ and a hard $1.5\text{ s}$ expiration deadline. If the drone encounters unexpected wind gusts or GPS drift, the real-time flight MCU instantly revokes the lease and commands a stationary hover hold.
+
 * **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
   A 6-DoF robot arm is instructed to *"pick up the heated hex bolt behind the aluminum bracket"*. The VLM proposes an approach vector that forces the wrist into a kinematic singularity ($\kappa(J) = 142 > 50$). The 3-Gate Morphological Validator intercepts the proposal before trajectory execution, detects the ill-conditioned Jacobian, and rejects the intent with `ABSTAIN_SINGULAR_POSTURE`, prompting the VLM for an alternate orthogonal grasp angle without moving the motors.
+
 * **Archetype 3: Cybernetic Energy (Smart Grid Energy Dispatch):**  
   An AI grid optimization assistant receives an open-vocabulary directive (*"maximize solar inverter curtailment while maintaining voltage stability across feeder 4"*). The deliberative model proposes a 3-phase active power setpoint vector $\mathbf{P}_{\text{dispatch}}$. The grid supervisor passes this proposal through a power-flow feasibility filter checking bus voltage bounds ($0.95 \le V_{\text{pu}} \le 1.05$) and transformer thermal ratings ($I^2R$) before emitting modulation commands to the inverter gate drivers.
 :::
@@ -178,6 +182,7 @@ along with the required gripper aperture $d_{\text{grasp}} = \|\mathbf{x}_{\text
 In traditional digital software, once an algorithm computes a target, that target remains valid in memory indefinitely until overwritten. In the physical world, **time is an active adversary**. The physical environment evolves continuously while the computer computes.
 
 Consider what happens during a typical $800\text{ ms}$ VLM deliberation cycle:
+
 1. At $t = 0\text{ ms}$, the camera captures image frame $O(t_0)$.
 2. From $t = 0\text{ to } 780\text{ ms}$, the Linux MPU streams weights and decodes tokens.
 3. At $t = 350\text{ ms}$, a human operator moves a metal fixture into the workspace, or the target object rolls three centimeters to the left.
@@ -256,6 +261,7 @@ We define two quantitative measures of kinematic health:
 
 1. **The Jacobian Condition Number ($\kappa(J)$):**
    $$\kappa(\mathbf{J}) = \frac{\sigma_{\max}(\mathbf{J})}{\sigma_{\min}(\mathbf{J})} = \frac{\sigma_1}{\sigma_m}$$
+
 2. **The Yoshikawa Manipulability Index ($w(\mathbf{q})$):**
    $$w(\mathbf{q}) = \sqrt{\det\left(\mathbf{J}(\mathbf{q})\mathbf{J}^T(\mathbf{q})\right)} = \prod_{i=1}^m \sigma_i$$
 

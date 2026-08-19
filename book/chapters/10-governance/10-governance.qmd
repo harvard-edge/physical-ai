@@ -18,6 +18,8 @@ By the conclusion of this chapter, you will be able to:
 * **Telemetry Snapshot:** Fleet engineers fine-tuned policy weights on 10,000 hours of raw field telemetry containing human operator joystick interventions collected over six months of commercial operation.
 * **Root Cause:** Whenever human operators intervened near warehouse pillars to prevent imminent impacts, the raw telemetry engine recorded an unbroken stream of state-action pairs without an intervention demarcation tag. The neural network fit empirical risk minimization to the pre-crash state, treating human emergency evasive maneuvers as nominal actions. As a result, the policy learned a catastrophic spurious correlation: *approach structural pillars at maximum velocity before initiating a sharp evasive turn*.
 * **Architectural Flaw:** The telemetry ingestion pipeline lacked an intervention-tagging protocol and failed to apply truncated episode slicing to separate pre-crash failure trajectories from corrective demonstrations.
+* **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
+
 :::
 
 ::: {.callout-contract}
@@ -71,6 +73,7 @@ As illustrated in @fig-authority-state-machine, the runtime environment transiti
 1. **Manual Override (Direct Teleoperation):** The human operator exercises primary authority over the machine via an analog joystick, teach pendant, or haptic master arm. The neural policy proposal stream on the Linux MPU is disabled or relegated to a passive observer. The real-time microcontroller (MCU) continues to enforce kinematic joint limits and velocity clamps, while simultaneously running an active tracking observer to synchronize internal controller states.
 2. **Shared / Cooperative Control:** Actuator control is dynamically blended between human intent and learned foundation policies. The operator provides high-level guidance or impedance bias, while the neural policy assists with trajectory stabilization, obstacle avoidance, or fine precision insertion. Blended commands are arbitrated via dynamic admittance:
    $$\mathbf{u}(t) = \alpha(t) \mathbf{u}_{\text{human}}(t) + (1 - \alpha(t)) \mathbf{u}_{\text{policy}}(t)$$
+
 3. **Autonomous Lease:** The neural policy proposes multi-step action chunk splines at $20\,\text{Hz}$ from the Linux MPU. The real-time MCU validates each proposal against $1000\,\text{Hz}$ Control Barrier Functions ($h(x) \ge 0$) and dynamic stopping distances ($d_{\text{stop}}$). Autonomy is gated by an active **Dead-Man Consent Lease**: the operator must continuously assert a physical presence heartbeat (e.g. capacitive grip sensor, foot pedal, or optical presence curtain) refreshed every $t_{\text{lease}} \le 200\,\text{ms}$. If the lease expires, authority immediately reverts.
 4. **Category 0 / 1 Emergency Stop (Zero-Software Interlock):** The ultimate physical fail-safe state. Depressing a physical emergency stop button or tripping the hardware watchdog drops safety-rated contactor relays, physically disconnecting motor power buses and engaging mechanical spring-applied friction brakes.
 

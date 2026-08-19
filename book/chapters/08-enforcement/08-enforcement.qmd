@@ -20,6 +20,8 @@ By the conclusion of this chapter, you will be able to:
 * **Telemetry Snapshot:** The Vision-Language-Action (VLA) policy running on the Linux application processor encountered optical glare from an overhead surgical lamp, causing out-of-distribution feature tokens. The policy emitted an erratic joint velocity step of $+3.2\text{ rad/s}$ directly toward the human operator.
 * **Root Cause:** The software safety filter was implemented as a Python script running inside a ROS 2 node on the Linux host. At the exact instant of the anomaly, a background operating system logging daemon triggered memory page compaction, stalling the safety node for $185\text{ ms}$. Unchecked motor current packets continued streaming across the shared CAN bus to the joint inverters.
 * **Architectural Flaw:** Safety enforcement was co-located on the untrusted, non-deterministic Linux application processor rather than isolated on an independent, bare-metal real-time microcontroller holding exclusive hardware gate authority.
+* **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
+
 :::
 
 ::: {.callout-contract}
@@ -59,8 +61,10 @@ The central systems insight of Physical AI is that we do not attempt to make neu
 ::: {.callout-note title="Cross-Embodiment Anchor: 1 kHz Safety Enforcement Across the 3 Archetypes"}
 * **Archetype 1: Locomotion & Mobility (High-Speed Drone & Autonomous Vehicle):**  
   At $20\text{ m/s}$ flight speed, a drone's neural navigation policy proposes a high-bank turn. The 1 kHz MCU enforcer evaluates an Exponential Control Barrier Function (ECBF) encoding geofence boundaries ($h_{\text{geo}}(\mathbf{p}, \mathbf{v}) \ge 0$) and dynamic stopping envelopes ($d_{\text{stop}}(v) \le d_{\text{clear}}$). If an unmodeled obstacle appears within $d_{\text{stop}}$, the QP solver minimally projects the attitude command, executing an emergency flare to arrest forward flight before boundary penetration.
+
 * **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
   During an automated peg-in-hole assembly, an ACT action chunk commands a downward step into a misaligned fixture. The Cortex-M4 microcontroller's 1 kHz loop detects an axial force spike ($F_z > F_{\text{contact\_max}}$), trips the contact barrier constraint ($h_{\text{force}} \ge 0$), and clamps motor currents in under $175\,\mu\text{s}$. It asserts `IS_INTERVENTION = 1`, flushes the pending action chunk, and safely transitions to a compliant position hold, protecting harmonic drive gears from tooth shear.
+
 * **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter Protection):**  
   A learned neural inverter controller proposes aggressive reactive power injection during a grid voltage sag. The bare-metal digital signal controller (DSC) runs an inverter barrier filter evaluating semiconductor die junction temperature ($T_j \le 150^\circ\text{C}$) and AC voltage distortion ($V_{\text{THD}} \le 5\%$). If the candidate modulation index would push IGBT currents beyond Safe Operating Area (SOA) curves, the enforcer clamps PWM gate duty cycles in $<5\,\mu\text{s}$, preventing explosive semiconductor bridge shoot-through.
 :::
@@ -215,6 +219,7 @@ The safety filter exhibits three profound systems properties:
 2. **Minimal Least-Squares Intervention (Boundary Violation):** If the neural policy proposes an unsafe command ($p_t \notin \mathcal{U}_{\text{safe}}(x_t)$), the QP projects $p_t$ onto the nearest boundary of the safe half-space:
    $$u_t^* = \Pi_{\mathcal{U}_{\text{safe}}(x_t)}(p_t)$$
    The enforcer clips only the orthogonal component that breaches the barrier, preserving the tangential task velocity to slide safely along the constraint boundary.
+
 3. **Guaranteed Invariant Containment:** Regardless of how erratically or catastrophically the neural network hallucinates, the permitted command $u_t^*$ is mathematically constrained to the safe set $\mathcal{C}$.
 
 ### Closed-Form Embedded KKT Solver ($\mathcal{O}(1)$ Active-Set)
