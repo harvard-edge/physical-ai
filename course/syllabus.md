@@ -71,7 +71,7 @@ We resolve this conflict by decoupling execution across three asynchronous tempo
 
 The course is structured into three progressive thematic parts, systematically exploring the **Physical AI Co-Design Matrix**:
 
-![**The Physical AI Co-Design Matrix.** Crossing Cognitive Agency (the 5 lifecycle stages) against Physical Constraints (the 4 hardware columns).](figures/fig01_codesign_matrix.svg){#fig-codesign-matrix width=100%}
+![**The Physical AI Co-Design Matrix.** Five cognitive obligations against five physical constraints. Each cell is a question Part II answers.](figures/fig01_codesign_matrix.svg){#fig-codesign-matrix width=100%}
 
 ### Part I: Foundations & The Co-Design Challenge
 * **The Causal Boundary:** Closed-loop state mutation ($W_t \to W_{t+1}$) vs. open-loop digital inference.
