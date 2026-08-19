@@ -247,6 +247,21 @@ Attempting to run these disparate workloads in a single synchronous loop is arch
 
 : **Quantitative Comparison of the Three Cadences of Intelligence.** Detailed architectural breakdown of operating frequencies, silicon substrates, memory management, and privilege tiers. {#tbl-three-cadences}
 
+::: {.callout-note title="Cross-Embodiment Anchor: The Three Cadences in Action"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle / Robotaxi):**  
+  * **System 2 (1 Hz · MPU):** VLM route planner reasons over open-world traffic scenes (*"Detour around the utility truck blocking lane 2"*).
+  * **System 1.5 (20 Hz · NPU):** Trajectory diffusion policy unrolls a 5-second spline of steering angles and speed waypoints ($H=32$).
+  * **System 1 (1000 Hz · ASIL-D MCU):** Real-time electronic stability control (ESC) and anti-lock braking (ABS) enforce tire slip constraints ($\mu_{\text{slip}}$) and dynamic stopping envelopes ($d_{\text{stop}}$).
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):**  
+  * **System 2 (1 Hz · MPU):** VLM parses natural language task (*"Grasp the heated bracket by its insulated handle"*), emitting an Expiring Intent Lease.
+  * **System 1.5 (20 Hz · NPU):** Action Chunking Transformer (ACT) decodes $H=16$ joint waypoints fitted with $\mathcal{C}^2$ quintic jerk splines.
+  * **System 1 (1000 Hz · Bare-Metal MCU):** Control Barrier Function QP solver evaluates obstacle clearances and clamps motor torque rates ($\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$).
+* **Archetype 3: Cybernetic Energy (Smart Power Grid & Battery Substation):**  
+  * **System 2 (0.1–1 Hz · MPU):** High-level economic dispatch model forecasts solar/wind generation and predicts day-ahead regional grid demand.
+  * **System 1.5 (20 Hz · NPU):** Thermal state-space estimator predicts internal battery pack cell temperatures and adjusts charge rate curves.
+  * **System 1 (20 kHz · Real-Time DSP/MCU):** Microsecond Field-Oriented Control (FOC) commutates inverter PWM gate drivers, executing instant hardware over-current trips if AC phase angles desynchronize.
+:::
+
 ---
 
 ## The Great Conflict: When Agent Thinking Collides with Physical Dynamics
@@ -269,6 +284,14 @@ Physical AI is the engineering discipline born from the violent collision of two
    * *Its temporal reality:* **The universe does not wait for computation.** Gravity pulls downward at $9.81\text{ m/s}^2$ continuously. Kinetic momentum ($\mathbf{p} = m\mathbf{v}$) carries kilograms of mass forward along its trajectory. Information freshness decays instantly ($\sigma_{\text{pos}} = \sigma_0 + v\Delta t$). Motor stator coils demand microsecond PWM gate switching.
    * *Its battle cry:* *"Act in $1\text{ ms}$ or the mechanism collides!"*
 
+::: {.callout-note title="Cross-Embodiment Anchor: The Great Tug-of-War in Practice"}
+Why can't we simply slow the physical world down, or make neural models smaller?
+
+* In **Locomotion (Archetype 1)**, an autonomous vehicle traveling at $90\text{ km/h}$ moves $25\text{ mm}$ every millisecond. Pausing for a $1.2\text{ s}$ VLM chain-of-thought deliberation means traveling **$30\text{ meters}$ blind**.
+* In **Manipulation (Archetype 2)**, descending an arm at $1.5\text{ m/s}$ requires evaluating contact clearance every $1\text{ ms}$ ($1.5\text{ mm}$ resolution). A $400\text{ ms}$ reasoning blackout causes a $60\text{ cm}$ overshoot into rigid steel fixtures.
+* In **Energy Cybernetics (Archetype 3)**, high-voltage switching transients develop in microseconds ($\tau_e = L/R$). A slow Python optimizer cannot prevent an electrical arc flash; safety must be locked into bare-metal MCU comparators.
+:::
+
 ### Why Monolithic Architectures Fail
 
 If an engineering team attempts to build a physical agent using a naive, monolithic architecture—such as wiring an end-to-end foundation model directly to motor drives—the system inevitably collapses into one of two fatal failure modes:
@@ -283,6 +306,7 @@ Physical AI reconciles this fundamental tension through **Three Formal Architect
 1. **The Proposal–Permission Privilege Boundary:** We isolate unverified neural models from physical power stages. The Linux MPU functions as an untrusted proposal engine, while a deterministic $1000\text{ Hz}$ bare-metal MCU serves as the sole permission authority.
 2. **Action Chunking Delay Amortization:** Instead of predicting single discrete steps, the policy predicts a continuous trajectory horizon of $H$ future waypoints ($\mathbf{A}_{t:t+H}$). While the MCU smoothly executes waypoints $1 \dots k$, the neural accelerator computes the *subsequent* chunk in the background—amortizing inference latency across physical time.
 3. **Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) and Hardware Watchdogs:** All high-level authority is time-bounded. If the application processor crashes, freezes, or encounters memory bus starvation, the intent lease expires and the hardware watchdog timer ($\tau_{\text{watchdog}} \le 20\text{ ms}$) trips, triggering an autonomous, MCU-driven Category 1 dynamic deceleration halt.
+
 
 ---
 
