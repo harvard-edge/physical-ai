@@ -43,12 +43,15 @@ The foundational tension of Physical AI is the structural collision between two 
 
 ![**The Three Cadences of Physical AI.** Decoupling slow semantic deliberation ($0.5\text{--}2\text{ Hz}$), intermediate trajectory decoding ($20\text{--}50\text{ Hz}$), and bare-metal safety reflexes ($1000\text{ Hz}$) across heterogeneous silicon.](figures/fig03_three_cadences.svg){#fig-three-cadences width=100%}
 
+![**The Embodied Control Loop: Hard Real-Time (MCU) vs. Soft Real-Time (SBC).** Closed-loop fast reflex ($1000\text{ Hz}$) on the MCU, bridged across the privilege boundary to asynchronous semantic deliberation ($0.5\text{--}20\text{ Hz}$) on the Linux Single Board Computer (SBC / MPU).](figures/fig_mcu_sbc_boundary.svg){#fig-mcu-sbc-loop width=100%}
+
 ### The Three Cadences of Intelligence
 We resolve this conflict by decoupling execution across three asynchronous temporal tiers:
 
 1. **System 2 (Slow · $0.5\text{--}2\text{ Hz}$ · Linux MPU):** Semantic deliberation and open-world goal decomposition. Operates as an *untrusted proposal service* emitting expiring intent leases.
 2. **System 1.5 (Medium · $20\text{--}50\text{ Hz}$ · Edge NPU):** Trajectory decoding and action chunking (ACT / Diffusion), amortizing compute latency across physical time using $\mathcal{C}^2$ jerk splines.
 3. **System 1 (Fast · $1000\text{ Hz}$ · Bare-Metal MCU):** Real-time safety reflexes and Control Barrier Functions (CBF). Operates with strictly **zero dynamic heap allocation (`malloc = 0`)** as the sole hardware permission authority.
+
 
 ---
 
