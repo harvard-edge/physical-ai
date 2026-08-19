@@ -76,21 +76,17 @@ $$A_t = \big[ \mathbf{a}_t, \mathbf{a}_{t+1}, \mathbf{a}_{t+2}, \dots, \mathbf{a
 
 where $H$ is the chunk prediction horizon (typically $H \in [16, 64]$) and $d_a$ is the dimension of the robot's action space.
 
-Two primary neural architectures dominate modern trajectory decoding: **Action Chunking with Transformers (ACT)** and **Diffusion Policies**.
+| Dimension | Action Chunking with Transformers (ACT) | Denoising Diffusion & Flow Matching Policies |
+| :--- | :--- | :--- |
+| **Generative Formulation** | Conditional Variational Autoencoder (CVAE) | Denoising Diffusion Probabilistic Model (DDPM) / Flow ODE |
+| **Latent Conditioning** | Latent style variable $\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$ | Gaussian noise $\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathbf{I})$ conditioned on $o_t$ |
+| **Decoding Mechanism** | Non-autoregressive Transformer decoder | Iterative Langevin denoising / Continuous Flow Matching |
+| **Inference Latency** | Single forward pass ($12\text{--}25\text{ ms}$) | Multi-step denoising iterations ($4\text{--}16$ steps, $25\text{--}50\text{ ms}$) |
+| **Silicon Footprint** | Low NPU memory and compute overhead | Higher FLOPs; requires optimized TensorRT/ONNX runtime |
+| **Expressivity** | High efficiency on structured demonstration tasks | Extreme expressivity on highly multimodal, contact-rich tasks |
 
-```
-                           ACTION CHUNKING DECODER TAXONOMY
-                                          │
-                  ┌───────────────────────┴───────────────────────┐
-                  ▼                                               ▼
-      Action Chunking with                            Denoising Diffusion &
-       Transformers (ACT)                            Flow Matching Policies
-  ─────────────────────────────────             ─────────────────────────────────
-  • CVAE Latent Style Variable $z$              • Denoises Gaussian Noise $\epsilon$
-  • Non-Autoregressive Transformer              • Multi-Step Langevin / Flow ODE
-  • Single Forward Pass Latency                 • Multi-Modal Path Representation
-  • Low NPU Computational Footprint             • High Expressivity on Complex Tasks
-```
+: Action Chunking Decoder Taxonomy. Contrasting ACT and Diffusion Policies across generative formulations, latency, and silicon footprints. {#tbl-chunking-decoders}
+
 
 ### Action Chunking with Transformers (ACT)
 
