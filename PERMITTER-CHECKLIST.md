@@ -1,8 +1,8 @@
 # The Permitter's Check List
 
 **Status:** the gating artifact for Part II. Draft for review.
-**Depends on:** `BOOK-GOAL.md`, `.claude/rules/chapter-architecture.md`
-**Supersedes for Part II planning:** the "populate each cell of the matrix" reading
+**Depends on:** `.claude/rules/chapter-architecture.md`, `.claude/rules/north-star.md`
+**Status note:** the `docs/` planning tree it replaced was retired on 2026-08-19.
 
 ---
 

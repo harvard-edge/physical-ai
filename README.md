@@ -151,7 +151,7 @@ The laboratory track grounds every theoretical concept on zero-magic, reproducib
 ```text
 PhysicalAI/
 ├── README.md               # Master course & textbook overview
-├── NEXT_STEPS.md           # Engineering roadmap & active milestones
+├── PERMITTER-CHECKLIST.md  # The audit Part II is derived from
 │
 ├── course/                 # Academic administration & syllabus
 │   └── syllabus.md         # Official 14-week ETH Zurich syllabus (6 ECTS)
