@@ -46,7 +46,17 @@ In classical digital computing, the clock is synthetic. A quartz oscillator puls
 
 In physical systems, **the physical world sets the clock**.
 
-A robotic arm descending toward a rigid fixture at $1.5\text{ m/s}$, a mobile rover navigating a crowded warehouse aisle at $2.0\text{ m/s}$, or an autonomous drone caught in an aerodynamic gust does not pause while a vision transformer finishes computing self-attention matrices. Every physical task defines a characteristic timescale—the **world deadline** ($\tau_{\text{world}}$)—within which a sensory observation must be captured, transduced, transmitted, processed by neural networks, validated by safety supervisors, and converted into physical motor torque before the state of the machine diverges irreversibly into mechanical destruction.
+### The Core Physics Imperative: *Less Time Is Better ($t \to 0$)*
+
+In the physical universe, elapsed time is never neutral—it is active physical destruction.
+
+Every microsecond that passes while an algorithm computes creates four compounding physical costs:
+1. **Kinetic Displacement:** Moving mass continues traveling along its current trajectory ($d = v \cdot \Delta t$), eating through available clearance margins.
+2. **Thermal Energy Accumulation:** Motor stator coils and power electronic inverters accumulate irreversible Joule heat ($Q = \int I^2 R \, dt$).
+3. **Information Decay:** Sensor evidence rots the instant it is transduced; dynamic obstacles move, and spatial uncertainty expands ($\sigma(t) = \sigma_0 + v_{\text{target}} \Delta t$).
+4. **Phase Erosion:** Computational delay injects transport lag ($e^{-s T_d}$), eroding phase margin and driving closed-loop feedback systems toward violent oscillatory instability.
+
+Physics relentlessly pulls for compute latency to approach zero ($t \to 0$). This sets up the fundamental systems tension of Physical AI: **while physics demands less time, high-capacity neural deliberation demands more time.**
 
 ![**The Four Physical Constraint Columns of Physical AI.** Cognitive software operates within four unyielding physical domains: Time and Freshness, Inertia and Stopping Kinematics, Mechanical Actuation and Thermal Envelopes, and Silicon Determinism. Every action proposed by high-level neural policies must satisfy all four columns before motor inverters are energized.](figures/fig02_physical_columns.svg){#fig-physical-columns width=100%}
 
@@ -90,6 +100,17 @@ To eliminate the illusion of instantaneous computation, we trace every microseco
 
 : **The 7-stage sense-to-actuation latency ledger.** Deconstructing end-to-end delay across physical transduction, memory bus transfers, neural processing, inter-core communication, real-time safety evaluation, and electromagnetic actuator rise time. {#tbl-latency-ledger}
 
+::: {.callout-note title="Cross-Embodiment Anchor: The Freshness Wall in Action"}
+How does the 7-stage latency chain play out across our three canonical archetypes?
+
+* **Archetype 1: Locomotion & Mobility (High-Speed Delivery Drone):**  
+  A delivery drone flying at $15\text{ m/s}$ through a forest must detect thin branches and replan. During a $P_{99}$ latency tail blowout of $126.0\text{ ms}$, the drone traverses **$1.89\text{ meters}$ completely open-loop** before its motor ESCs receive new thrust commands. If branch clearance is less than $1.89\text{ m}$, an avoidance maneuver is physically impossible.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  A 6-DoF arm descending at $1.5\text{ m/s}$ toward a circuit board fixture experiences a $15\text{ ms}$ CMOS exposure window. Features smear across $22.5\text{ mm}$ of optical space ($\Delta x_{\text{blur}} = v \cdot t_{\text{exp}}$), degrading grasp pose accuracy from $\pm 0.5\text{ mm}$ to $\pm 22.5\text{ mm}$ and causing an end-effector fixture collision.
+* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter):**  
+  A $60\text{ Hz}$ AC power grid completes one electrical cycle every $16.67\text{ ms}$. If an islanding event occurs, a grid-forming inverter has a Freshness Wall of $\Delta t_{\text{wall}} \le 4.0\text{ ms}$ to detect phase drift and disconnect before out-of-phase reconnection destroys high-voltage step-up transformers.
+:::
+
 ### The Closed-Loop Stability Criterion
 
 In classical control theory, latency acts as a pure transport delay ($e^{-s T_d}$), introducing negative phase shift that erodes system phase margin. For an autonomous machine governed by learned policies, closed-loop stability requires that the cumulative worst-case latency tail ($P_{99}$), plus an explicit engineering safety margin ($t_{\text{margin}}$), remains strictly smaller than the physical world deadline:
@@ -101,6 +122,7 @@ where end-to-end latency is the non-ideal sum of all seven stages:
 $$t_{\text{total}} = t_{\text{transduce}} + t_{\text{dma}} + t_{\text{perceive}} + t_{\text{inference}} + t_{\text{ipc}} + t_{\text{enforce}} + t_{\text{actuator}}$$
 
 If $t_{\text{total}}(P_{99}) \ge \tau_{\text{world}}$, the robot operates open-loop during tail latency events. The physical state drifts beyond the valid distribution of the learned policy, inducing severe limit-cycle oscillations, chattering gearboxes, or high-speed collisions.
+
 
 ### The Tail Latency Lie: Why $P_{99}$ Governs Physical Survival
 
@@ -248,6 +270,15 @@ $$d_{\text{clearance}} \ge d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) +
 
 If the measured obstacle clearance drops below this threshold, the microcontroller overrides the neural policy's proposed trajectory chunk and commands immediate controlled deceleration.
 
+::: {.callout-note title="Cross-Embodiment Anchor: Stopping Distance and Reaction Lag Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle / Robotaxi):**  
+  At $v_0 = 25\text{ m/s}$ ($90\text{ km/h}$), a $140\text{ ms}$ OS scheduling tail spike adds **$3.5\text{ meters}$ of pure linear reaction distance** before hydraulic braking even begins ($d_{\text{react}} = 25 \times 0.14 = 3.5\text{ m}$). Even with aggressive ABS braking ($a_{\text{max}} = 8.0\text{ m/s}^2 \implies d_{\text{brake}} = 39.06\text{ m}$), the total stopping envelope expands from $40.5\text{ m}$ to $42.56\text{ m}$, converting a close stop into a pedestrian crosswalk collision.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  A 6-DoF arm swinging a $4\text{ kg}$ payload at $1.8\text{ m/s}$ approaching an assembly fixture requires $d_{\text{brake}} = 0.081\text{ m}$ ($8.1\text{ cm}$) under peak motor counter-torque ($a_{\text{max}} = 20\text{ m/s}^2$). If the fixture clearance is $10\text{ cm}$, a $P_{99}$ latency spike of $120\text{ ms}$ adds $d_{\text{react}} = 1.8 \times 0.12 = 0.216\text{ m}$ ($21.6\text{ cm}$) of unguided travel, guaranteeing an impact that shears drive pins.
+* **Archetype 3: Cybernetic Energy (EV Battery Thermal Runaway):**  
+  Thermal inertia in high-voltage lithium-ion battery packs: when charging current is cut, the cell temperature continues rising for several seconds ($d_{\text{stop, thermal}}$) due to internal chemical reaction enthalpy ($Q_{\text{thermal}}$) and heat diffusion from cell jelly rolls to outer casings. The battery management system must anticipate this thermal stopping envelope to prevent triggering thermal runaway.
+:::
+
 ---
 
 ## Column 3: Mechanical Actuation, Jerk Continuity, and Thermal Envelopes
@@ -316,6 +347,15 @@ $$E_{\text{thermal}}(t) = \int_{0}^{t} \max\left(0, I^2(\tau) - I_{\text{cont}}^
 
 When $E_{\text{thermal}}$ approaches the safety threshold, the MCU automatically clamps commanded current to $I_{\text{cont}}$, protecting the hardware regardless of what the neural policy requests.
 
+::: {.callout-note title="Cross-Embodiment Anchor: Torque Rates, Jerk & Thermal Invariants Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle & Drone):**  
+  In automotive steering, commanding a step-wise steering angle creates infinite yaw jerk ($\dddot{\psi} \to \infty$), saturating front tire friction coefficients ($\mu_{\text{slip}}$) and throwing the vehicle into an uncontrollable skid. The trajectory planner must enforce continuous steering angle curvature derivatives ($\mathcal{C}^2$).
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):**  
+  In robotic manipulators, harmonic drive flexsplines are thin-walled spring steel cups. A discrete acceleration step from an un-smoothed neural policy creates infinite torque rates ($\dot{\boldsymbol{\tau}} \to \infty$), generating high-frequency stress waves that shear flexspline gear teeth. The controller must clamp commanded torque rates to $\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$.
+* **Archetype 3: Cybernetic Energy (High-Voltage Inverters & Motor Coils):**  
+  In electrical power stages, continuous current creates $I^2R$ Joule heating. Drawing peak acceleration current ($I_{\text{peak}} = 8.5\text{ A}$) for more than $2.5\text{ seconds}$ exceeds stator thermal capacitance, melting magnet wire enamel ($T > 85^\circ\text{C}$). The MCU's $I^2t$ thermal integrator automatically clamps current to continuous rating $I_{\text{cont}} = 4.2\text{ A}$.
+:::
+
 ---
 
 ## Column 4: Silicon Determinism and Memory Bus Contention
@@ -336,6 +376,15 @@ This massive DMA streaming creates continuous memory bus contention:
 To eliminate this memory bus starvation, physical AI systems enforce two silicon architecture rules:
 * **Hardware QoS Arbitration:** Configure SoC memory controllers to assign higher bus priority to real-time control packets and NPU weight streaming over bulk camera DMA writes.
 * **Non-Cacheable Zero-Copy DMA Buffers:** Allocate dedicated, non-cacheable contiguous memory regions (CMA) for video frames, preventing camera ingestion from thrashing CPU and NPU cache lines.
+
+::: {.callout-note title="Cross-Embodiment Anchor: Memory Bus Contention Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Multi-Camera Autonomous Vehicles):**  
+  An autonomous vehicle streaming 8 high-resolution cameras ($4\text{K}$ at $60\text{ FPS}$) pumps over **$6\text{ GB/s}$ of DMA traffic** into the shared LPDDR5 memory bus. Without hardware QoS bus arbitration, camera ingestion starves NPU neural weight loads, inflating perception inference from $P_{50} = 22\text{ ms}$ to $P_{99} = 145\text{ ms}$.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit):**  
+  On the Arduino UNO Q dual-brain kit, camera MIPI DMA transfers share the on-chip DRAM crossbar with the Linux MPU and FreeRTOS MCU. Allocating non-cacheable zero-copy ring buffers (`dma_alloc_coherent`) eliminates L2 cache thrashing, keeping the 1 kHz MCU safety reflex strictly below its $1\text{ ms}$ deadline.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Protection):**  
+  In substation automation, IEC 61850 Sampled Value (SV) streams arrive every $250\,\mu\text{s}$. Memory allocation stalls (`malloc` heap fragmentation) in protection relays cause dropped sampling frames, blinding the relay to phase-to-ground faults. The protection loop is enforced with static, zero-heap SRAM allocation.
+:::
 
 ### Heterogeneous Cache Coherency Boundaries
 
