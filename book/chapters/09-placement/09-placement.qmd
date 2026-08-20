@@ -117,6 +117,8 @@ $$P_{\text{attainable}} = \min\left(P_{\text{peak}}, \; I \cdot B_{\text{mem}}\r
 | **Compute-Bound** | Vision Encoders (ViT, DINOv2) | $40\text{--}120\text{ FLOPs/Byte}$ | Peak NPU ALU Matrix Multiply TOPs | INT8 systolic tiling, patch pruning |
 | **Memory-Bound** | Autoregressive VLMs / LLMs | $0.5\text{--}2.0\text{ FLOPs/Byte}$ | LPDDR5 DRAM Crossbar Bandwidth ($B_{\text{mem}}$) | INT4 weight packing, Action Chunking ($H \ge 16$) |
 
+: Arithmetic Intensity Regimes along the Embodied AI Roofline. Contrasting compute-bound spatial vision encoders against memory-bandwidth-bound autoregressive token generators. {#tbl-roofline-regimes}
+
 In Physical AI systems, different stages occupy drastically different locations along the Roofline:
 
 * **Spatial Vision Encoders (ViT / DINOv2):** Process 2D image patches with high arithmetic reuse ($I \approx 40\text{--}120\text{ FLOPs/Byte}$). They operate in the **compute-bound regime** and fully utilize the systolic arrays of edge NPUs.
@@ -124,9 +126,19 @@ In Physical AI systems, different stages occupy drastically different locations 
   $$\text{Max Generation Rate} = \frac{44\text{ GB/s}}{14\text{ GB/token}} \approx 3.14\text{ tokens/second}$$
   This physics-based bound proves why large autoregressive models cannot run high-rate ($50\text{ Hz}$) control loops locally on edge silicon without aggressive INT4 quantization and Action Chunking ($H \ge 16$).
 
+::: {.callout-note title="Cross-Embodiment Anchor: Heterogeneous Silicon Placement Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
+  Workload partitioning: Global route planning on Cloud/MEC servers ($0.1\text{ Hz}$), local perception & trajectory decoding on automotive-grade edge NPUs ($30\text{ Hz}$), and steering/braking safety reflexes on an ASIL-D lockstep MCU ($1000\text{ Hz}$). Cellular communication blackouts immediately fall back to local NPU caches without degrading vehicle trajectory stabilization.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  Workload partitioning on the Arduino UNO Q: VLM open-vocabulary grounding on the Linux Host MPU ($1\text{ Hz}$), ACT trajectory action chunking on the NPU accelerator ($25\text{ Hz}$), and 1 kHz Control Barrier Functions on the Cortex-M4 MCU. Lock-free shared SRAM mailboxes with explicit cache invalidation eliminate non-coherent memory corruption across heterogeneous cores.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Inverters):**  
+  Workload partitioning: Day-ahead market dispatch and grid-wide power flow optimization on Cloud servers ($0.01\text{ Hz}$), feeder-level voltage/var control on substation edge MPUs ($1\text{ Hz}$), and 3-phase PWM inverter current regulation on dedicated Digital Signal Controllers (DSC / MCU) running at $20\text{ kHz}$ with hardware STO crowbar protection.
+:::
+
 ---
 
 ## Unified Memory Architectures (UMA) and Bus Contention
+
 
 In traditional workstation computing, the CPU and discrete GPU maintain separate physical memory pools connected across a PCIe bus. In embedded robotics and edge AI, power, thermal, and packaging constraints necessitate **Unified Memory Architectures (UMA)**. In a UMA SoC (e.g., Apple M-series, NVIDIA Jetson, Qualcomm Snapdragon, NXP i.MX8), the CPU cores, GPU/NPU cores, video decoders, and peripheral DMA controllers share a single unified LPDDR5 DRAM crossbar, as illustrated in @fig-uma-bus-contention.
 
@@ -165,6 +177,9 @@ To guarantee deterministic, lock-free communication across non-coherent boundari
 | **5** | Fire hardware IPCC mailbox interrupt | Service mailbox ISR | Hardware interrupt line assertion |
 | **6** | — | Invalidate Data Cache (`DC IVAC`) | Ensures reading fresh SRAM bytes |
 | **7** | — | Read payload & verify CRC32 | Atomic sequence validation |
+
+: Heterogeneous Shared-Memory Cache Coherence Protocol. Hardware memory barrier and cache maintenance sequence across Cortex-A and Cortex-M domains. {#tbl-cache-coherence-protocol}
+
 
 In embedded C, this zero-allocation Single-Producer Single-Consumer (SPSC) ring buffer is implemented with explicit cache maintenance primitives:
 
