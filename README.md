@@ -210,7 +210,7 @@ quarto render
 ## Teaching Team & Academic Credits
 
 * **Prof. Vijay Janapa Reddi** — Author & Course Lecturer  
-  *Gordon McKay Professor of Electrical Engineering, Harvard University*  
+  *Gordon McKay Professor of Electrical Engineering and Computer Engineering, Harvard University*  
   *Visiting Professor, Integrated Systems Laboratory (IIS), D-ITET, ETH Zurich*  
   Email: [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) · Web: [Homepage](https://profvjreddi.github.io/homepage)
 
