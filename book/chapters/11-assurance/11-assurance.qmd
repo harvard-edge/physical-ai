@@ -69,16 +69,26 @@ To enforce the ODD boundary without relying on the untrusted Linux application p
 
 When any state variable breaches its out-of-ODD trigger boundary ($x_i \notin \mathcal{X}_{\text{ODD}}$), the MCU safety core immediately revokes the MPU's proposal lease and transitions through a deterministic fallback escalation:
 
-$$\text{ODD State Transition} = \begin{cases}
-\text{Nominal Autonomous Mode}, & \mathbf{x}(t) \in \mathcal{X}_{\text{ODD}} \\
-\text{Category 2 Controlled Speed Derating}, & \mathbf{x}(t) \in \partial \mathcal{X}_{\text{ODD}} \quad (\text{Boundary Proximity}) \\
-\text{Category 1 Dynamic Deceleration to Halt}, & \mathbf{x}(t) \notin \mathcal{X}_{\text{ODD}} \quad (\text{Out-of-ODD Fault}) \\
-\text{Category 0 Relay Cut \& Mechanical Lock}, & \text{Critical Hardware Electrical / Thermal Breach}
+$$\text{Transition} = \begin{cases}
+\text{Nominal Mode}, & \mathbf{x}(t) \in \mathcal{X}_{\text{ODD}} \\
+\text{Category 2 Speed Derating}, & \mathbf{x}(t) \in \partial \mathcal{X}_{\text{ODD}} \\
+\text{Category 1 Dynamic Deceleration}, & \mathbf{x}(t) \notin \mathcal{X}_{\text{ODD}} \\
+\text{Category 0 E-Stop Relay Cut}, & \text{Hardware Critical Breach}
 \end{cases}$$
+
+::: {.callout-note title="Cross-Embodiment Anchor: Operational Design Domains & Assurance Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
+  ODD specification and qualification: Freezing flight velocity ($v \le 15\text{ m/s}$), wind gust limits ($v_{\text{wind}} \le 8\text{ m/s}$), and lighting envelopes ($E_{\text{lux}} \ge 100$). The drone progresses through the 4-rung ladder from flight simulation to HIL motor dynamometers to shadow flight testing alongside a safety pilot. Injected GPS dropouts verify $100\%$ containment via real-time optical flow landing reflexes.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  ODD specification and qualification on the Arduino UNO Q: Bounding workspace reach ($R \le 0.85\text{ m}$), payload mass ($m \le 1.5\text{ kg}$), and ambient temperature ($T_{\text{amb}} \le 40^\circ\text{C}$). The 1 kHz MCU runs automated fault injection campaigns (dropping 50% of camera frames, skewing PTP clocks by $200\text{ ms}$, panicking the Linux kernel), verifying $100\%$ containment into safe Category 1 position holds.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Inverters):**  
+  ODD qualification: Bounding grid frequency deviations ($49.5\text{ Hz} \le f \le 50.5\text{ Hz}$) and short-circuit current ratios. Hardware-in-the-Loop power testing on RTDS (Real-Time Digital Simulator) injects transmission line faults and communication packet loss, verifying that digital signal controllers contain voltage excursions within IEEE 1547 standards before active field commissioning.
+:::
 
 ---
 
 ## The 4-Rung Qualification Ladder: From Offline Replay to Shadow Fleets
+
 
 A foundational error in machine learning is assuming that high benchmark score on a static test split translates to physical safety in closed-loop actuation. In physical AI, software verification requires ascending a rigorous **4-Rung Qualification Ladder**, moving progressively from offline datasets to production hardware in active fleets (@fig-qualification-ladder).
 
@@ -97,7 +107,10 @@ A foundational error in machine learning is assuming that high benchmark score o
 * **Systems Purpose:** Tests closed-loop dynamical stability, obstacle collision avoidance, control barrier function compliance, and multi-modal policy generalization across randomized environmental distributions $\xi \sim \mathcal{D}_{\text{sim}}$.
 * **Domain Randomization Formulation:**
 
-$$\xi = \left\{ m_{\text{payload}} \sim \mathcal{U}(0.5, 3.5)\text{ kg}, \; \mu \sim \mathcal{U}(0.35, 0.95), \; \tau_{\text{delay}} \sim \mathcal{U}(15, 65)\text{ ms}, \; \mathbf{w}_{\text{ext}} \sim \mathcal{N}(0, \sigma_w^2) \right\}$$
+$$\begin{aligned}
+\xi = \{ &m_{\text{payload}} \sim \mathcal{U}(0.5, 3.5)\text{ kg}, \; \mu \sim \mathcal{U}(0.35, 0.95), \\
+&\tau_{\text{delay}} \sim \mathcal{U}(15, 65)\text{ ms}, \; \mathbf{w}_{\text{ext}} \sim \mathcal{N}(0, \sigma_w^2) \}
+\end{aligned}$$
 
 * **The Fundamental Limitation:** The Sim-to-Real Reality Gap. Contact dynamics, mechanical backlash, rolling friction hysteresis, non-linear motor saturation, and optical sensor noise are heavily idealized in simulation. Crucially, simulation executes on host CPU/GPU threads with idealized memory architectures, completely masking real-world silicon phenomena such as DMA bus contention, cache misses, SPI bus bit-flips, and Linux operating system jitter.
 * **Promotion Gate 1 Requirement:** $\ge 98.0\%$ task completion success rate and zero simulated kinematic collisions across $\ge 10{,}000$ randomized rollout episodes.
