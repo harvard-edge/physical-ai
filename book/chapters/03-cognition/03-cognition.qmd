@@ -45,71 +45,59 @@ Transduction converts physical quantities into digital representations: photodio
 Raw sensory arrays—such as two-dimensional RGB pixel matrices $\mathbf{I} \in \mathbb{R}^{H \times W \times 3}$ and sparse LiDAR point clouds $\mathbf{P} \in \mathbb{R}^{N \times 3}$—contain no intrinsic geometric or semantic structure. Station 3 ingests these raw streams to construct a metric representation of the local environment.
 
 Executing on dedicated neural accelerators (NPUs or GPUs), spatial perception models (such as Vision Transformers, DINOv2 backbones, and spatial cross-attention encoders) extract metric spatial tokens. This stage performs three simultaneous operations:
-1. **Geometric Reconstruction:** Transforming unprojected 2D pixel coordinates into calibrated 3D Euclidean coordinates using camera intrinsic matrices $\mathbf{K} \in \mathbb{R}^{3 \times 3}$ and extrinsic transformations $\mathbf{T}_{\text{cam}}^{\text{world}} \in SE(3)$.
-2. **Affordance Tokenization:** Segmenting actionable surfaces, estimating metric object bounding volumes, and predicting continuous surface normal vectors $\hat{\mathbf{n}} \in \mathbb{R}^3$ for candidate grasp or contact locations.
+1. **Geometric Reconstruction:** Transforming unprojected 2D pixel coordinates into calibrated 3D Euclidean coordinates using camera intrinsic matrices and extrinsic transformations.
+2. **Affordance Tokenization:** Segmenting actionable surfaces, estimating metric object bounding volumes, and predicting continuous surface normal vectors for candidate grasp or contact locations.
 3. **Collision Field Computation:** Constructing local Truncated Signed Distance Fields (TSDF) or Euclidean Signed Distance Fields (ESDF) that map every coordinate $\mathbf{x} \in \mathbb{R}^3$ to its scalar distance $d(\mathbf{x})$ from the nearest physical obstacle boundary.
 
 The output of Station 3 is a dense, metric spatial representation $\mathbf{S}_t$ that strips away lighting artifacts and sensor noise, preserving only the geometric and semantic topology of the physical workspace.
 
 ### Station 4: Latent World Model and State Estimation
-Raw spatial perception provides only a momentary, partially occluded snapshot of the world. If an object passes behind an obstacle or a camera view is momentarily blinded by specular reflection, instantaneous perception collapses. Station 4 maintains temporal continuity by fusing instantaneous spatial perception $\mathbf{S}_t$ with historical state memory within a dynamic Latent World Model and State Estimation engine.
+Raw spatial perception provides only a momentary, partially occluded snapshot of the world. If an object passes behind an obstacle or a camera view is momentarily blinded by specular reflection, instantaneous perception collapses. Station 4 maintains temporal continuity by fusing instantaneous spatial perception with historical state memory within a dynamic Latent World Model and State Estimation engine.
 
-Station 4 maintains the agent's central kinematic coordinate transform tree ($\mathcal{T}_{\text{frames}}$), continuously updating the spatial relationships between the inertial world frame ($\mathcal{F}_{\text{world}}$), base frame ($\mathcal{F}_{\text{base}}$), camera frames ($\mathcal{F}_{\text{cam}}$), and end-effector tool frames ($\mathcal{F}_{\text{tool}}$). Concurrently, an Extended Kalman Filter (EKF), factor graph optimizer, or recurrent latent state space model maintains the estimated state vector $\hat{\mathbf{x}}_t = [\mathbf{p}_t, \mathbf{v}_t, \mathbf{q}_t, \boldsymbol{\omega}_t]^T$ along with its associated state uncertainty covariance $\mathbf{\Sigma}_t \in \mathbb{R}^{n \times n}$.
+Station 4 maintains the agent's central kinematic coordinate transform tree ($\mathcal{T}_{\text{frames}}$), continuously updating spatial relationships between the world frame, base frame, camera frames, and end-effector tool frames. Concurrently, a state estimator maintains estimated state $\hat{\mathbf{x}}_t = [\mathbf{p}_t, \mathbf{v}_t, \mathbf{q}_t, \boldsymbol{\omega}_t]^T$. When an object leaves sensor view, the latent world model preserves belief continuity, expanding its spatial uncertainty envelope over occlusion time:
 
-Station 4 guarantees *belief persistence under occlusion*: when an object leaves sensor view, the latent world model tracks its estimated trajectory and expands its spatial uncertainty bound $\sigma_{\text{pos}}(t)$ according to physical motion priors:
-$$\dot{\mathbf{\Sigma}}(t) = \mathbf{F} \mathbf{\Sigma}(t) + \mathbf{\Sigma}(t) \mathbf{F}^T + \mathbf{Q}$$
-where $\mathbf{F}$ is the state transition Jacobian and $\mathbf{Q}$ is the process noise covariance. This continuous belief state $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \mathbf{\Sigma}_t, \mathcal{T}_{\text{frames}} \rangle$ ensures that downstream decision-making operates on a coherent representation of reality rather than transient sensor flickers.
+$$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t_{\text{occluded}}$$
+
+This continuous belief state ensures that downstream decision-making operates on a coherent representation of reality rather than transient sensor flickers.
 
 ### Station 5: Semantic Deliberation and Intent Leases
-Equipped with the conditioned goal vector $\mathbf{g}$ from Station 1 and the coherent belief state $\mathbf{B}_t$ from Station 4, Station 5 executes high-capacity semantic reasoning. This station is the domain of large Vision-Language-Action (VLA) foundation models, symbolic task planners, and multi-modal reasoning engines. Operating at the slowest temporal cadence ($0.5\text{--}2\text{ Hz}$), Station 5 analyzes complex scene interactions, evaluates causal dependencies, plans multi-step manipulation sequences, and detects task-level failure modes.
+Equipped with the conditioned goal vector from Station 1 and the coherent belief state from Station 4, Station 5 executes high-capacity semantic reasoning using large Vision-Language-Action (VLA) foundation models. Operating at the slowest temporal cadence ($0.5\text{--}2\text{ Hz}$), Station 5 analyzes complex scene interactions, evaluates causal dependencies, and plans multi-step manipulation sequences.
 
-Crucially, in a robust Physical AI systems architecture, Station 5 **never** directly emits raw motor torques or low-level actuator setpoints. Because high-capacity foundation models exhibit variable inference latency and long-tail computational jitter, binding their direct output to physical actuators would introduce catastrophic timing instability (as demonstrated in the Incident Autopsy). 
+Crucially, in a robust Physical AI systems architecture, Station 5 **never** directly emits raw motor torques or low-level actuator setpoints. Because high-capacity foundation models exhibit variable inference latency and long-tail computational jitter ($400\text{--}1500\text{ ms}$), binding their direct output to physical actuators introduces catastrophic timing instability.
 
-Instead, Station 5 produces a formal, time-bounded contract known as an **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$):
-$$\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}}, \mathcal{B}_{\text{safe}}, \|\mathbf{v}\|_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$$
-where $\mathbf{T}_{\text{target}} \in SE(3)$ specifies the target spatial pose, $\mathcal{B}_{\text{safe}} \subset \mathbb{R}^3$ defines a convex geometric corridor within which motion is guaranteed collision-free, $\|\mathbf{v}\|_{\text{max}}$ is the authorized velocity ceiling, $t_{\text{issue}}$ is the monotonic hardware timestamp of issue, and $\Delta t_{\text{TTL}}$ is the strictly enforced time-to-live (typically $500\text{--}1500\text{ ms}$). If the downstream runtime does not receive a renewed intent lease before $t > t_{\text{issue}} + \Delta t_{\text{TTL}}$, the lease expires automatically, triggering a deterministic, graceful deceleration to a safe standby state.
+Instead, Station 5 produces a formal, time-bounded architectural contract known as an **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$):
+
+$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}}, \; \mathcal{B}_{\text{safe}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
+
+where $\mathbf{T}_{\text{target}}$ specifies the target spatial pose, $\mathcal{B}_{\text{safe}}$ defines a convex geometric corridor within which motion is guaranteed collision-free, $\|\mathbf{v}\|_{\text{max}}$ is the authorized velocity ceiling, $t_{\text{issue}}$ is the monotonic hardware timestamp of issue, and $\Delta t_{\text{TTL}}$ is the strictly enforced time-to-live ($500\text{--}1500\text{ ms}$). If the downstream runtime does not receive a renewed intent lease before expiration, the lease lapses, triggering a deterministic deceleration to a safe standby state.
 
 ### Station 6: Trajectory Decoding and Action Chunking
-Station 6 bridges the gap between high-level semantic intent leases and high-rate physical control. Operating at an intermediate cadence ($20\text{--}50\text{ Hz}$), this station employs specialized continuous control policies, such as Action Chunking Transformers (ACT), conditional diffusion policies, or Model Predictive Control (MPC) trajectory optimizers.
+Station 6 bridges the gap between high-level semantic intent leases and high-rate physical control. Operating at an intermediate cadence ($20\text{--}50\text{ Hz}$), this station employs continuous control policies, such as Action Chunking Transformers (ACT) or conditional diffusion policies.
 
-Rather than predicting a single step action $\mathbf{a}_t$—which would create a brittle dependency where any microsecond inference hiccup stalls the physical robot—Station 6 decodes an entire **Action Chunk** $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $H = 16\text{--}64$ steps, corresponding to $300\text{--}1000\text{ ms}$ of continuous trajectory):
-$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \mathbf{a}_{t+1}, \mathbf{a}_{t+2}, \dots, \mathbf{a}_{t+H} \right]$$
+Rather than predicting a single step action $\mathbf{a}_t$—which would create a brittle dependency where any microsecond inference hiccup stalls the physical robot—Station 6 decodes an entire **Action Chunk** $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$ of continuous physical motion):
+
+$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \mathbf{a}_{t+2}, \; \dots, \; \mathbf{a}_{t+H-1} \right]$$
+
 where each action vector $\mathbf{a}_{t+k} = [\mathbf{q}_{\text{ref}}, \dot{\mathbf{q}}_{\text{ref}}, \boldsymbol{\tau}_{\text{ff}}]^T$ specifies reference joint positions, velocities, and feedforward torques.
 
-Action chunking amortizes inference latency across multiple execution cycles, smooths out inter-token neural network latency jitter, and provides a continuous trajectory buffer that downstream motor controllers can consume uninterrupted even if the neural inference engine suffers temporary scheduling contention.
+Action chunking provides **delay amortization**: a $35\text{ ms}$ neural forward pass produces hundreds of milliseconds of continuous trajectory data, allowing high-rate motor controllers to execute uninterrupted while the accelerator computes the subsequent chunk in the background.
 
 ### Station 7: Real-Time Safety Reflex and Dynamic Shielding
-Before any action vector $\mathbf{a}_t$ from an action chunk is transmitted to physical hardware, it must pass through Station 7: the Real-Time Safety Reflex. Operating at $1000\text{ Hz}$ ($1\text{ ms}$ loop budget) on a dedicated, bare-metal or hard Real-Time Operating System (RTOS) microcontroller, Station 7 enforces absolute physical and operational invariants.
+Before any action vector $\mathbf{a}_t$ from an action chunk reaches physical hardware, it must pass through Station 7: the Real-Time Safety Reflex. Operating at $1000\text{ Hz}$ ($1\text{ ms}$ loop budget) on a dedicated bare-metal microcontroller, Station 7 enforces absolute physical invariants.
 
-Station 7 acts as an un-bypassable **Dynamic Safety Shield**. It evaluates the candidate action $\mathbf{a}_t$ against hard physical constraints: joint mechanical limits, maximum permissible velocity ceilings, dynamic torque saturation limits, and kinematic jerk bounds ($\dddot{\mathbf{q}} \le \mathbf{J}_{\text{max}}$). Furthermore, Station 7 evaluates Control Barrier Functions (CBFs) that continuously calculate the physical stopping distance $d_{\text{stop}}$ relative to the nearest dynamic obstacle detected by low-latency proximity or bumper sensors:
-$$d_{\text{stop}}(t) = \frac{\|\mathbf{v}(t)\|^2}{2 a_{\text{max}}} + \|\mathbf{v}(t)\| \cdot t_{\text{reaction}}$$
+Station 7 acts as an un-bypassable **Dynamic Safety Shield**. It evaluates candidate actions against joint limits, velocity bounds, torque rate limits, and dynamic stopping distances ($d_{\text{stop}} \le d_{\text{clearance}}$). Operating in static SRAM with zero dynamic memory allocation (`malloc = 0`), the microcontroller executes a minimal safety projection:
 
-Station 7 executes a real-time Quadratic Program (QP) that projects the nominal action $\mathbf{a}_t$ onto the mathematically safe admissible control set $\mathcal{U}_{\text{safe}}$:
-$$\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \|\mathbf{u} - \mathbf{a}_t\|^2$$
+$$\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \|\mathbf{u} - \mathbf{a}_t\|^2 \quad \text{subject to } d_{\text{stop}}(\mathbf{v}) \le d_{\text{clearance}}$$
 
-If the nominal action $\mathbf{a}_t$ is safe, it passes unmodified ($\mathbf{u}_t^* = \mathbf{a}_t$). If the action threatens joint limits or collision boundaries, Station 7 minimally perturbs the control command to preserve safety, or instantly overrides the trajectory to execute a deterministic emergency deceleration profile ($a = -a_{\text{max}}$).
+If the nominal action $\mathbf{a}_t$ is safe, it passes unmodified ($\mathbf{u}_t^* = \mathbf{a}_t$). If the action threatens safety boundaries, Station 7 minimally perturbs the command or engages autonomous controlled braking.
 
 ### Station 8: Actuation and Physical State Mutation
-At Station 8, verified digital control commands $\mathbf{u}_t^*$ cross the physical threshold into hardware power electronics. This station operates within the domain of embedded motor drives, power MOSFET/IGBT inverter bridges, and electromagnetic actuators executing at frequencies between $10\text{ kHz}$ and $40\text{ kHz}$.
-
-A dedicated motor controller executes Field-Oriented Control (FOC):
-1. Phase current sensors measure the instantaneous stator currents $(I_a, I_b, I_c)$.
-2. The Clarke and Park mathematical transformations convert these three-phase currents into a rotating two-axis orthogonal reference frame: the direct axis current $I_d$ (controlling magnetic flux) and the quadrature axis current $I_q$ (directly proportional to mechanical torque $\tau_m = \frac{3}{2} p \lambda_f I_q$, where $p$ is the pole pair count and $\lambda_f$ is permanent magnet flux linkage).
-3. Proportional-Integral (PI) current loop controllers compute required stator voltages $(V_d, V_q)$.
-4. Space Vector Pulse-Width Modulation (SVPWM) generators synthesize high-frequency gate switching signals ($20\text{--}40\text{ kHz}$) that drive the power inverter bridge.
-
-The resulting electrical currents generate electromagnetic Lorentz forces within the stator windings, producing physical shaft torque $\boldsymbol{\tau}$. According to the rigid-body manipulator dynamics:
-$$\boldsymbol{\tau} = \mathbf{M}(\mathbf{q})\ddot{\mathbf{q}} + \mathbf{C}(\mathbf{q}, \dot{\mathbf{q}})\dot{\mathbf{q}} + \mathbf{g}(\mathbf{q}) + \boldsymbol{\tau}_{\text{ext}}$$
-these torques accelerate mechanical linkages, displace end-effectors, compress contact surfaces, and displace matter, definitively mutating the physical universe from state $W_t$ to $W_{t+1}$.
+At Station 8, verified digital control commands $\mathbf{u}_t^*$ cross the physical threshold into hardware power electronics. Operating at high frequencies ($10\text{--}40\text{ kHz}$), motor drivers execute Field-Oriented Control (FOC) to synthesize pulse-width modulated (PWM) inverter gate voltages. The resulting phase currents generate electromagnetic Lorentz forces in stator windings, producing physical shaft torques that accelerate mechanical linkages against inertia and friction, definitively mutating the physical universe from state $W_t$ to $W_{t+1}$.
 
 ### Station 9: Endogenous Sensory Feedback and Causal Loop Closure
-The cognitive lifecycle concludes—and immediately restarts—at Station 9. As the physical agent mutates the external universe ($W_t \to W_{t+1}$), the modified environment produces new physical emissions: optical scenes change as linkages move, mechanical reaction forces generate strain gauge voltages in fingertips, and motor acceleration creates counter-electromotive force in the windings.
+The cognitive lifecycle concludes—and immediately restarts—at Station 9. As the physical agent mutates the external universe ($W_t \to W_{t+1}$), the modified environment produces new physical emissions: optical scenes shift, contact forces generate strain gauge voltages, and motor motion generates back-EMF.
 
-Station 9 captures these emissions as the subsequent observation vector $O_{t+1}$, closing the causal loop. A foundational systems challenge at Station 9 is distinguishing between **endogenous feedback** (sensory changes caused directly by the agent’s own physical actions, such as an arm moving through its own camera field of view or vibrations generated by its own cooling fans) and **exogenous feedback** (independent state changes originating from external environmental actors or moving obstacles). 
-
-By subtracting the predicted sensory consequences computed by its internal forward dynamics model from the incoming sensory stream:
-$$\mathbf{r}_{t+1} = O_{t+1} - f_{\text{forward}}(\hat{\mathbf{x}}_t, \mathbf{u}_t^*)$$
-the system extracts the sensory innovation residual $\mathbf{r}_{t+1}$. This residual feeds directly back into Station 4 to update state estimation, correct model drift, detect unexpected physical collisions, and trigger re-deliberation at Station 5 if the task execution encounters an unmodeled physical impediment.
+Station 9 captures these emissions as the subsequent observation vector $O_{t+1}$, closing the causal loop. By comparing measured observations against predicted forward dynamics ($r = O_{\text{measured}} - O_{\text{predicted}}$), the system extracts innovation residuals to update state estimates, correct model drift, detect unexpected physical collisions, and trigger re-deliberation if an obstacle blocks progress.
 
 ### Grounding the 9 Stations Across the Three Canonical Archetypes
 
@@ -118,129 +106,68 @@ To appreciate the universal applicability of this 9-station dataflow lifecycle, 
 | Lifecycle Station | Archetype 1: Mobility (e.g., Quadruped on Scree) | Archetype 2: Contact Manipulation (e.g., Dual-Arm Assembly) | Archetype 3: Cybernetic Processes (e.g., Chemical Batch Reactor) |
 | :--- | :--- | :--- | :--- |
 | **S1: Goal Ingestion** | *"Traverse scree slope to waypoint C"* | *"Seat multi-pin connector plug into chassis"* | *"Maintain 350 K reaction at 5 bar pressure"* |
-| **S2: Transduction** | Rolling-shutter stereo cameras + $1\text{ kHz}$ IMU | Wrist structured-light RGB-D + 6-axis F/T load cells | Resistance Temperature Detectors + Coriolis flow meters |
-| **S3: 3D Perception** | 3D elevation map, terrain slope, and slip risk | Sub-millimeter socket pose $\mathbf{T} \in SE(3)$ and gap geometry | Multi-point thermal and concentration spatial gradients |
-| **S4: World Model** | Center-of-mass momentum and foot-ground contact state | Two-arm kinematic alignment and contact uncertainty | Latent chemical reaction kinetics and catalyst aging |
-| **S5: Reason (Intent)** | Gait selection (trot vs. crawl) and foothold lease ($1\text{ Hz}$) | Approach vector and contact force lease ($F \le 15\text{ N}$, $2\text{ Hz}$) | 2-hour reagent feed and heat exchange schedule ($0.05\text{ Hz}$) |
-| **S6: Plan (Chunk)** | 16-step leg swing spline chunks ($50\text{ Hz}$) | 32-step hybrid position/force action chunks ($50\text{ Hz}$) | Predictive valve aperture trajectory chunks ($1\text{ Hz}$) |
-| **S7: Safety Reflex** | $1\text{ kHz}$ friction cone audit and foot slip recovery | $1\text{ kHz}$ contact force threshold QP ($F \le 15\text{ N}$) | Hardware overpressure and burst disc relief interlocks |
-| **S8: Actuation** | High-torque quasi-direct-drive BLDC leg joints | Direct-drive cycloidal wrist actuators via FOC | Variable-frequency drives on dosing pumps and heaters |
-| **S9: Feedback** | Ground impact shock and terrain compliance update | Tactile snap transient accelerometer feedback | Downstream effluent pH and temperature reaction shifts |
+| **S2: Transduction** | Stereo depth cameras, IMU, foot contact switches | Wrist-mounted RGB-D, 6-axis F/T load cell, joint encoders | Resistance temperature detectors (RTDs), pressure transducers |
+| **S3: Perception** | Voxel elevation map, terrain friction classification | 6-DoF plug pose, chamfer surface normal vector | Thermal gradient map, reagent concentration estimation |
+| **S4: Latent State** | Quadruped base pose, leg contact state, terrain slip | Gripper pose in fixture frame, contact force history | Reactor thermal mass state, jacket coolant temperature |
+| **S5: Reasoning** | High-level gait selection, foothold re-planning | Grasp re-orientation, insertion retry strategy | Cooling valve ramp schedule, reagent feed rate policy |
+| **S6: Planning** | 16-step leg swing trajectories and ground reaction forces | 32-step Cartesian end-effector compliance trajectory | 60-step coolant valve flow and heater duty cycle chunk |
+| **S7: Safety Reflex** | Leg kinematic reachability, dynamic tipping margin | Maximum contact force clamp ($F \le 20\text{ N}$), zero-velocity barrier | Maximum pressure interlock ($P \le 6\text{ bar}$), thermal runaway clamp |
+| **S8: Actuation** | 12x BLDC quasi-direct drive knee/hip actuators | 14x Brushless frameless motors with harmonic gearheads | Proportional solenoid valves, variable-speed coolant pumps |
+| **S9: Loop Closure** | Foot slip acceleration detected by IMU $\to$ adjust swing | Contact force spike detected by load cell $\to$ engage compliance | Exothermic thermal surge detected by RTD $\to$ increase coolant |
 
-: The 9-station cognitive lifecycle across the Three Canonical Archetypes. Demonstrating how the lifecycle dataflow remains structurally invariant while physical parameters and dynamics adapt to each embodiment. {#tbl-nine-stations-archetypes}
+: The 9-station embodied cognitive lifecycle across the Three Canonical Archetypes. {#tbl-lifecycle-archetypes}
 
-Across all three archetypes, the 9-station lifecycle remains structurally invariant. What changes is the relative distribution of computational time, physical bandwidth, and the specific physical laws—kinematics, contact mechanics, or thermodynamics—that bind the computational stations to the material world.
 
----
+## The Five Cognitive Work Dimensions (The 5 Rows)
 
-## The 5 Cognitive Work Dimensions: The Rows of the Co-Design Matrix
+The 9 stations of dataflow group naturally into five primary horizontal work dimensions that form the rows of the Physical AI Co-Design Matrix (@tbl-five-cognitive-rows):
 
-The embodied cognitive lifecycle formalized in the preceding section establishes the sequential dataflow of physical intelligence. To architect silicon, memory hierarchies, and software runtimes capable of supporting this dataflow without timing collapse, we must formalize the systems properties of each processing stage. In the Physical AI Co-Design Matrix, the horizontal rows represent the **Five Cognitive Work Dimensions**: Perceive, Remember, Reason, Plan, and Execute.
-
-Each row defines a distinct computational transformation, operating on a specialized representation structure, bound by an unyielding temporal lifetime, and governed by a specific systems contract (@tbl-five-cognitive-rows).
-
-| Cognitive Dimension | Pipeline Stage | Primary Systems Work | Core Data Structure | Temporal Lifetime | Owning Chapter |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Row 1: Perceive** | Stage 1: Sensing & Perception | Spatial Grounding & Metric Tokenization | 3D Affordance Tokens in $SE(3)$ | Frame Refresh ($\sim 33\text{ ms}$) | Chapter 4 |
-| **Row 2: Remember** | Stage 2: Memory & State | Temporal World Modeling & Belief Persistence | Latent JEPAs & Dynamic Frame Trees | Multi-Hour Belief ($\sim 10^1\text{--}10^3\text{ s}$) | Chapter 5 |
-| **Row 3: Reason** | Stage 3: Semantic Reasoning | Open-World Goal Decomposition | Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) | Deliberative Step ($0.5\text{--}2.0\text{ s}$) | Chapter 6 |
-| **Row 4: Plan** | Stage 4: Trajectory Planning | Multi-Step Action Chunking | $\mathcal{C}^2$ Jerk-Continuous Splines | Rolling Horizon ($300\text{--}1000\text{ ms}$) | Chapter 7 |
-| **Row 5: Execute** | Stage 5: Real-Time Reflex | Mathematical Safety Filtering | 1 kHz Control Barrier Functions | Control Tick ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | Chapter 8 |
+| Cognitive Row | Pipeline Stations | Primary Systems Transformation | Core Output Data Structure | Characteristic Lifetime |
+| :--- | :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Stations 2, 3 | Photons $\to$ 3D Geometric Affordance Tokens | 3D Spatial Token Set $\mathbf{S}_t$ | Transient ($\approx 33\text{ ms}$) |
+| **Row 2: Remember** | Station 4 | History $\to$ Dynamic Latent State & Transform Tree | Belief State $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$ | Persistent ($10^1\text{--}10^3\text{ s}$) |
+| **Row 3: Reason** | Stations 1, 5 | Goal + Belief $\to$ Semantic Intent & Safety Corridors | Expiring Intent Lease $\mathcal{L}_{\text{intent}}$ | Macro-cadence ($0.5\text{--}1.5\text{ s}$) |
+| **Row 4: Plan** | Station 6 | Lease $\to$ Multi-Step Trajectory Chunks & Splines | Action Chunk $\mathbf{A}_{t:t+H}$ | Rolling horizon ($0.3\text{--}1.0\text{ s}$) |
+| **Row 5: Execute** | Stations 7, 8 | Chunks $\to$ Certified Phase Current & Commutation | Verified Control Command $\mathbf{u}_t^*$ | Micro-cadence ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
 
 : The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, temporal lifetimes, and owning chapters. {#tbl-five-cognitive-rows}
 
 ### Row 1 (Perceive): Spatial Grounding and 3D Affordance Tokens
 
-The primary systems responsibility of the perception dimension is **spatial grounding**: converting high-dimensional, unprojected sensory arrays into compact, metric geometric tokens referenced to the physical coordinate frame of the robot and its environment.
+The primary systems responsibility of the perception dimension is **spatial grounding**: converting high-dimensional sensory arrays into compact, metric geometric tokens (3D poses, surface normals, bounding volumes, and contact friction) referenced to the physical coordinate frame of the robot.
 
-In digital machine learning, object detection and semantic segmentation operate entirely within the two-dimensional pixel plane of an image sensor. Standard computer vision models output bounding boxes defined by pixel coordinates $[u_{\text{min}}, v_{\text{min}}, u_{\text{max}}, v_{\text{max}}]$. In physical space, a 2D bounding box is fundamentally insufficient for action. Pixel coordinates represent unprojected optical rays; they contain no metric depth, no surface normal orientation, no spatial volume, and no physical contact properties. An embodied agent attempting to interact with an object based on pixel coordinates cannot resolve whether the target is a small object nearby or a massive object far away, nor can it align its end-effector with the surface normal vector required to establish a stable friction contact. Attempting to execute physical grasping from 2D pixel bounding boxes inevitably causes the manipulator to close its fingers on empty air or drive them directly into rigid structural obstacles.
+In digital ML, object detection operates in 2D pixel coordinates ($[u, v]$). In physical space, 2D coordinates contain no metric depth or surface normals. Attempting to grasp based on pixel boxes causes manipulators to close fingers on empty air or collide with obstacles.
 
-Perception in Physical AI transforms raw optical and depth observations $\mathbf{I}_{\text{RGB-D}} \in \mathbb{R}^{H \times W \times 4}$ into a structured set of metric **3D Spatial Affordance Tokens** $\mathbf{S}_t$:
-
-$$\mathbf{S}_t = \left\{ \mathbf{T}_i \in SE(3), \; \hat{\mathbf{n}}_i \in \mathbb{S}^2, \; \mathcal{B}_i \subset \mathbb{R}^3, \; \mu_i \in \mathbb{R}^+ \right\}_{i=1}^N$$
-
-In this representation, each token $i$ encapsulates four physical quantities:
-1. A rigid-body transformation matrix $\mathbf{T}_i \in SE(3)$ specifying the 6-degree-of-freedom (6-DoF) metric pose (position $\mathbf{p} \in \mathbb{R}^3$ and orientation rotation matrix $\mathbf{R} \in SO(3)$) relative to the robot's base frame $\mathcal{F}_{\text{base}}$.
-2. A unit surface normal vector $\hat{\mathbf{n}}_i \in \mathbb{S}^2$ defining the local contact plane.
-3. An oriented 3D bounding volume $\mathcal{B}_i \subset \mathbb{R}^3$ defining the physical geometry and obstacle keep-out corridor.
-4. An estimated Coulomb friction coefficient $\mu_i$ characterizing the surface interaction.
-
-To extract these tokens within millisecond budgets, spatial perception models—such as Vision Transformers (ViT) and spatial cross-attention backbones—ingest raw pixel frames transferred directly from CMOS image sensors via zero-copy Direct Memory Access (DMA) over MIPI-CSI2 or PCIe buses. The systems bottleneck in Row 1 is memory bus contention: streaming multi-camera $4\text{K}$ video at $60\text{ Hz}$ saturates unified memory bandwidth, competing directly with neural network weight streaming. The temporal lifetime of a perception token is strictly transient ($\Delta t_{\text{token}} \approx 33\text{ ms}$), expiring upon the arrival of the subsequent optical exposure.
-
-*Owning Pipeline Chapter:* **Chapter 4 (Perception)** analyzes sensor transduction physics, rolling shutter distortion, zero-copy DMA buffers, spatial cross-attention backbones, and memory bus contention.
+Spatial perception models (such as Vision Transformers) ingest raw frames transferred via zero-copy Direct Memory Access (DMA) over MIPI-CSI2 buses. The systems bottleneck in Row 1 is memory bus contention: streaming multi-camera $4\text{K}$ video at $60\text{ Hz}$ saturates memory bandwidth, competing directly with neural weight streaming.
 
 ### Row 2 (Remember): Temporal World Modeling and Dynamic Belief Persistence
 
-Physical environments are partially observable, dynamic, and plagued by line-of-sight occlusions, sensor dropouts, motion blur, and specular glare. When a robotic arm reaches for a target workpiece, the manipulator's own wrist and gripper inevitably occlude the camera's optical line of sight during the final, critical centimeters of approach. If an embodied agent relies exclusively on instantaneous perception, its world representation collapses the moment occlusion occurs, causing the control policy to halt or diverge.
+Physical environments are partially observable and plagued by occlusions. When a robotic arm approaches a workpiece, its own wrist occludes the camera line of sight during the final centimeters. If an agent relies only on instantaneous perception, its representation collapses.
 
-The second cognitive dimension is **temporal world modeling**: maintaining an internal belief state that preserves structural knowledge of the physical environment across time, sensory occlusions, and sensor dropouts. 
-
-Rather than storing raw sensory history, Row 2 maintains an internal continuous belief state $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$. When an object is occluded, the world model propagates its estimated kinematic state $\hat{\mathbf{x}}_t = [\mathbf{p}_t, \mathbf{v}_t, \mathbf{q}_t, \boldsymbol{\omega}_t]^T$ forward in time using internal physical motion priors. Simultaneously, the spatial uncertainty envelope expands dynamically as a function of elapsed occlusion time:
+Row 2 maintains an internal continuous belief state $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$. When an object is occluded, the world model propagates its kinematic state forward while expanding its spatial uncertainty envelope linearly over occlusion time:
 
 $$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t_{\text{occluded}}$$
 
-where $\sigma_0$ is the initial sensor measurement uncertainty and $\|\mathbf{v}_{\text{target}}\|$ is the estimated velocity of the moving entity. This expanding envelope signals to downstream planners that clearance margins around the occluded entity must widen over time.
-
-Simultaneously, Row 2 maintains the dynamic coordinate transform tree ($\mathcal{T}_{\text{frames}}$), tracking relative spatial transforms between the inertial world frame ($\mathcal{F}_{\text{world}}$), base frame ($\mathcal{F}_{\text{base}}$), camera frames ($\mathcal{F}_{\text{cam}}$), end-effector tool frames ($\mathcal{F}_{\text{tool}}$), and dynamic target frames. To avoid the prohibitive memory and compute overhead of auto-regressively generating full-resolution video frames, modern world models utilize Joint Embedding Predictive Architectures (JEPAs) and latent dynamics models. These architectures predict future state transitions entirely in a compact latent embedding space ($\mathbf{z}_{t+1} = f_\theta(\mathbf{z}_t, \mathbf{a}_t)$), capturing invariant physical dynamics without hallucinating high-entropy pixel noise. The temporal lifetime of belief states spans minutes to hours ($\Delta t_{\text{belief}} \approx 10^1\text{--}10^3\text{ s}$).
-
-*Owning Pipeline Chapter:* **Chapter 5 (Memory)** examines coordinate frame transform caching, state tracking, and latent predictive dynamics.
+This signals downstream planners that clearance margins around occluded objects must widen over time.
 
 ### Row 3 (Reason): Semantic Deliberation and Open-World Goal Decomposition
 
-While classical industrial automation relies on rigid, hardcoded finite-state machines, Physical AI agents operate in unstructured, open-world environments where tasks are specified through natural language instructions, visual demonstrations, or high-level mission goals. The third cognitive dimension is **semantic deliberation**: parsing human directives, evaluating causal dependencies, decomposing complex tasks into topological action graphs, and resolving environmental ambiguities.
+The third cognitive dimension is **semantic deliberation**: parsing human directives, evaluating causal dependencies, decomposing complex tasks, and generating time-bounded **Expiring Intent Leases** ($\mathcal{L}_{\text{intent}}$).
 
-Semantic deliberation is executed by high-capacity Vision-Language-Action (VLA) foundation models and multimodal reasoning engines running on application processors or edge accelerators. These models evaluate global scene semantics, such as determining which tools can act as substitutes, identifying the correct sequence for unstacking nested objects, or assessing failure recovery strategies when an initial grasp slips.
-
-A central principle of Physical AI systems architecture is that System 2 foundation models **must never directly command actuator voltages, motor currents, or low-level joint setpoints**. Because large foundation models ($7\text{B}\text{ to } 70\text{B}$ parameters) exhibit non-deterministic inference latency, heavy-tail computational jitter ($400\text{--}1500\text{ ms}$), and stochastic token generation, coupling their direct output to physical actuators introduces catastrophic phase lag ($\Delta \phi = -\omega \tau_{\text{delay}}$), eroding the stability phase margin and triggering violent oscillations.
-
-Instead, the semantic reasoning tier produces a formal, time-bounded architectural contract known as an **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$):
-
-$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}}, \; \mathcal{B}_{\text{safe}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
-
-The intent lease establishes an un-bypassable boundary of authorized physical action:
-* $\text{GoalID}$ provides a unique monotonic identifier for the active sub-goal.
-* $\mathbf{T}_{\text{target}}$ specifies the target pose in 3D workspace coordinates.
-* $\mathcal{B}_{\text{safe}} \subset \mathbb{R}^3$ defines a convex geometric corridor within which downstream motion planning is guaranteed to be collision-free.
-* $\|\mathbf{v}\|_{\text{max}}$ establishes the hard upper bound on operational velocity.
-* $t_{\text{issue}}$ records the monotonic hardware timestamp of lease creation.
-* $\Delta t_{\text{TTL}}$ defines the strictly enforced time-to-live ($500\text{--}1500\text{ ms}$).
-
-If the foundation model stalls due to memory bus contention, thermal throttling, or an attention re-computation loop, the intent lease expires automatically when $t > t_{\text{issue}} + \Delta t_{\text{TTL}}$. Upon lease expiration, downstream real-time controllers independently initiate a deterministic, smooth deceleration to a safe holding state, containing the failure without requiring human intervention.
-
-*Owning Pipeline Chapter:* **Chapter 6 (Reasoning)** formalizes open-vocabulary prompt parsing, topological task planning, intent lease schemas, and lease renewal synchronization protocols.
+Foundation models ($7\text{B}\text{ to } 70\text{B}$ parameters) exhibit non-deterministic inference latency ($400\text{--}1500\text{ ms}$) and must **never** directly command motor PWM registers. Instead, they produce intent leases specifying target poses, authorized velocity ceilings ($\|\mathbf{v}\|_{\text{max}}$), and strictly enforced times-to-live ($\Delta t_{\text{TTL}}$). If the model stalls, the lease expires, causing downstream controllers to decelerate smoothly to a safe holding state.
 
 ### Row 4 (Plan): Trajectory Generation and Action Chunking
 
-Once an intent lease defines the spatial target, safety corridor, and velocity boundaries, the agent must compute how to move its physical linkages. The fourth cognitive dimension is **trajectory planning**: translating high-level spatial targets and environmental affordances into continuous, kinematically feasible, collision-free joint trajectories that respect physical velocity, acceleration, and torque limits.
+The fourth cognitive dimension is **trajectory planning**: translating high-level spatial targets into continuous, kinematically feasible joint trajectories.
 
-In classical robotics, trajectory planning is performed via single-step numerical inverse kinematics or trajectory optimization. In Physical AI, high-capacity continuous control policies—such as Action Chunking Transformers (ACT) and conditional Diffusion Policies—synthesize complex, multi-modal trajectories directly from visual and proprioceptive state tokens. Rather than predicting a single step action setpoint $\mathbf{a}_t$, which would create a brittle dependency where any microsecond inference hiccup stalls the physical robot, the trajectory generator predicts an entire **Action Chunk** $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $H = 16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$ of continuous physical motion):
+Action Chunking Transformers (ACT) and Diffusion Policies decode an entire **Action Chunk** $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$):
 
-$$\mathbf{A}_{t:t+H} = \pi_{\theta}(\mathbf{o}_t, \mathbf{s}_t, \mathcal{L}_{\text{intent}}) = \begin{bmatrix} \mathbf{a}_t \\ \mathbf{a}_{t+1} \\ \vdots \\ \mathbf{a}_{t+H-1} \end{bmatrix} \in \mathbb{R}^{H \times D_a}$$
+$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \dots, \; \mathbf{a}_{t+H-1} \right]$$
 
-where each action vector $\mathbf{a}_{t+k} = [\mathbf{q}_{\text{ref}}, \dot{\mathbf{q}}_{\text{ref}}, \boldsymbol{\tau}_{\text{ff}}]^T$ contains reference joint positions, joint velocities, and feedforward torques.
-
-Action chunking provides three foundational systems advantages:
-1. **Delay Amortization:** A neural network forward pass requiring $30\text{ ms}$ of inference time generates hundreds of milliseconds of continuous trajectory data ($H=16$ steps at $50\text{ Hz}$ yields $320\text{ ms}$ of motion). This amortizes neural compute delay across continuous physical time, allowing high-rate motor controllers to execute uninterrupted while the accelerator computes the subsequent chunk in the background.
-2. **$\mathcal{C}^2$ Jerk Continuity:** Stepped position setpoints cause infinite theoretical acceleration spikes, inducing extreme current surges and mechanical gear tooth shear. Row 4 fits predicted chunk waypoints with continuous polynomial splines, guaranteeing continuous second derivatives of acceleration (bounded jerk $\dddot{\mathbf{q}}(t) \le \mathbf{J}_{\text{max}}$) across the entire trajectory.
-3. **Receding-Horizon Temporal Ensembling:** Successive action chunks are computed at $20\text{--}50\text{ Hz}$ with overlapping temporal horizons. Downstream trajectory decoders fuse overlapping waypoints using an exponentially weighted moving average, preventing discrete pauses or directional discontinuities at chunk boundaries.
-
-*Owning Pipeline Chapter:* **Chapter 7 (Planning)** explores diffusion denoising schedules, temporal ensembling algorithms, spline interpolation, and lock-free trajectory buffers.
+Action chunking provides **delay amortization**: a $30\text{ ms}$ inference yields $320\text{ ms}$ of continuous motion. Fitting quintic splines across waypoints guarantees $\mathcal{C}^2$ continuity (bounded jerk $\|\dddot{\mathbf{q}}\| \le \mathbf{J}_{\text{max}}$), while receding-horizon temporal ensembling eliminates step-to-step jerk discontinuities.
 
 ### Row 5 (Execute): Real-Time Reflex and Mathematical Safety Filtering
 
-The final cognitive dimension is **real-time execution and safety filtering**: converting candidate trajectory waypoints into physical motor phase voltages while guaranteeing that physical safety invariants are never breached under any operating condition.
-
-Operating deterministically at $1000\text{ Hz}$ ($1.0\text{ ms}$ loop period with jitter under $5\,\mu\text{s}$) on a dedicated, bare-metal microcontroller unit (MCU) or hard real-time operating system (RTOS) core, the execution supervisor functions as the **trusted gatekeeper** of the physical machine. It audits candidate action proposals ($p_t$) emitted by the planning layer against physical safety constraints using real-time **Safety Barrier Projections**:
-
-$$\begin{aligned}
-\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \quad & \frac{1}{2} \|\mathbf{u} - p_t\|^2 \\
-\text{subject to} \quad & d_{\text{stop}}(\mathbf{v}) \le d_{\text{clear}} \\
-& \|\dot{\boldsymbol{\tau}}\| \le \dot{\boldsymbol{\tau}}_{\text{max}}, \quad I_{\text{winding}} \le I_{\text{thermal}}
-\end{aligned}$$
-
-where $\mathcal{U}_{\text{safe}}$ represents the certified admissible control set enforcing stopping distance envelopes, joint limits, torque rate limits, and thermal current clamps.
-
-The execution engine enforces three non-negotiable systems guarantees:
 1. **Minimal Intervention Principle:** As long as candidate proposals satisfy physical safety constraints, the filter outputs $\mathbf{u}_t^* = p_t$ without modification, preserving the learned policy's nominal performance.
 2. **Deterministic Projection:** If a proposed action would drive the physical state toward joint limits, collisions, or thermal saturation boundaries, the safety filter minimally projects the command onto the boundary of the safe set.
 3. **Hardware Watchdog Interlocks and Zero-Heap Execution:** To guarantee sub-millisecond execution deadlines without timing jitter, the execution runtime operates with strictly **zero dynamic heap allocation** (`malloc` and `free` are forbidden after boot; all data structures reside in static SRAM). Independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$) monitor communication health between the host processor and the MCU. If the host freezes or communication drops, the MCU autonomously overrides software, executing an active dynamic deceleration halt before asserting hardware Safe Torque Off (STO).
@@ -348,62 +275,35 @@ Furthermore, computational latency $\tau_{\text{delay}}$ directly injects phase 
 
 $$\Delta \phi = -\omega \cdot \tau_{\text{delay}}$$
 
-systematically eroding phase margin and driving mechanical actuators into violent limit-cycle instability. Electromagnetic motor drives require continuous phase commutation switching at $20\text{ to } 40\text{ kHz}$ to prevent catastrophic back-EMF voltage spikes, and structural transmissions risk tooth shear if subjected to discontinuous acceleration commands. The physical realm demands absolute, sub-millisecond determinism, bounded worst-case tail latencies ($P_{99.9} \le 1.0\text{ ms}$), and immediate reflex protection.
-
-This fundamental collision poses the core dilemma of Physical AI: *The algorithms that reason best require variable, non-deterministic time, but the physical machines they control demand constant, microsecond-deterministic action.*
-
-### The Three Architectural Peace Treaties
+systematically eroding phase margin and driving mechanical actuators into violent limit-cycle instability. Electromagnetic motor drives require continuous phase commutation switching at $20\text{ to } 40\text{ kHz}$ to prevent catastrophic back-EMF voltage spikes, and structural transmissions risk tooth shear if subjected to discontinuous acceleration commands. The physical realm demands absolute, sub-millisecond determinism, bounded worst-case tail latencies ($P_{99.9} \le 1.0\text{ ms}$), and i### The Three Architectural Contracts
 
 Physical AI resolves this structural tension not by forcing large foundation models to execute at microsecond control frequencies—a physical impossibility—nor by constraining embodied agents to primitive, hardcoded state machines. Instead, Physical AI institutes **Three Formal Architectural Contracts** that decouple cognitive reasoning from real-time physical control across heterogeneous silicon:
 
 #### Contract 1: The Proposal–Permission Privilege Boundary
 
-The first architectural contract establishes a strict spatial and operational privilege boundary between stochastic intelligence and physical power electronics. High-capacity foundation models, multimodal vision transformers, and trajectory diffusion networks executing on application processors (such as Linux MPUs and edge NPUs) occupy the **Untrusted Advisory Proposal** privilege tier. Because deep neural networks are prone to distributional hallucination, out-of-distribution drift, and operating system scheduling jitter, they are strictly prohibited from possessing direct memory-mapped write access to actuator registers, motor inverter pulse-width modulation (PWM) timers, or gate-driver enable pins.
+Stochastic foundation models, multimodal vision transformers, and trajectory diffusion networks executing on application processors (such as Linux MPUs and edge NPUs) occupy the **Untrusted Advisory Proposal** privilege tier. Because deep neural networks are prone to distributional hallucination, out-of-distribution drift, and operating system scheduling jitter, they are strictly prohibited from possessing direct memory-mapped write access to actuator registers, motor inverter pulse-width modulation (PWM) timers, or gate-driver enable pins.
 
-The physical machine is governed exclusively by a dedicated, bare-metal or hard Real-Time Operating System (RTOS) microcontroller unit (MCU) executing at $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$). This microcontroller acts as the **Sole Hardware Permission Gatekeeper**. On every millisecond control tick, the MCU consumes candidate action proposals $p_t$ emitted by the upstream proposal engine and evaluates them against hard physical invariants using an embedded, zero-heap Control Barrier Function Quadratic Program (CBF-QP):
+The physical machine is governed exclusively by a dedicated bare-metal microcontroller unit (MCU) executing at $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$). On every millisecond control tick, the MCU consumes candidate action proposals $p_t$ emitted by the upstream proposal engine and evaluates them against hard physical invariants using an embedded, zero-heap safety filter:
 
-$$\begin{aligned}
-\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \quad & \frac{1}{2} \|\mathbf{u} - p_t\|^2 \\
-\text{subject to} \quad & L_f h(\mathbf{x}) + L_g h(\mathbf{x}) \mathbf{u} + \alpha(h(\mathbf{x})) \ge 0 \\
-& \|\dot{\boldsymbol{\tau}}\| \le \dot{\boldsymbol{\tau}}_{\text{max}}, \quad \|\mathbf{v}\| \le \mathbf{v}_{\text{max}}
-\end{aligned}$$
+$$\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \|\mathbf{u} - p_t\|^2 \quad \text{subject to } d_{\text{stop}}(\mathbf{v}) \le d_{\text{clearance}}$$
 
-Under nominal conditions where the candidate action proposal resides safely within the admissible forward invariant set $\mathcal{C}$ ($h(\mathbf{x}) \ge 0$), the quadratic program outputs the proposal unmodified ($\mathbf{u}_t^* = p_t$), preserving the learned policy's full expressive performance. If the proposal threatens joint mechanical limits, exceeding permissible torque rates, or entering a collision boundary, the QP minimally projects the command onto the safe boundary $\partial\mathcal{C}$. If the upstream processor stalls entirely, the MCU autonomously overrides the proposal channel, executing a deterministic dynamic stopping profile. Stochastic AI proposes; deterministic physics permits.
+Under nominal conditions where the candidate action proposal resides safely within the admissible safe set, the filter outputs the proposal unmodified ($\mathbf{u}_t^* = p_t$). If the proposal threatens joint mechanical limits or obstacle boundaries, the filter minimally projects the command onto the safe boundary or initiates controlled dynamic braking. Stochastic AI proposes; deterministic physics permits.
 
 #### Contract 2: Action Chunking Delay Amortization
 
-The second architectural contract resolves the temporal latency mismatch between neural inference and physical motion execution. If an embodied agent operated on a single-step control contract—requesting a single action $\mathbf{a}_t$ from a neural network on every control tick—the entire physical machine would stall whenever neural inference encountered an operating system cache miss, a memory bus contention spike, or a multi-step diffusion denoising delay.
+Rather than predicting single-step actions that stall whenever neural inference encounters an operating system cache miss, a memory bus contention spike, or a diffusion denoising delay, the planning tier decodes rolling **Action Chunks** ($\mathbf{A}_{t:t+H}$).
 
-Physical AI eliminates this fragility through **Action Chunking Delay Amortization**. Rather than predicting a single step action, the intermediate trajectory planning tier (System 1.5) decodes an entire rolling trajectory horizon $\mathbf{A}_{t:t+H}$ spanning $H$ discrete future waypoints:
-
-$$\mathbf{A}_{t:t+H} = \begin{bmatrix} \mathbf{a}_t \\ \mathbf{a}_{t+1} \\ \vdots \\ \mathbf{a}_{t+H-1} \end{bmatrix} \in \mathbb{R}^{H \times D_a}$$
-
-where each waypoint $\mathbf{a}_{t+k} = [\mathbf{q}_{\text{ref}}, \dot{\mathbf{q}}_{\text{ref}}, \boldsymbol{\tau}_{\text{ff}}]^T$ specifies reference joint positions, velocities, and feedforward torques.
-
-Action chunking amortizes the neural forward-pass execution latency $T_{\text{infer}}$ across the continuous physical execution duration $T_{\text{exec}} = H \cdot \Delta t_{\text{step}}$. For example, a diffusion policy requiring $T_{\text{infer}} = 35\text{ ms}$ of tensor computation to denoise a trajectory generates an action chunk of $H = 32$ steps at $\Delta t_{\text{step}} = 20\text{ ms}$ ($50\text{ Hz}$), yielding $T_{\text{exec}} = 640\text{ ms}$ of continuous physical trajectory. 
-
-While the real-time microcontroller consumes and interpolates waypoints from the active chunk buffer in static SRAM, the neural accelerator computes the subsequent overlapping trajectory chunk in the background. To eliminate mechanical shock, waypoints are interpolated using quintic polynomial splines:
-
-$$\mathbf{q}(t) = \mathbf{a}_0 + \mathbf{a}_1 t + \mathbf{a}_2 t^2 + \mathbf{a}_3 t^3 + \mathbf{a}_4 t^4 + \mathbf{a}_5 t^5$$
-
-guaranteeing continuous position, velocity, and acceleration ($\mathcal{C}^2$ continuity) and strictly bounding kinematic jerk ($\dddot{\mathbf{q}}(t) \le \mathbf{J}_{\text{max}}$). Successive overlapping chunks are blended via receding-horizon temporal ensembling, ensuring uninterrupted, butter-smooth physical actuation across continuous time.
+A diffusion policy requiring $35\text{ ms}$ of tensor compute generates an action chunk of $H = 32$ steps at $50\text{ Hz}$, yielding $640\text{ ms}$ of continuous physical trajectory. While the real-time microcontroller consumes and interpolates waypoints from the active chunk buffer in static SRAM using $\mathcal{C}^2$-continuous quintic splines, the neural accelerator computes the subsequent overlapping chunk in the background. Receding-horizon temporal ensembling blends overlapping chunks, delivering smooth physical actuation across continuous time.
 
 #### Contract 3: Expiring Intent Leases and Hardware Watchdog Interlocks
 
-The third architectural contract provides absolute failure containment against software freezes, operating system panics, and communication blackouts. In a distributed multi-rate system, the real-time controller must never assume that an upstream deliberative model will remain responsive.
+System 2 foundation models communicate strictly through time-bounded **Expiring Intent Leases** ($\mathcal{L}_{\text{intent}}$):
 
-System 2 semantic deliberation communicates with downstream controllers strictly through time-bounded **Expiring Intent Leases** ($\mathcal{L}_{\text{intent}}$):
-
-$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}} \in SE(3), \; \mathcal{B}_{\text{safe}} \subset \mathbb{R}^3, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}}, \; \tau_{\text{heartbeat}} \right\rangle$$
-
-The intent lease establishes an unyielding bounding envelope across three dimensions:
-1. **Spatial Authority:** $\mathbf{T}_{\text{target}} \in SE(3)$ and convex corridor $\mathcal{B}_{\text{safe}} \subset \mathbb{R}^3$ bound where the agent is authorized to move.
-2. **Kinematic Authority:** $\|\mathbf{v}\|_{\text{max}}$ caps the permissible kinetic energy of the motion.
-3. **Temporal Authority:** $t_{\text{issue}}$ and $\Delta t_{\text{TTL}}$ establish a strict, hardware-enforced expiration deadline (typically $500\text{ to } 1500\text{ ms}$).
+$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}}, \; \mathcal{B}_{\text{safe}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}}, \; \tau_{\text{heartbeat}} \right\rangle$$
 
 Downstream controllers are authorized to execute motion planning exclusively within the active spatial corridor $\mathcal{B}_{\text{safe}}$ and only while current hardware time satisfies $t \le t_{\text{issue}} + \Delta t_{\text{TTL}}$. If the host application processor stalls due to garbage collection, thermal throttling, or an infinite loop, the intent lease expires passively in memory.
 
-Concurrently, independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$) running on dedicated silicon timers monitor periodic heartbeat pulses ($\tau_{\text{heartbeat}}$) asserted by the host processor. If the host fails to refresh the watchdog register before timer underflow, or if an active intent lease expires without renewal, the microcontroller initiates an immediate, autonomous Category 1 dynamic deceleration halt before asserting hardware Safe Torque Off (STO). Software failures on the application processor are thereby cleanly contained within milliseconds, eliminating the possibility of physical runaway.
+Concurrently, independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$) monitor periodic heartbeat pulses from the host processor. If the host fails to refresh the watchdog or if an active intent lease expires, the microcontroller initiates an immediate, autonomous dynamic deceleration halt before asserting hardware Safe Torque Off (STO). Software failures on the application processor are cleanly contained within milliseconds, eliminating the possibility of physical runaway.
 
 ---
 

@@ -102,26 +102,22 @@ The cumulative summation of these seven stages forms the total sense-to-actuatio
 
 $$t_{\text{total}} = t_{\text{transduce}} + t_{\text{dma}} + t_{\text{perceive}} + t_{\text{inference}} + t_{\text{ipc}} + t_{\text{enforce}} + t_{\text{actuator}}$$
 
-Under nominal operating conditions ($P_{50}$), the complete sense-to-actuation pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline ceiling of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus saturation, operating system scheduling jitter, and neural decoding tails inflate the total delay to $126.0\text{ ms}$. This tail expansion represents a catastrophic violation of the physical timing boundary.
+Under nominal operating conditions ($P_{50}$), the complete pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline ceiling of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus saturation, operating system scheduling jitter, and neural decoding tails inflate the total delay to $126.0\text{ ms}$—a catastrophic breach of the physical timing budget.
 
-In classical feedback control theory, computational latency acts as a pure transport delay ($e^{-s t_{\text{total}}}$) inserted directly into the feedback path. Evaluating this delay operator in the frequency domain ($s = j\omega$) reveals that while transport delay exhibits a constant unity gain magnitude ($|e^{-j\omega t_{\text{total}}}| = 1$), it introduces a phase lag that grows linearly with frequency:
+In classical feedback control, computational latency acts as a pure transport delay that injects phase lag proportional to frequency:
 
-$$\Delta \phi(\omega) = -\omega \cdot t_{\text{total}} \quad \text{[radians]} = -\omega \cdot t_{\text{total}} \left(\frac{180^\circ}{\pi}\right) \quad \text{[degrees]}$$
+$$\Delta \phi = -\omega \cdot t_{\text{total}} \quad \text{[radians]}$$
 
-For a physical plant with open-loop transfer function $L_0(s)$, the system phase margin ($\text{PM}$) at the gain crossover frequency $\omega_c$ (where $|L_0(j\omega_c)| = 1$) is defined as:
-
-$$\text{PM} = 180^\circ + \angle L_0(j\omega_c) - \omega_c \cdot t_{\text{total}} \left(\frac{180^\circ}{\pi}\right)$$
-
-To guarantee asymptotic stability in the presence of unmodeled dynamics, the closed-loop system must maintain a strictly positive phase margin ($\text{PM} > 0^\circ$). This requirement establishes the fundamental Closed-Loop Stability Criterion for Physical AI:
+As compute latency grows, phase lag erodes the system's phase margin. When phase margin drops to zero, negative feedback flips into destructive positive feedback: minor disturbances amplify into violent oscillations and mechanical failure. To guarantee stability, the total worst-case latency must satisfy the **Closed-Loop Stability Criterion**:
 
 $$t_{\text{total}}(P_{99}) + t_{\text{margin}} < \tau_{\text{world}}$$
 
-Designing reliable Physical AI systems therefore requires budgeting and certifying every microsecond of the 7-stage latency waterfall against extreme tail distributions rather than nominal averages.
+Designing reliable Physical AI systems requires budgeting and certifying every microsecond of the 7-stage latency waterfall against extreme tail distributions rather than nominal averages.
 
-The physical world deadline ($\tau_{\text{world}}$) varies substantially across the Three Canonical Archetypes introduced in Chapter 1:
-* **Archetype 1: Mobility (Kinematic & Aerodynamic Systems):** High-speed obstacle avoidance and aerodynamic flight stabilization impose world deadlines between $\tau_{\text{world}} \approx 30\text{ and } 80\text{ ms}$. A drone encountering turbulent wind gusts or an autonomous mobile robot navigating dynamic warehouse corridors must close its sense-to-actuation loop before unguided displacement breaches safety clearance margins.
-* **Archetype 2: Contact Manipulation (Rigid & Compliant Linkages):** Physical contact dynamics, grasping transitions, and tactile slip-prevention reflexes operate on tighter horizons of $\tau_{\text{world}} \approx 5\text{ to } 20\text{ ms}$. When an articulated gripper grasps a delicate or compliant object, delaying motor counter-torque allows micro-slips to escalate into dropped objects or excessive contact forces to fracture parts.
-* **Archetype 3: Cybernetic Energy & Processes (Fluid, Chemical & Grid Flows):** High-voltage power electronics and grid-tied battery inverters demand sub-millisecond phase-lock synchronization ($\tau_{\text{world}} < 1\text{ ms}$) to prevent grid instability, while bulk chemical reactors and fluid thermal loops operate across slower transport horizons ($\tau_{\text{world}} \approx 0.5\text{ to } 5\text{ s}$). Regardless of the specific archetype, the mathematical stability criterion remains invariant: total worst-case latency must never breach $\tau_{\text{world}}$.
+The physical world deadline ($\tau_{\text{world}}$) varies substantially across the Three Canonical Archetypes:
+* **Archetype 1: Mobility (Kinematic & Aerodynamic Systems):** Obstacle avoidance and flight stabilization impose world deadlines between $\tau_{\text{world}} \approx 30\text{ and } 80\text{ ms}$. A drone in turbulent gusts or an autonomous rover in a warehouse must close its loop before unguided momentum breaches safety clearance margins.
+* **Archetype 2: Contact Manipulation (Rigid & Compliant Linkages):** Physical contact dynamics, grasping, and tactile slip-prevention reflexes operate on tighter horizons of $\tau_{\text{world}} \approx 5\text{ to } 20\text{ ms}$. Delaying motor counter-torque allows micro-slips to escalate into dropped objects or excessive contact forces to fracture workpieces.
+* **Archetype 3: Cybernetic Energy & Processes (Fluid, Chemical & Grid Flows):** High-voltage power electronics and grid-tied battery inverters demand sub-millisecond phase-lock synchronization ($\tau_{\text{world}} < 1\text{ ms}$) to prevent feeder instability, while bulk chemical reactors and fluid thermal loops operate across slower transport horizons ($\tau_{\text{world}} \approx 0.5\text{ to } 5\text{ s}$). Regardless of the archetype, the stability criterion remains invariant: total worst-case latency must never breach $\tau_{\text{world}}$.
 
 
 ## Column 1: Time Constants and The Freshness Wall
@@ -155,17 +151,13 @@ Embodied AI architectures resolve the pipelining paradox by combining **low-late
 
 ### Spatial Uncertainty Expansion
 
-Sensory observations begin aging the exact microsecond photons strike the photodiode depletion region or acoustic waves reach a transducer. An image frame does not describe the present state of the physical world; it describes where the physical world was located at the historical instant of exposure $t_{\text{transduce}}$.
+Sensory observations begin aging the exact microsecond photons strike the photodiode depletion region or acoustic waves reach a transducer. An image frame does not describe the present state of the physical world; it describes where the physical world was located at the historical instant of exposure.
 
-We define the **Information Age** ($\Delta t$) at the instant of physical actuation as the total elapsed time between physical transduction and the application of electromagnetic motor torque:
-
-$$\Delta t = t_{\text{actuation}} - t_{\text{transduce}}$$
-
-During this elapsed interval $\Delta t$, any unmodeled or moving entity in the workspace continues along its dynamic trajectory. For a dynamic target or obstacle moving with velocity vector $\mathbf{v}_{\text{target}}$, the spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding the agent's internal belief expands as a function of information age:
+We define the **Information Age** ($\Delta t$) as the total elapsed time between physical sensor exposure and the application of motor torque. During this elapsed interval $\Delta t$, any moving entity in the workspace continues along its trajectory. For an obstacle moving with velocity $\mathbf{v}_{\text{target}}$, the spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding the agent's internal belief expands linearly:
 
 $$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t$$
 
-where $\sigma_0$ represents intrinsic sensor calibration and measurement noise, and $\|\mathbf{v}_{\text{target}}\|$ is the characteristic velocity of dynamic objects in the environment. As computational delays, memory bus transfers, and actuator rise times accumulate, the spatial volume in which the obstacle might reside expands outward from its last observed coordinates, steadily eroding the physical clearance margin available for safe motion.
+where $\sigma_0$ represents intrinsic sensor calibration noise. As computational delays, memory bus transfers, and actuator rise times accumulate, the spatial volume in which the obstacle might reside expands outward from its last observed coordinates, steadily eroding the physical clearance margin available for safe motion.
 
 ### The Freshness Wall
 
@@ -173,7 +165,7 @@ Every physical manipulation or navigation task defines a finite geometric cleara
 
 $$\Delta t_{\text{wall}} = \frac{d_{\text{clearance}} - \sigma_0}{\|\mathbf{v}_{\text{target}}\|}$$
 
-The Freshness Wall is not a soft performance guideline or an optimization heuristic; it is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards rather than safe control actions.
+The Freshness Wall is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards rather than safe control actions.
 
 The physical meaning of the Freshness Wall manifests distinctly across our Three Canonical Archetypes:
 * In **Archetype 1 (Mobility)**, $\Delta t_{\text{wall}}$ is governed by closing velocity with external workspace obstacles ($\|\mathbf{v}_{\text{target}}\|$). For a warehouse AMR traveling at $2.0\text{ m/s}$ with an obstacle clearance of $0.20\text{ m}$ (and sensor noise $\sigma_0 = 0.02\text{ m}$), the Freshness Wall collapses to $\Delta t_{\text{wall}} = (0.20 - 0.02)/2.0 = 90\text{ ms}$. Any sense-to-actuation latency tail exceeding $90\text{ ms}$ guarantees that the robot is making steering decisions based on hallucinated spatial clearance.
@@ -183,293 +175,120 @@ The physical meaning of the Freshness Wall manifests distinctly across our Three
 | Operating Regime | Information Age $\Delta t$ | Physical State and Action Authority |
 | :--- | :--- | :--- |
 | **Fresh Observation** | $\Delta t \ll \Delta t_{\text{wall}}$ | Spatial uncertainty is bounded ($\sigma_{\text{pos}} < d_{\text{clearance}}$); candidate neural proposals are valid and permitted. |
-| **Degraded Freshness** | $\Delta t \to \Delta t_{\text{wall}}$ | Uncertainty approaches obstacle boundary; safety enforcer derates commanded velocity to compress stopping distance. |
-| **Beyond Freshness Wall** | $\Delta t \ge \Delta t_{\text{wall}}$ | Sensory evidence is stale ($\sigma_{\text{pos}} \ge d_{\text{clearance}}$); neural proposals are vetoed and deterministic controlled dynamic braking is engaged. |
+| **Degraded Freshness** | $\Delta t \to \Delta t_{\text{wall}}$ | Clearance margins erode; microcontroller enforces velocity derating. |
+| **Beyond Freshness Wall** | $\Delta t \ge \Delta t_{\text{wall}}$ | Belief diverges from reality; proposals vetoed; immediate controlled braking engaged. |
 
-: Information freshness regimes and physical action authority. How sensory staleness $\Delta t$ relative to the Freshness Wall $\Delta t_{\text{wall}}$ dictates whether candidate neural proposals are executed, derated, or vetoed. {#tbl-freshness-regimes}
+: Operational regimes governed by information freshness relative to the Freshness Wall. {#tbl-freshness-regimes}
 
-To guarantee continuous physical safety, the real-time microcontroller monitors information age against $\Delta t_{\text{wall}}$ and arbitrates action authority across three distinct operating regimes (@tbl-freshness-regimes). In the *Fresh Observation* regime ($\Delta t \ll \Delta t_{\text{wall}}$), spatial uncertainty remains tightly bounded within safe clearance margins, allowing verified neural proposals to pass directly to low-level motor controllers. As sensory delay grows into the *Degraded Freshness* regime ($\Delta t \to \Delta t_{\text{wall}}$), the safety supervisor autonomously derates the robot's operational velocity, compressing reaction distance and preserving stopping headroom. If a tail latency spike pushes the system *Beyond the Freshness Wall* ($\Delta t \ge \Delta t_{\text{wall}}$), all high-level neural trajectory proposals are immediately vetoed, and the deterministic safety supervisor engages controlled dynamic braking to bring the mechanism to an autonomous, safe halt.
-
----
 
 ## Column 2: Inertia, Momentum, and Dynamic Stopping Kinematics
 
-While Column 1 established how computational delay degrades information freshness in the temporal domain, Column 2 translates that temporal delay into the physical spatial domain. In the digital world, stopping a computational process requires only resetting an instruction pointer or clearing an execution queue. In the material world, moving mass carries kinetic momentum that cannot be erased by software assertion. To guarantee physical survival, an embodied system must govern its operational velocity so that its total dynamic stopping distance—combining linear reaction displacement during computational blackouts with quadratic braking kinematics—never exceeds available physical clearance.
+In digital computing, changing a velocity variable or zeroing an actuator setpoint in software memory is an instantaneous, single-cycle operation. In physical mechanics, moving bodies possess physical mass and inertia ($p = mv$, $E_k = \frac{1}{2}mv^2$). Bringing mass to rest requires applying opposing force over time, dissipating kinetic energy as friction and heat. Consequently, physical mass cannot halt instantaneously; deceleration is a continuous physical process that unfolds over both time and space.
 
-### Inertia, Kinetic Energy, and the Physics of Deceleration
-
-In digital computing, changing a velocity state variable or zeroing an actuator setpoint in software memory is an instantaneous, single-cycle operation. In physical mechanics, however, moving bodies possess physical mass and inertia. According to Newtonian mechanics, a body of mass $m$ translating at velocity vector $\mathbf{v}$ carries linear momentum $\mathbf{p}$ and kinetic energy $E_k$:
-
-$$\mathbf{p} = m\mathbf{v}, \qquad E_k = \frac{1}{2} m v_0^2$$
-
-Because momentum is conserved, bringing a moving physical body to rest requires applying an opposing force $\mathbf{F}_{\text{brake}}$ over a finite duration $\Delta t$, governed by the impulse-momentum theorem:
-
-$$\int_0^{\Delta t} \mathbf{F}_{\text{brake}}(t) \, dt = \Delta \mathbf{p} = -m v_0$$
-
-Simultaneously, halting the mass requires completely dissipating its kinetic energy $E_k$. In embodied machines, this kinetic energy must be converted into thermal energy through friction braking or absorbed via electromagnetic counter-torque in the motor drives. The rate at which counter-force can be applied is fundamentally bounded by mechanical constraints: actuator peak torque ratings, drivetrain structural stress limits, and tire or end-effector traction boundaries before slip occurs. Consequently, physical mass cannot halt instantaneously; deceleration is a continuous physical process that unfolds over both time and space.
-
-### Deriving the Two-Phase Stopping Equation
+### The Two-Phase Stopping Equation
 
 ![Dynamic Stopping Distance Physics ($d_{\text{stop}}$). Translating milliseconds of computational delay into physical centimeters of stopping hazard. The total stopping distance is the sum of the linear reaction phase ($v \cdot \Delta t_{\text{delay}}$) and the quadratic braking phase ($\frac{v^2}{2a_{\text{max}}}$). A tail latency spike expands reaction travel, converting a safe stop into a collision.](figures/fig02_stopping_distance.svg){#fig-stopping-distance width=100%}
 
-To quantify the physical hazard introduced by computational latency, we derive the **Dynamic Stopping Distance** ($d_{\text{stop}}$): the total displacement traversed by an embodied agent from the exact microsecond an obstacle enters the sensory field until the mechanism reaches a complete physical halt ($v = 0$).
+As illustrated in @fig-stopping-distance, the total dynamic stopping distance ($d_{\text{stop}}$)—from the instant an obstacle appears until the machine reaches a complete halt—divides into two distinct physical phases:
 
-As illustrated in @fig-stopping-distance, the dynamic stopping envelope divides into two distinct physical regimes: an unguided reaction phase governed by computational latency, and an active braking phase governed by mechanical deceleration limits.
+$$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stopping Distance}} = \underbrace{v_0 \cdot \Delta t_{\text{delay}}}_{\text{Phase 1: Linear Reaction Distance}} \;+\; \underbrace{\frac{v_0^2}{2 a_{\text{max}}}}_{\text{Phase 2: Quadratic Braking Distance}}$$
 
-#### Phase 1: The Linear Reaction Phase ($0 \le t \le \Delta t_{\text{delay}}$)
-
-During the initial interval $0 \le t \le \Delta t_{\text{delay}}$, the agent remains mechanically blind to the newly appeared obstacle. While photons integrate in photodiode charge wells, Direct Memory Access engines transfer raw frame buffers, neural accelerators compute spatial embeddings, and inter-processor mailboxes synchronize across chip boundaries, the low-level motor drives continue executing prior setpoints with zero commanded deceleration ($a(t) = 0$). 
-
-Throughout this computational blackout, the vehicle or manipulator travels forward at its initial velocity $v_0$. Integrating velocity over the duration of the computational delay yields the **Reaction Distance** ($d_{\text{react}}$):
-
-$$d_{\text{react}} = \int_{0}^{\Delta t_{\text{delay}}} v_0 \, dt = v_0 \cdot \Delta t_{\text{delay}}$$
-
-This result exposes the fundamental insight bridging computer systems architecture and physical mechanics: **computational latency $\Delta t_{\text{delay}}$ is not an abstract temporal overhead, but a direct, linear physical displacement through space.** Every millisecond of scheduling delay, memory bus contention, or neural inference tail translates into unguided projectile travel where the machine moves forward with zero obstacle awareness.
-
-#### Phase 2: The Quadratic Braking Phase ($\Delta t_{\text{delay}} < t \le t_{\text{stop}}$)
-
-At timestamp $t = \Delta t_{\text{delay}}$, the real-time controller processes the perception update and commands maximum safe deceleration $a_{\text{max}}$, bounded by motor peak counter-torque and mechanical traction limits. The equation of motion governing the velocity trajectory during this deceleration phase is:
-
-$$\frac{dv(t)}{dt} = -a_{\text{max}} \implies v(t) = v_0 - a_{\text{max}} \left( t - \Delta t_{\text{delay}} \right)$$
-
-The mechanism comes to a complete rest ($v(t_{\text{stop}}) = 0$) at the terminal stopping time $t_{\text{stop}}$:
-
-$$t_{\text{stop}} = \Delta t_{\text{delay}} + \frac{v_0}{a_{\text{max}}}$$
-
-Integrating velocity over the active braking interval from $t = \Delta t_{\text{delay}}$ to $t = t_{\text{stop}}$ yields the **Braking Distance** ($d_{\text{brake}}$):
-
-$$d_{\text{brake}} = \int_{\Delta t_{\text{delay}}}^{t_{\text{stop}}} \left[ v_0 - a_{\text{max}} (t - \Delta t_{\text{delay}}) \right] dt = \frac{v_0^2}{2 a_{\text{max}}}$$
-
-While the reaction distance scales linearly with velocity, the braking distance scales **quadratically with velocity** ($v_0^2$) and inversely with maximum available deceleration ($a_{\text{max}}$).
-
-#### The Unified Two-Phase Stopping Equation
-
-Summing the displacement across both physical phases yields the **Two-Phase Stopping Equation**:
-
-$$d_{\text{stop}}(v_0, \Delta t_{\text{delay}}) = \underbrace{v_0 \cdot \Delta t_{\text{delay}}}_{\text{Phase 1: Linear Reaction Distance}} \;+\; \underbrace{\frac{v_0^2}{2 a_{\text{max}}}}_{\text{Phase 2: Quadratic Braking Distance}}$$
-
-The two terms in this equation represent two fundamentally different physical regimes. Phase 1 is governed by computer systems efficiency, memory hierarchy arbitration, and algorithm execution latency. Phase 2 is governed by classical Newtonian mechanics, electromagnetic torque capacity, and friction limits. The total dynamic stopping distance couples both domains into a single kinematic constraint.
-
-This dynamic stopping formulation applies across the Three Canonical Archetypes with distinct mechanical transformations:
-* In **Archetype 1 (Mobility)**, $d_{\text{stop}}$ directly governs chassis displacement. If an autonomous rover travels at forward velocity $v_0$, every millisecond of sensory latency expands the vehicle's unguided trajectory, risking high-speed vehicle impact with terrain or pedestrians.
-* In **Archetype 2 (Contact Manipulation)**, the stopping formulation translates into joint-space angular displacement $\boldsymbol{\theta}_{\text{stop}}(\dot{\mathbf{q}}_0, \Delta t) = \dot{\mathbf{q}}_0 \cdot \Delta t + \frac{\dot{\mathbf{q}}_0^2}{2\ddot{\mathbf{q}}_{\text{max}}}$, parameterized by the configuration-dependent multi-body inertia tensor $M(\mathbf{q})$. When a 6-DoF arm decelerates toward an assembly fixture, latency tails force the end-effector forward along its Cartesian path, crushing tooling pins before joint counter-torques engage.
-* In **Archetype 3 (Cybernetic Energy & Processes)**, macroscopic kinematic momentum is physically absent (rendering $d_{\text{stop}}$ non-binding), but fluid momentum in pressurized cooling loops exhibits an identical dynamical analog: the Joukowsky water hammer equation ($\Delta P = \rho c \cdot \Delta v$). When a high-pressure pump or fast-acting solenoid valve is abruptly stepped by an AI controller without ramp smoothing, fluid inertia creates severe acoustic shock waves that rupture pipe fittings.
+1. **Phase 1: The Linear Reaction Phase ($v_0 \cdot \Delta t_{\text{delay}}$):** During computational latency $\Delta t_{\text{delay}}$, the robot is mechanically blind to the obstacle. It coasts forward at velocity $v_0$ with zero deceleration. This exposes the core bridge between computer systems and physics: **computational delay is linear unguided travel through space.**
+2. **Phase 2: The Quadratic Braking Phase ($\frac{v_0^2}{2 a_{\text{max}}}$):** Once braking begins, the machine decelerates at maximum available deceleration $a_{\text{max}}$, scaling quadratically with initial velocity.
 
 ### Quantitative Kinematic Case Walkthrough
 
-To observe how computational tail latency directly determines physical survival, consider an autonomous mobile platform operating in an industrial warehouse. The vehicle navigates at an initial velocity $v_0 = 1.0\text{ m/s}$ with a certified maximum braking deceleration of $a_{\text{max}} = 2.0\text{ m/s}^2$. The vehicle approaches a workspace boundary with an initial obstacle clearance distance of $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
-
-Under nominal operating conditions ($P_{50}$), where cache lines remain hot and the memory bus experiences low contention, the end-to-end sense-to-actuation pipeline executes in $\Delta t_{\text{delay}} = 30\text{ ms}$ ($0.030\text{ s}$). Evaluating the two-phase stopping equation yields:
-
-$$d_{\text{react}} = 1.0\text{ m/s} \times 0.030\text{ s} = 0.030\text{ m} \quad (3\text{ cm})$$
-
-$$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \quad (25\text{ cm})$$
-
-$$d_{\text{stop}} = 0.030\text{ m} + 0.250\text{ m} = 0.280\text{ m} \quad (28\text{ cm})$$
-
-Because the total dynamic stopping distance ($28\text{ cm}$) is smaller than the available clearance ($35\text{ cm}$), the mobile platform comes to a controlled halt with a safe residual margin of $7\text{ cm}$ ($0.070\text{ m}$).
-
-Now consider the identical mechanical maneuver when the application processor encounters a tail latency spike ($P_{99}$). Due to memory crossbar saturation and kernel thread preemption, the sense-to-actuation delay inflates to $\Delta t_{\text{delay}} = 230\text{ ms}$ ($0.230\text{ s}$). Evaluating the stopping distance under this tail condition reveals:
-
-$$d_{\text{react}} = 1.0\text{ m/s} \times 0.230\text{ s} = 0.230\text{ m} \quad (23\text{ cm})$$
-
-$$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \quad (25\text{ cm})$$
-
-$$d_{\text{stop}} = 0.230\text{ m} + 0.250\text{ m} = 0.480\text{ m} \quad (48\text{ cm})$$
-
-While the mechanical braking distance remains unchanged at $25\text{ cm}$, the linear reaction distance expands from $3\text{ cm}$ to $23\text{ cm}$. The resulting total stopping distance of $48\text{ cm}$ substantially exceeds the available $35\text{ cm}$ clearance, causing the vehicle to collide with the obstacle at an overrun of $+13\text{ cm}$ ($0.130\text{ m}$). 
+To observe how computational tail latency directly determines physical survival, consider an autonomous mobile platform operating in a warehouse:
+* **Operating parameters:** Velocity $v_0 = 1.0\text{ m/s}$, maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
+* **Nominal $P_{50}$ Execution ($\Delta t = 30\text{ ms}$):** Reaction distance is $1.0 \times 0.030 = 3\text{ cm}$, braking distance is $\frac{1.0^2}{2 \times 2.0} = 25\text{ cm}$, and total stopping distance is $28\text{ cm}$. The robot stops safely with a $7\text{ cm}$ margin.
+* **Tail $P_{99}$ Spike ($\Delta t = 230\text{ ms}$):** Due to memory bus contention and kernel thread preemption, latency spikes to $230\text{ ms}$. Reaction distance expands from $3\text{ cm}$ to $23\text{ cm}$, while braking distance remains $25\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, causing a destructive collision with an overrun of $+13\text{ cm}$.
 
 The systems takeaway is stark: a $200\text{ ms}$ computational scheduling stall adds exactly $20\text{ cm}$ of unguided projectile travel, turning a certified safe maneuver into a destructive physical impact.
 
 ### The Dynamic Safety Clearance Invariant
 
-Because high-level neural policies execute on complex operating systems subject to non-deterministic scheduling tails, physical safety cannot rely on the expectation that neural inference will meet its nominal deadline. Instead, the real-time microcontroller must independently evaluate and enforce safety at hardware speeds.
-
-Operating deterministically within static SRAM at a strict $1\text{ kHz}$ control cadence ($1.0\text{ ms}$ cycle loop), the microcontroller evaluates the **Dynamic Safety Clearance Invariant** on every execution tick:
+To guarantee collision-free operation under worst-case tail latency, the real-time microcontroller continuously evaluates the **Dynamic Safety Clearance Invariant** on every 1 kHz tick in static SRAM:
 
 $$d_{\text{clearance}} \ge d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) + d_{\text{margin}}$$
 
-where $d_{\text{margin}}$ is an empirical safety buffer accounting for sensor measurement noise, ground traction variations, and slope irregularities. Crucially, the invariant evaluates the dynamic stopping distance parameterized not by average latency, but by the empirical worst-case tail latency distribution ($\Delta t(P_{99.9})$). 
+Whenever available obstacle clearance violates this invariant, the microcontroller automatically vetoes high-level neural proposals and commands immediate controlled braking.
 
-If the measured clearance distance to any obstacle violates this inequality, the microcontroller immediately revokes execution authority from the upstream application processor. Bypassing any pending neural trajectory proposals, the microcontroller commands autonomous closed-loop dynamic braking, ensuring that the physical mechanism halts safely before the clearance boundary is breached.
-
----
 
 ## Column 3: Actuation Limits, Inductive Rise Time, and Jerk Continuity
 
-Macroscopic safety models frequently abstract robotic actuators into idealized, instantaneous torque and force sources governed by a constant peak acceleration bound. In physical embodiments, however, mechanical motion is fundamentally constrained by the coupled dynamics of electromagnetic fields and elastic mechanical transmissions. Actuators cannot step torque instantaneously; they must build magnetic flux against the electrical impedance of stator windings, transmit torque through finite-stiffness gear teeth, and continuously respect the structural vibration modes of the physical robot. When deep learning policies generate discrete action waypoints without regard for these continuous physical transduction boundaries, the resulting commanded trajectories demand infinite derivatives of acceleration, risking catastrophic actuator fatigue, sensor corruption, and mechanical failure.
+Actuators are not idealized mathematical torque sources. They must build magnetic flux against stator winding impedance, transmit torque through finite-stiffness gear teeth, and continuously respect mechanical structural limits.
 
 ### Electromagnetic Stator Inductance and Electrical Rise Time
 
-The primary transduction interface of an electromagnetic actuator converts electrical energy from a DC power bus into mechanical rotor torque. A brushless DC (BLDC) or permanent-magnet synchronous motor (PMSM) is characterized by stator windings possessing non-zero electrical resistance and inductance. The dynamic relationship governing phase voltage, phase current, and rotor velocity follows the fundamental differential equation:
+The voltage-current relationship of a motor phase winding follows Faraday's law:
 
 $$V(t) = R \cdot I(t) + L \frac{dI(t)}{dt} + K_e \cdot \omega(t)$$
 
-where $V(t)$ is the applied terminal phase voltage, $R$ represents the phase winding resistance, $L$ is the phase winding inductance, $I(t)$ is the phase current, $K_e$ is the motor back-electromotive force (back-EMF) constant, and $\omega(t)$ is the instantaneous angular velocity of the rotor. 
-
-Because electromagnetic torque is directly proportional to phase current ($\boldsymbol{\tau}_{\text{rotor}}(t) = K_t I(t)$, where $K_t$ is the motor torque constant), torque generation is constrained by the rate at which current can change within the stator coils. The electrical dynamics are characterized by the electrical time constant:
+Because motor torque is proportional to current ($\tau = K_t I$), torque cannot change instantaneously. Stator coil inductance $L$ and resistance $R$ define the **electrical time constant**:
 
 $$\tau_e = \frac{L}{R}$$
 
-When an inverter applies a step change in voltage from the DC bus $V_{\text{bus}}$, the phase current rises not instantaneously, but exponentially according to:
+When applying voltage, phase current rises exponentially: $I(t) = \frac{V_{\text{bus}} - K_e\omega}{R}\left(1 - e^{-t/\tau_e}\right)$. Achieving 95% commanded torque consumes approximately $3\tau_e$ ($6\text{ to } 15\text{ ms}$). Furthermore, as rotor speed $\omega(t)$ increases, back-EMF ($K_e\omega$) opposes bus voltage, reducing torque responsiveness at high speeds.
 
-$$I(t) = \frac{V_{\text{bus}} - K_e\omega(t)}{R}\left(1 - e^{-t/\tau_e}\right)$$
+### Mechanical Transmissions and Jerk Continuity
 
-This exponential rise creates a fundamental physical lag between the command issued by an AI policy and the physical generation of torque. Furthermore, as rotor speed $\omega(t)$ increases, the back-EMF voltage $K_e\omega(t)$ grows linearly in opposition to the bus voltage. This effect drastically narrows the net voltage headroom $(V_{\text{bus}} - K_e\omega(t))$, thereby suppressing the maximum attainable current derivative $dI/dt$ and diminishing dynamic torque responsiveness at high operational velocities.
+Transmissions (harmonic drives, planetary reducers, cycloidal drives) transfer torque through gear teeth subject to shear stress limits ($\sigma_{\text{shear}} \le \sigma_{\text{yield}}$). If a discrete neural policy emits step changes in trajectory waypoints, commanded acceleration jumps discontinuously, implying unbounded mechanical jerk:
 
-### Mechanical Transmission Deflection and Torque Rate Limits
+$$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} \longrightarrow \infty$$
 
-The mechanical torque produced by the rotor must pass through a transmission system—such as a harmonic strain wave drive, planetary gearhead, or cycloidal reducer—to match the low-speed, high-torque demands of robotic joints. Transmissions are not rigid kinematic couplers; they are elastic structures subject to continuous stress, compliance, and material limits. The transmission gear teeth experience concentrated shear stresses at the tooth root during torque transfer, governed by:
+Unbounded jerk triggers three severe failure modes:
+1. **Resonance Excitation:** Injects energy across wide bandwidths, exciting structural vibrations in robotic linkages.
+2. **Gear Tooth Fatigue:** Thin-walled flexsplines and gear teeth suffer cyclical shock loading, causing micro-fractures and tooth shear.
+3. **Sensor Noise Saturation:** High-frequency vibration saturates MEMS IMUs and accelerometers, causing state estimators to diverge.
 
-$$\sigma_{\text{shear}} = \frac{\boldsymbol{\tau}}{W_p} \le \sigma_{\text{yield}}$$
-
-where $\boldsymbol{\tau}$ is the transmitted joint torque, $W_p$ is the polar section modulus of the gear tooth geometry, and $\sigma_{\text{yield}}$ is the material yield strength of the alloy.
-
-If a control policy demands a step change in commanded torque, the theoretical torque derivative approaches infinity:
-
-$$\dot{\boldsymbol{\tau}} = \frac{d\boldsymbol{\tau}}{dt} \longrightarrow \infty$$
-
-In physical hardware, an unbounded torque rate launches high-frequency mechanical stress waves through the gear teeth and flexspline cups. This impulsive loading induces localized surface fatigue, gear tooth micro-pitting, and flexspline shear fracture. In geared mechanisms with non-zero backlash, sudden torque reversals cause the gear teeth to separate across the deadband and collide at high relative velocity, multiplying peak impact stresses and accelerating mechanical degradation. To protect the mechanical transmission and ensure stable closed-loop control, embedded motor drives must enforce an explicit torque rate limit:
-
-$$\|\dot{\boldsymbol{\tau}}(t)\| \le \dot{\tau}_{\text{max}}$$
-
-### The Danger of Discontinuous AI: Mechanical Jerk
-
-A critical architectural tension exists between modern discrete neural network policies and continuous mechanical systems. Deep reinforcement learning, diffusion policies, and spatial action transformers typically operate at discrete control frequencies between $10\text{ Hz}$ and $50\text{ Hz}$, generating waypoint commands every $20\text{ to } 100\text{ ms}$. When a downstream controller directly executes discrete joint setpoints without continuous interpolation, the commanded acceleration jumps discontinuously at each policy inference boundary. The third time derivative of generalized position—mechanical jerk $\mathbf{j}(t)$—diverges to infinity:
-
-$$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} = \frac{d\mathbf{a}}{dt} \longrightarrow \infty$$
-
-Unbounded mechanical jerk triggers three severe physical failure modes in embodied systems. First, high-frequency jerk spikes inject energy across a broad spectral bandwidth, exciting unmodeled structural resonance modes in robotic links and flexible chassis, which induces violent self-sustaining oscillations. Second, in strain-wave harmonic drives, sudden acceleration transients subject the thin-walled elastic flexspline to cyclical torsional shock loads, accelerating micro-crack propagation and leading to catastrophic tooth shear. Third, the resulting high-frequency vibrations saturate the dynamic range of onboard MEMS accelerometers and gyroscopes, introducing high-amplitude sensor noise that corrupts state estimation filters and causes state estimators, such as Extended Kalman Filters, to diverge.
-
-### Enforcing $\mathcal{C}^2$ Differential Continuity and Temporal Blending
-
-To maintain mechanical integrity, trajectory commands dispatched to low-level motor controllers must exhibit $\mathcal{C}^2$ differential continuity. This requires continuous position $\mathbf{q}(t)$, continuous velocity $\dot{\mathbf{q}}(t)$, and continuous acceleration $\ddot{\mathbf{q}}(t)$, ensuring that mechanical jerk remains strictly bounded within physical limits:
-
-$$\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$$
-
-Modern physical AI architectures bridge the gap between discrete policy predictions and continuous control via action chunking and spline synthesis. Rather than emitting isolated waypoints, policies predict an entire chunk of future waypoints spanning a temporal horizon $H$. An onboard real-time trajectory generator fits piecewise quintic Hermite polynomial splines across the discrete waypoint sequence:
-
-$$\mathbf{q}(t) = \sum_{k=0}^{5} \mathbf{c}_k t^k$$
-
-Because a quintic polynomial possesses six boundary coefficients per interval, it uniquely satisfies continuous position, velocity, and acceleration constraints at both the start and end of every trajectory segment, guaranteeing $\mathcal{C}^2$ continuity across the entire chunk. Furthermore, running action chunking in a receding horizon with temporal ensembling blends overlapping predictions from successive inference cycles using exponentially decaying weights. This continuous blending filters high-frequency policy noise and eliminates step-to-step jerk discontinuities, delivering smooth, dynamically feasible control trajectories to the underlying actuator hardware.
-
-The severity and physical domain of actuation limits vary across our Three Canonical Archetypes:
-* In **Archetype 2 (Contact Manipulation)**, mechanical transmissions represent the most vulnerable bottleneck. High-ratio strain-wave gears and planetary reducers experience intense tooth root shear stress ($\sigma_{\text{shear}}$). Without strict torque rate limiting ($\dot{\boldsymbol{\tau}}_{\text{max}}$) and $\mathcal{C}^2$ jerk continuity ($\dddot{\mathbf{q}}_{\text{max}}$), discontinuous policy commands induce micro-fractures in steel flexsplines and destroy expensive robotic gearboxes.
-* In **Archetype 1 (Mobility)**, actuation limits protect contact traction and chassis stability. Discontinuous acceleration commands break tire friction boundaries, inducing uncontrolled vehicle skids or wheel slip that corrupts wheel odometry, while in aerial drones, sudden rotor thrust steps trigger aerodynamic vortex ring states and structural frame resonance.
-* In **Archetype 3 (Cybernetic Energy & Processes)**, actuation boundaries shift from mechanical linkages to high-voltage power semiconductors. In megawatt grid inverters, the analog of jerk is the electrical current slew rate ($di/dt$) and voltage rate-of-rise ($dv/dt$). Switching multi-kiloampere circuits too rapidly generates extreme inductive voltage spikes ($V = L \cdot di/dt$) that punch through gate oxide layers and destroy solid-state power switches.
+To protect mechanical hardware, trajectory commands must maintain $\mathcal{C}^2$ differential continuity with bounded jerk ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$). Modern systems enforce this by fitting quintic splines across predicted action chunks and applying temporal ensembling to blend overlapping trajectory chunks smoothly across time.
 
 
 ## Column 4: Energy, Thermal Accumulation, and Derating
 
-Every actuation command dispatched across the causal boundary requests a physical transfer of energy. In accordance with the first and second laws of thermodynamics, no physical energy conversion is perfectly conservative. Whether an embodied system drives an electromagnetic motor, switches a high-voltage power inverter, or pumps fluid through a chemical reactor, a substantial fraction of the applied electrical and mechanical energy degrades irreversibly into thermal energy. While the electromagnetic dynamics analyzed in Column 3 evolve across millisecond electrical time constants ($\tau_e = L/R \approx 5\text{ to } 15\text{ ms}$), thermal energy operates in a fundamentally slower dynamical regime governed by thermal time constants on the order of tens to hundreds of seconds ($\tau_{\text{th}} = R_{\text{th}}C_{\text{th}} \approx 10\text{ to } 300\text{ s}$).
+Every actuation command requests physical work, and no energy conversion is perfectly conservative. Resistive losses in motor coils and power converters generate irreversible Joule heat ($P_{\text{loss}} = I^2 R$).
 
-Thermal accumulation establishes a non-negotiable physical constraint across both ends of an embodied architecture. In the physical plant, sustained Joule heating degrades conductor insulation, demagnetizes permanent magnets, and threatens power semiconductor junctions. In the computing substrate, prolonged high-throughput neural inference elevates silicon die temperatures, triggering hardware thermal throttling that dynamically degrades clock frequencies and inflates inference latency. An autonomous machine cannot maintain long-term physical stability without quantitatively modeling and actively managing this thermal balance across both actuators and compute silicon.
+### Thermal Time Constants and Continuous Ratings
 
-### Thermal Time Constants and First-Order Dissipation Dynamics
-
-To formalize thermal accumulation, consider an arbitrary physical component subject to electrical current, such as an electric motor stator coil, a power semiconductor switch, or a grid battery bus bar. The instantaneous rate of thermal energy storage within the component is governed by the conservation of energy: the rate of heat generation minus the rate of heat dissipation to the surrounding environment equals the rate of internal energy change.
-
-Internal heat generation is dominated by resistive Joule dissipation, where electrical power loss scales quadratically with current:
-
-$$P_{\text{loss}}(t) = I^2(t) R$$
-
-where $I(t)$ is the instantaneous root-mean-square (RMS) phase current and $R$ is the electrical resistance of the conductive path. Heat dissipation to the ambient thermal reservoir at temperature $T_{\text{ambient}}$ occurs via conduction, convection, and radiation. Under linear thermal modeling assumptions, this cooling flux is governed by Newton's law of cooling and Fourier's law of heat conduction, parameterized by the lumped thermal resistance $R_{\text{th}}$ (in $^\circ\text{C}/\text{W}$):
-
-$$P_{\text{diss}}(t) = \frac{T(t) - T_{\text{ambient}}}{R_{\text{th}}} = \frac{\Delta T(t)}{R_{\text{th}}}$$
-
-where $\Delta T(t) = T(t) - T_{\text{ambient}}$ represents the temperature rise above ambient. The component's capacity to store thermal energy without an instantaneous jump in temperature is defined by its lumped thermal capacitance $C_{\text{th}}$ (in $\text{J}/^\circ\text{C}$), which is the product of its physical mass $m$ and specific heat capacity $c_p$ ($C_{\text{th}} = m \cdot c_p$). Combining heat generation, dissipation, and thermal storage yields the **first-order thermal differential equation**:
-
-$$C_{\text{th}} \frac{d\Delta T(t)}{dt} = I^2(t) R - \frac{\Delta T(t)}{R_{\text{th}}}$$
-
-Multiplying through by the thermal resistance $R_{\text{th}}$ isolates the characteristic **thermal time constant** ($\tau_{\text{th}}$):
+An electric motor has thermal capacitance $C_{\text{th}}$ (heat storage in copper and iron) and thermal resistance $R_{\text{th}}$ (dissipation to ambient). These parameters define the **thermal time constant**:
 
 $$\tau_{\text{th}} = R_{\text{th}} C_{\text{th}}$$
 
-$$\tau_{\text{th}} \frac{d\Delta T(t)}{dt} + \Delta T(t) = I^2(t) R R_{\text{th}}$$
+While electrical currents settle in milliseconds ($\tau_e \approx 10\text{ ms}$), thermal energy accumulates over tens or hundreds of seconds ($\tau_{\text{th}} \approx 10\text{ to } 300\text{ s}$). 
 
-For a constant current magnitude $I$ applied over time to a system starting from an initial temperature offset $\Delta T(0)$, solving this ordinary differential equation yields the continuous temperature trajectory:
-
-$$\Delta T(t) = I^2 R R_{\text{th}} \left( 1 - e^{-t / \tau_{\text{th}}} \right) + \Delta T(0) e^{-t / \tau_{\text{th}}}$$
-
-This formulation reveals the profound time-scale hierarchy separating electrical and thermal dynamics in physical systems. While the electrical current establishes its steady-state trajectory within milliseconds ($\tau_e \approx 5\text{ to } 15\text{ ms}$), the resulting temperature rise accumulates gradually over tens or hundreds of seconds ($\tau_{\text{th}} \approx 10\text{ to } 300\text{ s}$). Because thermal mass $C_{\text{th}}$ absorbs energy over time, physical actuators and power stages can safely support high current bursts far above their continuous ratings for brief intervals. However, if an artificial intelligence policy commands elevated current for a duration comparable to $\tau_{\text{th}}$, temperatures climb inexorably toward destructive steady-state ceilings.
-
-### Continuous Current Ratings and Peak Burst Envelopes
-
-The steady-state thermal behavior of an actuator defines its fundamental operational boundaries. When a constant current $I$ is applied indefinitely, the system eventually reaches thermal equilibrium ($\frac{d\Delta T}{dt} = 0$), where the rate of Joule heat generation exactly balances ambient heat dissipation:
-
-$$I^2 R = \frac{\Delta T_{\text{ss}}}{R_{\text{th}}} \implies \Delta T_{\text{ss}} = I^2 R R_{\text{th}}$$
-
-Every physical mechanism is constrained by a maximum safe operating temperature rise $\Delta T_{\text{max}} = T_{\text{critical}} - T_{\text{ambient, max}}$, beyond which irreversible material degradation occurs. Setting the steady-state temperature rise equal to this maximum allowable threshold ($\Delta T_{\text{ss}} = \Delta T_{\text{max}}$) and solving for current establishes the **continuous current rating** ($I_{\text{cont}}$):
+In steady state, heat generation must balance ambient dissipation, establishing the **continuous current rating** ($I_{\text{cont}}$):
 
 $$I_{\text{cont}} = \sqrt{\frac{\Delta T_{\text{max}}}{R \cdot R_{\text{th}}}}$$
 
-The continuous current rating $I_{\text{cont}}$ is fundamentally a thermal limit rather than an electrical or magnetic barrier. It represents the maximum current that the system can sustain in steady state under worst-case ambient conditions without exceeding material thermal tolerances.
+For short acceleration bursts ($\Delta t_{\text{burst}} \ll \tau_{\text{th}}$), actuators can safely draw peak currents ($I_{\text{peak}} \approx 2\text{--}5 \times I_{\text{cont}}$) because thermal mass buffers the temperature rise. However, the maximum permissible burst duration shrinks quadratically with peak current:
 
-Embodied tasks frequently demand brief bursts of high force or torque—such as a legged robot jumping over an obstacle, a robotic manipulator rapidly accelerating a heavy payload, or a power inverter injecting reactive current during a transient grid disturbance. During these short intervals ($\Delta t_{\text{burst}} \ll \tau_{\text{th}}$), the component can draw a peak current ($I_{\text{peak}} \approx 2\text{ to } 5 \times I_{\text{cont}}$). Because the burst duration is much shorter than the thermal time constant, heat dissipation to the environment during the pulse is negligible ($\int P_{\text{diss}} dt \approx 0$). The lumped thermal capacitance absorbs virtually all dissipated Joule energy, producing an adiabatic temperature rise:
+$$\Delta t_{\text{burst, max}} \le \tau_{\text{th}} \left( \frac{I_{\text{cont}}}{I_{\text{peak}}} \right)^2$$
 
-$$\Delta T_{\text{pulse}} \approx \frac{I_{\text{peak}}^2 R \cdot \Delta t_{\text{burst}}}{C_{\text{th}}}$$
-
-To prevent the component from exceeding its maximum allowable temperature rise $\Delta T_{\text{max}}$, the maximum permissible duration for a peak current burst is bounded by:
-
-$$\Delta t_{\text{burst, max}} \le \frac{C_{\text{th}} \Delta T_{\text{max}}}{I_{\text{peak}}^2 R} = \tau_{\text{th}} \left( \frac{I_{\text{cont}}}{I_{\text{peak}}} \right)^2$$
-
-Because the allowable burst duration shrinks quadratically with the current ratio ($I_{\text{cont}} / I_{\text{peak}})^2$, commanding double the continuous current reduces the safe execution window to one-quarter of the thermal time constant, while commanding four times the continuous current reduces the window to one-sixteenth. When a neural policy commands peak current beyond this strict temporal limit, the physical plant rapidly crosses into irreversible breakdown regimes.
-
-### Physical Breakdown Modes across Energy and Actuation Subsystems
-
-Exceeding thermal limits does not merely degrade performance; it induces permanent, catastrophic physical destruction across three primary hardware domains.
-
-In electromagnetic actuators, the primary failure mode is stator winding insulation breakdown. Motor stator coils are wound from copper magnet wire coated with a microscopic dielectric polymer enamel, typically rated according to standard insulation classes such as Class F ($155^\circ\text{C}$) or Class H ($180^\circ\text{C}$). When high phase currents drive stator temperatures beyond these thermal thresholds, the polymer enamel undergoes accelerated pyrolytic degradation and embrittlement. In accordance with the Arrhenius reaction rate equation, every $10^\circ\text{C}$ increase in operating temperature above the rated class halves the insulation lifespan. Eventually, mechanical vibrations cause the brittle enamel to flake, creating direct turn-to-turn or phase-to-phase electrical short circuits that instantly destroy the motor.
-
-Simultaneously, elevated temperatures threaten permanent magnet demagnetization. High-performance brushless servomotors rely on rare-earth neodymium-iron-boron ($\text{NdFeB}$) permanent magnets mounted on the rotor. The intrinsic magnetic coercivity of $\text{NdFeB}$ decreases sharply with increasing temperature, exhibiting a negative temperature coefficient between $-0.5\%$ and $-0.6\%$ per degree Celsius. When rotor temperatures rise into the range of $80^\circ\text{C}\text{ to } 120^\circ\text{C}$, the material operating point drops below the knee of the magnetic demagnetization curve. Under the opposing magnetic fields generated by high stator currents, the rotor magnets suffer irreversible thermal demagnetization. This loss of magnetic remanence permanently lowers the motor torque constant ($K_t$), permanently reducing the actuator's torque output per ampere and rendering all downstream control calibrations invalid.
-
-In power electronics and conversion stages, insulated-gate bipolar transistors (IGBTs) and silicon MOSFETs are bounded by maximum semiconductor junction temperatures ($T_{j,\text{max}} \approx 150^\circ\text{C}\text{ to } 175^\circ\text{C}$). Operating power switches near or above this junction limit triggers massive increases in thermally generated intrinsic carrier concentrations, leading to loss of gate voltage control and localized current crowding. Furthermore, severe thermal cycling induces differential thermal expansion between the silicon die, copper baseplate, and direct bonded copper (DBC) ceramic substrate. This cyclic thermo-mechanical shear stress precipitates wire bond lift-off, solder fatigue, and catastrophic transistor thermal runaway.
+Commanding double the continuous current reduces the safe burst window to one-quarter of $\tau_{\text{th}}$; commanding four times the continuous current reduces it to one-sixteenth. Exceeding this limit causes stator insulation breakdown ($>180^\circ\text{C}$) or irreversible rotor magnet demagnetization ($>100^\circ\text{C}$).
 
 ### The Firmware $I^2t$ Thermal Energy Accumulator
 
-Physical temperature sensors, such as negative temperature coefficient (NTC) thermistors or platinum resistance thermometers (PT100), are standard components in industrial hardware. However, relying solely on physical thermistors for real-time thermal protection is fundamentally unsafe. Because thermistors must be electrically isolated from high-voltage coils and are physically mounted on the exterior stator teeth, motor casing, or heat sink baseplates, they are separated from the internal copper conductors and silicon junctions by substantial thermal resistance and thermal capacitance. This physical separation introduces a spatial thermal conduction lag between $5\text{ and } 30\text{ seconds}$. During an intense stall current event, the internal winding insulation can vaporize or a semiconductor junction can melt long before the external thermistor registers a dangerous temperature rise.
-
-To ensure deterministic, instantaneous protection, the real-time permission supervisor implements a mathematical **$I^2 t$ thermal energy accumulator** directly in firmware. Executing at a strict $1000\text{ Hz}$ control cadence ($1.0\text{ ms}$ loop tick) in static, zero-allocation SRAM, the supervisor continuously integrates excess Joule dissipation:
+Because physical thermistors mounted on motor casings exhibit a $5\text{--}30\text{ s}$ spatial conduction lag, the real-time microcontroller cannot wait for thermistor readings during stall events. Instead, the firmware maintains an **$I^2 t$ thermal energy accumulator** in static SRAM on every 1 kHz tick:
 
 $$E_{\text{thermal}}[k] = \max\left( 0, \; E_{\text{thermal}}[k-1] + \left( I^2[k] - I_{\text{cont}}^2 \right) \Delta t \right)$$
 
-where $I[k]$ is the measured root-mean-square phase current at discrete tick $k$, $I_{\text{cont}}$ is the certified continuous current rating, and $\Delta t = 0.001\text{ s}$ is the control period. When current remains below $I_{\text{cont}}$, the accumulator decays monotonically toward zero. When current exceeds $I_{\text{cont}}$, the accumulator increases in exact proportion to the un-dissipated thermal energy injected into the system.
-
-Alternatively, for systems where ambient temperature variations and continuous cooling dynamics must be tracked across wide operating ranges, the supervisor evaluates a discrete first-order thermal state observer:
-
-$$\Delta \hat{T}[k] = \Delta \hat{T}[k-1] \cdot e^{-\Delta t / \tau_{\text{th}}} + I^2[k] R R_{\text{th}} \left( 1 - e^{-\Delta t / \tau_{\text{th}}} \right)$$
-
-The real-time supervisor compares the modeled thermal energy against an allowable thermal energy ceiling $E_{\text{thermal, max}} = C_{\text{th}} \Delta T_{\text{max}}$. When $E_{\text{thermal}}[k]$ reaches a predefined derating threshold (typically $80\%$ of $E_{\text{thermal, max}}$), the permission supervisor autonomously intervenes. Bypassing any aggressive torque or power dispatch vectors requested by upstream neural policies, the supervisor smoothly scales down the allowable current limit:
-
-$$I_{\text{clamp}}[k] = I_{\text{cont}} + (I_{\text{peak}} - I_{\text{cont}}) \cdot \max\left( 0, \; \frac{E_{\text{thermal, max}} - E_{\text{thermal}}[k]}{E_{\text{thermal, max}} - E_{\text{derate}}} \right)$$
-
-If the thermal accumulator reaches $E_{\text{thermal, max}}$, the supervisor clamps commanded current strictly to $I_{\text{cont}}$, or forces a controlled shutdown if ambient conditions prevent stabilization. This deterministic firmware clamp guarantees that unverified neural proposals running on the application processor cannot push physical actuators or power converters beyond their certified thermal capacity.
+When $E_{\text{thermal}}$ crosses safety thresholds, the microcontroller autonomously scales down allowed current, clamping motor drive to $I_{\text{cont}}$ before wire insulation melts.
 
 ::: {.callout-archetype title="Archetype Focus: Cybernetic Energy and Process Systems — Megawatt Grid Storage Inverter"}
 * **Physical System:** 500 kW grid-tied battery energy storage inverter with liquid cooling loop.
 * **Archetype Domain:** Archetype 3 (Cybernetic Energy and Process Systems).
 * **Governing Physical Column:** Column 4 (Energy, Thermal Accumulation, and Derating).
-* **Physical State Dynamics ($W_t \to W_{t+1}$):** Thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics ($C_{\text{th}}\frac{d\Delta T}{dt} = I^2 R - \frac{\Delta T}{R_{\text{th}}}$).
+* **Physical State Dynamics ($W_t \to W_{t+1}$):** Thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics.
 * **The Systems Tension:** A high-level neural policy running on an edge server optimizes wholesale grid price arbitrage and battery state-of-charge ($1\text{ Hz}$ dispatch). If a sudden grid voltage sag occurs, the model commands maximum reactive current, but thermal accumulation ($\tau_{\text{th}} = 45\text{ s}$) threatens to destroy power semiconductor junctions ($T_j \ge 150^\circ\text{C}$).
 * **The Proposal–Permission Contract:** The untrusted MPU proposes active/reactive power dispatch vectors ($P_t, Q_t$). The trusted DSP/microcontroller permission supervisor executes at $1000\text{ Hz}$ in zero-allocation static SRAM, continuously integrating the $I^2t$ thermal accumulator and autonomously clamping current to $I_{\text{cont}}$ before silicon breakdown occurs.
 * **Cross-Archetype Synthesis:** While Mobility (Archetype 1) is bounded by kinetic stopping distances ($d_{\text{stop}}$) and Contact Manipulation (Archetype 2) is bounded by gearbox tooth shear ($\sigma_{\text{shear}}$), Cybernetic Energy Systems (Archetype 3) are bounded by thermal accumulation ($I^2t$) and fluid transport lags under the exact same proposal-permission architecture.
 :::
 
-### Silicon Thermal Throttling and Latency Inflation in Neural Accelerators
+### Silicon Thermal Throttling: The Cold Bench Fallacy
 
-Thermal accumulation is not confined to the physical plant; it governs the edge silicon executing the neural models themselves. Modern edge System-on-Chips (SoCs), graphics processing units (GPUs), and neural processing units (NPUs) dissipate substantial electrical power when executing deep neural networks. Total silicon power dissipation combines dynamic switching power and static subthreshold leakage power:
+Thermal accumulation also governs the edge silicon executing the neural models ($P_{\text{SoC}} \propto V_{\text{core}}^2 f_{\text{clk}}$). When junction temperatures exceed throttling thresholds ($85\text{--}95^\circ\text{C}$), on-die Dynamic Thermal Management downclocks the neural accelerator to protect the package.
 
-$$P_{\text{SoC}} = \alpha C_{\text{load}} V_{\text{core}}^2 f_{\text{clk}} + I_{\text{leak}}(T_j) V_{\text{core}}$$
-
-where $\alpha$ is the switching activity factor, $C_{\text{load}}$ is total capacitive load, $V_{\text{core}}$ is the core supply voltage, $f_{\text{clk}}$ is the clock frequency, and $I_{\text{leak}}(T_j)$ is temperature-dependent subthreshold leakage current. Because subthreshold leakage current increases nonlinearly with silicon junction temperature ($I_{\text{leak}} \propto T_j^2 e^{-q V_{\text{th}} / k_B T_j}$), high-throughput neural inference workloads generate intense localized thermal flux across dense accelerator dies.
-
-To protect the silicon package from permanent thermal breakdown ($T_j \ge 105^\circ\text{C}$), modern System-on-Chips integrate on-die Dynamic Thermal Management (DTM) controllers. When internal diode temperature sensors detect that junction temperature has crossed a critical thermal threshold (typically between $85^\circ\text{C}\text{ and } 95^\circ\text{C}$), the hardware DTM unit autonomously activates Dynamic Voltage and Frequency Scaling (DVFS). The hardware controller scales down the core operating frequency $f_{\text{clk}}$ and core voltage $V_{\text{core}}$, reducing thermal dissipation at the direct expense of computational throughput.
-
-This hardware protection mechanism gives rise to a deceptive systems failure mode: the *cold bench fallacy*. In standard development workflows, an engineering team benchmarks an embodied AI model in a temperature-controlled laboratory on a cold test bench. Starting from an idle junction temperature of $25^\circ\text{C}$, the neural accelerator operates at its peak burst clock frequency (for example, $1.8\text{ GHz}$). Under these cold conditions, a vision-language-action policy evaluates its vision backbone and diffusion action chunk decoding in $22\text{ ms}$, comfortably meeting a $50\text{ ms}$ real-time intent lease.
-
-When the identical system is deployed inside an enclosed physical chassis without active refrigeration, continuous high-frequency inference drives the compact thermal mass to its thermal steady state. Within twenty to thirty minutes of sustained operation, the junction temperature crosses the thermal throttling threshold. The on-die governor downclocks the neural accelerator to its sustained base frequency (for example, $900\text{ MHz}$). As a direct consequence, inference latency doubles from $22\text{ ms}$ to $48\text{ ms}$ at the median ($P_{50}$) and blows out to $120\text{ ms}$ at the tail ($P_{99}$).
-
-Crucially, this failure occurs without a software crash, kernel panic, or numerical error. The neural policy continues to execute normally and produces mathematically valid control actions, but the outputs arrive after the real-time microcontroller's intent lease ($\mathcal{L}_{\text{intent}}$) has expired. The microcontroller, observing an expired lease, rejects the stale proposal and repeatedly engages fallback dynamic braking, degrading operational availability.
+This creates the **Cold Bench Fallacy**: a vision-language-action policy benchmarked on a cold laboratory bench executes in $22\text{ ms}$, comfortably meeting its $50\text{ ms}$ real-time intent lease. But after 20 minutes of continuous operation inside an enclosed chassis, thermal throttling cuts clock frequencies in half. Inference latency inflates to $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy produces mathematically valid outputs, but they arrive after the intent lease has expired, causing the microcontroller to reject proposals and engage dynamic braking.rational availability.
 
 | Physical Subsystem | Dominant Thermal Mechanism | Characteristic $\tau_{\text{th}}$ | Critical Temperature Limit | Physical Breakdown Failure Mode | Real-Time Safety Countermeasure |
 | :--- | :--- | :---: | :---: | :--- | :--- |
