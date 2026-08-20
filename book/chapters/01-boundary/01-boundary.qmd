@@ -10,9 +10,9 @@ The material is foundational for every later organ of the agent. Perception, pla
 By the conclusion of this chapter, you will be able to:
 
 1. Formulate the causal feedback boundary that contrasts digital open-loop computation with closed-loop physical irreversibility ($A_t \to W_{t+1} \to O_{t+1}$), and explain why software cannot undo kinetic energy or thermal dissipation.
-2. Quantify physical limits across kinetic momentum ($\mathbf{p} = m\mathbf{v}$), winding Joule heating ($I^2 R$), actuator saturation, and gear backlash.
+2. Bound physical limits with SI reasoning across kinetic momentum ($\mathbf{p} = m\mathbf{v}$), winding Joule heating ($I^2 R$), inductive rise time, and mechanical non-idealities, including at least one worked numerical example.
 3. Architect a proposal–permission privilege split that keeps untrusted neural policies on Linux application processors away from deterministic bare-metal safety supervisors on microcontrollers.
-4. Navigate the Physical AI co-design matrix so that physical constraints and cognitive obligations are reasoned about together.
+4. State the two axes of the Physical AI co-design matrix and read each cell as a systems question reserved for later chapters.
 5. Trace the three-part curriculum progression from foundations through the embodied sensory-motor lifecycle to heterogeneous placement and defensible release.
 :::
 
@@ -29,7 +29,7 @@ $$\begin{aligned}
 \text{Physical AI: } &\text{Actuation } A_t \implies \text{Matter Mutates } (W_t \longrightarrow W_{t+1}) \implies O_{t+1}
 \end{aligned}$$
 
-Kinetic momentum ($\mathbf{p} = m\mathbf{v}$) cannot be erased by software.^[For an articulated $n$-link manipulator, the total kinetic energy is $E_k = \frac{1}{2}\dot{\mathbf{q}}^T \mathbf{M}(\mathbf{q})\dot{\mathbf{q}}$, where $\mathbf{M}(\mathbf{q})$ is the configuration-dependent generalized inertia tensor. Even if motor drive commands drop to zero, velocity decays only through physical friction, counter-torques, or impact.] Excessive continuous current accumulates irreversible Joule heat ($I^2 R$) that degrades insulation and demagnetizes magnets.^[The thermal rise in motor windings follows $\Delta T(t) = \int_{0}^{t} \frac{I^2(\tau) R - \Delta T(\tau) / R_{\text{th}}}{C_{\text{th}}} \, d\tau$, where $R_{\text{th}}$ and $C_{\text{th}}$ are the thermal resistance and capacitance of the stator assembly.]
+Kinetic momentum ($\mathbf{p} = m\mathbf{v}$) cannot be erased by software.^[For an articulated $n$-link manipulator, the total kinetic energy is $E_k = \frac{1}{2}\dot{\mathbf{q}}^T \mathbf{M}(\mathbf{q})\dot{\mathbf{q}}$, where $\mathbf{M}(\mathbf{q})$ is the configuration-dependent generalized inertia tensor. Even if motor drive commands drop to zero, velocity decays only through physical friction, counter-torques, or impact.] Excessive continuous current accumulates irreversible Joule heat ($I^2 R$) that degrades insulation and demagnetizes magnets.^[The thermal rise in motor windings follows $\Delta T(t) = \int_{0}^{t} \frac{I^2(\tau) R - \Delta T(\tau) / R_{\text{th}}}{C_{\text{th}}} \, d\tau$, where $R_{\text{th}}$ and $C_{\text{th}}$ are the thermal resistance and capacitance of the stator assembly.] The footnotes name the governing physics; a worked numerical bound appears later in this chapter under silicon and steel, and Chapter 2 turns freshness and stopping into ledger numbers.
 
 Nor does a software crash restore a safe electrical state. When an application processor dies, the operating system may reclaim virtual memory while hardware timer peripherals on an independent clock tree keep pulsing gate drivers at the last written duty cycle. Software crashes do not de-energize copper coils.
 
@@ -84,7 +84,7 @@ That is why a crashed Python process is not a contained incident once PWM regist
 The physical world does not pause while an AI model computes. Sensor observations age the microsecond photons strike the photodiode. Mean latency ($P_{50}$) is a dangerous illusion; tail latency ($P_{99}$), memory bus contention, and information age ($\Delta t$) dictate physical closed-loop stability and dynamic stopping distances ($d_{\text{stop}}$).
 :::
 
-Chapter 2 develops this law quantitatively. Here it is enough to notice that “average FPS” never appears in a stopping-distance inequality—tails do.
+Chapter 2 develops this law quantitatively—waterfall budgets, freshness walls, and stopping envelopes. Here it is enough to notice that “average FPS” never appears in a stopping-distance inequality—tails do.
 
 ::: {.callout-law title="3. Proposal and Permission Privilege (The Architecture Law)"}
 No stochastic, learned neural network (VLM, VLA, or Diffusion Policy) may hold direct motor authority. Learned models running on application processors are *untrusted proposal services*. Real-time physical permission belongs exclusively to dedicated, zero-allocation microcontrollers running deterministic mathematical safety envelopes and physical fallbacks.
@@ -96,7 +96,7 @@ The autopsy above is this law in negative form: when proposal and permission sha
 A physical agent shapes its own future data distribution. Naive training on raw operational logs without isolating safety interventions induces severe covariate shift and policy collapse. A cherry-picked video demo or simulation benchmark is not evidence of safety; defensible release requires cross-layer fault injection and a formal safety case rendering an accountable release verdict.
 :::
 
-Parts II and III return to this law when overrides, logging, and release verdicts become first-class artifacts rather than afterthoughts.
+Parts II and III return to this law when overrides, logging, and Claim-Argument-Evidence release verdicts become first-class artifacts (Chapters 10–11). The law is stated here so later chapters inherit a shared obligation; the protocols are not taught yet.
 
 
 ## Archetypes, Agents, and the Embodiment Spectrum
@@ -204,13 +204,19 @@ $$E_k = \frac{1}{2} m \|\mathbf{v}\|^2 \quad \text{or, for articulated linkages,
 
 where $\mathbf{M}(\mathbf{q})$ is the configuration-dependent generalized inertia tensor. If an application processor freezes, momentum continues to carry the mechanism forward. The mass stops only when counter-torques, friction, or impact remove the energy. Software cannot instantly zero kinetic energy.
 
+A kit-scale thought calculation makes the point without waiting for Chapter 2’s full stopping ledger. Take the autopsy regime: end-effector speed $v = 1.2\text{ m/s}$. If timer registers remain latched for only $\Delta t = 50\text{ ms}$ after the host dies, the mechanism still travels
+
+$$d_{\text{coast}} = v \cdot \Delta t = (1.2\text{ m/s})(0.050\text{ s}) = 0.060\text{ m} = 60\text{ mm}$$
+
+before any new deceleration command can even be written. Sixty millimeters is enough to crush a calibration fixture or shear a wrist pin; the number did not require a neural network, only velocity and a permission outage. Kinetic energy at that speed for a $0.40\text{ kg}$ tooling mass is $E_k = \frac{1}{2} m v^2 = 0.288\text{ J}$—small by industrial standards, still irreversible once it enters the fixture. Chapter 2 will fold the same arithmetic into $d_{\text{stop}}(v, \Delta t)$ under measured $P_{99}$ tails; here the lesson is that latched authority has a distance cost you can compute on the back of a notebook page.
+
 ### Joule Heating and Thermal Accumulation ($I^2 R$)
 
 Driving motor current $I(t)$ across stator winding resistance $R$ produces continuous thermal dissipation:
 
 $$Q(t) = \int_{0}^{t} I^2(\tau) R \, d\tau.$$
 
-Copper and iron tolerate brief acceleration bursts by absorbing heat into thermal capacitance $C_{\text{th}}$, but steady-state current must remain below the continuous rating $I_{\text{cont}}$. A bug or stall that commands continuous stall current for even a few seconds can exceed insulation limits, damage enamel, and demagnetize rotor magnets.
+Copper and iron tolerate brief acceleration bursts by absorbing heat into thermal capacitance $C_{\text{th}}$, but steady-state current must remain below the continuous rating $I_{\text{cont}}$. A bug or stall that commands continuous stall current for even a few seconds can exceed insulation limits, damage enamel, and demagnetize rotor magnets. Deriving $I_{\text{cont}}$ from $R$, $R_{\text{th}}$, and a temperature rise budget is Chapter 2’s thermal column; this chapter only requires that heat be treated as a hard bound, not a peak-torque marketing number.
 
 ### Electromagnetic Actuation and Inductive Rise Time
 
@@ -249,18 +255,22 @@ We resolve the tension by splitting the substrate into two execution tiers acros
 
 The **untrusted proposal engine**—a Linux MPU or NPU—runs high-capacity learned models: multimodal vision-language reasoning at roughly $0.5\text{--}2\text{ Hz}$ and diffusion action-chunk policies at $20\text{--}50\text{ Hz}$. It lives in rich virtual memory with dynamic allocation, emits time-bounded candidate proposals ($p_t$) into a shared SRAM mailbox, and holds **zero** direct electrical authority over motor gate drivers.
 
-The **trusted permission authority**—a bare-metal MCU—runs a deterministic $1000\text{ Hz}$ safety supervisor and high-frequency current loops in zero-wait-state static SRAM with no dynamic heap. It evaluates Control Barrier Functions [@ames2019control] and dynamic stopping envelopes ($d_{\text{stop}} \le d_{\text{clearance}}$), projecting candidate proposals onto a forward-invariant safe set
+The **trusted permission authority**—a bare-metal MCU—runs a deterministic $1000\text{ Hz}$ safety supervisor and high-frequency current loops in zero-wait-state static SRAM with no dynamic heap. It evaluates mathematical safety envelopes and dynamic stopping inequalities ($d_{\text{stop}} \le d_{\text{clearance}}$), projecting candidate proposals onto a forward-invariant safe set. The detailed Control Barrier Function quadratic program
 
-$$u_t = \arg\min_{u \in \mathcal{U}_{\text{safe}}} \|u - p_t\|^2$$
+$$u_t = \arg\min_{u \in \mathcal{U}_{\text{safe}}} \|u - p_t\|^2 \quad \text{subject to } h(\mathbf{x}) \ge 0$$
 
-and alone holds hardware authority over PWM timer registers and gate-enable lines.
+and field-oriented current loops are owned by Chapter 8 [@ames2019control]; what this chapter requires is only the privilege claim: the MCU alone may write PWM timer registers and gate-enable lines, and it may refuse or reshape any MPU proposal.
+
+On a timeout, refusal is not optional philosophy. Treat the proposal path as holding an expiring lease with a heartbeat. If the shared mailbox age or heartbeat gap exceeds a hard budget—$\tau_{\text{heartbeat}} = 20\text{ ms}$ on the reference kit—the MCU discards the candidate, freezes or decelerates under its own law, and escalates toward Safe Torque Off. That single timing rule is how “the model crashed” becomes “the motors still stopped.” Chapter 6 deepens lease fields and abstention; here the mechanism is only age $\to$ revoke.
+
+The Arduino UNO Q reference kit makes the split observable on the bench. The Linux application processor (Qualcomm Dragonwing) runs proposal software and may publish candidates into a shared mailbox; the STM32 microcontroller alone is wired for real-time timer and gate-enable authority. A student can therefore prove privilege without trusting a vendor slogan: kill or stall the host proposal process and confirm that PWM does not remain an MPU-owned open loop.
 
 ::: {.callout-contract}
 | Component | Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **MPU Proposes** | *Untrusted · Linux MPU* | Candidate action chunk $\mathbf{a}_{t:t+H} \in \mathbb{R}^{H \times D}$; expiring intent lease $\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}}, \mathcal{B}, \dot{\mathbf{x}}_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$; zero direct electrical authority over motor gate drivers |
-| **MCU Permits** | *Trusted · Bare-Metal MCU* | Validates joint limits, velocity bounds, and stopping distance ($d_{\text{stop}} \le d_{\text{clear}}$); projects proposals onto forward-invariant safe set $h(\mathbf{x}) \ge 0$; sole privilege to write PWM registers and toggle gate enable |
-| **Failure Escalation** | *MCU Hardware Reflex* | On lease expiration, communication stall, or invariant breach, the MCU revokes PWM and executes controlled dynamic braking to Safe Torque Off |
+| MPU proposes | Untrusted · Linux MPU | Candidate action chunk $\mathbf{a}_{t:t+H}$; expiring intent lease with issue time and TTL; heartbeat period $\le 20\text{ ms}$; zero direct electrical authority over motor gate drivers |
+| MCU permits | Trusted · bare-metal MCU | Validates joint limits, velocity bounds, and stopping clearance; projects or rejects proposals under safe-set constraints (CBF detail in Ch 8); sole privilege to write PWM registers and toggle gate enable |
+| Failure escalation | MCU hardware reflex | On lease expiration, heartbeat stall ($> 20\text{ ms}$), or invariant breach, revoke PWM and execute controlled dynamic braking toward Safe Torque Off |
 :::
 
 | Dimension | Untrusted Proposal Engine (MPU / Linux) | Trusted Permission Authority (MCU) |
@@ -268,7 +278,7 @@ and alone holds hardware authority over PWM timer registers and gate-enable line
 | **Compute** | Multi-core ARM Cortex-A + neural accelerator | Single-core ARM Cortex-M / RISC-V |
 | **OS** | Linux (best-effort / Preempt-RT) | Bare-metal / FreeRTOS (deterministic) |
 | **Memory** | Multi-gigabyte DRAM (shared bus) | Static SRAM / TCM (zero heap) |
-| **Workloads** | Vision transformers, world models, diffusion ACT | Barrier invariants, watchdogs, FOC |
+| **Workloads** | Vision transformers, world models, diffusion ACT | Barrier invariants, watchdogs, current loops (FOC detail in Ch 8) |
 | **Timing Horizon** | $20\text{ ms}$ to $2000\text{ ms}$ ($0.5\text{--}50\text{ Hz}$) | $1\text{ ms} \pm 5\,\mu\text{s}$ ($1000\text{ Hz}$) |
 | **Authority** | Untrusted (no direct actuator access) | **Trusted (sole motor gate authority)** |
 
@@ -286,6 +296,8 @@ The conceptual foundation of this textbook is the **Physical AI Co-Design Matrix
 ![The Physical AI Co-Design Matrix. Crossing physical reality with cognitive agency; every cell is a systems tension developed in later chapters.](figures/fig01_codesign_matrix.svg){#fig-codesign-matrix width=100%}
 
 The columns, detailed in Chapter 2, are the physical walls that bound real-time machines: time and freshness, inertia and stopping, actuation and jerk, energy and thermal load, and silicon determinism on shared memory buses. The rows, formalized in Chapter 3, are the embodied cognitive lifecycle: perception, memory, reasoning, planning, and execution reflexes.
+
+Read each cell as a *question*, not as a solved design. “Perception meeting time” asks when the observation happened and what the pixels cost to move; the answers arrive in Chapter 4. “Execution meeting stopping” asks how much margin braking needs; the ledger is Chapter 2 and the filter is Chapter 8. This chapter only installs the compass.
 
 Every intersection is an engineering tension. Perception meeting time is exposure latency and clock skew. Memory meeting inertia is uncertainty growth under occlusion. Reasoning meeting actuation limits is intent bounded by reachability. Planning meeting silicon contention is action chunking that amortizes inference. Execution meeting silicon is a bare-metal barrier filter projecting untrusted proposals onto safe sets in under a millisecond.
 
@@ -314,12 +326,19 @@ Before later chapters request motion, this chapter freezes what must already be 
 
 : Privilege split recorded in the loop charter. {#tbl-loop-privilege}
 
-The microcontroller must also enforce a short list of physical invariants on every tick: emergency deceleration to Safe Torque Off when the heartbeat is lost; forward-invariant projection of every proposal onto the safe set $\mathcal{C}$; a ban on dynamic heap allocation in the real-time loop; thermal and $I^2t$ current clamps; hard joint and velocity envelopes; torque-rate and jerk clamps that protect gearboxes; rejection of stale or out-of-order proposals; and human preemption through hardware E-stop or joystick within $1\text{ ms}$.
+For the charter you must record platform values—not slogans—for a short must-record set:
 
-Templates for recording these limits live with the chapter materials. The bench lab asks you to freeze values for your platform, not to memorize a vendor SKU.
+1. Heartbeat / lease budget ($\tau_{\text{heartbeat}}$, $20\text{ ms}$ on the reference kit unless you measure otherwise).
+2. Emergency deceleration path to Safe Torque Off when the heartbeat is lost.
+3. Ban on dynamic heap allocation in the real-time loop.
+4. Thermal or $I^2t$ current clamp.
+5. Hard joint and velocity envelopes.
+6. Rejection rule for stale or out-of-order proposals (freshness age).
+
+Torque-rate and jerk clamps, full barrier certificates, and human-preemption wiring belong in the same notebook family, but they are detailed as templates rather than a second laundry list here. Templates live with the chapter materials; the bench lab asks you to freeze values for your platform.
 
 ::: {.callout-lab title="Closing the Causal Loop"}
-On the Arduino UNO Q, prove that closing the physical loop introduces irreversible state mutation ($A_t \to W_{t+1} \to O_{t+1}$). Compare advisory mode, where proposals are rendered while motors stay cold, with actuating mode under microcontroller supervision. Advisory mode leaves the world unchanged; actuating mode displaces the mechanism and rewrites every later camera and encoder sample. Record the privilege split and invariant limits for your platform in the engineering notebook as the loop charter.
+On the Arduino UNO Q, prove that closing the physical loop introduces irreversible state mutation ($A_t \to W_{t+1} \to O_{t+1}$). Compare advisory mode, where proposals are rendered while motors stay cold, with actuating mode under microcontroller supervision. Advisory mode leaves the world unchanged; actuating mode displaces the mechanism and rewrites every later camera and encoder sample. Record the privilege split and the must-record invariant limits for your platform in the engineering notebook as the loop charter (`labs/01-close-the-loop`).
 :::
 
 
@@ -340,4 +359,4 @@ This chapter crossed the Causal Boundary into Physical AI.
 
 We distinguished digital undo from physical irreversibility; defined Physical AI by learned authority, analog–digital command, and irreversible consequence; and placed the same proposal–permission contract across an embodiment spectrum larger than robotics. We quantified why silicon and steel refuse the assumptions of simulation, split untrusted proposals from trusted permission, and opened the co-design matrix and curriculum blueprint that structure the book. Finally, we froze the loop charter as the first engineering-notebook record.
 
-In Chapter 2 we put physical clocks on every microsecond of this pipeline, tracing photons from camera exposure through direct memory access, neural inference, and inter-process communication buffers to prove why mean latency is a dangerous metric and how information freshness ($\\Delta t$) dictates dynamic stopping distance ($d_{\\text{stop}}$).
+In Chapter 2 we put physical clocks on every microsecond of this pipeline, tracing photons from camera exposure through direct memory access, neural inference, and inter-process communication buffers to prove why mean latency is a dangerous metric and how information freshness ($\Delta t$) dictates dynamic stopping distance ($d_{\text{stop}}$).

@@ -2,10 +2,10 @@
 
 - Chapter: `book/chapters/01-boundary/01-boundary.qmd`
 - Mode: whole-chapter outline
-- Status: **AWAITING_APPROVAL** (map + section bullets)
-- Cycle: 1
-- Last board: 2026-08-20
-- Workflow: `.claude/workflow/section-bullet-expand.md`
+- Status: DONE (priority bullets expanded 2026-08-20)
+- Human signal: kick-off after commit `2e3e7c0`
+- Expanded into `.qmd`: 00-B2/B3, 01-B3, 02-B5, 04-B2/B3, 05-B3/B4/B5/B6, 06-B2, 08-B2/B3/B4, 10-B1
+- Left as KEEP (no prose change needed): autopsy, spectrum tables, dual success, fallacies, journey map
 
 ## Scope lock
 
