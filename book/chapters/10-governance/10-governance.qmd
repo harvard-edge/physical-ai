@@ -62,7 +62,10 @@ Physical authority cannot be treated as an arbitrary boolean variable inside an 
 
 Authority in Physical AI follows a strict, deterministic hierarchy implemented directly in bare-metal microcontroller silicon:
 
-$$\text{Priority 0 (Hardware E-Stop)} > \text{Priority 1 (Manual Joystick)} > \text{Priority 2 (MCU Safety Filter)} > \text{Priority 3 (MPU Neural Policy)}$$
+$$\begin{aligned}
+\text{Priority 0 (E-Stop)} &> \text{Priority 1 (Manual Joystick)} \\
+&> \text{Priority 2 (MCU Enforcer)} > \text{Priority 3 (MPU Policy)}
+\end{aligned}$$
 
 ![**Deterministic Human--Machine Authority State Machine.** Operational authority transitions smoothly between Manual Override, Shared Control, and Autonomous Lease modes. Physical human inputs and zero-software hardware interlocks maintain absolute preemption privileges over learned neural proposals.](figures/fig10_authority_state_machine.svg){#fig-authority-state-machine width=100%}
 
@@ -93,9 +96,19 @@ $$\|\mathbf{u}_{\text{human}}(t)\| > \delta_{\text{takeover}}$$
 
 the MCU's real-time timer interrupt instantly triggers a **Preemptive Takeover Event**. The autonomous proposal pipeline is stripped of authority within $< 1\,\text{ms}$, and the control loop activates the bumpless blending filter to transition smoothly to manual control.
 
+::: {.callout-note title="Cross-Embodiment Anchor: Human Authority and Governed Lineage Across the 3 Archetypes"}
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
+  In an autonomous delivery van, the safety driver touches the steering wheel with torque $> 2\text{ N}\cdot\text{m}$. The chassis MCU instantly triggers a Preemptive Takeover Event, executing a $100\text{ ms}$ $\mathcal{C}^2$ smoothstep torque blend that transfers steering authority without jerking the wheels off the lane. The event triggers truncated episode slicing, tagging the intervention in telemetry logs to prevent policy endogeneity collapse.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
+  In cooperative assembly, an operator grasps the teach pendant to adjust a misaligned insertion trajectory. The Cortex-M4 MCU detects deadband displacement ($\|\mathbf{u}_{\text{human}}\| > 0.05\text{ rad}$), blends control authority via quintic smoothstep polynomials ($\tau_{\text{blend}} = 80\text{ ms}$), and clamps motor torque rates ($\|\dot{\mathbf{u}}\| \le 11\text{ N}\cdot\text{m/s}$), preventing inverter overcurrent tripping and gear tooth shock.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Dispatch):**  
+  A utility transmission operator issues an emergency manual re-dispatch command during a severe storm. The substation grid supervisor initiates a $200\text{ ms}$ ramp rate limiter on battery storage inverters, smoothly overriding autonomous reinforcement learning dispatch setpoints without exciting subsynchronous grid resonance or inducing frequency transients on the 50/60 Hz bus.
+:::
+
 ---
 
 ## Bumpless Control Overrides and Jerk-Bounded Blending
+
 
 In theoretical control software, switching between two controllers is modeled as a discrete multiplexer switch:
 
