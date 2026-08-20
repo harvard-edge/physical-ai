@@ -285,15 +285,60 @@
 % 7. Margin notes and footnotes
 %
 % Footnotes are set in the margin (reference-location: margin in _quarto.yml),
-% so both read as one register: small, sans, secondary ink.
+% so both read as one register: small, sans, secondary ink, sized compactly
+% for the narrow margin column.
 % ---------------------------------------------------------------------------
 
 \renewcommand*{\marginfont}{%
-  \normalfont\sffamily\fontsize{7.8pt}{10.2pt}\selectfont\color{softink}}
+  \normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{softink}\raggedright}
 \setkomafont{footnote}{%
-  \normalfont\sffamily\fontsize{8pt}{10.5pt}\selectfont\color{softink}}
+  \normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{softink}}
 \setkomafont{footnotemark}{%
-  \normalfont\sffamily\bfseries\fontsize{8pt}{10pt}\selectfont\color{consequence}}
+  \normalfont\sffamily\bfseries\fontsize{6.6pt}{8.4pt}\selectfont\color{consequence}}
+
+% Sidenotes package hook: Quarto emits \sidenote{\footnotesize ...} when
+% reference-location: margin is used. We define custom handlers to neutralize
+% pandoc's \footnotesize and enforce compact sans-serif typography in margin notes.
+\makeatletter
+\NewDocumentCommand \customsidenotetext { o o +m }
+{%
+  \IfNoValueOrEmptyTF{#1}%
+    {%
+      \@sidenotes@placemarginal{#2}{%
+        \normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{softink}%
+        {\bfseries\color{consequence}\textsuperscript{\thesidenote}}\hspace{0.25em}%
+        {\let\footnotesize\relax\raggedright #3}%
+      }%
+      \refstepcounter{sidenote}%
+    }%
+    {%
+      \@sidenotes@placemarginal{#2}{%
+        \normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{softink}%
+        {\bfseries\color{consequence}\textsuperscript{#1}}\hspace{0.25em}%
+        {\let\footnotesize\relax\raggedright #3}%
+      }%
+    }%
+}
+
+\NewDocumentCommand \customsidenotemark { m }
+{%
+  \leavevmode
+  \ifhmode
+      \edef \@x@sf {\the \spacefactor }%
+      \nobreak
+  \fi
+  \hbox {\textsuperscript{\normalfont\sffamily\bfseries\fontsize{6.6pt}{8.4pt}\selectfont\color{consequence}#1}}%
+  \ifhmode
+      \spacefactor \@x@sf
+  \fi
+  \relax
+}
+
+\AtBeginDocument{%
+  \let\sidenotetext\customsidenotetext
+  \let\@sidenotes@thesidenotemark\customsidenotemark
+}
+\makeatother
 
 
 % ---------------------------------------------------------------------------

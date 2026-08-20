@@ -308,18 +308,18 @@ $$t_{\text{infer, throttled}} = \frac{t_{\text{infer, nom}}}{\gamma}$$
 
 We formally prove why thermal throttling without hardware-enforced velocity derating causes physical collisions:
 
-1. Let nominal sense-to-actuation latency be $t_{\text{loop, nom}} = 28\text{ ms}$, with a vehicle operating at velocity $v_0 = 1.2\text{ m/s}$, maximum deceleration $a_{\text{max}} = 3.0\text{ m/s}^2$, and obstacle clearance $d_{\text{clearance}} = 0.55\text{ m}$.
-2. Under nominal conditions, the stopping distance is:
- $$d_{\text{stop, nom}} = v_0 \cdot t_{\text{loop, nom}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.028 + \frac{1.44}{6.0} = 0.0336 + 0.240 = 0.274\text{ m}$$
- Since $d_{\text{stop, nom}} (0.274\text{ m}) < d_{\text{clearance}} (0.55\text{ m})$, the system operates safely inside its clearance envelope with a $50\%$ margin.
+1. **Nominal Operating Baseline:** Let nominal sense-to-actuation latency be $t_{\text{loop, nom}} = 28\text{ ms}$, with a vehicle operating at velocity $v_0 = 1.2\text{ m/s}$, maximum deceleration $a_{\text{max}} = 3.0\text{ m/s}^2$, and obstacle clearance $d_{\text{clearance}} = 0.55\text{ m}$.
+2. **Nominal Stopping Envelope:** Under nominal conditions, the stopping distance is:
+   $$d_{\text{stop, nom}} = v_0 \cdot t_{\text{loop, nom}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.028 + \frac{1.44}{6.0} = 0.0336 + 0.240 = 0.274\text{ m}$$
+   Since $d_{\text{stop, nom}} (0.274\text{ m}) < d_{\text{clearance}} (0.55\text{ m})$, the system operates safely inside its clearance envelope with a $50\%$ margin.
 
-3. Now suppose sustained load drives $T_j > 85^\circ\text{C}$, triggering DVFS throttling with $\gamma = 0.33$. Clock frequency falls from $1.8\text{ GHz} \to 600\text{ MHz}$, expanding inference latency to $t_{\text{infer}} = 85\text{ ms}$ and total reaction loop latency to $t_{\text{loop, throttled}} = 105\text{ ms}$.
-4. The throttled stopping distance expands to:
- $$d_{\text{stop, throttled}} = v_0 \cdot t_{\text{loop, throttled}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.105 + \frac{1.44}{6.0} = 0.126 + 0.240 = 0.366\text{ m}$$
+3. **DVFS Thermal Throttling Trigger:** Now suppose sustained load drives $T_j > 85^\circ\text{C}$, triggering DVFS throttling with $\gamma = 0.33$. Clock frequency falls from $1.8\text{ GHz} \to 600\text{ MHz}$, expanding inference latency to $t_{\text{infer}} = 85\text{ ms}$ and total reaction loop latency to $t_{\text{loop, throttled}} = 105\text{ ms}$.
+4. **Throttled Stopping Distance Expansion:** The throttled stopping distance expands to:
+   $$d_{\text{stop, throttled}} = v_0 \cdot t_{\text{loop, throttled}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.105 + \frac{1.44}{6.0} = 0.126 + 0.240 = 0.366\text{ m}$$
 
-5. If the vehicle accelerates to transit speed $v_0 = 2.0\text{ m/s}$ under throttled conditions:
- $$d_{\text{stop, throttled}} = 2.0 \cdot 0.105 + \frac{4.0}{6.0} = 0.210 + 0.667 = 0.877\text{ m}$$
- Since $d_{\text{stop, throttled}} (0.877\text{ m}) > d_{\text{clearance}} (0.55\text{ m})$, **the vehicle crashes into the obstacle at $1.38\text{ m/s}$ residual speed.**
+5. **High-Speed Collision Under Throttling:** If the vehicle accelerates to transit speed $v_0 = 2.0\text{ m/s}$ under throttled conditions:
+   $$d_{\text{stop, throttled}} = 2.0 \cdot 0.105 + \frac{4.0}{6.0} = 0.210 + 0.667 = 0.877\text{ m}$$
+   Since $d_{\text{stop, throttled}} (0.877\text{ m}) > d_{\text{clearance}} (0.55\text{ m})$, **the vehicle crashes into the obstacle at $1.38\text{ m/s}$ residual speed.**
 
 To prevent this hazard, the real-time MCU monitors the SoC junction temperature telemetry. The instant $T_j$ breaches the pre-warning threshold ($T_j \ge 80^\circ\text{C}$), the MCU dynamically clamps maximum allowable velocity ($v_{\text{max}}$) before DVFS throttling occurs:
 
@@ -379,10 +379,10 @@ Whenever an engineering team proposes relocating a capability (e.g., quantizing 
 ### Notebook checkpoint: Placement Map and Resource Ledger (placement ledger)
 Freeze the whole-system heterogeneous silicon placement, memory allocations, power budgets, and interconnect QoS contracts:
 
-1. The stage-to-silicon mapping matrix assigning the 7 canonical organs to specific hardware domains.
-2. The memory ledger budgeting static SRAM, LPDDR5 DRAM, and DMA ring buffer allocations.
-3. The thermal and electrical power budget (TDP per node, derating thresholds, battery capacity).
-4. Interconnect QoS priority assignments and fallback escalation triggers upon domain failure.
+1. **Stage-to-Silicon Mapping:** Assigns the canonical pipeline organs to specific hardware execution domains.
+2. **Memory Allocation Ledger:** Budgets static SRAM, LPDDR DRAM, and DMA ring buffer allocations.
+3. **Thermal and Power Budget:** Specifies TDP per node, derating thresholds, and battery reserve capacity.
+4. **QoS and Fallback Protocols:** Defines interconnect QoS priorities and escalation triggers upon domain failure.
 
 ```yaml
 # DOSSIER CHECKPOINT: placement ledger

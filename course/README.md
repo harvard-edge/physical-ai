@@ -2,7 +2,7 @@
 
 **Student-facing course syllabus.** This Markdown file is the syllabus—view it on GitHub or any Markdown preview. ETH packaging notes live in [`syllabus.md`](syllabus.md). The textbook is the separate Quarto project in [`../book/`](../book/).
 
-**Project seminar & hardware studio** · ETH Zurich / open follow-along
+**Project seminar & hardware studio** · Harvard University · ETH Zurich / open follow-along
 
 | | |
 | --- | --- |

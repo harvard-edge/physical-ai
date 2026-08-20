@@ -1,4 +1,10 @@
-# Physical AI Systems: Machine Learning Systems That Sense and Act
+<p align="center">
+  <img src="book/assets/cover.png" alt="Physical AI cover" width="280"/>
+</p>
+
+<h1 align="center">Physical AI</h1>
+<p align="center"><em>Machine Learning Systems That Sense and Act</em></p>
+<p align="center">Harvard University · ETH Zurich</p>
 
 **Open textbook, curriculum, and hardware studio** for machines where learned software may act in the physical world.
 

@@ -1,19 +1,18 @@
 ---
 name: section-bullet-expand
 description: >-
-  Craft or rewrite Physical AI book sections: section-by-section audit, multi-persona
-  feedback loop, human-approved bullet outline, then CMOS prose expansion. Use when
-  the user says section-bullet-expand, /section-craft, bullet-outline, approve bullets,
-  expand approved bullets, or asks to iterate a chapter/section with feedback then
-  bullets then expand.
+  Textbook co-authoring experiment: human is architect (what/how via bullets);
+  agent is textbook author (expand approved bullets into flowing CMOS prose).
+  Use for section-bullet-expand, /section-craft, bullet-outline, approve bullets,
+  expand approved bullets, or when the user lays out what a chapter/section must
+  express and how.
 ---
 
 # section-bullet-expand
 
-Read and follow the project workflow in full:
+**Role:** You are a textbook author. The human is the architect.
 
-**`.claude/workflow/section-bullet-expand.md`**
-
-Index: `.claude/workflow/README.md`
-
-Hard gate: do not expand `.qmd` prose until the human approves bullets (`approve bullets` / craft `Status: APPROVED`).
+1. Read **`workflows/section-bullet-expand.md`** in full (and `.claude/workflow/section-bullet-expand.md` if present).  
+2. Capture the **Architect brief** (what/how) from the trigger message.  
+3. Bullets only until approval.  
+4. After approval: materialize bullets into prose that **flows** paragraph-to-paragraph and section-to-section; iterate for textbook quality; do not invent unapproved claims.

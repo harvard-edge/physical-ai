@@ -1,36 +1,83 @@
-# Workflow: Section → Feedback → Bullets → Expand
+# Workflow: Architect Bullets → Textbook Prose
 
 **ID:** `section-bullet-expand`  
-**Location:** `.claude/workflow/section-bullet-expand.md`  
+**Tracked copy:** `workflows/section-bullet-expand.md`  
+**Also:** `.claude/workflow/section-bullet-expand.md` (if present)  
 **House rules:** `.claude/CLAUDE.md` §9 (CMOS), `.claude/rules/expert-review-board.md`, `.claude/rules/prose-craft.md`, `.claude/rules/chapter-architecture.md`, `.cursor/rules/chapter-standards.mdc`
+
+This is an **experiment**: can a textbook be co-authored by splitting *architecture* (human) from *authorship* (agent)? The workflow exists to enforce that split.
 
 ---
 
-## Purpose
+## Roles (non-negotiable)
 
-You (the agent) systematically improve a **chapter or one section** by looping:
+### Human = Architect
 
-1. Read the material section by section.  
-2. Collect multi-persona feedback (coverage vs explanation quality).  
-3. Turn that feedback into a **bullet outline** the human can edit.  
-4. **Stop and wait** until the human approves (or revises) the bullets.  
-5. Only then expand each approved bullet into one or more CMOS paragraphs in the manuscript.
+You decide **what** must be expressed and **how** it should be expressed:
 
-**Human job:** shape, reorder, cut, and approve bullets.  
-**Agent job:** audit, propose bullets, expand approved bullets into prose, re-check.
+- Which claims belong in this section (and which defer)
+- Order, emphasis, and teaching ladder (intuition → mechanism → SI)
+- Transfer bar (what the reader must compute, decide, or measure)
+- Tone constraints, kit anchors, fences (“preview only; Ch8 owns CBF”)
+- Approval or revision of the bullet outline
+
+You are **not** responsible for polishing paragraph rhythm or sewing transitions. That is the agent’s job after approval.
+
+### Agent = Textbook author
+
+You are a **textbook author**. You are good at taking approved bullets and ideas and **materializing them into prose**, and at making sure that prose **flows from one paragraph and section to the next**.
+
+Once the architect’s instructions are captured and the bullets are approved, your job is to:
+
+1. Expand bullets into continuous CMOS paragraphs (not telegraphic fragments).  
+2. Iterate: read aloud in your head, fix seams, cut repetition, restore ladder.  
+3. Improve until it reads like a systems textbook—not a slide deck, not a blog, not a bullet dump with connective tissue glued on.
+
+You do **not** invent a new curriculum under the guise of “better prose.” New claims become new proposed bullets and return to the architect.
+
+---
+
+## Purpose (the loop)
+
+1. **Capture the architect brief** (what/how) when the workflow is triggered.  
+2. Read the target section; optional multi-persona feedback (coverage vs explanation).  
+3. Propose or refine a **bullet outline** the architect can edit.  
+4. **Hard stop** until bullets are approved.  
+5. Expand approved bullets into flowing textbook prose in the `.qmd`.  
+6. Short post-expand pass for flow and transfer; new claims → new bullets, not silent scope creep.
 
 Do **not** dump a full rewritten chapter before bullets are approved. Do **not** treat bullets as final prose.
 
 ---
 
-## Triggers (any of these)
+## Triggers
 
 - `run section-bullet-expand on <path or chapter N>`
 - `/section-craft <path>`
 - `bullet-outline <section heading>` / `expand approved bullets for <section>`
-- User asks to “iterate section by section with feedback then bullets then expand”
+- “iterate section by section with feedback then bullets then expand”
+- Any message that supplies architect intent for a chapter/section (“here’s what this section must teach…”)
 
-If the user names only a chapter, default to **one `##` section at a time** (not the whole file in one expand pass).
+If the user names only a chapter, default to **one `##` section at a time** unless they say “whole chapter outline.”
+
+---
+
+## Phase A — Capture the architect brief (on every trigger)
+
+Before auditing or drafting bullets, write an **Architect Brief** into the craft file. If the user already stated intent in chat, **transcribe it faithfully**—do not dilute or “improve” their architecture.
+
+```markdown
+## Architect brief
+- **Target:** path + `##` heading (or whole-chapter map)
+- **Must express:** (claims / ideas that must appear)
+- **How to express:** (ladder, emphasis, kit anchor, fences, tone)
+- **Must not:** (overlap with preface / later chapters / slogans)
+- **Transfer:** after this section the reader can …
+- **Success looks like:** (one sentence — what “textbook quality” means here)
+- **Source:** chat | edited craft file | prior board
+```
+
+If the brief is thin, ask **at most three** clarifying questions, then proceed with explicit assumptions listed under the brief. Do not guess a new chapter thesis.
 
 ---
 
@@ -38,43 +85,36 @@ If the user names only a chapter, default to **one `##` section at a time** (not
 
 | Gate | Rule |
 | :--- | :--- |
-| **G0 Scope** | Work one chapter path, and within it prefer one `##` section per cycle unless the user explicitly says “whole chapter outline.” |
-| **G1 No silent rewrite** | Before bullet approval, you may only write audit notes + bullet outline files—not replace body prose. |
-| **G2 Bullet approval** | Expanding into `.qmd` prose requires an explicit human signal: `approve bullets`, `approved`, `expand`, or a marked `Status: APPROVED` in the outline file. |
-| **G3 CMOS** | Expanded prose: complete sentences, no `**Label:**` telegraphs in body, no `---` rules, autopsy = six-field schema only. |
-| **G4 Ownership** | Respect preface vs chapter ownership; do not re-sermonize eras/tribes/behind-glass in chapter leads. |
-| **G5 Transfer** | Every bullet must state what the reader can **compute, decide, or measure** after the expanded prose—not only what is “mentioned.” |
+| **G0 Scope** | One chapter path; prefer one `##` section per expand cycle unless whole-chapter map was approved. |
+| **G1 Architect owns claims** | Bullets encode what/how. Agent may suggest bullets from a board pass; architect approves. |
+| **G2 No silent rewrite** | Before approval: audit notes + bullet outline only—not body prose replacement. |
+| **G3 Bullet approval** | Expand only on `approve bullets` / `approved` / `expand` / craft `Status: APPROVED`. |
+| **G4 CMOS + flow** | Complete sentences; no `**Label:**` body telegraphs; no `---` rules; autopsy = six-field schema. Prose must bridge bullets so the section reads as one argument. |
+| **G5 Ownership** | Preface vs chapter ownership; no eras/tribes/behind-glass re-sermon in chapter leads. |
+| **G6 Transfer** | Every bullet states what the reader can compute, decide, or measure—not only what is named. |
+| **G7 No curriculum invention** | During expansion, do not add unapproved teaching claims. |
 
 ---
 
-## Artifacts (always write these)
-
-Create or update under the chapter directory:
+## Artifacts
 
 ```text
 book/chapters/<nn-slug>/_craft/
-  SECTION-<slug>.md     # one file per ## section being crafted
-  CHAPTER-BOARD.md      # optional roll-up for whole-chapter passes
+  SECTION-<slug>.md     # architect brief + board + bullets + expand log
+  CHAPTER-BOARD.md      # optional whole-chapter roll-up
 ```
 
 Example: `book/chapters/02-constraints/_craft/SECTION-column-1-freshness-wall.md`
-
-If `_craft/` is missing, create it. Do not put craft notes in the `.qmd` as HTML comments unless the user asks.
 
 ---
 
 ## Phase 0 — Lock scope
 
-1. Resolve the target path (chapter `.qmd` and optional `##` heading).  
-2. Read the chapter lead + objectives + the target section (+ one section before/after for glue).  
-3. State in chat (short):
-
-   - **Target:** path + heading  
-   - **Owns (this section):** 3–6 concepts this section must teach  
-   - **Defers:** concepts named here but owned later  
-   - **Deliverable:** what notebook/ledger skill this section supports (if any)
-
-4. Open or create the `_craft/SECTION-….md` file with YAML-ish header:
+1. Resolve path + optional `##` heading.  
+2. Read lead, objectives, target section, and neighbors (for flow).  
+3. Complete **Phase A** (architect brief).  
+4. Chat summary (short): Target · Owns · Defers · Deliverable · Brief captured.  
+5. Ensure craft file header:
 
 ```markdown
 # Craft: <Section heading>
@@ -90,191 +130,131 @@ If `_craft/` is missing, create it. Do not put craft notes in the `.qmd` as HTML
 
 ## Phase 1 — Section inventory (mechanical)
 
-Walk the target section only:
-
-1. List every `###` / figure / table / callout / equation block in order.  
-2. For each block, one line: **role** (intuition / mechanism / SI rigor / callout / figure) and **claim**.  
-3. Flag obvious CMOS or structure defects (callout pile before first `##`, Bold Lead-In body, broken lab path, `<br>` in tables)—note only; do not fix yet unless the user asked for a drive-by.
+1. List every `###` / figure / table / callout / equation in order.  
+2. One line each: role (intuition / mechanism / SI / callout / figure) + claim.  
+3. Note CMOS/structure defects; do not fix yet unless asked.
 
 ---
 
-## Phase 2 — Multi-iteration feedback loop
+## Phase 2 — Optional multi-iteration feedback
 
-Run the **4-expert board** on *this section* (not the whole book unless asked):
+Run the 4-expert board on *this section* when useful (or when the architect asks):
 
-1. Embedded & Silicon Lead  
-2. Embodied ML Specialist  
-3. System Safety Lead  
-4. Student & Practitioner UX Lead  
+1. Embedded & Silicon · Embodied ML · Safety · Student UX  
+2. Criteria: `.claude/rules/expert-review-board.md`  
+3. Each cycle: Explained well / Named only / Missing / Blocking  
+4. Merge into craft `## Board cycle k`  
+5. Update **bullets only** (Phase 3)—no prose expansion  
 
-Criteria: `.claude/rules/expert-review-board.md`.
-
-### Iteration protocol (default 3 cycles, stop early if stable)
-
-For each cycle `k = 1..3`:
-
-1. Each persona answers, for this section only:
-
-   - Coverage: Strong / Adequate / Weak  
-   - Explanation quality: Strong / Adequate / Weak  
-   - **Explained well** (keep)  
-   - **Named only** (fence or teach)  
-   - **Missing** (add bullet or defer with pointer)  
-   - **Blocking** (wrong number, broken lab path, contradicts another section)
-
-2. Merge into a single board note inside the craft file under `## Board cycle k`.  
-3. Change the section outline **only as bullets** (Phase 3). Do not expand prose in this phase.  
-4. Stop iterating when:
-
-   - no new *Missing* items that this section owns, and  
-   - *Named only* items are either promoted to bullets or explicitly `Deferred OK` with a chapter pointer, and  
-   - no unresolved *Blocking* items.
-
-Optional: spawn parallel subagents per persona; merge yourself. Prefer depth over performative disagreement.
+Default ≤3 cycles; stop when Missing/Blocking for this section’s ownership are resolved or explicitly deferred.
 
 ---
 
-## Phase 3 — Craft the bullets (human-editable)
+## Phase 3 — Bullet outline (architect-editable)
 
-Rewrite the craft file’s `## Bullet outline` to the **current proposal**. Bullets are the contract with the human.
-
-### Bullet format (required)
-
-Each bullet is one teachable move. Use this template exactly:
+Bullets are the **contract** with the architect. Prefer the architect’s wording when they edit.
 
 ```markdown
 ## Bullet outline
 Status: AWAITING_APPROVAL
 
-### B1. <short imperative or noun phrase>
-- **Owns:** what concept this bullet is responsible for
-- **Transfer:** after reading the expanded prose, the reader can <compute|decide|measure|…>
-- **Ladder:** intuition | mechanism | SI rigor   (mark which this bullet must carry; a bullet may be only one rung)
-- **Depends on:** prior bullets or earlier sections (or `none`)
-- **Assets:** equation / figure / table / callout needed (`none` | specific id or “new: …”)
-- **Notes:** optional constraint (kit-scale, defer CBF to Ch8, reconcile P99, …)
-- **Expand to:** 1–3 paragraphs (agent hint; human may change)
+### B1. <short phrase>
+- **Owns:** …
+- **Transfer:** reader can <compute|decide|measure|…>
+- **Ladder:** intuition | mechanism | SI rigor
+- **Depends on:** …
+- **Assets:** none | equation | figure | table | callout | new: …
+- **How (architect):** optional — emphasis, fence, kit number, “sound like …”
+- **Expand to:** 1–3 paragraphs (hint)
 - **State:** PROPOSED   # PROPOSED | KEEP | REVISE | DROP | APPROVED
 ```
 
-### Bullet quality bar
+**Bar:** 4–12 bullets per `##` section; one idea per bullet; kit-scale and SI when the brief demands it.
 
-- One bullet = one idea the human can accept or reject.  
-- Prefer **kit-scale, SI, decision** language over slogans.  
-- If feedback said “named only,” the bullet must say how teaching will change (worked example, fence + deferral sentence, mechanism paragraph).  
-- Cap: roughly **4–12 bullets per `##` section**. If you need more, split the section or mark some `DROP`/`Deferred`.  
-- Do **not** use Bold Lead-In as the bullet title style in the eventual `.qmd`; titles here are craft labels only.
-
-### After writing bullets
-
-1. Set craft `Status: AWAITING_APPROVAL`.  
-2. Paste a compact bullet list in chat (titles + Transfer only).  
-3. **Stop.** Ask the human to mark bullets KEEP / REVISE / DROP / APPROVED (or edit the craft file).  
-4. Do not open the `.qmd` for prose expansion until Gate G2 clears.
+After drafting: set `AWAITING_APPROVAL`, paste titles + Transfer in chat, **stop**.
 
 ---
 
-## Phase 4 — Human approval (wait)
+## Phase 4 — Architect approval (wait)
 
-Accept any of:
+Accept: `approve bullets` · `approved` · `expand B1 B3` · `expand all approved` · craft `Status: APPROVED` with per-bullet `APPROVED`.
 
-- Chat: `approve bullets`, `approved`, `expand B1 B3 B5`, `expand all approved`  
-- Craft file: section `Status: APPROVED` and per-bullet `State: APPROVED`  
-- Partial: expand only bullets marked APPROVED; leave others
-
-If the human revises bullet text, treat their wording as authoritative. Re-run a **short** board cycle only if they ask or if revisions change ownership/deferrals materially.
+Architect revisions to bullet text are authoritative.
 
 ---
 
-## Phase 5 — Expand approved bullets into prose
+## Phase 5 — Author: expand into textbook prose
 
-For each `State: APPROVED` bullet, in order:
+You are no longer outlining. You are **writing the book**.
 
-1. Draft **1+ complete paragraphs** (and only the assets listed).  
-2. Place them in the `.qmd` at the right point in the section (replace thin named-only passages; do not orphan old contradictions—delete or fence).  
-3. Follow CMOS + systems lens (`prose-craft.md`): budgets, composition, shared resources; intuition → mechanism → SI when the bullet’s Ladder requires it.  
-4. One bullet may become multiple paragraphs; do not smuggle a second unapproved bullet’s content.  
-5. Update bullet `State: EXPANDED` and craft `Status: EXPANDING` → `DONE` when all approved bullets are in.
+For each `APPROVED` bullet, in order:
 
-### Expansion checklist (per bullet)
+1. Draft the requested paragraphs in CMOS.  
+2. **Sew the seam:** opening sentence of bullet *n* must follow from bullet *n−1* (or from the section’s established claim). No orphan blocks.  
+3. Place in the `.qmd` at the right locus; remove or fence contradictory thin passages.  
+4. Follow systems lens (`prose-craft.md`): budgets, composition, shared resources.  
+5. One bullet may become multiple paragraphs; do not smuggle unapproved claims.  
+6. Mark bullets `EXPANDED`; craft `EXPANDING` → `DONE` when finished.
 
-- [ ] Transfer claim is actually satisfied (reader can compute/decide)  
-- [ ] No preface overlap sermon  
-- [ ] Numbers reconciled with chapter ledger / nearby examples  
-- [ ] Callouts only where schema requires (autopsy/contract/etc.)  
-- [ ] Lab paths and forward refs are real  
+### Textbook flow checklist (required)
+
+- [ ] Section can be read top-to-bottom as one argument  
+- [ ] No bullet residue (“First,… Second,…” unlabeled lists of claims) unless the architect asked for a list  
+- [ ] Definitions before uses; equations when the ladder calls for SI  
+- [ ] Forward/back references are honest fences, not fake teaching  
+- [ ] Neighbor sections still join (read last paragraph of prior `##` and first of this)  
+- [ ] Transfer claim of each bullet is actually satisfied  
+
+### Iteration (the experiment)
+
+After the first expansion pass, do **one** authoring revision pass focused only on flow and clarity (cut throat-clearing, fix whiplash transitions, restore ladder). If you discover a missing *concept*, add a `PROPOSED` bullet and return to Gate G3—do not silently teach it.
 
 ---
 
-## Phase 6 — Post-expand micro-board (one cycle)
+## Phase 6 — Post-expand micro-board
 
-Quick pass (Student UX + the persona most relevant to the section):
-
-- Did expansion fix *Named only* / *Blocking*?  
-- Any new overlap or density problem?  
-
-If fixes are small, apply them. If they need new teaching claims, add **new PROPOSED bullets** and return to Gate G2—do not silently grow scope.
+Student UX + the most relevant expert: Did we fix Named only / Blocking? Any new density or overlap? Small fixes OK; new claims → new bullets.
 
 ---
 
 ## Phase 7 — Handoff
 
-Report in chat:
-
 1. Craft file path  
-2. Bullets expanded vs still waiting  
-3. Diff summary (sections touched)  
-4. Recommended next `##` section  
+2. Brief + bullets expanded vs waiting  
+3. Diff summary  
+4. Suggested next `##`  
 
-Do not start the next section’s expansion without asking, unless the user said “walk the whole chapter section by section.”
-
----
-
-## Whole-chapter mode (optional)
-
-If the user asks for a **whole chapter** craft:
-
-1. Phase 0–2 once at chapter level → `CHAPTER-BOARD.md` (coverage matrix + top priorities).  
-2. Produce a **chapter bullet map**: ordered list of section slugs + bullet counts—still no prose.  
-3. Wait for approval of the **map**.  
-4. Then run Phases 3–6 **per section** in order.
+Do not start the next section’s expansion unless the architect asked to walk the chapter.
 
 ---
 
-## Anti-patterns (do not do)
+## Whole-chapter mode
 
-- Rewriting the full section in one shot “for efficiency”  
-- Expanding while bullets are still `PROPOSED`  
-- Replacing human bullet wording without confirmation  
-- Adding new concepts during expansion that were not in an approved bullet  
-- Re-litigating CMOS vs Bold Lead-In (CMOS won)  
-- Using checkpoint IDs (`LOOP-01`, …)  
-- Calling the craft outline an “Abstract”
+1. Phase A brief at chapter level → `CHAPTER-BOARD.md`  
+2. Coverage matrix + ordered section map (still no prose)  
+3. Architect approves the **map**  
+4. Phases 1–6 per section in order  
 
 ---
 
-## Minimal example (shape only)
+## Anti-patterns
 
-```markdown
-### B3. Kit-scale freshness wall derivation
-- **Owns:** Δt_wall from clearance, σ0, v_target
-- **Transfer:** compute Δt_wall for the desk-kit numbers and see why the ledger’s 100 ms is not arbitrary
-- **Ladder:** mechanism + SI rigor
-- **Depends on:** B2 (definition of Δt)
-- **Assets:** short worked example (new); pointer to requirements ledger
-- **Notes:** must reconcile with P99 story in Column 1
-- **Expand to:** 2 paragraphs
-- **State:** APPROVED
-```
-
-After approval, those two paragraphs land in the `.qmd`; B3 becomes `EXPANDED`.
+- Rewriting the full section “for efficiency” before approval  
+- Expanding while bullets are `PROPOSED`  
+- Overwriting architect bullet wording without confirmation  
+- Adding concepts during expansion that were not approved  
+- Slide-deck residue: bold-label stacks, motto paragraphs, callout piles before narrative  
+- Replacing textbook prose with more bullets  
+- Calling the craft outline an “Abstract”  
 
 ---
 
-## Companion prompts (copy into subagents)
+## Companion prompts
 
-**Auditor:** “You are persona \<Name\>. Audit ONLY section \<H\>. Return Explained well / Named only / Missing / Blocking. No rewrites.”
+**Architect intake:** “Transcribe the user’s what/how into the Architect brief. Do not improve their curriculum.”
 
-**Bullet smith:** “Given the board notes in \<craft file\>, propose 4–12 bullets in the required template. Do not edit the `.qmd`.”
+**Auditor:** “Persona \<Name\>. Audit ONLY section \<H\>. Explained well / Named only / Missing / Blocking. No rewrites.”
 
-**Expander:** “Expand ONLY bullets with State APPROVED in \<craft file\> into CMOS paragraphs in \<qmd\>. Do not add unapproved claims.”
+**Bullet smith:** “Given brief + board, propose 4–12 bullets in template. Do not edit the `.qmd`.”
+
+**Textbook author:** “You are a textbook author. Expand ONLY APPROVED bullets into CMOS prose that flows bullet-to-bullet and section-to-section. No new claims.”
