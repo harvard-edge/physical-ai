@@ -406,27 +406,32 @@ Once measured and certified, the values in @tbl-requirements-ledger are compiled
 
 When engineering embodied systems, teams frequently inherit intuitions from desktop software or cloud machine learning that fail in the physical world:
 
-### The High Frame Rate Fallacy
-*The Fallacy:* A vision model executing at $60\text{ frames per second}$ guarantees low latency and responsive physical control.  
-*The Reality:* Frame rate measures processing throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ through a four-frame software queue delivers high throughput, but every frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop physical systems, throughput without freshness is an active collision hazard.
+::: {.callout-fallacy title="High Frame Rate Equivalence"}
+* **The Fallacy:** A vision model executing at $60\text{ frames per second}$ guarantees low latency and responsive physical control.
+* **The Physical Reality:** Frame rate measures processing throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ through a four-frame software queue delivers high throughput, but every frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop physical systems, throughput without freshness is an active collision hazard.
+:::
 
-### The Software Timestamp Fallacy
-*The Fallacy:* High-level software timers (`time.time()` or `clock_gettime()`) accurately measure information age.  
-*The Reality:* Software timers record only when an operating system thread was scheduled by the kernel. They are completely blind to optical photodiode charge integration, MIPI-CSI deserialization, DMA bus transfers, and motor phase electrical rise times. Only hardware-triggered logic probes measure true sense-to-actuation ground truth.
+::: {.callout-fallacy title="Software Timestamps Measure Ground Truth"}
+* **The Fallacy:** High-level software timers (`time.time()` or `clock_gettime()`) accurately measure information age.
+* **The Physical Reality:** Software timers record only when an operating system thread was scheduled by the kernel. They are completely blind to optical photodiode charge integration, MIPI-CSI deserialization, DMA bus transfers, and motor phase electrical rise times. Only hardware-triggered logic probes measure true sense-to-actuation ground truth.
+:::
 
-### The Average Latency Fallacy
-*The Fallacy:* Average latency ($P_{50}$) is sufficient to certify closed-loop physical safety.  
-*The Reality:* A physical machine executing at $50\text{ Hz}$ completes 180,000 cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
+::: {.callout-fallacy title="Average Latency Sufficiency"}
+* **The Fallacy:** Average latency ($P_{50}$) is sufficient to certify closed-loop physical safety.
+* **The Physical Reality:** A physical machine executing at $50\text{ Hz}$ completes 180,000 cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
+:::
 
-### The Deep FIFO Queue Fallacy
-*The Fallacy:* Multi-stage FIFO queues prevent sensory data loss and smooth out inference jitter.  
-*The Reality:* In advisory computing, dropping data causes dropped records; in physical closed-loop control, buffering stale data injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Systems must sample the single latest completed observation and immediately drop intermediate stale frames.
+::: {.callout-fallacy title="Deep FIFO Queue Buffering"}
+* **The Fallacy:** Multi-stage FIFO queues prevent sensory data loss and smooth out inference jitter.
+* **The Physical Reality:** In advisory computing, dropping data causes dropped records; in physical closed-loop control, buffering stale data injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Systems must sample the single latest completed observation and immediately drop intermediate stale frames.
+:::
 
-### The Pre-Warmed Dynamic Heap Fallacy
-*The Fallacy:* Dynamic heap allocation (`malloc`) is acceptable in real-time control if heaps are pre-warmed during boot.  
-*The Reality:* Pre-allocating heap pools in user-space does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
+::: {.callout-fallacy title="Pre-Warmed Dynamic Heap Allocation"}
+* **The Fallacy:** Dynamic heap allocation (`malloc`) is acceptable in real-time control if heaps are pre-warmed during boot.
+* **The Physical Reality:** Pre-allocating heap pools in user-space does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
+:::
 
-### Chapter Summary
+## Chapter Summary
 
 Physical AI begins where digital software abstractions collide with unyielding physical laws. Throughout this chapter, we established the quantitative instruments, physical constraints, and silicon mechanisms that govern the boundary between learned deliberation and physical reality:
 
@@ -439,8 +444,4 @@ Physical AI begins where digital software abstractions collide with unyielding p
    * *Column 4 (Energy and Thermal Load):* Derived continuous current ratings ($I_{\text{cont}}$) and peak burst durations ($\Delta t_{\text{burst}} \le \tau_{\text{th}}(I_{\text{cont}}/I_{\text{peak}})^2$) using first-order thermal differential equations ($C_{\text{th}}\frac{d\Delta T}{dt} = I^2 R - \frac{\Delta T}{R_{\text{th}}}$), enforced firmware $I^2t$ current clamping, and exposed how silicon thermal throttling doubles neural inference latency.
    * *Column 5 (Silicon Determinism):* Mitigated UMA DRAM crossbar contention with hardware QoS and non-cacheable DMA ring buffers, bridged the heterogeneous cache coherency chasm with lock-free SRAM mailboxes and NVIC hardware interrupts, and codified the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`) in static SRAM.
 
-### What Comes Next
-
-With the Five Physical Columns established, the vertical pillars of the Physical AI Co-Design Matrix are complete. These physical laws define the boundaries within which all embodied computation must operate.
-
-In **Chapter 3 (The Cognitive Dimensions: The 5-Stage Lifecycle and The Co-Design Matrix)**, we turn our focus to the horizontal rows of the Co-Design Matrix: **Perceive, Remember, Reason, Plan, and Execute**. We will examine how an embodied machine constructs spatial representations of 3D geometry, maintains persistent memory under sensory occlusion, reasons about long-horizon goals, plans multi-step action chunks, and executes real-time reflexes across heterogeneous, multi-rate silicon runtimes.
+With the Five Physical Columns established, the vertical pillars of the Physical AI Co-Design Matrix are complete. These physical laws define the boundaries within which all embodied computation must operate. In **Chapter 3 (The Cognitive Dimensions: The 5-Stage Lifecycle and The Co-Design Matrix)**, we turn our focus to the horizontal rows of the Co-Design Matrix: **Perceive, Remember, Reason, Plan, and Execute**, examining how an embodied machine constructs spatial representations of 3D geometry, maintains persistent memory under sensory occlusion, reasons about long-horizon goals, plans multi-step action chunks, and executes real-time reflexes across heterogeneous, multi-rate silicon runtimes.
