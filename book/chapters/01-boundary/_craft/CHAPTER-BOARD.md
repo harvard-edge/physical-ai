@@ -2,10 +2,11 @@
 
 - Chapter: `book/chapters/01-boundary/01-boundary.qmd`
 - Mode: whole-chapter outline
-- Status: DONE (priority bullets expanded 2026-08-20)
+- Status: DONE (priority bullets expanded 2026-08-20; Alley revision pass 2026-08-20 — see `ALLEY-PASS.md`)
 - Human signal: kick-off after commit `2e3e7c0`
 - Expanded into `.qmd`: 00-B2/B3, 01-B3, 02-B5, 04-B2/B3, 05-B3/B4/B5/B6, 06-B2, 08-B2/B3/B4, 10-B1
 - Left as KEEP (no prose change needed): autopsy, spectrum tables, dual success, fallacies, journey map
+- Alley pass: restored baseline from `0ac1b89`, then structure → precision → flow → cut (no new curriculum)
 
 ## Scope lock
 

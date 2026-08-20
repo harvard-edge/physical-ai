@@ -211,6 +211,47 @@ After the first expansion pass, do **one** authoring revision pass focused only 
 
 ---
 
+## Phase 5b — Alley revision pass (prose craft)
+
+**Doctrine:** Michael Alley, *The Craft of Scientific Writing* — used as the **revision method** for how the textbook author writes and rewrites, **not** as a substitute for architect bullets, CMOS, or chapter pedagogy.
+
+**Stack (do not invert):**
+
+| Layer | Owns |
+| :--- | :--- |
+| Architect brief + bullets | What to teach and how (curriculum) |
+| Chapter standards | Pedagogy skeleton (objectives, autopsy, contract, ladder, lab) |
+| CMOS | House surface style |
+| Alley | Scientific prose craft and revision order |
+
+### Alley revision order (strict)
+
+Run passes in this order. Do not polish diction before structure is right.
+
+1. **Audience and purpose** — Who is reading this section, and what must they be able to do after it? Cut anything that serves the author’s ego more than that purpose.  
+2. **Structure** — One primary claim per section/subsection; open with that claim or with the concrete situation that forces it; put secondary detail after. Prefer visible hierarchy (short headings, short paragraphs, tables/figures that carry structure) over buried lists of claims.  
+3. **Precision** — Prefer concrete nouns and verbs; put SI numbers where the ladder claims rigor; replace hedges and throat-clearing (“It is important to note…”, “As we shall see…”, “The material is foundational…”) with the fact or cut them.  
+4. **Flow** — Sew paragraph seams so each sentence follows from the last; fix whiplash jumps between intuition → mechanism → SI; read the join to the previous and next `##`.  
+5. **Cut** — Delete repetition, roadmap paragraphs that only announce later sections, and double-telling of the same claim in adjacent paragraphs.
+
+### Alley checklist (required when this pass is invoked)
+
+- [ ] Purpose of each `##` is clear in the first one or two paragraphs  
+- [ ] No throat-clearing openers or empty roadmap closures  
+- [ ] Structure is visible without `**Label:**` telegraphs (CMOS still wins)  
+- [ ] Numbers and equations appear when the section claims quantitative transfer  
+- [ ] Redundant restatements of the same claim are collapsed  
+- [ ] No new curriculum claims (Gate G7 still holds)
+
+### When to run
+
+- Explicit trigger: `alley pass on chapter N` / `Alley revision on <path>`  
+- Or as the default second revision after Phase 5 expansion when the architect asks for textbook-quality polish  
+
+Log the pass in `_craft/ALLEY-PASS.md` (or a section craft file): what was cut, what was restructured, what was left alone because it is architect-owned.
+
+---
+
 ## Phase 6 — Post-expand micro-board
 
 Student UX + the most relevant expert: Did we fix Named only / Blocking? Any new density or overlap? Small fixes OK; new claims → new bullets.
