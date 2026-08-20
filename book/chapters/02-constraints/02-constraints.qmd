@@ -26,14 +26,19 @@ By the conclusion of this chapter, you will be able to:
 
 :::
 
-::: {.callout-contract title="The Proposal–Permission Contract Box"}
-$$\text{MPU Proposals } p_t \in \mathcal{P} \quad \xrightarrow{\quad \text{Shared SRAM Mailbox} \quad} \quad \left[ \text{MCU Safety Enforcer} \right] \quad \xrightarrow{\quad \text{Permitted Setpoints} \quad} \quad u_t \in \mathcal{U}_{\text{safe}}$$
+{{< pagebreak >}}
 
-| Component | Authority and Substrate | Contract Specification |
+::: {.callout-contract title="The Proposal–Permission Contract Box"}
+$$\begin{aligned}
+\text{MPU Proposals } p_t \in \mathcal{P} &\xrightarrow{\quad \text{Shared SRAM Mailbox} \quad} \left[ \text{MCU Safety Enforcer} \right] \\
+&\xrightarrow{\quad \text{Permitted Setpoints} \quad} u_t \in \mathcal{U}_{\text{safe}}
+\end{aligned}$$
+
+| Component | Authority & Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU* | • Timestamped trajectory chunk proposal: $p_t(t_{\text{transduce}})$<br>• Model inference time budget: $t_{\text{inference}} \le 40\text{ ms}$<br>• Sensory evidence timestamp: $t_{\text{transduce}}$ and sequence counter $k$ |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Bare-Metal MCU* | • Audits arrival freshness: $\Delta t_{\text{total}} = t_{\text{now}} - t_{\text{transduce}}$<br>• Vetoes proposal if $\Delta t_{\text{total}} > \Delta t_{\text{wall}}$ (Freshness Wall)<br>• Computes stopping envelope: $d_{\text{stop}}(v, \Delta t_{\text{total}}) \le d_{\text{clearance}}$<br>• Clamps jerk ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$) and stator current ($I \le I_{\text{cont}}$) |
-| **Failure Escalation** | *MCU Hardware Reflex* | If the MPU heartbeat lease expires ($t > 10\text{ ms}$) or a tail latency spike occurs, the MCU discards the proposal and executes an active Category 1 dynamic braking stop (SS1) followed by Safe Torque Off (STO). |
+| **What MPU Proposes (S2 / S1.5)** | *Untrusted · Linux MPU* | • Trajectory chunk: $p_t(t_{\text{transduce}})$<br>• Inference budget: $t_{\text{infer}} \le 40\text{ ms}$<br>• Freshness stamp: $t_{\text{transduce}}$, seq $k$ |
+| **What MCU Permits (S1)** | *Trusted · Bare-Metal MCU* | • Freshness audit: $\Delta t \le \Delta t_{\text{wall}}$<br>• Dynamic stop: $d_{\text{stop}}(v, \Delta t) \le d_{\text{clear}}$<br>• Clamps: jerk $\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\max}$, current $I \le I_{\text{cont}}$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | Heartbeat lapse ($t > 10\text{ ms}$) triggers Category 1 dynamic stop $\to$ Safe Torque Off. |
 :::
 
 ::: {.callout-note title="The Sim-to-Real Delta" icon=false}
@@ -94,16 +99,16 @@ To eliminate the illusion of instantaneous computation, we trace every microseco
 6. **Stage 6: Real-Time Safety Veto and Enforcement ($t_{\text{enforce}}$):** Executing deterministically at $1000\text{ Hz}$ on the bare-metal microcontroller, the safety enforcer evaluates Control Barrier Functions [@ames2019control], audits stopping distances ($d_{\text{stop}}$), and projects candidate waypoints onto the safe invariant set ($0.4\text{--}1.0\text{ ms}$).
 7. **Stage 7: Electromagnetic Actuator Rise Time ($t_{\text{actuator}}$):** Motor inverter MOSFETs switch PWM duty cycles, but phase current cannot change instantaneously due to stator copper coil inductance $L$ and resistance $R$. The electromagnetic rise time to commanded torque requires $6\text{--}15\text{ ms}$.^[Phase current in an inductive stator winding follows $I(t) = I_{\text{target}} (1 - e^{-t / \tau_e})$, where $\tau_e = L/R$ is the electrical time constant. Achieving $95\%$ commanded torque requires approximately $3\tau_e$. Even with zero software computation time, physics imposes an unalterable electrical delay.]
 
-| Stage | Subsystem and Physical Mechanism | Nominal ($P_{50}$) | Tail ($P_{99}$) | Bottleneck Classification | Chapter That Owns It |
+| Stage | Subsystem & Mechanism | $P_{50}$ | $P_{99}$ | Bottleneck | Owner |
 | :--- | :--- | :---: | :---: | :--- | :--- |
-| **1. Transduce ($t_{\text{transduce}}$)** | Photodiode charge well integration / IMU cantilever deflection | $8.0\text{ ms}$ | $15.0\text{ ms}$ | **Physics-Bound** (Optical exposure & photon flux) | Chapter 4 (*Perception*) |
-| **2. DMA Ingest ($t_{\text{dma}}$)** | Hardware DMA transfer across MIPI CSI-2 into shared DRAM | $3.0\text{ ms}$ | $8.0\text{ ms}$ | **Bandwidth-Bound** (UMA memory bus contention) | Chapter 4 and Chapter 9 |
-| **3. Perception ($t_{\text{perceive}}$)** | Vision Transformer (ViT) / DINOv2 3D spatial tokenization | $12.0\text{ ms}$ | $25.0\text{ ms}$ | **Compute-Bound** (Neural activation & token count) | Chapter 4 (*Spatial Tokens*) |
-| **4. Policy VLA ($t_{\text{inference}}$)** | Diffusion ACT / VLA action chunk generation forward pass | $22.0\text{ ms}$ | $60.0\text{ ms}$ | **Compute-Bound** (Denoising iterations & weights) | Chapter 6 and Chapter 7 |
-| **5. Inter-IPC ($t_{\text{ipc}}$)** | Serializing proposal chunk across shared SRAM mailbox | $0.8\text{ ms}$ | $2.0\text{ ms}$ | **Scheduling-Bound** (RPMSG queue & mailbox IRQ) | Chapter 3 (*Multi-Rate*) |
-| **6. Enforce ($t_{\text{enforce}}$)** | Evaluating Control Barrier Functions and stopping distance | $0.4\text{ ms}$ | $1.0\text{ ms}$ | **Determinism-Bound** (1 kHz FreeRTOS ISR budget) | Chapter 8 (*Safety Enforcers*) |
-| **7. Actuator ($t_{\text{actuator}}$)** | Motor stator coil $L/R$ electrical rise time to magnetic torque | $6.0\text{ ms}$ | $15.0\text{ ms}$ | **Physics-Bound** (Winding inductance & back-EMF) | Chapter 8 and Chapter 11 |
-| **TOTALS** | **Cumulative End-to-End Latency Chain** | **$52.2\text{ ms}$** | **$126.0\text{ ms}$** | **System Budget: $\le 80.0\text{ ms}$** | **Whole-System Synthesis** |
+| **1. Transduce ($t_{\text{transduce}}$)** | Photodiode charge well integration / IMU | $8.0\text{ ms}$ | $15.0\text{ ms}$ | **Physics** (Optical flux) | Ch 4 |
+| **2. DMA Ingest ($t_{\text{dma}}$)** | DMA transfer across MIPI CSI-2 to DRAM | $3.0\text{ ms}$ | $8.0\text{ ms}$ | **Bandwidth** (UMA bus) | Ch 4, 9 |
+| **3. Perception ($t_{\text{perceive}}$)** | ViT / DINOv2 3D spatial tokenization | $12.0\text{ ms}$ | $25.0\text{ ms}$ | **Compute** (NPU activation) | Ch 4 |
+| **4. Policy ($t_{\text{inference}}$)** | Diffusion ACT / VLA action chunk pass | $22.0\text{ ms}$ | $60.0\text{ ms}$ | **Compute** (Denoising steps) | Ch 6, 7 |
+| **5. Inter-IPC ($t_{\text{ipc}}$)** | Serializing chunk across SRAM mailbox | $0.8\text{ ms}$ | $2.0\text{ ms}$ | **Scheduling** (Mailbox IRQ) | Ch 3 |
+| **6. Enforce ($t_{\text{enforce}}$)** | Evaluating CBFs and stopping bounds | $0.4\text{ ms}$ | $1.0\text{ ms}$ | **Determinism** (1 kHz ISR) | Ch 8 |
+| **7. Actuator ($t_{\text{actuator}}$)** | Motor coil $L/R$ electrical rise time | $6.0\text{ ms}$ | $15.0\text{ ms}$ | **Physics** (Inductance) | Ch 8, 11 |
+| **TOTALS** | **End-to-End Latency Chain** | **$52.2\text{ ms}$** | **$126.0\text{ ms}$** | **Budget: $\le 80.0\text{ ms}$** | **Whole System** |
 
 : **The 7-stage sense-to-actuation latency ledger.** Deconstructing end-to-end delay across physical transduction, memory bus transfers, neural processing, inter-core communication, real-time safety evaluation, and electromagnetic actuator rise time. {#tbl-latency-ledger}
 
@@ -165,7 +170,7 @@ On embedded Linux System-on-Chips (SoCs), latency distributions are heavily skew
 In computer architecture, pipelining is the standard technique to maximize instruction throughput: by overlapping sequential execution stages across multiple clock cycles, an instruction completes every cycle even if individual instructions require many cycles.
 
 In machine learning inference pipelines, software developers often apply the same FIFO queuing pattern:
-$$\text{Cycle } k: \quad [\text{Expose Frame 3}] \longrightarrow [\text{DMA Frame 2}] \longrightarrow [\text{Infer Frame 1}] \longrightarrow [\text{Actuate Frame 0}]$$
+$$\text{Cycle } k: \quad [\text{Expose } F_3] \longrightarrow [\text{DMA } F_2] \longrightarrow [\text{Infer } F_1] \longrightarrow [\text{Actuate } F_0]$$
 
 This architecture yields high frame rates (for example, $60\text{ FPS}$). **However, in Physical AI, deep FIFO pipelining creates a dangerous trap: The Pipelining Paradox.**
 
@@ -271,7 +276,10 @@ To appreciate how latency translates directly into physical collision hazard, co
 * **$P_{99}$ Tail Latency Spike ($\Delta t_{\text{delay}} = 230\text{ ms}$):**
   $$d_{\text{react}} = 1.0\text{ m/s} \times 0.230\text{ s} = 0.230\text{ m} \; (23\text{ cm})$$
   $$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \; (25\text{ cm})$$
-  $$d_{\text{stop}} = 0.230\text{ m} + 0.250\text{ m} = \mathbf{0.480\text{ m}} \; (48\text{ cm}) \quad \implies \quad \mathbf{\text{CRASH (Overrun } = +13\text{ cm})}$$
+  $$\begin{aligned}
+  d_{\text{stop}} &= 0.230\text{ m} + 0.250\text{ m} = \mathbf{0.480\text{ m}} \; (48\text{ cm}) \\
+  &\implies \mathbf{\text{CRASH (Overrun } = +13\text{ cm})}
+  \end{aligned}$$
 
 A $200\text{ ms}$ operating system scheduling stall added $+20\text{ cm}$ of unguided blind travel, converting a safe stop into an unavoidable high-energy collision.
 
@@ -580,41 +588,41 @@ Every chapter in this textbook freezes a formal, versioned engineering specifica
 
 #### 2. Dynamic Stopping Kinematics and Jerk Invariants (`REQ-01`)
 
-| Parameter | Specification | Units | Physical Justification and Derivation |
+| Parameter | Spec | Units | Justification & Derivation |
 | :--- | :---: | :---: | :--- |
-| **Max Operational Velocity ($v_{\text{max}}$)** | $0.75$ | $\text{m/s}$ | End-effector velocity limit in collaborative workspace |
-| **Controlled Deceleration ($a_{\text{max}}$)** | $4.50$ | $\text{m/s}^2$ | Max braking deceleration without gearbox tooth shear |
-| **Max Commanded Jerk ($\dddot{q}_{\text{max}}$)** | $120.0$ | $\text{rad/s}^3$ | $\mathcal{C}^2$ spline limit to protect cycloidal/harmonic drives |
-| **Reaction Delay Distance ($d_{\text{react}}$)** | $0.060$ | $\text{m}$ | $v_{\text{max}} \cdot \Delta t(P_{99} = 80.0\text{ ms})$ ($6.0\text{ cm}$) |
-| **Dynamic Braking Distance ($d_{\text{brake}}$)** | $0.0625$ | $\text{m}$ | $v_{\text{max}}^2 / (2 \cdot a_{\text{max}})$ ($6.25\text{ cm}$) |
-| **Total Stopping Distance ($d_{\text{stop}}$)** | **$0.1225$** | **$\text{m}$** | $d_{\text{react}} + d_{\text{brake}}$ ($12.25\text{ cm}$) |
-| **Safety Clearance Buffer ($d_{\text{clear}}$)** | $0.150$ | $\text{m}$ | Barrier envelope required before MCU safety override |
+| **Max Velocity ($v_{\text{max}}$)** | $0.75$ | $\text{m/s}$ | Velocity limit in workspace |
+| **Deceleration ($a_{\text{max}}$)** | $4.50$ | $\text{m/s}^2$ | Max braking deceleration without shear |
+| **Max Jerk ($\dddot{q}_{\text{max}}$)** | $120.0$ | $\text{rad/s}^3$ | $\mathcal{C}^2$ spline limit to protect drives |
+| **Reaction Distance ($d_{\text{react}}$)** | $0.060$ | $\text{m}$ | $v_{\text{max}} \cdot \Delta t(P_{99} = 80.0\text{ ms})$ ($6.0\text{ cm}$) |
+| **Braking Distance ($d_{\text{brake}}$)** | $0.0625$ | $\text{m}$ | $v_{\text{max}}^2 / (2 \cdot a_{\text{max}})$ ($6.25\text{ cm}$) |
+| **Stopping Distance ($d_{\text{stop}}$)** | **$0.1225$** | **$\text{m}$** | $d_{\text{react}} + d_{\text{brake}}$ ($12.25\text{ cm}$) |
+| **Clearance Buffer ($d_{\text{clear}}$)** | $0.150$ | $\text{m}$ | Envelope before MCU override |
 
 : **Dynamic stopping kinematics and jerk invariants (`REQ-01`).** {#tbl-dossier-req01-kinematics}
 
 #### 3. Electrical, Thermal, and Actuation Ledger (`REQ-01`)
 
-| Parameter | Value | Units | Safety Limit and Monitoring Mechanism |
+| Parameter | Value | Units | Safety Limit & Monitoring Mechanism |
 | :--- | :---: | :---: | :--- |
-| **Continuous Current Rating ($I_{\text{cont}}$)** | $4.20$ | $\text{A}$ | Thermal equilibrium current: $I_{\text{cont}} = \sqrt{\Delta T_{\text{max}} / (R \cdot R_{\text{th}})}$ |
-| **Peak Acceleration Current ($I_{\text{peak}}$)** | $8.50$ | $\text{A}$ | Transient burst limit: bounded to $t \le 250\text{ ms}$ by $I^2 t$ monitor |
-| **Stator Phase Resistance ($R$)** | $0.38$ | $\Omega$ | Winding resistance measured at $25^\circ\text{C}$ |
-| **Thermal Resistance ($R_{\text{th}}$)** | $2.10$ | $^\circ\text{C}/\text{W}$ | Stator-to-ambient thermal conduction resistance |
+| **Continuous Current ($I_{\text{cont}}$)** | $4.20$ | $\text{A}$ | Equilibrium: $I_{\text{cont}} = \sqrt{\Delta T_{\text{max}} / (R \cdot R_{\text{th}})}$ |
+| **Peak Current ($I_{\text{peak}}$)** | $8.50$ | $\text{A}$ | Burst limit: $t \le 250\text{ ms}$ via $I^2 t$ monitor |
+| **Phase Resistance ($R$)** | $0.38$ | $\Omega$ | Winding resistance at $25^\circ\text{C}$ |
+| **Thermal Resistance ($R_{\text{th}}$)** | $2.10$ | $^\circ\text{C}/\text{W}$ | Stator-to-ambient thermal resistance |
 | **Thermal Capacitance ($C_{\text{th}}$)** | $45.0$ | $\text{J}/^\circ\text{C}$ | Stator assembly thermal mass |
-| **Max Winding Temperature ($T_{\text{max}}$)** | $85.0$ | $^\circ\text{C}$ | Hard thermal limit before insulation breakdown and demagnetization |
-| **Max Torque Derivative ($\dot{\tau}_{\text{max}}$)** | $45.0$ | $\text{Nm/s}$ | Rate clamp to prevent gearbox flexspline fatigue |
+| **Max Temperature ($T_{\text{max}}$)** | $85.0$ | $^\circ\text{C}$ | Limit before insulation degradation |
+| **Max Torque Derivative ($\dot{\tau}_{\text{max}}$)** | $45.0$ | $\text{Nm/s}$ | Clamp to prevent flexspline fatigue |
 
 : **Electrical, thermal, and actuation ledger (`REQ-01`).** {#tbl-dossier-req01-thermal}
 
 #### 4. Silicon Determinism, Memory, and Hardware Leases (`REQ-01`)
 
-| Parameter | Specification | Execution Domain | Architectural Enforcement Rule |
+| Parameter | Specification | Domain | Enforcement Rule |
 | :--- | :---: | :---: | :--- |
-| **UMA DRAM Allocation** | $2.0\text{ GB}$ LPDDR4 | Linux MPU | Dedicated CMA contiguous memory for camera DMA ring buffers |
-| **Real-Time SRAM Allocation** | $256\text{ KB}$ TCM | Bare-Metal MCU | **Zero dynamic heap:** $100\%$ static memory buffers |
-| **Inter-Core Shared Mailbox** | $16\text{ KB}$ SRAM | Shared / MPU-MCU | Non-cacheable atomic SPSC ring buffer with IPCC interrupts |
-| **MCU Worst-Case Exec Time ($WCET$)** | $\le 0.40\text{ ms}$ | Bare-Metal MCU | Guaranteed execution within $1.0\text{ ms}$ FreeRTOS tick budget |
-| **Watchdog Heartbeat Lease ($\tau_{\text{watchdog}}$)** | $10.0\text{ ms}$ | Hardware Timer | Non-maskable interrupt (NMI) cuts motor gate power on expiry |
+| **UMA DRAM** | $2.0\text{ GB}$ LPDDR4 | Linux MPU | Dedicated CMA memory for camera ring buffers |
+| **Real-Time SRAM** | $256\text{ KB}$ TCM | Bare-Metal MCU | **Zero dynamic heap:** $100\%$ static buffers |
+| **Shared Mailbox** | $16\text{ KB}$ SRAM | Shared MPU-MCU | Non-cacheable atomic ring buffer with IRQ |
+| **MCU Worst-Case ($WCET$)** | $\le 0.40\text{ ms}$ | Bare-Metal MCU | Guaranteed execution in $1.0\text{ ms}$ tick |
+| **Watchdog Lease ($\tau_{\text{watchdog}}$)** | $10.0\text{ ms}$ | Hardware Timer | NMI cuts motor gate power on expiry |
 
 : **Silicon determinism, memory, and hardware leases (`REQ-01`).** {#tbl-dossier-req01-silicon}
 
@@ -694,7 +702,7 @@ silicon_determinism:
 
 ## Hands-On Bench Laboratory: `labs/02-metrology-wall`
 
-::: {.callout-lab title="Lab 2: Mapping the Freshness Wall and Benchmarking P99 Tails"}
+::: {.callout-lab title="2: Mapping the Freshness Wall and Benchmarking P99 Tails"}
 * **Objective:** Instrument the Arduino UNO Q dual-brain hardware kit with hardware GPIO triggers and an active shunt current probe to construct the empirical Cumulative Distribution Function (CDF) of sense-to-actuation latency and map the Freshness Wall where task success collapses.
 * **Phase 1 (Hardware GPIO Instrumentation):** Connect a multi-channel digital logic analyzer to `GPIO 1` (camera SOF interrupt), `GPIO 2` (Linux kernel RPMSG emit), and `GPIO 3` (MCU Control Barrier Function validation). Connect an oscilloscope current probe across the motor low-side current shunt. Execute 10,000 continuous closed-loop cycles while running synthetic memory bus stress on the Linux MPU (`stress-ng --vm 2 --vm-bytes 512M` combined with uncompressed video streaming).
 * **Phase 2 (Tail Latency CDF Construction):** In Python, construct the empirical Cumulative Distribution Function (CDF) from hardware timestamps. Calculate $P_{50}, P_{90}, P_{99}$, and $P_{99.9}$. Verify that measured tail latency satisfies $P_{99} \le 80.0\text{ ms}$ under heavy memory contention.

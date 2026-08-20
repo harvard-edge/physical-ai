@@ -23,12 +23,14 @@ By the conclusion of this chapter, you will be able to:
 
 :::
 
+{{< pagebreak >}}
+
 ::: {.callout-contract title="The Multi-Rate Proposal–Permission Contract"}
-| Component | Authority and Substrate | Contract Specification |
+| Component | Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU / NPU* | • Expiring intent lease: $\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}} \in SE(3), \mathcal{B}_{\text{workspace}}, \|\mathbf{v}\|_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \le 1500\text{ ms} \rangle$<br>• Action chunk trajectory: $\mathbf{A}_{t:t+H}$ ($H=16$ waypoints at $20\text{--}50\text{ Hz}$)<br>• Monotonic hardware heartbeat counter ($\tau_{\text{heartbeat}} \le 10\text{ ms}$) |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Bare-Metal MCU* | • Audits arrival freshness: $\Delta t_{\text{evidence}} \le \tau_{\text{wall}}$<br>• Minimal-intervention Control Barrier Function (CBF) QP projection at $1000\text{ Hz}$<br>• Continuous stopping clearance audit: $d_{\text{stop}}(v) \le d_{\text{clear}}$<br>• Hardware watchdog timer interlock ($\tau_{\text{watchdog}} = 20\text{ ms}$) |
-| **Failure Escalation** | *MCU Hardware Reflex* | If heartbeat expires ($t > 20\text{ ms}$) or intent lease lapses, immediately discard candidate proposals, execute an active Category 1 dynamic deceleration halt, and trip Safe Torque Off (STO). |
+| **MPU Proposes (S2 / S1.5)** | *Untrusted · Linux MPU / NPU* | • Intent lease: $\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}}, \mathcal{B}, \|\mathbf{v}\|_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$<br>• Action chunk: $\mathbf{A}_{t:t+H}$ ($H=16$ at $20\text{--}50\text{ Hz}$)<br>• Heartbeat: $\tau_{\text{heartbeat}} \le 10\text{ ms}$ |
+| **MCU Permits (S1)** | *Trusted · Bare-Metal MCU* | • Freshness audit: $\Delta t_{\text{evidence}} \le \tau_{\text{wall}}$<br>• Control Barrier Function QP projection at $1000\text{ Hz}$<br>• Stopping clearance: $d_{\text{stop}}(v) \le d_{\text{clear}}$<br>• Hardware watchdog: $\tau_{\text{watchdog}} = 20\text{ ms}$ |
+| **Failure Escalation** | *MCU Hardware Reflex* | On heartbeat lapse ($t > 20\text{ ms}$) or expired intent, discard proposals, execute Cat 1 dynamic halt $\to$ Safe Torque Off. |
 :::
 
 ::: {.callout-note icon=false title="The Sim-to-Real Delta"}
@@ -58,16 +60,16 @@ An embodied agent does not exist to produce text or render pixels on a display. 
 
 As illustrated in @fig-agent-workflow, an embodied task traverses nine concrete lifecycle stations across heterogeneous hardware domains:
 
-| Lifecycle Station | Subsystem Function and Transformation | Target Substrate | Corresponding Curriculum Chapter |
+| Lifecycle Station | Subsystem Function & Transformation | Target Substrate | Chapter |
 | :--- | :--- | :--- | :--- |
-| **1. Goal Ingestion** | Ingests natural language instructions and task constraints | Cloud / Host MPU | Chapter 6 (*Semantic Deliberation*) |
-| **2. Transduction** | Photons and inertial forces integrate in analog silicon wells | Image Sensors / IMU | Chapter 4 (*Perception and Encoders*) |
-| **3. 3D Perception** | Pixels $\to$ 3D spatial affordance tokens in $SE(3)$ | Edge NPU / Vision Core | Chapter 4 (*Perception and Encoders*) |
-| **4. World Model** | Filters noise, tracks dynamic frame trees, and bounds drift | Application MPU | Chapter 5 (*World Models and State*) |
-| **5. Intent Lease** | Emits time-bounded intent lease $\mathcal{L}_{\text{intent}}$ | Application MPU (System 2) | Chapter 6 (*Semantic Deliberation*) |
-| **6. Action Chunking** | Decodes $H$ future joint waypoints at $20\text{--}50\text{ Hz}$ | Edge NPU (System 1.5) | Chapter 7 (*Planning and Chunking*) |
-| **7. Safety Reflex** | $1000\text{ Hz}$ minimal-intervention Control Barrier Function filter | Bare-Metal MCU (System 1) | Chapter 8 (*Real-Time Enforcement*) |
-| **8. Physical Mutation** | PWM switches inverter MOSFETs; coils energize; matter moves | Motor Inverters / Coils | Chapter 1 and Chapter 11 (*Assurance*) |
+| **1. Goal Ingestion** | Ingests language instructions and constraints | Cloud / Host MPU | Ch 6 (*Reasoning*) |
+| **2. Transduction** | Photons and forces integrate in silicon wells | Sensors / IMU | Ch 4 (*Perception*) |
+| **3. 3D Perception** | Pixels $\to$ 3D spatial tokens in $SE(3)$ | Edge NPU / Vision | Ch 4 (*Perception*) |
+| **4. World Model** | Tracks dynamic frame trees, bounds drift | Application MPU | Ch 5 (*Memory*) |
+| **5. Intent Lease** | Emits time-bounded intent lease $\mathcal{L}_{\text{intent}}$ | Application MPU (S2) | Ch 6 (*Reasoning*) |
+| **6. Action Chunk** | Decodes $H$ future waypoints at $20\text{--}50\text{ Hz}$ | Edge NPU (S1.5) | Ch 7 (*Planning*) |
+| **7. Safety Reflex** | $1000\text{ Hz}$ Control Barrier Function filter | Bare-Metal MCU (S1) | Ch 8 (*Enforcement*) |
+| **8. Mutation** | PWM switches inverter; coils energize; moves | Motor Inverters | Ch 1, 11 |
 | **9. Endogenous Loop** | Mutated state $W_{t+1}$ generates subsequent observations $O_{t+1}$ | Physical Environment | Whole-System Closed-Loop Synthesis |
 
 1. **Station 1 (Open-World Goal Ingestion):** A human operator or factory orchestration service transmits an open-vocabulary prompt: *"Pick up the hot steel bracket from the welding jig and place it into the quench tank."*
@@ -243,17 +245,17 @@ Attempting to run these disparate workloads in a single synchronous loop is arch
 
 @tbl-three-cadences formally contrasts the hardware, software, and authority boundaries across the three temporal tiers:
 
-| Dimension | System 2: Semantic Deliberation | System 1.5: Trajectory Decoding | System 1: Real-Time Reflex |
+| Dimension | System 2: Deliberation | System 1.5: Trajectory | System 1: Real-Time Reflex |
 | :--- | :--- | :--- | :--- |
-| **Nominal Operating Frequency** | $0.5\text{--}2\text{ Hz}$ ($500\text{--}2000\text{ ms}$) | $20\text{--}50\text{ Hz}$ ($20\text{--}50\text{ ms}$) | $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
-| **Silicon Substrate** | Multi-Core ARM Cortex-A / Edge NPU | Dedicated Edge NPU / Tensor Core | Bare-Metal ARM Cortex-M / RISC-V |
-| **Operating System** | Embedded Linux (`PREEMPT_RT`) | Linux User Space (`SCHED_FIFO`) | Bare-Metal / FreeRTOS (Static Memory) |
-| **Memory Allocation Model** | Dynamic Virtual Memory / Heap | Pinned Paged Memory (POSIX Shared) | **Zero Dynamic Heap (Static SRAM Only)** |
-| **Underlying Workload** | Multimodal VLM ($7\text{B}\text{--}70\text{B}$ params) | Diffusion Policy / ACT ($50\text{M}\text{--}200\text{M}$) | CBF-QP Solver / Dynamic Stopping / FOC |
-| **Output Data Structure** | Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$) | Trajectory Chunk $\mathbf{A}_{t:t+H}$ ($H=16$) | Permitted PWM Duty Cycles ($u_t^*$) |
-| **Physical Electrical Privilege** | **Zero Authority (Advisory Only)** | **Candidate Proposal Generator** | **Sole Hardware Gatekeeper (PWM Locks)** |
-| **Inter-Core Interface** | Shared DRAM IPC Mailbox | Lock-Free SRAM Ring Buffer | Direct Memory-Mapped Peripheral Registers |
-| **Failure Containment** | Lease timeout $\to$ hold position | Discard stale chunk $\to$ replan | Active Category 1 Deceleration $\to$ STO |
+| **Cadence** | $0.5\text{--}2\text{ Hz}$ ($500\text{--}2000\text{ ms}$) | $20\text{--}50\text{ Hz}$ ($20\text{--}50\text{ ms}$) | $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
+| **Silicon** | ARM Cortex-A / Edge NPU | Edge NPU / Tensor Core | Bare-Metal Cortex-M / RISC-V |
+| **OS** | Linux (`PREEMPT_RT`) | Linux User Space (`SCHED_FIFO`) | Bare-Metal / FreeRTOS |
+| **Memory** | Dynamic Virtual Memory / Heap | Pinned Paged Memory | **Zero Heap (Static SRAM Only)** |
+| **Workload** | Multimodal VLM ($7\text{B}\text{--}70\text{B}$) | Diffusion / ACT ($50\text{M}\text{--}200\text{M}$) | CBF-QP Solver / Stopping / FOC |
+| **Output** | Expiring Intent Lease ($\mathcal{L}$) | Trajectory Chunk $\mathbf{A}_{t:t+H}$ | Permitted PWM Duty ($u_t^*$) |
+| **Privilege** | **Zero Authority (Advisory)** | **Candidate Proposal Generator** | **Sole Gatekeeper (PWM Locks)** |
+| **Interface** | Shared DRAM IPC Mailbox | Lock-Free SRAM Ring Buffer | Memory-Mapped Registers |
+| **Failure** | Timeout $\to$ hold position | Discard chunk $\to$ replan | Cat 1 Deceleration $\to$ STO |
 
 : **Comparison of the Three Cadences.** Substrates, memory models, privilege tiers, and failure containment. The frequencies in the first row are the desk kit's instantiation as of 2026; the rows beneath it are not. {#tbl-three-cadences}
 
@@ -450,23 +452,23 @@ In Chapter 3, we freeze the formal **Workflow and Multi-Rate Lifecycle Charter (
 
 #### 3. Intent Lease and Action Chunk Schema (`FLOW-01`)
 
-| Field Name | Data Type and Unit | Engineering Constraint and Verification Bound |
+| Field Name | Data Type & Unit | Constraint & Verification Bound |
 | :--- | :--- | :--- |
-| `lease_id` | `uint32_t` (Monotonic) | Must increment strictly monotonically; duplicate or out-of-order IDs rejected |
-| `target_pose` | `SE3_Transform_t` ($[x, y, z, q_w, q_x, q_y, q_z]$) | Verified against algebraic manipulator workspace envelope $\mathcal{W}_{\text{reach}}$ |
+| `lease_id` | `uint32_t` (Monotonic) | Strictly monotonic; duplicate/out-of-order IDs rejected |
+| `target_pose` | `SE3_Transform_t` ($[x, y, z, \mathbf{q}]$) | Verified against workspace envelope $\mathcal{W}_{\text{reach}}$ |
 | `max_velocity_clamp` | `float32_t` ($\text{m/s}$) | Clamped to $\|\mathbf{v}\| \le 1.5\text{ m/s}$ for payloads $<2.0\text{ kg}$ |
-| `issue_timestamp_ptp`| `uint64_t` ($\mu\text{s}$) | Synchronized against IEEE 1588 PTP hardware clock domain |
-| `ttl_duration_ms` | `uint32_t` ($\text{ms}$) | Hard-capped at $\Delta t_{\text{TTL}} \le 1500\text{ ms}$; non-renewable if staleness $>200\text{ ms}$ |
-| `chunk_horizon_H` | `uint16_t` (Steps) | Fixed at $H=16$ steps ($20\text{ Hz}$ spacing, $800\text{ ms}$ total forward horizon) |
+| `issue_timestamp_ptp`| `uint64_t` ($\mu\text{s}$) | Synchronized against IEEE 1588 PTP hardware clock |
+| `ttl_duration_ms` | `uint32_t` ($\text{ms}$) | Hard-capped at $\Delta t_{\text{TTL}} \le 1500\text{ ms}$ |
+| `chunk_horizon_H` | `uint16_t` (Steps) | Fixed at $H=16$ steps ($20\text{ Hz}$, $800\text{ ms}$ horizon) |
 
 #### 4. Emergency Escalation and Safe-State Transitions (`FLOW-01`)
 
-| Trigger Event | Detection Latency | Immediate Safe-State Response | Final Electrical State |
+| Trigger Event | Detection | Immediate Response | Final State |
 | :--- | :---: | :--- | :--- |
-| **Linux MPU Kernel Panic / OOM** | $\le 20.0\text{ ms}$ | MCU watchdog trips; active dynamic braking deceleration ($a = 4.5\text{ m/s}^2$) | Safe Torque Off (STO) |
-| **Intent Lease TTL Expiry** | $\le 1.0\text{ ms}$ | Trajectory generator unrolls smooth quintic deceleration spline to $v=0$ | Closed-Loop Position Hold |
-| **CBF Barrier Violation ($h(\mathbf{x}) < 0$)** | $\le 0.4\text{ ms}$ | Quadratic Program projects command onto tangent boundary $\partial\mathcal{C}$ | Safe Boundary Following |
-| **Hardware E-Stop Depressed** | $\le 5.0\,\mu\text{s}$ | Hardware de-energizes gate-driver power rail via independent safety relay | Immediate Category 0 STO |
+| **Linux MPU Kernel Panic** | $\le 20.0\text{ ms}$ | MCU watchdog trips; dynamic braking ($a = 4.5\text{ m/s}^2$) | Safe Torque Off |
+| **Intent Lease TTL Expiry** | $\le 1.0\text{ ms}$ | Trajectory generator unrolls quintic deceleration spline | Position Hold |
+| **CBF Violation ($h(\mathbf{x}) < 0$)** | $\le 0.4\text{ ms}$ | Quadratic Program projects command onto boundary $\partial\mathcal{C}$ | Safe Boundary Follow |
+| **Hardware E-Stop Depressed** | $\le 5.0\,\mu\text{s}$ | De-energizes gate-driver rail via independent safety relay | Immediate Cat 0 STO |
 
 ```yaml
 # ==============================================================================
@@ -523,7 +525,7 @@ isolation_invariants:
 
 ## Hands-On Bench Laboratory: `labs/03-agent-workflow`
 
-::: {.callout-lab title="Lab 3: Tracing the Multi-Rate Agent Workflow on Silicon"}
+::: {.callout-lab title="3: Tracing the Multi-Rate Agent Workflow on Silicon"}
 * **Objective:** Deploy and instrument the complete three-cadence agent lifecycle on the Arduino UNO Q dual-brain platform, verifying on bench hardware that the real-time MCU safely halts actuators when the Linux MPU crashes.
 * **Phase 1 (Multi-Rate Bringup):** Launch the System 2 mock VLM intent generator ($1\text{ Hz}$) and System 1.5 ACT trajectory decoder ($20\text{ Hz}$) in Linux user space on the ARM Cortex-A application core. Configure lock-free shared SRAM ring buffers to stream 16-step action chunks to the Cortex-M4 microcontroller. Run the System 1 Control Barrier Function loop at $1000\text{ Hz}$ on bare-metal firmware.
 * **Phase 2 (Lifecycle Instrumentation):** Connect digital logic analyzer probes to dedicated MCU and MPU GPIO pins. Capture concurrent timing traces recording:

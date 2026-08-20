@@ -23,11 +23,13 @@ By the conclusion of this chapter, you will be able to:
 
 :::
 
+{{< pagebreak >}}
+
 ::: {.callout-contract}
-| Component | Authority and Substrate | Contract Specification |
+| Component | Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2 / 1.5)** | *Untrusted · Stochastic · Linux MPU* | • Candidate action chunk: $\mathbf{a}_{t:t+H} \in \mathbb{R}^{H \times D}$<br>• Expiring Intent Lease: $\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}}, \mathcal{B}, \dot{\mathbf{x}}_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$<br>• Zero direct electrical authority over motor gate drivers |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Bare-Metal MCU* | • Validates physical invariants: joint limits, velocity bounds, stopping distance ($d_{\text{stop}} \le d_{\text{clear}}$)<br>• Projects proposals onto forward-invariant safe set: $h(\mathbf{x}) \ge 0$<br>• Sole privilege to write PWM registers and toggle gate enable (`EN_GATE`) |
+| **MPU Proposes (S2 / S1.5)** | *Untrusted · Linux MPU* | • Candidate action chunk: $\mathbf{a}_{t:t+H} \in \mathbb{R}^{H \times D}$<br>• Expiring Intent Lease: $\mathcal{L}_{\text{intent}} = \langle \mathbf{T}_{\text{target}}, \mathcal{B}, \dot{\mathbf{x}}_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$<br>• Zero direct electrical authority over motor gate drivers |
+| **MCU Permits (S1)** | *Trusted · Bare-Metal MCU* | • Validates physical invariants: joint limits, velocity bounds, stopping distance ($d_{\text{stop}} \le d_{\text{clear}}$)<br>• Projects proposals onto forward-invariant safe set: $h(\mathbf{x}) \ge 0$<br>• Sole privilege to write PWM registers and toggle gate enable (`EN_GATE`) |
 | **Failure Escalation** | *MCU Hardware Reflex* | On lease expiration ($\Delta t > \tau_{\text{watchdog}}$), communication stall, or invariant breach, MCU revokes PWM and executes IEC 60204-1 Category 1 dynamic braking halt $\to$ Safe Torque Off (STO). |
 :::
 
@@ -51,9 +53,10 @@ The moment you connect that same Python script to the gate drivers of an electri
 
 The instant computation moves matter, the comforting guarantees of digital software vanish:
 
-$$\text{Digital World: } \text{Software Exception} \xrightarrow{\quad \text{try/catch} \quad} \text{HTTP 500 Retry} \quad (W_t \text{ Unchanged})$$
-
-$$\text{Physical AI: } \text{Actuation } A_t \implies \text{Matter and Momentum Mutate } (W_t \longrightarrow W_{t+1}) \implies O_{t+1}$$
+$$\begin{aligned}
+\text{Digital World: } &\text{Software Exception} \xrightarrow{\quad \text{try/catch} \quad} \text{HTTP 500 Retry} \quad (W_t \text{ Unchanged}) \\
+\text{Physical AI: } &\text{Actuation } A_t \implies \text{Matter Mutates } (W_t \longrightarrow W_{t+1}) \implies O_{t+1}
+\end{aligned}$$
 
 In the physical world, there is no `try/catch` block for kinetic momentum ($\mathbf{p} = m\mathbf{v}$). If an electric motor accelerates an arm toward a rigid fixture, the mechanism accumulates kinetic energy that cannot be undone by software.^[For an articulated $n$-link manipulator, the total kinetic energy is $E_k = \frac{1}{2}\dot{\mathbf{q}}^T \mathbf{M}(\mathbf{q})\dot{\mathbf{q}}$, where $\mathbf{M}(\mathbf{q})$ is the configuration-dependent generalized inertia tensor. Even if motor drive commands drop to zero, velocity decays only through physical friction, counter-torques, or impact.] If an inverter commands excessive continuous current, copper stator coils accumulate irreversible Joule heat ($I^2 R$) that degrades insulation and demagnetizes permanent magnets.^[The thermal rise in motor windings follows the energy balance $\Delta T(t) = \int_{0}^{t} \frac{I^2(\tau) R - \Delta T(\tau) / R_{\text{th}}}{C_{\text{th}}} \, d\tau$, where $R_{\text{th}}$ and $C_{\text{th}}$ are the thermal resistance and capacitance of the stator assembly. While brief transient spikes are absorbed safely by $C_{\text{th}}$, steady-state current must remain strictly below the continuous rating $I_{\text{cont}}$.] **You cannot `ctrl+z` kinetic energy.**
 
@@ -67,11 +70,11 @@ Physical AI sits at the convergence of three distinct engineering traditions. Pr
 
 ![**The Three Engineering Tribes Converging into Physical AI.** Machine learning brings semantic representation, embedded systems brings deterministic timing and silicon control, and robotics brings physical dynamics. Physical AI synthesizes all three into a unified co-design discipline.](figures/fig01_three_tribes.svg){#fig-three-tribes width=100%}
 
-| Dimension | ML and AI (The "Brain") | Embedded and ECE (The "Nervous System") | Robotics and Control (The "Body") |
+| Dimension | ML / AI (The "Brain") | Embedded / ECE (The "Nervous System") | Robotics / Control (The "Body") |
 | :--- | :--- | :--- | :--- |
-| **Familiar Mental Anchor** | PyTorch, Linux, tensors, foundation models, simulation | C/C++, FreeRTOS, memory-mapped I/O, timers, PWM | Dynamics, kinematics ($SE(3)$), PIDs, gearboxes, torques |
-| **The Critical Blindspot** | *The Digital Sandbox Illusion:* Assuming simulation proof guarantees safety and software exceptions are harmless. | *The Static Automation Illusion:* Treating systems as rigid, rule-based loops unable to parse unstructured open worlds. | *The Closed-World Illusion:* Distrusting learned models as black boxes; assuming the environment can be fully modeled in CAD. |
-| **The "Aha!" Systems Breakthrough** | An OS process crash does **not** zero hardware registers; timer PWM runs in silicon indefinitely until an independent MCU supervisor vetoes power. | How to host multi-gigabyte foundation models as untrusted MPU proposal services without compromising real-time MCU timing. | You do not reject learned models—you cage them inside real-time $1000\text{ Hz}$ Control Barrier Functions on the MCU. |
+| **Mental Anchor** | PyTorch, Linux, tensors, models, simulation | C/C++, FreeRTOS, memory-mapped I/O, timers, PWM | Dynamics, kinematics ($SE(3)$), PIDs, gearboxes |
+| **Blindspot** | *Digital Sandbox:* Assuming simulation guarantees safety and exceptions are harmless. | *Static Automation:* Treating systems as rigid rules unable to parse open worlds. | *Closed-World:* Distrusting learned models; assuming the world is fully modeled in CAD. |
+| **Breakthrough** | Process crash does **not** zero registers; timer PWM runs until MCU vetoes power. | Host large foundation models as untrusted MPU services without harming MCU timing. | Do not reject learned models; cage them in $1000\text{ Hz}$ Control Barrier Functions. |
 
 : The Three Engineering On-Ramps. Contrasting the background assumptions, critical blind spots, and breakthrough insights of the converging disciplines. {#tbl-three-tribes}
 
@@ -108,17 +111,39 @@ Across every embodiment—from high-profile humanoid robots to deep energy infra
 
 ---
 
+### The Four Bedrock Laws of Physical AI Systems
+
+Every architectural interface, firmware driver, and release qualification checkpoint established in this curriculum is anchored in four inescapable physical laws:
+
+::: {.callout-law title="1 — Physical Causality and Irreversibility"}
+Software state can be caught with a `try/catch` block, isolated in a container, or rolled back. Physical actions ($W_t \to W_{t+1}$) governed by mass, inertia, friction ($\mu$), and gravity ($g$) are permanent and irreversible. Every actuation permanently alters the physical environment, dissipates energy, and alters all future sensory observations endogenously ($A_t \to W_{t+1} \to O_{t+1}$).
+:::
+
+::: {.callout-law title="2 — Information Freshness (The Time Law)"}
+The physical world does not pause while an AI model computes. Sensor observations age the microsecond photons strike the photodiode. Mean latency ($P_{50}$) is a dangerous illusion; tail latency ($P_{99}$), DRAM memory bus contention, and information age ($\Delta t$) dictate physical closed-loop stability and dynamic stopping distances ($d_{\text{stop}}$).
+:::
+
+::: {.callout-law title="3 — Proposal–Permission Privilege (The Architecture Law)"}
+No stochastic, learned neural network (VLM, VLA, or Diffusion Policy) may hold direct motor authority. Learned models running on application processors (MPU) are *untrusted proposal services*. Real-time physical permission belongs exclusively to dedicated, zero-allocation microcontrollers (MCU) running deterministic mathematical safety envelopes and physical fallbacks.
+:::
+
+::: {.callout-law title="4 — Governed Change and Defensible Release (The Safety Law)"}
+A physical agent shapes its own future data distribution. Naive training on raw operational logs without isolating safety interventions induces severe covariate shift and policy collapse. A cherry-picked video demo or simulation benchmark is not evidence of safety; defensible release requires cross-layer fault injection and a formal Claim-Argument-Evidence (CAE) safety case rendering an accountable **Deploy / Condition / Refuse** verdict.
+:::
+
+---
+
 ### The Three Canonical Archetypes of Physical AI
 
 To make the physics and systems engineering universal and teachable, we distill every physical machine into three canonical interaction archetypes that will serve as recurring case studies throughout this book (@tbl-canonical-archetypes):
 
-| Dimension | Archetype 1: Locomotion & Mobility | Archetype 2: Contact Manipulation | Archetype 3: Cybernetic Energy & Process |
+| Dimension | Archetype 1: Mobility | Archetype 2: Contact Manipulation | Archetype 3: Energy & Process |
 | :--- | :--- | :--- | :--- |
-| **Physical Interaction** | Moving in Free Space | Touching & Shaping Matter | Regulating Continuous State Flows |
-| **Primary Physical Law** | Inertial Momentum ($\mathbf{p} = m\mathbf{v}$) & Stopping Kinematics | Contact Forces, Friction & Torque Derivatives ($\dot{\boldsymbol{\tau}}$) | Thermodynamics ($I^2R$ Heat) & Energy Conservation |
-| **Primary Silicon Tension**| High-speed sensory DMA & $P_{99}$ latency tails | Multi-rate trajectory IPC & $\mathcal{C}^2$ jerk continuity | ADC sampling latency & hard thermal safe sets |
-| **Real-World Anchors** | • Humanoid Walking<br>• Autonomous Cars (Waymo)<br>• Flying Drones (Skydio) | • Dexterous Manipulators<br>• Humanoid Hands (Optimus)<br>• Surgical Robotic Tools | • EV Battery Thermal Management<br>• Smart Grid Inverters<br>• Closed-Loop Medical Infusion |
-| **Role in the Curriculum** | Teaches Time, Freshness, Stopping Distance & Latency Tails | **The Primary Teaching Spine & Desk Lab Kit** (Arduino UNO Q) | Proves Physical AI spans the entire Analog–Digital Seam! |
+| **Interaction** | Moving in Free Space | Touching & Shaping Matter | Regulating State Flows |
+| **Physical Law** | Momentum ($\mathbf{p} = m\mathbf{v}$), Stopping Bounds | Contact Forces, Torque Rate ($\dot{\boldsymbol{\tau}}$) | Thermodynamics ($I^2R$), Conservation |
+| **Silicon Tension**| Sensory DMA & $P_{99}$ latency tails | Multi-rate IPC & $\mathcal{C}^2$ jerk continuity | ADC sampling lag & thermal safe sets |
+| **Real-World Anchors** | • Humanoids, Rovers<br>• Self-driving cars<br>• Drones | • Dexterous Manipulators<br>• Robotic Grippers<br>• Surgical Tools | • Battery Thermal Management<br>• Smart Grid Inverters<br>• Medical Infusion |
+| **Curriculum Role** | Teaches Time, Latency & Stopping Distance | **Primary Teaching Spine & Lab Kit** (Arduino UNO Q) | Shows scope across the Analog–Digital Seam |
 
 : The Three Canonical Archetypes of Physical AI. Grounding every physical system into three universal interaction regimes. {#tbl-canonical-archetypes}
 
@@ -183,13 +208,13 @@ Although benchtop manipulators and mobile rovers provide visible experimental em
 
 Across every physical domain, the exact same architectural contract applies: high-capacity learned models running on application processors act as **untrusted proposal services**, while deterministic real-time supervisors hold **permission authority** over hardware inverters, relays, and valves.
 
-| Embodiment Domain | Untrusted Proposal Engine (MPU / GPU) | Physical Matter and Energy ($W_t \to W_{t+1}$) | Trusted Permission Authority (MCU / FPGA) |
+| Embodiment Domain | Untrusted Proposal Engine (MPU) | Physical Matter & Energy ($W_t \to W_{t+1}$) | Trusted Permission Authority (MCU) |
 | :--- | :--- | :--- | :--- |
-| **Autonomous Mobility and Aerospace** | Neural trajectory planner and vision backbone | Kinetic momentum, steering angle, tire friction ($\mu$) | ASIL-D brake-by-wire and steering envelope supervisor |
-| **Smart Grid and High-Voltage Energy** | Learned battery dispatch and load predictor | Mega-joule current flow, thermal inverter heating | Microsecond hardware over-current and thermal relay interlock |
-| **Active Medical Cybernetics** | Neural glucose and drug rate predictor | Insulin volume, biochemical blood concentration | Hard-limited stepper motor clamp and dose rate watchdog |
-| **Precision Advanced Manufacturing** | Vision transformer toolpath and laser router | High-speed spindle torque, laser beam thermal fluence | Axis limit switch enforcer and optical E-stop watchdog |
-| **Autonomous Robotics** | VLA diffusion action chunk decoder | Joint torque, linkage inertia, contact force | 1 kHz bare-metal Control Barrier Function (CBF) |
+| **Mobility & Aerospace** | Neural trajectory planner | Kinetic momentum, steering angle, friction ($\mu$) | Brake-by-wire and steering envelope supervisor |
+| **Grid & High-Voltage** | Learned battery dispatch predictor | Mega-joule current flow, inverter heating | Microsecond over-current and thermal relay |
+| **Active Medical Devices** | Neural glucose and drug rate predictor | Insulin volume, biochemical blood concentration | Hard-limited stepper clamp & dose watchdog |
+| **Precision Manufacturing** | ViT toolpath & laser router | Spindle torque, laser beam thermal fluence | Axis limit enforcer & optical E-stop watchdog |
+| **Autonomous Robotics** | VLA diffusion action chunk decoder | Joint torque, linkage inertia, contact force | 1 kHz bare-metal Control Barrier Function |
 
 : The Physical AI Embodiment Spectrum. Demonstrating how the Proposal–Permission architecture applies across diverse physical engineering domains. {#tbl-embodiment-spectrum}
 
@@ -249,13 +274,13 @@ Real mechanical transmissions are not rigid mathematical linkages:
 * **Gearbox Tooth Shear:** Discontinuous torque commands (infinite torque derivative $\dot{\boldsymbol{\tau}} \to \infty$, or acceleration jerk $\dddot{\mathbf{q}}$) create high-frequency shock waves that chip gearbox teeth and shear alignment pins.
 * **Contact Compliance:** When an arm strikes a surface, the impact force scales with the stiffness of the contact interface ($F = k \Delta x$). Without sub-millisecond reflex loops, rigid impacts generate peak forces exceeding $10\times$ the structural rating of the arm.
 
-| Physical Phenomenon | Software Assumption (Simulation) | Physical Reality (The Bench) | Systems Impact |
+| Physical Phenomenon | Software Assumption (Sim) | Bench Reality | Systems Impact |
 | :--- | :--- | :--- | :--- |
-| **Momentum ($\mathbf{p} = m\mathbf{v}$)** | Velocity can be set to $0$ instantaneously | Mass requires finite deceleration distance $d_{\text{stop}}$ | Collision if latency spike delays braking command |
-| **Joule Heating ($I^2 R$)** | Unlimited peak torque available | Windings overheat at $T > 85^\circ\text{C}$; demagnetization | Software stall current melts motor stator coils |
-| **Inductance ($\tau_e = L/R$)** | Torque responds in $0\text{ ms}$ | Current rises exponentially ($5\text{--}15\text{ ms}$ rise time) | Phase lag degrades high-speed closed-loop stability |
-| **Gear Backlash ($\theta_{\text{bl}}$)** | Continuous kinematic chain | Discontinuous contact deadband ($1\text{--}3\text{ arcmin}$) | Limit-cycle oscillation during directional reversals |
-| **Jerk ($\dddot{\mathbf{q}}$)** | Step changes in acceleration allowed | Infinite jerk causes mechanical shock and vibration | Sheared cycloidal drive pins and gear tooth fatigue |
+| **Momentum ($\mathbf{p} = m\mathbf{v}$)** | Velocity drops to $0$ instantly | Finite stopping distance $d_{\text{stop}}$ | Collision if latency delays braking |
+| **Joule Heating ($I^2 R$)** | Unlimited peak torque | Overheats at $T > 85^\circ\text{C}$ | Stall current damages stator coils |
+| **Inductance ($\tau_e = L/R$)** | Torque responds in $0\text{ ms}$ | Current rises exponentially ($5\text{--}15\text{ ms}$) | Phase lag degrades stability |
+| **Backlash ($\theta_{\text{bl}}$)** | Continuous kinematic chain | Deadband ($1\text{--}3\text{ arcmin}$) | Oscillation during reversals |
+| **Jerk ($\dddot{\mathbf{q}}$)** | Step acceleration allowed | Jerk causes mechanical shock | Sheared pins and tooth fatigue |
 
 : Digital Software Assumptions versus Physical Hardware Realities. The physical constraints that software cannot ignore. {#tbl-software-vs-physics}
 
@@ -292,13 +317,13 @@ We resolve this tension by splitting the computing substrate into two distinct e
 
 | Dimension | Untrusted Proposal Engine (MPU / Linux) | Trusted Permission Authority (MCU / FreeRTOS) |
 | :--- | :--- | :--- |
-| **Compute Substrate** | Multi-core ARM Cortex-A + NPU (Arduino UNO Q MPU) | Single-core ARM Cortex-M / RISC-V (UNO Q MCU) |
-| **Operating System** | Linux (Preempt-RT / Non-deterministic) | Bare-metal / FreeRTOS (Deterministic) |
-| **Memory Architecture** | 2 GB LPDDR4 DRAM (Shared UMA Bus) | 256 KB Zero-Wait-State SRAM / TCM (No Heap) |
+| **Compute** | Multi-core ARM Cortex-A + NPU (Arduino UNO Q) | Single-core ARM Cortex-M / RISC-V (UNO Q MCU) |
+| **OS** | Linux (Preempt-RT / Non-deterministic) | Bare-metal / FreeRTOS (Deterministic) |
+| **Memory** | 2 GB LPDDR4 DRAM (Shared UMA Bus) | 256 KB Static SRAM / TCM (Zero Heap) |
 | **Workloads** | ViT Encoders, JEPAs, VLMs, Diffusion ACT | Control Barrier Invariants, Watchdogs, FOC |
 | **Timing Horizon** | $20\text{ ms} \text{ to } 2000\text{ ms}$ ($0.5\text{--}50\text{ Hz}$) | $1\text{ ms} \pm 5\,\mu\text{s}$ ($1000\text{ Hz}$) |
-| **Memory Allocation** | Dynamic heap (`malloc`, PyTorch tensors) | Statically allocated SRAM buffers only |
-| **Physical Privilege** | Untrusted (No direct actuator access) | **Trusted (Sole motor gate driver authority)** |
+| **Memory Policy** | Dynamic heap (`malloc`, PyTorch tensors) | Statically allocated SRAM buffers only |
+| **Authority** | Untrusted (No direct actuator access) | **Trusted (Sole motor gate driver authority)** |
 
 : Processor Dimension Comparison. Detailed systems contrast between the application processor and real-time microcontroller. {#tbl-processor-comparison}
 
@@ -508,7 +533,7 @@ safety_invariants:
 
 ## Hands-On Bench Laboratory: `labs/01-close-the-loop`
 
-::: {.callout-lab title="Lab 1: Closing the Causal Loop"}
+::: {.callout-lab title="1: Closing the Causal Loop"}
 * **Objective:** Prove on the Arduino UNO Q dual-brain hardware kit that closing the physical loop introduces irreversible state mutation ($A_t \to W_{t+1} \to O_{t+1}$) and freeze the `LOOP-01` Loop Charter.
 * **Phenomenon:** Run the vision policy in **Advisory Mode** (rendering proposed trajectories on a screen without motor authority) versus **Actuating Mode** (energizing the 3-DoF actuator power rail under MCU supervision).
 * **Observation:** In Advisory Mode, external physical perturbations to the environment do not affect the dataset stream. In Actuating Mode, every permitted motor current command physically displaces the mechanism, endogenously altering all subsequent camera frames and encoder readings.

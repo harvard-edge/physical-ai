@@ -26,8 +26,8 @@ By the conclusion of this chapter, you will be able to:
 ::: {.callout-contract title="The Proposal–Permission Privilege Contract"}
 | **Component** | **Authority and Substrate** | **Contract Specification** |
 | :--- | :--- | :--- |
-| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Semantic Intent Lease: $\mathcal{L}_{\text{intent}}$<br>• Target 3D pose: $T_{\text{target}}^{\text{world}} \in SE(3)$<br>• Workspace bounding box: $\mathcal{B} = [x_{\min}, y_{\min}, z_{\min}, x_{\max}, y_{\max}, z_{\max}] \subset \mathbb{R}^3$<br>• Cartesian velocity clamp: $\dot{\mathbf{x}}_{\text{max}} \le 0.40\text{ m/s}$<br>• Confidence score: $p_{\text{sem}} \ge \gamma_{\text{thresh}}$<br>• Expiring lease window: $t_{\text{expire}} = t_{\text{issue}} + 800\text{ ms}$ |
-| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Geometric reachability check: $p_{\text{target}} \in \mathcal{W}_{\text{reach}}$<br>• Jacobian condition number: $\kappa(J) = \frac{\sigma_{\max}(J)}{\sigma_{\min}(J)} \le 50.0$<br>• Manipulability index: $w = \sqrt{\det(J J^T)} \ge w_{\min}$<br>• Freshness check: $(t_{\text{now}} - t_{\text{capture}}) < t_{\text{expire}}$<br>• Scene drift validation: $\|p_{\text{now}} - p_{\text{capture}}\| \le 30\text{ mm}$ |
+| **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Intent Lease: $\mathcal{L}_{\text{intent}} = \langle T_{\text{target}}, \mathcal{B}, \dot{\mathbf{x}}_{\max}, t_{\text{expire}} \rangle$<br>• Target pose: $T_{\text{target}}^{\text{world}} \in SE(3)$<br>• Workspace box: $\mathcal{B} \subset \mathbb{R}^3$<br>• Velocity clamp: $\dot{\mathbf{x}}_{\max} \le 0.40\text{ m/s}$<br>• Confidence: $p_{\text{sem}} \ge \gamma_{\text{thresh}}$<br>• Lease window: $t_{\text{expire}} = t_{\text{issue}} + 800\text{ ms}$ |
+| **What the MCU Permits (System 1)** | *Trusted · Deterministic · Real-Time MCU* | • Reach check: $p_{\text{target}} \in \mathcal{W}_{\text{reach}}$<br>• Jacobian condition: $\kappa(J) \le 50.0$<br>• Manipulability: $w \ge w_{\min}$<br>• Freshness check: $(t_{\text{now}} - t_{\text{capture}}) < t_{\text{expire}}$<br>• Scene drift validation: $\|\Delta p\| \le 30\text{ mm}$ |
 | **Failure Escalation** | *MCU Hardware Reflex & Governance* | If the VLM abstains, confidence falls below threshold ($p_{\text{sem}} < \gamma$), the lease expires, or scene drift is detected, reject the intent, command an IEC 60204-1 Category 2 safe position hold, and prompt the operator for disambiguation. |
 :::
 
@@ -50,9 +50,10 @@ The moment you connect an autoregressive vision-language model to a physical rob
 
 This fundamental tension exposes why end-to-end monolithic foundation models cannot be trusted with direct motor authority:
 
-$$\text{Digital VLM: } \text{Prompt} \xrightarrow{\quad \text{Autoregressive Decode} \quad} \text{Text / 2D Bounding Box} \quad (\text{Zero Physical Risk})$$
-
-$$\text{Physical Intent: } \text{Prompt} \xrightarrow{\quad \text{VLM Proposal} \quad} \mathcal{L}_{\text{intent}} \xrightarrow{\quad \text{Morphological Gate} \quad} T_{\text{target}}^{\text{world}} \in SE(3) \implies \text{Matter Moves } (W_t \to W_{t+1})$$
+$$\begin{aligned}
+\text{Digital VLM: } &\text{Prompt} \xrightarrow{\quad \text{Decode} \quad} \text{Text / 2D Bounding Box} \quad (\text{Zero Risk}) \\
+\text{Physical Intent: } &\text{Prompt} \xrightarrow{\; \text{VLM} \;} \mathcal{L}_{\text{intent}} \xrightarrow{\; \text{Gate} \;} T_{\text{target}}^{\text{world}} \implies \text{Matter Moves } (W_t \to W_{t+1})
+\end{aligned}$$
 
 High-capacity multimodal models are indispensable for **System 2 Semantic Deliberation**—they provide the open-world semantic reasoning required to understand unstructured human instructions and complex visual scenes. However, they are **untrusted proposal generators operating at human deliberation speeds ($0.5\text{--}2\text{ Hz}$)**. They possess zero intrinsic knowledge of motor dynamics, gear ratios, kinematic singularities, or physical momentum.
 
@@ -94,7 +95,7 @@ Inference in a multimodal transformer consists of two fundamentally distinct com
 
 1. **The Prefill Phase (Time-to-First-Token / TTFT):** The model ingests the prompt text tokens and visual patch tokens from the camera image ($16 \times 16$ pixel patches flattened into dense embeddings). This phase is **compute-bound**: large matrix-matrix multiplications ($\text{GEMM}$) fill the systolic arrays of the neural processing unit (NPU), exhibiting high arithmetic intensity ($\text{FLOPs} / \text{Byte}$). On edge accelerators like the NVIDIA Jetson Orin or embedded NPU SoCs, prefill completes in $80\text{ to }150\text{ ms}$.
 2. **The Autoregressive Decoding Phase (Time-Per-Output-Token / TPOT):** To generate subsequent spatial tokens (bounding boxes, coordinate numbers, or action primitives), the transformer must generate tokens one by one. For every single emitted token, the processor must stream billions of weight parameters from external LPDDR5 DRAM across the memory bus into on-chip SRAM cache:
-   $$\text{Arithmetic Intensity} = \frac{\text{Floating Point Operations}}{\text{DRAM Bytes Transferred}} \approx \frac{2 \times N_{\text{params}}}{2 \times N_{\text{params}}} = 1.0 \quad \left[\frac{\text{FLOP}}{\text{Byte}}\right]$$
+   $$\text{Arithmetic Intensity} = \frac{\text{FLOPs}}{\text{DRAM Bytes}} \approx \frac{2 N_{\text{params}}}{2 N_{\text{params}}} = 1.0 \; \left[\frac{\text{FLOP}}{\text{Byte}}\right]$$
    At an arithmetic intensity of $1.0\text{ FLOP/Byte}$, the matrix compute units sit idle for over $90\%$ of each clock cycle waiting for memory transfers. On a system with $68\text{ GB/s}$ of unified memory bandwidth, fetching a quantized $4\text{ GB}$ model footprint takes approximately $40\text{ ms}$ per token. Generating a 15-token spatial intent description requires $600\text{ ms}$ of pure weight-streaming time.
 
 Total end-to-end deliberation latency aggregates across both phases:
@@ -148,7 +149,10 @@ A 2D pixel coordinate $(u, v)$ has no physical depth. To convert pixel coordinat
 
 Using the pinhole camera projection model, the 3D metric coordinate in the camera optical frame $\mathbf{p}_{\text{cam}} = [X_c, Y_c, Z_c]^T \in \mathbb{R}^3$ is reconstructed via inverse ray casting:
 
-$$\begin{bmatrix} X_c \\ Y_c \\ Z_c \end{bmatrix} = Z \cdot \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} = Z \cdot \begin{bmatrix} 1/f_x & 0 & -c_x / f_x \\ 0 & 1/f_y & -c_y / f_y \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}$$
+$$\begin{aligned}
+\begin{bmatrix} X_c \\ Y_c \\ Z_c \end{bmatrix} &= Z \cdot \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} \\
+&= Z \cdot \begin{bmatrix} 1/f_x & 0 & -c_x / f_x \\ 0 & 1/f_y & -c_y / f_y \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+\end{aligned}$$
 
 where $f_x, f_y$ are the focal lengths in pixels, and $(c_x, c_y)$ is the principal point offset.
 
@@ -269,7 +273,10 @@ Near a singular configuration, the minimum singular value vanishes ($\sigma_m \t
 
 Gate 2 enforces a strict kinematic safety invariant:
 
-$$\text{Gate 2 Condition: } \kappa(\mathbf{J}(\mathbf{q}_{\text{target}})) \le \kappa_{\text{threshold}} \quad (\kappa_{\text{threshold}} = 50.0) \quad \mathbf{AND} \quad w(\mathbf{q}_{\text{target}}) \ge w_{\min}$$
+$$\begin{aligned}
+\text{Gate 2 Condition: } &\kappa(\mathbf{J}(\mathbf{q}_{\text{target}})) \le \kappa_{\text{threshold}} \quad (\kappa_{\text{threshold}} = 50.0) \\
+&\mathbf{AND} \quad w(\mathbf{q}_{\text{target}}) \ge w_{\min}
+\end{aligned}$$
 
 Proposals failing this test are flagged as kinematically singular and blocked.
 
