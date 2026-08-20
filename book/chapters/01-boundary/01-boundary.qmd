@@ -106,54 +106,42 @@ $$d_{\text{stop}} = v_0 \cdot \tau_{\text{latency}} + \frac{v_0^2}{2 \mu g}$$
 
 Here, $\tau_{\text{latency}}$ encompasses sensor exposure, serialized bus transport, neural network forward-pass inference, and actuator torque ramp-up. If a deep vision policy requires $250\text{ ms}$ to detect an obstacle, that compute latency is not an abstract profiling statistic; it is a physical displacement during which the machine travels completely blind under open-loop momentum.
 
-#### Archetype 2: Contact Manipulation (Rigid and Deformable Mechanics)
-Contact manipulation encompasses robotic arms, multi-fingered dexterous hands, industrial assembly effectors, and robotic surgical tools. These systems interact with the environment through intermittent mechanical contact, governed by unilateral Signorini-Coulomb contact mechanics, elastic deformation, and impact shock waves.
+#### Archetype 2: Contact Manipulation (Rigid and Deformable Linkages)
+Contact manipulation encompasses robotic arms, dexterous multi-fingered hands, surgical tools, and industrial assembly effectors. These systems interact with physical objects through intermittent mechanical contact.
 
-Unlike free-space mobility, manipulation is characterized by extreme structural stiffness and discontinuous dynamics. When a rigid robotic gripper contacts a stiff metallic surface, the contact force $F_c$ rises proportionally to the material stiffness $k_{\text{contact}}$ and penetration depth $\delta x$:
+Unlike free-space mobility, manipulation is characterized by extreme structural stiffness. When a rigid metallic gripper contacts a stiff workpiece or fixture, the contact force $F_c$ spikes almost instantaneously with even microscopic positional overshoots:
 
-$$F_c(t) = k_{\text{contact}} \cdot \delta x(t) + b_{\text{contact}} \cdot \delta \dot{x}(t)$$
+$$F_c \approx k_{\text{contact}} \cdot \Delta x$$
 
-In stiff environments where $k_{\text{contact}} > 10^5\text{ N/m}$, an unperceived positional overshoot of merely $1\text{ mm}$ produces an instantaneous contact force exceeding $100\text{ N}$. If a learned tactile feedback policy experiences jitter or delay exceeding a few milliseconds, the actuator drives through the surface before the software can register the force threshold, shearing mechanical transmissions or fracturing manipulated objects.
+In stiff environments where material stiffness exceeds $k_{\text{contact}} > 10^5\text{ N/m}$, an unperceived overshoot of merely $1\text{ mm}$ produces an instantaneous contact force exceeding $100\text{ N}$. If a learned tactile feedback policy experiences even a $10\text{ ms}$ tail latency spike on an edge processor, the actuator continues driving forward before software can register the force threshold—shearing gearbox pins or fracturing the workpiece.
 
-#### Archetype 3: Cybernetic Energy and Processes (Thermodynamic, Fluid, and Power Networks)
-Cybernetic energy and process systems represent non-kinematic Physical AI. This archetype includes grid-tied solid-state power inverters, high-density datacenter battery thermal management loops, chemical microreactors, and medical infusion pumps. These systems are governed by the conservation of charge, mass, and energy, described by thermodynamic state equations and Kirchhoff's laws.
+#### Archetype 3: Cybernetic Energy and Processes (Power, Thermal, and Fluid Networks)
+Physical AI is not limited to machines with moving joints; it governs cybernetic systems where learned models manage continuous flows of electrical energy, heat, and fluids. This archetype includes grid-tied battery storage inverters, high-density datacenter cooling loops, and chemical batch reactors.
 
-Consider a grid-forming power inverter controlled by a neural reinforcement learning policy optimizing renewable power dispatch. The inverter switches power MOSFETs at tens of kilohertz to match the alternating current grid voltage $V_{\text{grid}}(t) = V_0 \sin(\omega_0 t + \phi)$. A phase error $\Delta \phi$ caused by algorithmic latency produces immediate reactive power circulating currents:
-
-$$I_{\text{reactive}} \approx \frac{V_0 \cdot \Delta \phi}{X_{\text{line}}}$$
-
-where $X_{\text{line}}$ is the transmission line reactance. If the neural controller fails to synchronize within sub-millisecond tolerances, circulating currents trigger automatic overcurrent breaker trips or cascade into localized voltage collapse across the distribution grid. Similarly, in high-rate lithium-ion battery charging, miscalculating cooling valve modulation leads to internal Joule heat accumulation $\dot{Q} = I^2 R_{\text{int}}$, initiating self-sustaining thermal runaway reactions within seconds.
+Consider a grid-forming battery storage inverter where a learned reinforcement learning policy optimizes power dispatch. The inverter switches power MOSFETs at tens of kilohertz to synchronize with the alternating current grid. A timing jitter or algorithmic delay of just a few milliseconds creates a phase angle mismatch ($\Delta \phi$), driving massive circulating reactive currents that trip circuit breakers or destabilize the local feeder. Similarly, in high-rate electric vehicle battery charging, an algorithm that miscalculates cooling valve timing allows resistive Joule heat ($Q = I^2 R \cdot t$) to accumulate faster than the fluid loop can extract it, risking thermal runaway within seconds.
 
 
 ### Quantitative Systems Rigor: The Stability-Latency Horizon
 
-Why cannot software engineers simply take a state-of-the-art vision transformer or large language model, deploy it on an embedded system, and execute it as fast as the hardware allows? The answer lies in the fundamental relationship between computation latency and closed-loop dynamic stability.
+Why can't software engineers simply take a state-of-the-art vision transformer or large language model, deploy it on an embedded system, and run it as fast as the hardware allows? The answer lies in the fundamental relationship between computational delay and closed-loop dynamic stability.
 
-In classical feedback control theory, a physical plant has intrinsic natural dynamics characterized by a dominant time constant $\tau_{\text{plant}}$ or natural frequency $\omega_n$. When a discrete-time computational controller (whether a classical PID loop or a billion-parameter neural policy) is inserted into the loop, the total time delay $\tau_{\text{delay}}$ introduces an unavoidable phase lag into the system's open-loop frequency response.
+In any physical feedback loop, the physical plant (a balancing robot, a flying drone, or a motor drive) has intrinsic natural dynamics characterized by an operating bandwidth or natural frequency $\omega_c$. When software is inserted into this closed loop, every millisecond of end-to-end compute delay $\tau_{\text{delay}}$ (from photon arrival on the sensor to current ramp-up in the motor) injects an unavoidable phase lag into the feedback signal:
 
-Let $L(s) = P(s) C(s)$ denote the open-loop transfer function of the physical plant $P(s)$ and controller $C(s)$ in the Laplace domain. Adding a pure computational transport delay $\tau_{\text{delay}}$ modifies the frequency response according to:
+$$\Delta \phi = -\omega_c \cdot \tau_{\text{delay}} \quad \text{[radians]}$$
 
-$$L_{\text{delayed}}(j\omega) = L(j\omega) \cdot e^{-j \omega \tau_{\text{delay}}}$$
+Phase lag means the controller is always reacting to where the physical system *used to be* rather than where it *is now*. If you push a child on a playground swing, pushing half a second too late fights the swing's momentum rather than building it. In physical machines, as compute latency $\tau_{\text{delay}}$ grows, the system's phase margin (its safety buffer against oscillation) erodes. When phase margin drops to zero ($\text{PM} \le 0^\circ$), negative feedback flips into destructive positive feedback: minor sensor noise no longer dampens out—it amplifies exponentially into violent limit-cycle oscillations, motor saturation, and mechanical failure.
 
-The exponential term $e^{-j \omega \tau_{\text{delay}}}$ possesses a magnitude of unity, $|e^{-j \omega \tau_{\text{delay}}}| = 1$, meaning compute delay does not attenuate signal gain. However, it injects a phase lag that grows linearly with frequency:
+This physical reality establishes the **Stability-Latency Horizon**: for any dynamical system with crossover frequency $\omega_c$ and a required stability phase margin $\text{PM}_{\text{margin}}$, there exists a hard physical deadline on end-to-end computational latency:
 
-$$\Delta \phi(\omega) = -\omega \cdot \tau_{\text{delay}} \quad \text{[radians]} = -\omega \cdot \tau_{\text{delay}} \left(\frac{180^\circ}{\pi}\right) \quad \text{[degrees]}$$
+$$\tau_{\text{delay}}^{\text{max}} < \frac{\text{PM}_{\text{margin}}}{\omega_c}$$
 
-The phase margin $\text{PM}$ of the closed-loop system is defined at the gain crossover frequency $\omega_c$ (where $|L(j\omega_c)| = 1$):
+Consider a robotic balancing platform with an operating bandwidth of $\omega_c = 20\text{ rad/s}$ ($\approx 3.2\text{ Hz}$) and a nominal phase margin of $45^\circ$ ($0.785\text{ rad}$). The maximum allowable end-to-end compute latency is:
 
-$$\text{PM} = 180^\circ + \angle L(j\omega_c) - \omega_c \cdot \tau_{\text{delay}} \left(\frac{180^\circ}{\pi}\right)$$
+$$\tau_{\text{delay}}^{\text{max}} < \frac{0.785\text{ rad}}{20\text{ rad/s}} \approx 39.3\text{ ms}$$
 
-As computational latency $\tau_{\text{delay}}$ increases, the phase margin steadily erodes. When $\text{PM} \le 0^\circ$, the system crosses the threshold of dynamic instability: small sensory perturbations no longer decay; they amplify exponentially into violent limit-cycle oscillations, actuator saturation, and structural destruction.
+This simple back-of-the-envelope calculation reveals a profound systems principle: **A massive foundation model that achieves 99.9% prediction accuracy but takes $50\text{ ms}$ to execute will cause this robot to lose stability and crash.** Conversely, a lightweight, lower-accuracy model executing deterministically in $5\text{ ms}$ preserves a healthy phase margin of over $39^\circ$, keeping the machine rock-solid. 
 
-This quantitative relationship establishes the **Stability-Latency Horizon**: for any physical plant with crossover frequency $\omega_c$, there exists a hard, non-negotiable ceiling on end-to-end compute latency:
-
-$$\tau_{\text{delay}}^{\text{max}} < \frac{\text{PM}_{\text{baseline}}}{\omega_c} \left(\frac{\pi}{180^\circ}\right)$$
-
-In a robotic balance system where $\omega_c = 20\text{ rad/s}$ and the nominal phase margin is $45^\circ$, the absolute maximum allowable computation time is:
-
-$$\tau_{\text{delay}}^{\text{max}} < \frac{45^\circ}{20} \left(\frac{\pi}{180^\circ}\right) = \frac{0.7854\text{ rad}}{20\text{ rad/s}} \approx 39.3\text{ ms}$$
-
-A neural policy that achieves 99.9% statistical prediction accuracy but requires $50\text{ ms}$ of inference time will drive this physical plant into catastrophic instability. Conversely, a compact, lower-accuracy policy executing deterministically in $5\text{ ms}$ preserves a healthy phase margin of over $39^\circ$, maintaining robust physical balance. In Physical AI, compute latency is not an optimization metric; it is a primary determinant of physical stability.
+In Physical AI, computational latency is not a software profiling vanity metric; it is a primary state variable that governs physical stability.
 
 
 ### Architectural Consequence: The Dual-Brain System Contract
