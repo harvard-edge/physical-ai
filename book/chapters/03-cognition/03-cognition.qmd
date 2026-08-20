@@ -462,20 +462,9 @@ The Co-Design Matrix serves as the master blueprint for the remainder of this te
 
 ---
 
-## The Intent Lease Protocol and The Studio Lab
+## The Intent Lease Protocol: Proposal–Permission in Practice
 
-To bridge the architectural theory of Chapter 3 into concrete engineering practice, we formalize the communication contract between System 2 semantic reasoning and downstream real-time control, providing the formal specification for the Milestone 3 deliverable and Studio Lab 3.
-
-::: {.callout-contract title="Milestone 3: The Multi-Rate Intent Lease Contract"}
-### Milestone 3 Contract Specification
-
-The primary deliverable of Milestone 3 is the formal implementation and hardware verification of the **Multi-Rate Intent Lease Protocol** across an asynchronous dual-brain computing architecture.
-
-#### Architectural Specification
-1. **Host Application Processor (Linux MPU):** Executes the System 2 deliberative reasoning loop at $1\text{ Hz}$. Upon completing visual semantic scene parsing, the host serializes a formal Intent Lease struct ($\mathcal{L}_{\text{intent}}$) and writes it into a lock-free Single-Producer Single-Consumer (SPSC) ring buffer residing in shared static SRAM.
-2. **Real-Time Microcontroller (Bare-Metal MCU):** Executes a deterministic $1000\text{ Hz}$ RTOS control loop ($1.0\text{ ms} \pm 5\,\mu\text{s}$). The MCU reads active leases from shared SRAM, validates monotonic timestamps, verifies geometric corridor constraints, interpolates quintic splines, and executes Control Barrier Function safety filtering with strictly **zero dynamic heap allocation** (`malloc = 0`).
-3. **Lease Expiration and Hardware Watchdog Interlock:** The MCU continuously audits active lease validity ($t \le t_{\text{issue}} + \Delta t_{\text{TTL}}$) and monitors host heartbeat pulses ($\tau_{\text{heartbeat}} \le 100\text{ ms}$). If an intent lease expires or the host processor fails to refresh the hardware watchdog timer ($\tau_{\text{watchdog}} \le 20\text{ ms}$), the MCU must autonomously assert dynamic braking deceleration ($a = -a_{\text{max}}$) within $1.0\text{ ms}$, safely bringing the machine to a standstill.
-:::
+To bridge the architectural theory of Chapter 3 into concrete engineering practice, we formalize the communication contract between System 2 semantic reasoning and downstream real-time control.
 
 The formal data structure governing the Intent Lease protocol is defined in @tbl-intent-lease-spec:
 
@@ -494,53 +483,26 @@ The formal data structure governing the Intent Lease protocol is defined in @tbl
 
 In hardware execution, the intent lease struct is laid out as a 128-byte cache-aligned memory block in shared tightly-coupled SRAM. To guarantee thread safety without blocking the real-time microcontroller, writes from the Linux MPU are synchronized using atomic 64-bit sequence counters and memory barrier instructions (`__atomic_thread_fence(__ATOMIC_RELEASE)` on ARMv8-A; `dmb ish` on ARM Cortex-M). The microcontroller performs an acquire barrier before reading the payload, verifying that the start sequence counter matches the end sequence counter, guaranteeing zero data corruption across asynchronous memory access.
 
-::: {.callout-lab title="Lab 3: Multi-Rate Asynchronous Runtimes and Intent Lease Enforcement"}
-### Studio Lab 3 Implementation Guide
 
-* **Course Hardware Platform:** Arduino UNO Q Dual-Brain Kit (Heterogeneous System-on-Chip featuring a Linux Application Microprocessor Unit running the `PREEMPT_RT` kernel coupled via shared SRAM to an on-board Bare-Metal ARM Cortex-M4 Microcontroller Unit).
-* **Lab Codebase Repository:** `labs/03-multi-rate-runtime`.
-* **Primary Objective:** Implement, profile, and validate an asynchronous multi-rate Physical AI runtime that enforces the Intent Lease Protocol across the Proposal–Permission boundary under synthetic latency stress and operating system faults.
+## Common Systems Fallacies in Cognitive Architectures
 
-#### Core Implementation Tasks
-1. **Task 1: The Asynchronous Proposal Engine (Linux MPU):**
-   - Implement a multi-threaded C++ / Python application runtime on the Linux MPU configured with POSIX `SCHED_FIFO` priorities.
-   - Construct a simulated vision pipeline that generates synthetic spatial goal tokens and invokes a simulated foundation model inference loop with injected heavy-tail latency ($T_{\text{infer}} \sim \text{LogNormal}(\mu=500\text{ ms}, \sigma=250\text{ ms})$).
-   - Format active goal solutions into the 128-byte `IntentLease` binary struct and commit them into the shared SRAM SPSC ring buffer using atomic sequence locks.
-2. **Task 2: The Hard Real-Time Reflex Engine (ARM Cortex-M4 MCU):**
-   - Implement a bare-metal $1000\text{ Hz}$ hardware timer interrupt service routine (ISR) on the Cortex-M4 core.
-   - Enforce the **Zero-Heap Invariant**: verify that `malloc`, `calloc`, and `free` symbols are completely stripped from the firmware binary via linker assertion scripts.
-   - On every $1.0\text{ ms}$ tick: acquire the latest active intent lease from shared SRAM, verify hardware timestamp validity ($t_{\text{now}} \le t_{\text{issue}} + \Delta t_{\text{TTL}}$), compute quintic polynomial spline interpolation for reference position and velocity, and evaluate a 1D Control Barrier Function that projects motor PWM commands to guarantee stopping clearance.
-3. **Task 3: Fault Injection, Watchdog Tripping, and Metrology Verification:**
-   - Connect an external digital logic analyzer and oscilloscope to designated GPIO test points (Probe 1: Linux MPU lease commit strobe; Probe 2: MCU $1000\text{ Hz}$ tick toggle; Probe 3: Hardware watchdog reset line; Probe 4: Motor current shunt).
-   - Inject synthetic memory bus saturation and kill the Linux proposal process (`kill -9`) during active motion tracking.
-   - Capture logic analyzer traces demonstrating that when the lease expires ($T > t_{\text{issue}} + \Delta t_{\text{TTL}}$), the Cortex-M4 MCU autonomously detects the timeout within $1.0\text{ ms}$, overrides software commands, and asserts a Category 1 deceleration halt before disabling the inverter PWM drivers.
-:::
+Embodied artificial intelligence shatters many intuitive assumptions inherited from classical computer science and digital machine learning. Before synthesizing the foundational principles of Part I, we examine four widespread systems fallacies:
 
----
+### The Monolithic Frequency Fallacy
+*The Fallacy:* With sufficient semiconductor scaling, specialized tensor compilers, and deep model quantization, a single $70\text{B}$ parameter Vision-Language-Action foundation model will eventually execute at $1000\text{ Hz}$, eliminating the need for complex multi-rate cadences and heterogeneous dual-brain architectures.  
+*The Reality:* Even if digital floating-point computation latency were reduced to zero, the physical universe imposes immutable physical time constants. Optical sensor charge integration requires $8\text{ to } 15\text{ ms}$ under ambient illumination; electromagnetic motor coils require $5\text{ to } 15\text{ ms}$ of electrical rise time ($\tau_e = L/R$) to establish magnetic flux; and mechanical inertia restricts acceleration. Because physical sensing and actuation possess intrinsic analog time constants, high-rate reflex stabilization ($1000\text{ Hz}$) and deliberative semantic reasoning ($1\text{ Hz}$) operate on fundamentally different physical timescales that semiconductor scaling cannot compress into a single monolithic loop.
 
-## Systems Fallacies, Summary, and What Comes Next
+### The Infinite Action Horizon Fallacy
+*The Fallacy:* If an action chunk horizon of $H = 16$ steps ($320\text{ ms}$) effectively amortizes neural network inference latency, then generating massive action chunks of $H = 256$ steps ($5.12\text{ s}$) is sixteen times better because it virtually eliminates inference compute bottlenecks.  
+*The Reality:* Action chunks execute open-loop with respect to unobserved environmental changes. While a long action chunk is unrolling on hardware, the external world continues to evolve dynamically. If a person steps into the robot's workspace or a target workpiece shifts during second two of a five-second chunk, the machine blindly executes its pre-computed trajectory, causing collision. Action chunk horizons must be strictly bounded by the physical information freshness horizon ($H \cdot \Delta t_{\text{step}} \le \tau_{\text{world}}$).
 
-Embodied artificial intelligence shatters many intuitive assumptions inherited from classical computer science and digital machine learning. Before synthesizing the foundational principles of Part I, we examine four widespread systems fallacies that routinely undermine physical AI deployments.
+### The User-Space Profiling Fallacy
+*The Fallacy:* Wrapping neural network inference and control loops in high-level Python software timers (`time.time()` or `time.perf_counter()`) provides an accurate, reliable measure of closed-loop sense-to-actuation latency and multi-rate synchronization.  
+*The Reality:* User-space timers measure only thread execution duration within the operating system; they are completely blind to sensor photodiode integration, MIPI-CSI2 DMA transfers, memory bus crossbar contention, IPC mailbox handoffs, and motor phase current rise time. Furthermore, invoking profiling system calls invalidates CPU cache lines and triggers OS context switches, distorting the very tail latencies under evaluation. Closed-loop latency metrology requires external hardware logic analyzers and current probes.
 
-::: {.callout-warning title="Four Common Cognitive Engineering Fallacies in Embodied Systems"}
-### Common Cognitive Engineering Fallacies
-
-1. **The Monolithic Frequency Fallacy:**  
-   *The Fallacy:* With sufficient semiconductor scaling, specialized tensor compilers, and deep model quantization, a single $70\text{B}$ parameter Vision-Language-Action foundation model will eventually execute at $1000\text{ Hz}$, eliminating the need for complex multi-rate cadences and heterogeneous dual-brain architectures.  
-   *The Reality:* Even if digital floating-point computation latency were reduced to zero, the physical universe imposes immutable physical time constants. Optical sensor charge integration requires $8\text{ to } 15\text{ ms}$ under ambient illumination; electromagnetic motor coils require $5\text{ to } 15\text{ ms}$ of electrical rise time ($\tau_e = L/R$) to establish magnetic flux; and mechanical inertia restricts acceleration. Because physical sensing and actuation possess intrinsic analog time constants, high-rate reflex stabilization ($1000\text{ Hz}$) and deliberative semantic reasoning ($1\text{ Hz}$) operate on fundamentally different physical timescales that semiconductor scaling cannot compress into a single monolithic loop.
-
-2. **The Infinite Horizon Fallacy:**  
-   *The Fallacy:* If an action chunk horizon of $H = 16$ steps ($320\text{ ms}$) effectively amortizes neural network inference latency, then generating massive action chunks of $H = 256$ steps ($5.12\text{ s}$) is sixteen times better because it virtually eliminates inference compute bottlenecks.  
-   *The Reality:* Action chunks execute open-loop with respect to unobserved environmental changes. While a long action chunk is unrolling on hardware, the external world continues to evolve dynamically. If a person steps into the robot's workspace or a target workpiece shifts during second two of a five-second chunk, the machine blindly executes its pre-computed trajectory, causing collision. Action chunk horizons must be strictly bounded by the physical information freshness horizon ($H \cdot \Delta t_{\text{step}} \le \tau_{\text{world}}$).
-
-3. **The User-Space Profiling Fallacy:**  
-   *The Fallacy:* Wrapping neural network inference and control loops in high-level Python software timers (`time.time()` or `time.perf_counter()`) provides an accurate, reliable measure of closed-loop sense-to-actuation latency and multi-rate synchronization.  
-   *The Reality:* User-space timers measure only thread execution duration within the operating system; they are completely blind to sensor photodiode integration, MIPI-CSI2 DMA transfers, memory bus crossbar contention, IPC mailbox handoffs, and motor phase current rise time. Furthermore, invoking profiling system calls invalidates CPU cache lines and triggers OS context switches, distorting the very tail latencies under evaluation. Closed-loop latency metrology requires external hardware logic analyzers and current probes.
-
-4. **The Static Setpoint Fallacy:**  
-   *The Fallacy:* Commanding a sequence of discrete step position setpoints $(\mathbf{q}_k, \mathbf{q}_{k+1})$ from a neural policy directly to motor drives is perfectly acceptable as long as the control frequency is reasonably high ($50\text{ to } 100\text{ Hz}$).  
-   *The Reality:* Stepped position commands represent mathematical step functions whose second and third time derivatives are infinite Dirac delta spikes ($\ddot{\mathbf{q}} \to \infty, \dddot{\mathbf{q}} \to \infty$). In physical hardware, unbounded kinematic jerk excites high-frequency structural resonances, induces destructive current surges through inverter MOSFETs, and rapidly shears the precision gear teeth of cycloidal drives and harmonic reducers. All discrete neural proposals must be continuously smoothed using $\mathcal{C}^2$-continuous quintic polynomial splines.
-:::
+### The Static Setpoint Fallacy
+*The Fallacy:* Commanding a sequence of discrete step position setpoints $(\mathbf{q}_k, \mathbf{q}_{k+1})$ from a neural policy directly to motor drives is perfectly acceptable as long as the control frequency is reasonably high ($50\text{ to } 100\text{ Hz}$).  
+*The Reality:* Stepped position commands represent mathematical step functions whose second and third time derivatives are infinite Dirac delta spikes ($\ddot{\mathbf{q}} \to \infty, \dddot{\mathbf{q}} \to \infty$). In physical hardware, unbounded kinematic jerk excites high-frequency structural resonances, induces destructive current surges through inverter MOSFETs, and rapidly shears the precision gear teeth of cycloidal drives and harmonic reducers. All discrete neural proposals must be continuously smoothed using $\mathcal{C}^2$-continuous quintic polynomial splines.
 
 ### Part I Foundations Synthesis: The Bedrock of Physical AI
 

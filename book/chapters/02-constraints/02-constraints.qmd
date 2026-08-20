@@ -582,34 +582,30 @@ The **Requirements Ledger** is the second formal artifact in the student's 11-ar
 
 Once measured and certified, the values in @tbl-requirements-ledger are compiled directly into the real-time microcontroller's immutable firmware constants. These values form the mathematical boundary conditions evaluated by the Control Barrier Function safety enforcer on every 1 kHz tick.
 
-::: {.callout-lab title="Lab 2: Metrology, Freshness, and the Physical Columns"}
-* **Platform:** Arduino UNO Q Dual-Brain (Linux application MPU + STM32 ARM Cortex-M4 real-time MCU).
-* **Workspace:** `labs/02-metrology-and-freshness`
-* **Objective:** Instrument the dual-brain hardware using 4-probe logic analyzer metrology, measure empirical latency tail distributions under induced memory bus contention, and implement a deterministic $1\text{ kHz}$ safety enforcer in static SRAM that clamps stopping distance and thermal energy.
-* **Key Tasks:**
-  1. *Hardware Ground-Truth Calibration:* Wire Probe 1 (Camera SOF interrupt), Probe 2 (Linux kernel mailbox GPIO), Probe 3 (MCU safety supervisor tick GPIO), and Probe 4 (oscilloscope motor current shunt). Capture 10,000 continuous control cycles to construct the empirical cumulative distribution function (CDF) of sense-to-actuation latency, isolating $P_{50}$, $P_{90}$, $P_{99}$, and $P_{99.9}$.
-  2. *Inducing the Pipelining Paradox and Bus Contention:* Stream background high-resolution video across the shared memory bus to induce memory crossbar contention. Measure the expansion of $P_{99}$ latency tails and verify how a 3-frame FIFO queue causes obsolete actuation commands during rapid obstacle insertion. Replace the FIFO queue with low-latency latest-frame sampling.
-  3. *Firmware Safety Invariant Enforcement:* In the Cortex-M4 microcontroller firmware (`mcu_safety_enforcer.c`), write a deterministic Control Barrier Function filter executing in zero-allocation static SRAM (`malloc = 0`). Implement the Two-Phase Stopping Equation ($d_{\text{stop}}$) and the discrete $I^2t$ thermal energy accumulator. Validate that when synthetic tail delays or over-current proposals are injected from Linux, the MCU autonomously clamps actuator setpoints and maintains physical safety invariants.
-* **Milestone 2 Deliverable:** Commit your completed Requirements Ledger (@tbl-requirements-ledger) and empirical latency CDF plot into your engineering dossier repository.
-:::
 
----
+## Common Systems Fallacies in Physical Constraints
 
-## Systems Fallacies, Summary, and What Comes Next
+When engineering embodied systems, teams frequently inherit intuitions from desktop software or cloud machine learning that fail in the physical world:
 
-::: {.callout-warning}
-### Five Common Engineering Fallacies in Timing and Physical Constraints
-* **Fallacy 1: High Frame Rate Implies Low Latency.**  
-  *Correction:* Frame rate measures processing throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ with a four-frame software queue delivers fresh frames at high frequency, but every frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop physical systems, throughput without freshness is an active collision hazard.
-* **Fallacy 2: Software Timestamps Accurately Measure Information Age.**  
-  *Correction:* Software timers (`time.time()`) record when an operating system thread was scheduled by the kernel, completely missing optical photodiode integration, MIPI-CSI deserialization, DMA bus transfers, and motor coil electrical rise times. Only hardware-triggered logic probes measure true sense-to-actuation ground truth.
-* **Fallacy 3: Average Latency ($P_{50}$) Is Sufficient to Certify Physical Safety.**  
-  *Correction:* A physical machine executing at $50\text{ Hz}$ completes 180,000 cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
-* **Fallacy 4: Deep FIFO Queues Prevent Sensory Data Loss.**  
-  *Correction:* In advisory computing, dropping data causes dropped records; in physical closed-loop control, buffering stale data injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Systems must sample the single latest completed observation and immediately drop intermediate stale frames.
-* **Fallacy 5: Dynamic Memory Allocation Is Safe if Heaps Are Pre-Warmed.**  
-  *Correction:* Pre-allocating heap pools in user-space does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
-:::
+### The High Frame Rate Fallacy
+*The Fallacy:* A vision model executing at $60\text{ frames per second}$ guarantees low latency and responsive physical control.  
+*The Reality:* Frame rate measures processing throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ through a four-frame software queue delivers high throughput, but every frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop physical systems, throughput without freshness is an active collision hazard.
+
+### The Software Timestamp Fallacy
+*The Fallacy:* High-level software timers (`time.time()` or `clock_gettime()`) accurately measure information age.  
+*The Reality:* Software timers record only when an operating system thread was scheduled by the kernel. They are completely blind to optical photodiode charge integration, MIPI-CSI deserialization, DMA bus transfers, and motor phase electrical rise times. Only hardware-triggered logic probes measure true sense-to-actuation ground truth.
+
+### The Average Latency Fallacy
+*The Fallacy:* Average latency ($P_{50}$) is sufficient to certify closed-loop physical safety.  
+*The Reality:* A physical machine executing at $50\text{ Hz}$ completes 180,000 cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
+
+### The Deep FIFO Queue Fallacy
+*The Fallacy:* Multi-stage FIFO queues prevent sensory data loss and smooth out inference jitter.  
+*The Reality:* In advisory computing, dropping data causes dropped records; in physical closed-loop control, buffering stale data injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Systems must sample the single latest completed observation and immediately drop intermediate stale frames.
+
+### The Pre-Warmed Dynamic Heap Fallacy
+*The Fallacy:* Dynamic heap allocation (`malloc`) is acceptable in real-time control if heaps are pre-warmed during boot.  
+*The Reality:* Pre-allocating heap pools in user-space does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
 
 ### Chapter Summary
 
