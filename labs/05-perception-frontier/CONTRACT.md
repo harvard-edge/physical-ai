@@ -5,4 +5,4 @@
 - **Phenomenon:** quality–age–energy–bandwidth tradeoff; dominated points.
 - **Perturbation:** vary cadence, resolution, preprocessing, or model path.
 - **Decision:** choose observation operating point and observation contract.
-- **Dossier:** `OBS-05`
+- **Notebook:** observation contract

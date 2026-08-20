@@ -1,104 +1,162 @@
-# Physical AI Systems: Machine Learning Systems That Sense and Act
+# Physical AI Systems — detailed notes
 
-**ETH Zurich · Project-Based Seminar & Hardware Studio · 6 ECTS**  
-**Online / Open Portal:** [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
+> **Student-facing syllabus:** start at [`README.md`](README.md) (prerequisites, bigger picture, chapters, labs). 
+> This file keeps ETH packaging detail (assessment, schedule TBD, teaching-team notes).
 
-| Parameter | Course Specification |
-| :--- | :--- |
-| **Course** | Physical AI Systems (*Machine Learning Systems That Sense and Act*) |
-| **Credits** | 6 ECTS (≈ 150–180 total workload hours) |
-| **Format** | Weekly Lecture/Seminar + Hands-On Hardware Studio · **No written final exam** |
-| **Target Audience** | Advanced Bachelor (3rd/4th year) & Master students (D-ITET, D-INFK, Robotics, Systems) |
-| **Instructors** | **Prof. Vijay Janapa Reddi** (Harvard / Visiting Prof, ETH Zurich) & **Dr. Andrea Mattia Garavagno** (ETH Zurich) |
-| **Hardware Kit** | **Physical AI Kit** (Arduino UNO Q Dual-Brain: Linux MPU + Real-Time MCU + Camera + Motion Stage) |
+**ETH Zurich · Project seminar & hardware studio · Draft syllabus** 
+**Portal:** [physical.mlsysbook.ai](https://physical.mlsysbook.ai)
 
-: Course Logistics and Parameters. {#tbl-course-logistics}
+| | |
+| --- | --- |
+| **Course** | Physical AI Systems |
+| **Credits** | 6 ECTS *(proposed · ≈ 150–180 h)* |
+| **Format** | Weekly seminar + hardware studio · **no written exam** |
+| **Language** | English |
+| **Level** | Advanced Bachelor & Master |
+| **Kit** | **Physical AI Kit** (Arduino UNO Q dual-brain) |
+| **Book** | *Physical AI: Machine Learning Systems That Sense and Act* |
 
----
-
-## 1. The North Star: What is Physical AI?
-
-Standard machine learning ends at digital output. A classifier emits a label; a large language model emits text. In the digital realm, software bugs are safely contained behind glass: transactions roll back, exceptions are caught, and dropped packets are retried.
-
-**Physical AI Systems begin at the exact moment digital software commands physical actuators—accelerating mass, consuming energy, interacting with humans, and permanently altering the physical world ($W_t \to W_{t+1}$).**
-
-Because physical actions cannot be rewound (**you cannot `ctrl+z` kinetic momentum or Joule heat**), this course answers one central systems question:
-
-> **"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"**
-
----
-
-## 2. The Three Defining Properties & Canonical Archetypes
-
-An engineered system is defined as **Physical AI** if and only if it satisfies three universal criteria:
-
-1. **Learned Foundation Component:** High-capacity learned models (Vision-Language-Action models, Latent World Models, Diffusion Policies) that generalize over open-world environmental variability.
-2. **Operations Across the Analog $\longleftrightarrow$ Digital Boundary:** Discrete digital tensors and tokens directly commanding continuous physical energy fluxes (inverters, motor coils, valves, momentum).
-3. **Governed by Irreversible Physical Laws:** Conservation of energy, momentum ($p=mv$), Joule heating ($I^2R$), and friction.
-
-### The Three Canonical Archetypes
-Every concept in this course is anchored across three real-world archetypes and a desk bench realization:
-
-* **1. Locomotion & Mobility (Free-Space Navigation):** Autonomous vehicles (Waymo), high-speed delivery drones (Skydio), quadrupeds. *Core Challenge:* $P_{99}$ latency tails and dynamic stopping envelopes ($d_{\text{stop}}$).
-* **2. Contact Manipulation (Touching & Shaping Matter):** Humanoid hands (Optimus, Figure), 6-DoF robot arms, surgical tools. *Core Challenge:* Discontinuous contact, torque rates ($\dot{\boldsymbol{\tau}}$), and harmonic drive gearbox shear.
-* **3. Cybernetic Process & Energy (Continuous State Flows):** Smart grid inverters, EV battery thermal management systems. *Core Challenge:* Microsecond AC phase tracking, $I^2R$ thermal accumulation, and runaway prevention.
-* **The Desk Bench Twin:** The **Arduino UNO Q Dual-Brain Kit** bringing each archetype to life on real bench hardware.
-
----
-
-## 3. The Grand Systems Conflict & The Three Cadences
-
-The foundational tension of Physical AI is the structural collision between two opposing vectors:
-
-* **Physics Demands *Less Time* ($t \to 0$):** Kinetic momentum carries mass forward; coils accumulate heat; sensor data ages instantly; transport delays erode phase margin.
-* **Cognition Demands *More Time* ($t \to \infty$):** Foundation models, spatial transformers, and diffusion decoders need time and compute to deliberate over open-world ambiguity.
-
-![**The Three Cadences of Physical AI.** Decoupling slow semantic deliberation ($0.5\text{--}2\text{ Hz}$), intermediate trajectory decoding ($20\text{--}50\text{ Hz}$), and bare-metal safety reflexes ($1000\text{ Hz}$) across heterogeneous silicon.](figures/fig03_three_cadences.svg){#fig-three-cadences width=100%}
-
-![**The Embodied Control Loop: Hard Real-Time (MCU) vs. Soft Real-Time (SBC).** Closed-loop fast reflex ($1000\text{ Hz}$) on the MCU, bridged across the privilege boundary to asynchronous semantic deliberation ($0.5\text{--}20\text{ Hz}$) on the Linux Single Board Computer (SBC / MPU).](figures/fig_mcu_sbc_boundary.svg){#fig-mcu-sbc-loop width=100%}
-
-### The Three Cadences of Intelligence
-We resolve this conflict by decoupling execution across three asynchronous temporal tiers:
-
-1. **System 2 (Slow · $0.5\text{--}2\text{ Hz}$ · Linux MPU):** Semantic deliberation and open-world goal decomposition. Operates as an *untrusted proposal service* emitting expiring intent leases.
-2. **System 1.5 (Medium · $20\text{--}50\text{ Hz}$ · Edge NPU):** Trajectory decoding and action chunking (ACT / Diffusion), amortizing compute latency across physical time using $\mathcal{C}^2$ jerk splines.
-3. **System 1 (Fast · $1000\text{ Hz}$ · Bare-Metal MCU):** Real-time safety reflexes and Control Barrier Functions (CBF). Operates with strictly **zero dynamic heap allocation (`malloc = 0`)** as the sole hardware permission authority.
+> Items marked **TBD** lock when course number, room, and semester are confirmed. 
+> Intended as a **recurring** offering; open materials at `physical.mlsysbook.ai`.
 
 
----
+## Teaching team
 
-## 4. The Curriculum Arc: The Co-Design Matrix
+### Prof. Vijay Janapa Reddi — Lecturer
 
-The course is structured into three progressive thematic parts, systematically exploring the **Physical AI Co-Design Matrix**:
+Gordon McKay Professor of Electrical Engineering, Harvard University · Visiting Professor, ETH Zurich
 
-![**The Physical AI Co-Design Matrix.** Five cognitive obligations against five physical constraints. Each cell is a question Part II answers.](figures/fig01_codesign_matrix.svg){#fig-codesign-matrix width=100%}
+| | |
+| --- | --- |
+| **Office** | ETZ F 83 |
+| **Email** | [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) |
 
-### Part I: Foundations & The Co-Design Challenge
-* **The Causal Boundary:** Closed-loop state mutation ($W_t \to W_{t+1}$) vs. open-loop digital inference.
-* **The Physical Constraints:** Time constants ($\tau_{\text{world}}$), $P_{99}$ latency tails, dynamic stopping distance ($d_{\text{stop}}$), jerk ($\dddot{\mathbf{q}}$), Joule heating ($I^2R$), and UMA DRAM bus contention.
-* **The Cognitive Dimensions:** Spatial tokens, world models, semantic intent, action chunking, and safety reflexes.
+### Dr. Andrea Mattia Garavagno — Co-teacher
 
-### Part II: The Embodied Lifecycle (Perceive $\to$ Act)
-* **Stage 1 (Perceive):** 3D spatial affordance tokens in $SE(3)$, CMOS exposure limits, and MIPI DMA ingestion taxes.
-* **Stage 2 (Remember):** Latent world models (JEPAs), dynamic $SE(3)$ frame trees, and occlusion uncertainty decay.
-* **Stage 3 (Reason):** Multimodal Vision-Language Models (VLMs) and expiring intent leases.
-* **Stage 4 (Plan):** Diffusion Policies and Action Chunking with Transformers (ACT) with $\mathcal{C}^2$ jerk splines.
-* **Stage 5 (Execute):** 1 kHz bare-metal Control Barrier Functions, dynamic stopping vetoes, and STO interlocks.
+Postdoctoral researcher, IIS / D-ITET, ETH Zurich · Physical AI Kit & studio lead
 
-### Part III: Placement, Governance & Defensible Release
-* **Heterogeneous Placement:** Partitioning workloads across MPU, NPU, and MCU substrates under thermal and bus QoS limits.
-* **Human Governance:** Bumpless human takeover, shared autonomy, and governed policy flywheels.
-* **Assurance & Release:** Cross-layer fault injection trials, safety cases, and the final capstone defense.
+| | |
+| --- | --- |
+| **Email** | TBD *(course page)* |
+| **Office** | TBD |
 
----
-
-## 5. The Hardware Studio & Assessment
-
-Students work in interdisciplinary pairs (combining ML/software with embedded/hardware backgrounds) to build, profile, and defend a complete physical agent on the **Arduino UNO Q Dual-Brain Kit**:
-
-* **Process & Studio Checkpoints (20%):** Weekly hands-on lab progress and firmware bring-up.
-* **Midterm System Review (15%):** Live bench demonstration of the closed-loop proposal-permission pipeline.
-* **Final Capstone Defense (25%):** Oral jury defense with live recovery from an instructor-seeded bench fault.
-* **Cumulative Design Dossier (40%):** The evolving, versioned engineering record documenting the system's requirements, contracts, safety bounds, and release case.
+**Subject line:** `[Physical AI] …` · Office hours by appointment.
 
 
+## What we teach
+
+Standard ML ends at a digital output. **Physical AI** begins when software commands actuators—mass moves, energy is spent, the world permanently changes ($W_t \to W_{t+1}$). You cannot `ctrl+z` kinetic energy.
+
+**North-star question**
+
+> What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?
+
+**Proposal–permission (dual-brain) core**
+
+| Host brain (MPU / Linux) | Reflex brain (MCU / real-time) |
+| --- | --- |
+| Perception, belief, VLMs, planning | Limits, watchdogs, CBFs, STO |
+| **Proposes** expiring intent | **Permits or refuses** at ~1 kHz |
+
+**Three cadences:** slow semantic deliberation (~0.5–2 Hz) · trajectory decode (~20–50 Hz) · bare-metal reflex (~1 kHz).
+
+**Not this course:** robotics kinematics survey · TinyML-only deploy · LLM chat agents · safety certification exam.
+
+
+## Who should take this
+
+| Good fit | Probably not |
+| --- | --- |
+| You want ML that may **act** under constraint | Kinematics / ROS deep dive only |
+| You like measuring systems (tails, energy, failure) | LLM tool-agent course |
+| Teamwork on real hardware | Paper-presentation seminar only |
+| ML systems *or* embedded/CPS background (we pair teams) | Classical written-exam lecture |
+
+**Workload.** Project-first 6 ECTS. Seminar teaches method; most hours are the kit. Analytical substitutes exist for some stations—but **measure, runtime continuity, and MCU enforcer** are required.
+
+
+## Curriculum spine (matches the book)
+
+Eleven teaching chapters + capstone. One cumulative **design dossier**; each chapter freezes one artifact.
+
+### Part I — Foundations *(the laws)*
+
+| Ch | Title | You install | Dossier |
+| ---: | --- | --- | --- |
+| 1 | Causal boundary | When ML becomes physical AI; loop charter | loop charter |
+| 2 | Physical constraints | Freshness, $P_{99}$, $d_{\text{stop}}$, energy, bus contention | requirements ledger |
+| 3 | Cognitive dimensions | Co-design matrix; multi-rate lifecycle | workflow charter |
+
+### Part II — Agent architecture *(perceive → permit)*
+
+| Ch | Title | You install | Dossier |
+| ---: | --- | --- | --- |
+| 4 | Perception | Spatial tokens, DMA / sensing contracts | observation contract |
+| 5 | Memory / world models | Frames, clocks, belief validity | state and timing model |
+| 6 | Reasoning (intent) | VLMs as expiring proposals | intent schema |
+| 7 | Planning | Action chunks / trajectories (proposals only) | planning schema |
+| 8 | Enforcement | Independent MCU permission (signature) | enforcement design |
+
+### Part III — Integration & release
+
+| Ch | Title | You install | Dossier |
+| ---: | --- | --- | --- |
+| 9 | Placement | Heterogeneous map under shared budgets | placement ledger |
+| 10 | Governance | Human authority; governed interaction data | authority design |
+| 11 | Assurance | Evidence ladder; deploy / condition / refuse | release case |
+| — | Capstone | Whole-system defense under seeded fault | Final release |
+
+
+## Semester plan (14 weeks)
+
+| Wk | Focus | Kit / studio | Due |
+| ---: | --- | --- | --- |
+| 1 | Kickoff · dual-brain · teams | Kit bring-up `00` | **T0** |
+| 2 | Ch 1 boundary | Close the loop `01` | **T1 proposal** |
+| 3 | Ch 2 constraints | Freshness + measure `02`–`03` | — |
+| 4 | Ch 3 cognition / runtime | Fault containment `04` | **T2 foundations** |
+| 5 | Ch 4 perception | Perception frontier `05` | — |
+| 6 | Ch 5–6 state + intent | Belief + two-speed intent `06`–`07` | — |
+| 7 | **Midterm** · Ch 7 planning preview | Propose ⇢ permit live | **T3 midterm** |
+| 8 | Ch 8 enforcement | **MCU enforcer** `08` | — |
+| 9 | Ch 9 placement | Placement ripple `09` | — |
+| 10 | Ch 10 governance | Authority + learning turn `11`–`12` | — |
+| 11 | Ch 11 assurance | Shadow / ship gate `10`/`13` | **T4 release draft** |
+| 12 | Dry-run | Freeze dossier | — |
+| 13 | **Capstone defense** | Seeded fault | **T5** |
+| 14 | Buffer · return kits | — | **T6 dossier** |
+
+
+## Assessment
+
+| Component | Weight |
+| --- | --- |
+| Process & studio checkpoints | 20% |
+| Midterm system review | 15% |
+| Capstone defense | 25% |
+| Cumulative design dossier | 40% |
+
+**Pass bar:** real MCU permission path · ≥1 measured claim that changed a design · evidence-backed release verdict · every teammate can explain dual-brain without slides.
+
+
+## Prerequisites
+
+**Recommended:** ML systems intro (models as measured components) · Python and/or C/C++ · teamwork on hardware. 
+**Helpful:** embedded/real-time · TinyML · basic estimation. 
+**Not required:** agentic-LLM course · full robotics sequence.
+
+Baseline compress/serve topics live in [mlsysbook.ai](https://mlsysbook.ai)—linked, not re-taught.
+
+
+## Registration & contact
+
+| | |
+| --- | --- |
+| **Registration** | myStudies · places limited by kit *(≈ 8–12 teams)* · TBD |
+| **Lecturer** | [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) · ETZ F 83 |
+| **Co-teacher** | Dr. Andrea Mattia Garavagno · email TBD |
+
+
+## Catalogue blurb
+
+Students design, build, measure, and defend a physical AI system in which a learned component may act only through independent real-time permission. Team projects on the Physical AI Kit (Arduino UNO Q dual-brain); weekly method seminars. Assessment: proposal, midterm demo, capstone defense, design dossier (**deploy / condition / refuse**). English. Proposed 6 ECTS.

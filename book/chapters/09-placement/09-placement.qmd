@@ -10,10 +10,9 @@ By the conclusion of this chapter, you will be able to:
 3. **Mitigate Interconnect Contention:** Architect Quality-of-Service (QoS) bus arbitration schemes that guarantee microsecond preemption for 1 kHz safety packets over high-bandwidth video DMA bursts.
 4. **Enforce Deterministic Shared-Memory IPC:** Implement lock-free, zero-allocation circular ring buffers across non-coherent memory domains using atomic sequence counters and explicit cache maintenance operations.
 5. **Evaluate Re-Placement Ripple Effects:** Quantify how relocating neural models across compute boundaries alters tail latency ($P_{99}$), thermal throttling margins ($T_j$), battery endurance, and physical stopping envelopes ($d_{\text{stop}}$).
-6. **Freeze the Placement Ledger (`PLACE-01`):** Construct the ninth artifact of the Cumulative Design Dossier establishing whole-system hardware allocations, interconnect priorities, and fallback triggers.
+6. **Freeze the Placement Ledger (placement ledger):** Construct the ninth artifact of the engineering notebook establishing whole-system hardware allocations, interconnect priorities, and fallback triggers.
 :::
 
----
 
 ## The Monolithic Illusion vs. Physical Silicon
 
@@ -43,7 +42,6 @@ To understand why naive workload placement destroys physical systems on bench ha
 
 In this incident, the software engineers treated the wireless cloud connection as an ordinary API call. But in physical reality, electromagnetic propagation is subject to shadow fading, multipath interference, and physical shielding. Placing closed-loop actuator authority on remote servers without autonomous local MCU stopping supervisors is a catastrophic failure of systems placement.
 
----
 
 ## The Proposal ⟷ Permission Contract for Silicon Placement
 
@@ -61,7 +59,6 @@ To prevent silicon faults, bus starvation, and communication blackouts from caus
 * **What the Bench Measures:** Memory bus contention between 4K camera DMA ingestion and NPU tensor weight streaming inflates $P_{99}$ latency tails from $22\text{ ms}$ to $135\text{ ms}$; sustained full-throttle compute raises silicon junction temperature to $92^\circ\text{C}$, triggering DVFS thermal throttling that cuts clock frequencies by $60\%$ and expands vehicle stopping distance ($d_{\text{stop}}$) by $134\%$.
 :::
 
----
 
 ## The Heterogeneous Silicon Landscape: Partitioning the 7 Organs
 
@@ -123,19 +120,18 @@ In Physical AI systems, different stages occupy drastically different locations 
 
 * **Spatial Vision Encoders (ViT / DINOv2):** Process 2D image patches with high arithmetic reuse ($I \approx 40\text{--}120\text{ FLOPs/Byte}$). They operate in the **compute-bound regime** and fully utilize the systolic arrays of edge NPUs.
 * **Autoregressive Token Generation (VLM / Large Action Decoders):** Fetch massive weight matrices from DRAM to generate a single token ($I \approx 0.5\text{--}2.0\text{ FLOPs/Byte}$). They operate deep in the **memory-bandwidth-bound regime**. On edge SoCs with $44\text{ GB/s}$ LPDDR5 bandwidth, an unquantized 7B parameter FP16 model ($14\text{ GB}$ footprint) can achieve at most:
-  $$\text{Max Generation Rate} = \frac{44\text{ GB/s}}{14\text{ GB/token}} \approx 3.14\text{ tokens/second}$$
-  This physics-based bound proves why large autoregressive models cannot run high-rate ($50\text{ Hz}$) control loops locally on edge silicon without aggressive INT4 quantization and Action Chunking ($H \ge 16$).
+ $$\text{Max Generation Rate} = \frac{44\text{ GB/s}}{14\text{ GB/token}} \approx 3.14\text{ tokens/second}$$
+ This physics-based bound proves why large autoregressive models cannot run high-rate ($50\text{ Hz}$) control loops locally on edge silicon without aggressive INT4 quantization and Action Chunking ($H \ge 16$).
 
 ::: {.callout-note title="Cross-Embodiment Anchor: Heterogeneous Silicon Placement Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):**  
-  Workload partitioning: Global route planning on Cloud/MEC servers ($0.1\text{ Hz}$), local perception & trajectory decoding on automotive-grade edge NPUs ($30\text{ Hz}$), and steering/braking safety reflexes on an ASIL-D lockstep MCU ($1000\text{ Hz}$). Cellular communication blackouts immediately fall back to local NPU caches without degrading vehicle trajectory stabilization.
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
-  Workload partitioning on the Arduino UNO Q: VLM open-vocabulary grounding on the Linux Host MPU ($1\text{ Hz}$), ACT trajectory action chunking on the NPU accelerator ($25\text{ Hz}$), and 1 kHz Control Barrier Functions on the Cortex-M4 MCU. Lock-free shared SRAM mailboxes with explicit cache invalidation eliminate non-coherent memory corruption across heterogeneous cores.
-* **Archetype 3: Cybernetic Energy (Smart Grid Substation Inverters):**  
-  Workload partitioning: Day-ahead market dispatch and grid-wide power flow optimization on Cloud servers ($0.01\text{ Hz}$), feeder-level voltage/var control on substation edge MPUs ($1\text{ Hz}$), and 3-phase PWM inverter current regulation on dedicated Digital Signal Controllers (DSC / MCU) running at $20\text{ kHz}$ with hardware STO crowbar protection.
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):** 
+ Workload partitioning: Global route planning on Cloud/MEC servers ($0.1\text{ Hz}$), local perception & trajectory decoding on automotive-grade edge NPUs ($30\text{ Hz}$), and steering/braking safety reflexes on an ASIL-D lockstep MCU ($1000\text{ Hz}$). Cellular communication blackouts immediately fall back to local NPU caches without degrading vehicle trajectory stabilization.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):** 
+ Workload partitioning on the Arduino UNO Q: VLM open-vocabulary grounding on the Linux Host MPU ($1\text{ Hz}$), ACT trajectory action chunking on the NPU accelerator ($25\text{ Hz}$), and 1 kHz Control Barrier Functions on the Cortex-M4 MCU. Lock-free shared SRAM mailboxes with explicit cache invalidation eliminate non-coherent memory corruption across heterogeneous cores.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Inverters):** 
+ Workload partitioning: Day-ahead market dispatch and grid-wide power flow optimization on Cloud servers ($0.01\text{ Hz}$), feeder-level voltage/var control on substation edge MPUs ($1\text{ Hz}$), and 3-phase PWM inverter current regulation on dedicated Digital Signal Controllers (DSC / MCU) running at $20\text{ kHz}$ with hardware STO crowbar protection.
 :::
 
----
 
 ## Unified Memory Architectures (UMA) and Bus Contention
 
@@ -192,52 +188,51 @@ In embedded C, this zero-allocation Single-Producer Single-Consumer (SPSC) ring 
 #define RING_BUFFER_CAPACITY 8
 
 typedef struct __attribute__((packed, aligned(64))) {
-    uint32_t sequence_id;
-    uint64_t timestamp_ns;
-    uint32_t lease_duration_ms;
-    float    target_pos[3];       // Cartesian end-effector targets [X, Y, Z]
-    float    max_velocity_mps;
-    float    max_accel_mps2;
-    uint32_t payload_crc32;
+ uint32_t sequence_id;
+ uint64_t timestamp_ns;
+ uint32_t lease_duration_ms;
+ float target_pos[3]; // Cartesian end-effector targets [X, Y, Z]
+ float max_velocity_mps;
+ float max_accel_mps2;
+ uint32_t payload_crc32;
 } MPU_ProposalPayload_t;
 
 typedef struct {
-    volatile uint32_t write_idx;  // Modified exclusively by MPU
-    uint8_t           pad1[60];   // Force separate 64-byte cache line
-    volatile uint32_t read_idx;   // Modified exclusively by MCU
-    uint8_t           pad2[60];   // Prevent false sharing
-    MPU_ProposalPayload_t slots[RING_BUFFER_CAPACITY];
+ volatile uint32_t write_idx; // Modified exclusively by MPU
+ uint8_t pad1[60]; // Force separate 64-byte cache line
+ volatile uint32_t read_idx; // Modified exclusively by MCU
+ uint8_t pad2[60]; // Prevent false sharing
+ MPU_ProposalPayload_t slots[RING_BUFFER_CAPACITY];
 } Shared_SPSC_Mailbox_t;
 
 // MPU Proposal Transmission (Linux Side)
 void mpu_publish_proposal(Shared_SPSC_Mailbox_t *mb, const MPU_ProposalPayload_t *cmd) {
-    uint32_t w = mb->write_idx;
-    uint32_t next_w = (w + 1) % RING_BUFFER_CAPACITY;
-    
-    if (next_w == mb->read_idx) {
-        // Mailbox full: overwrite oldest proposal or drop (never block real-time)
-        return;
-    }
-    
-    // 1. Copy payload into target slot
-    mb->slots[w] = *cmd;
-    
-    // 2. Memory barrier and cache clean to push dirty lines to physical SRAM
-    __asm__ volatile("dmb ish" ::: "memory");
-    #if defined(__arm64__) || defined(__aarch64__)
-    __asm__ volatile("dc cvac, %0" :: "r"(&mb->slots[w]) : "memory");
-    __asm__ volatile("dmb ish" ::: "memory");
-    #endif
-    
-    // 3. Update write index and signal hardware mailbox interrupt
-    mb->write_idx = next_w;
-    __asm__ volatile("dmb ish" ::: "memory");
+ uint32_t w = mb->write_idx;
+ uint32_t next_w = (w + 1) % RING_BUFFER_CAPACITY;
+ 
+ if (next_w == mb->read_idx) {
+ // Mailbox full: overwrite oldest proposal or drop (never block real-time)
+ return;
+ }
+ 
+ // 1. Copy payload into target slot
+ mb->slots[w] = *cmd;
+ 
+ // 2. Memory barrier and cache clean to push dirty lines to physical SRAM
+ __asm__ volatile("dmb ish" ::: "memory");
+ #if defined(__arm64__) || defined(__aarch64__)
+ __asm__ volatile("dc cvac, %0" :: "r"(&mb->slots[w]) : "memory");
+ __asm__ volatile("dmb ish" ::: "memory");
+ #endif
+ 
+ // 3. Update write index and signal hardware mailbox interrupt
+ mb->write_idx = next_w;
+ __asm__ volatile("dmb ish" ::: "memory");
 }
 ```
 
 By placing this circular ring buffer in **dedicated on-chip SRAM** rather than external DRAM and enforcing explicit cache flushing (`DC CVAC`), the inter-core communication latency is bounded to $< 2.5\,\mu\text{s}$ with zero operating system scheduling jitter.
 
----
 
 ## Interconnect Quality-of-Service (QoS) and Traffic Arbitration
 
@@ -269,7 +264,6 @@ Physical AI interconnects must implement **strict, non-preemptible fixed-priorit
 
 Under this policy, when the MCU issues a safety transaction (`QoS = 0xF`), the AXI crossbar immediately stalls lower-priority camera writes at the next 64-byte burst boundary ($< 40\text{ ns}$), guaranteeing deterministic access regardless of sensor bandwidth saturation.
 
----
 
 ## Thermal Throttling, Power Budgets, and WCET Bounds
 
@@ -316,16 +310,16 @@ We formally prove why thermal throttling without hardware-enforced velocity dera
 
 1. Let nominal sense-to-actuation latency be $t_{\text{loop, nom}} = 28\text{ ms}$, with a vehicle operating at velocity $v_0 = 1.2\text{ m/s}$, maximum deceleration $a_{\text{max}} = 3.0\text{ m/s}^2$, and obstacle clearance $d_{\text{clearance}} = 0.55\text{ m}$.
 2. Under nominal conditions, the stopping distance is:
-   $$d_{\text{stop, nom}} = v_0 \cdot t_{\text{loop, nom}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.028 + \frac{1.44}{6.0} = 0.0336 + 0.240 = 0.274\text{ m}$$
-   Since $d_{\text{stop, nom}} (0.274\text{ m}) < d_{\text{clearance}} (0.55\text{ m})$, the system operates safely inside its clearance envelope with a $50\%$ margin.
+ $$d_{\text{stop, nom}} = v_0 \cdot t_{\text{loop, nom}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.028 + \frac{1.44}{6.0} = 0.0336 + 0.240 = 0.274\text{ m}$$
+ Since $d_{\text{stop, nom}} (0.274\text{ m}) < d_{\text{clearance}} (0.55\text{ m})$, the system operates safely inside its clearance envelope with a $50\%$ margin.
 
 3. Now suppose sustained load drives $T_j > 85^\circ\text{C}$, triggering DVFS throttling with $\gamma = 0.33$. Clock frequency falls from $1.8\text{ GHz} \to 600\text{ MHz}$, expanding inference latency to $t_{\text{infer}} = 85\text{ ms}$ and total reaction loop latency to $t_{\text{loop, throttled}} = 105\text{ ms}$.
 4. The throttled stopping distance expands to:
-   $$d_{\text{stop, throttled}} = v_0 \cdot t_{\text{loop, throttled}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.105 + \frac{1.44}{6.0} = 0.126 + 0.240 = 0.366\text{ m}$$
+ $$d_{\text{stop, throttled}} = v_0 \cdot t_{\text{loop, throttled}} + \frac{v_0^2}{2 a_{\text{max}}} = 1.2 \cdot 0.105 + \frac{1.44}{6.0} = 0.126 + 0.240 = 0.366\text{ m}$$
 
 5. If the vehicle accelerates to transit speed $v_0 = 2.0\text{ m/s}$ under throttled conditions:
-   $$d_{\text{stop, throttled}} = 2.0 \cdot 0.105 + \frac{4.0}{6.0} = 0.210 + 0.667 = 0.877\text{ m}$$
-   Since $d_{\text{stop, throttled}} (0.877\text{ m}) > d_{\text{clearance}} (0.55\text{ m})$, **the vehicle crashes into the obstacle at $1.38\text{ m/s}$ residual speed.**
+ $$d_{\text{stop, throttled}} = 2.0 \cdot 0.105 + \frac{4.0}{6.0} = 0.210 + 0.667 = 0.877\text{ m}$$
+ Since $d_{\text{stop, throttled}} (0.877\text{ m}) > d_{\text{clearance}} (0.55\text{ m})$, **the vehicle crashes into the obstacle at $1.38\text{ m/s}$ residual speed.**
 
 To prevent this hazard, the real-time MCU monitors the SoC junction temperature telemetry. The instant $T_j$ breaches the pre-warning threshold ($T_j \ge 80^\circ\text{C}$), the MCU dynamically clamps maximum allowable velocity ($v_{\text{max}}$) before DVFS throttling occurs:
 
@@ -339,7 +333,6 @@ $$\sum_{i=1}^{N_{\text{nodes}}} P_{\text{compute}, i} + \sum_{j=1}^{M_{\text{mot
 
 $$\sum_{k=1}^{K_{\text{tasks}}} \text{SRAM}_{\text{static}, k} \le \text{SRAM}_{\text{physical\_capacity}} \quad (\text{Strictly } 0\text{ bytes dynamic heap allocation})$$
 
----
 
 ## Re-Placement Ripple Effects: A Quantitative Analysis
 
@@ -364,28 +357,26 @@ Consider an autonomous mobile manipulator tasked with bin picking and warehouse 
 Whenever an engineering team proposes relocating a capability (e.g., quantizing a VLM to run on an MPU, or moving trajectory optimization to an MCU):
 
 1. **Step 1: Audit Tail Latency ($P_{99}$):** Measure the new end-to-end latency distribution under maximum bus contention. If $P_{99} \ge \tau_{\text{world}}$, reject the placement immediately.
-2. **Step 2: Recalculate Dynamic Stopping Envelope ($d_{\text{stop}}$):** Update the Requirements Ledger (`REQ-01`) with the new reaction delay ($t_{\text{delay}}$). Ensure $d_{\text{stop}} \le d_{\text{clearance, min}}$ across all operational speeds.
+2. **Step 2: Recalculate Dynamic Stopping Envelope ($d_{\text{stop}}$):** Update the Requirements Ledger (requirements ledger) with the new reaction delay ($t_{\text{delay}}$). Ensure $d_{\text{stop}} \le d_{\text{clearance, min}}$ across all operational speeds.
 3. **Step 3: Profile Thermal Rise ($\Delta T$):** Execute 60 minutes of continuous full-load bench operation inside a sealed enclosure at maximum ambient temperature ($T_{\text{ambient}} = 45^\circ\text{C}$). Verify that steady-state junction temperature remains below the derating knee ($T_j \le 80^\circ\text{C}$).
 4. **Step 4: Verify Fail-Safe Isolation:** Inject synthetic faults (kernel panics, PCIe bus lockups, IPC ring buffer corruptions). Prove on an oscilloscope that the MCU safety core detects the fault and asserts hardware E-stop within $< 1.0\text{ ms}$.
 
----
 
 ## Systems Fallacies and Pitfalls
 
 ::: {.callout-warning}
 ### Common Engineering Fallacies in Silicon Placement
-* **Fallacy 1:** *"We can deploy the entire Physical AI sensory-motor loop to the cloud over 5G / low-latency Wi-Fi."*  
-  *Correction:* Wireless networks are non-deterministic channels governed by electromagnetic physics. Shadow fading, multipath nulls, antenna orientation shifts, and base-station handovers induce un-budgeted latency spikes ($P_{99} > 1200\text{ ms}$). A machine traveling at speed will breach its physical stopping clearance before a timeout packet can be acknowledged. Time-critical reflex enforcers must execute on local deterministic silicon.
-* **Fallacy 2:** *"Selecting an edge SoC is purely a function of headline TOPs (Tera-Operations per Second)."*  
-  *Correction:* Advertised TOPs ratings measure peak INT8 matrix-multiply arithmetic in idealized register loops. If the SoC's memory bus bandwidth ($B_{\text{mem}}$) cannot stream model weights fast enough to feed the systolic array, effective utilization collapses to $< 15\%$. Memory bandwidth, cache architecture, and bus QoS dictate real-world inference throughput.
-* **Fallacy 3:** *"Inter-processor communication between Linux and the real-time MCU can use standard JSON over UART serial without real-time hazards."*  
-  *Correction:* Text-based serialization formats (JSON, XML) require dynamic heap allocations (`malloc`), string parsing loops, and non-deterministic CPU cycles. A single memory fragmentation fault in a JSON parser can stall an IPC thread for milliseconds. Inter-core communication must use fixed-size, binary-packed C structs in shared zero-wait SRAM with atomic sequence counters.
+* **Fallacy 1:** *"We can deploy the entire Physical AI sensory-motor loop to the cloud over 5G / low-latency Wi-Fi."* 
+ *Correction:* Wireless networks are non-deterministic channels governed by electromagnetic physics. Shadow fading, multipath nulls, antenna orientation shifts, and base-station handovers induce un-budgeted latency spikes ($P_{99} > 1200\text{ ms}$). A machine traveling at speed will breach its physical stopping clearance before a timeout packet can be acknowledged. Time-critical reflex enforcers must execute on local deterministic silicon.
+* **Fallacy 2:** *"Selecting an edge SoC is purely a function of headline TOPs (Tera-Operations per Second)."* 
+ *Correction:* Advertised TOPs ratings measure peak INT8 matrix-multiply arithmetic in idealized register loops. If the SoC's memory bus bandwidth ($B_{\text{mem}}$) cannot stream model weights fast enough to feed the systolic array, effective utilization collapses to $< 15\%$. Memory bandwidth, cache architecture, and bus QoS dictate real-world inference throughput.
+* **Fallacy 3:** *"Inter-processor communication between Linux and the real-time MCU can use standard JSON over UART serial without real-time hazards."* 
+ *Correction:* Text-based serialization formats (JSON, XML) require dynamic heap allocations (`malloc`), string parsing loops, and non-deterministic CPU cycles. A single memory fragmentation fault in a JSON parser can stall an IPC thread for milliseconds. Inter-core communication must use fixed-size, binary-packed C structs in shared zero-wait SRAM with atomic sequence counters.
 :::
 
----
 
 ::: {.callout-decision}
-### Dossier Delta: Placement Map and Resource Ledger (`PLACE-01`)
+### Notebook checkpoint: Placement Map and Resource Ledger (placement ledger)
 Freeze the whole-system heterogeneous silicon placement, memory allocations, power budgets, and interconnect QoS contracts:
 
 1. The stage-to-silicon mapping matrix assigning the 7 canonical organs to specific hardware domains.
@@ -394,79 +385,79 @@ Freeze the whole-system heterogeneous silicon placement, memory allocations, pow
 4. Interconnect QoS priority assignments and fallback escalation triggers upon domain failure.
 
 ```yaml
-# DOSSIER CHECKPOINT: PLACE-01
+# DOSSIER CHECKPOINT: placement ledger
 placement_ledger:
-  system_id: "PHYSICAL-AGENT-01"
-  version: "1.0.0"
-  dossier_milestone: "PLACE-01"
-  stage_placement:
-    stage_1_transduction:
-      substrate: "MCU_CORTEX_M4"
-      execution_rate_hz: 1000.0
-      memory_substrate: "STATIC_SRAM"
-      sram_allocation_kb: 16.0
-      trust_domain: "TRUSTED_SAFETY_CORE"
-    stage_2_perception:
-      substrate: "EDGE_NPU_SYSTOLIC"
-      execution_rate_hz: 30.0
-      memory_substrate: "UNIFIED_LPDDR5"
-      dram_allocation_mb: 180.0
-      trust_domain: "UNTRUSTED_PROPOSAL"
-    stage_3_memory_belief:
-      substrate: "LINUX_MPU_ARM64"
-      execution_rate_hz: 50.0
-      memory_substrate: "UNIFIED_LPDDR5"
-      dram_allocation_mb: 120.0
-      trust_domain: "UNTRUSTED_PROPOSAL"
-    stage_4_deliberation:
-      substrate: "CLOUD_MEC_OR_EDGE_VLM"
-      execution_rate_hz: 1.0
-      memory_substrate: "HOST_DRAM_HIGH_BW"
-      dram_allocation_mb: 4096.0
-      trust_domain: "UNTRUSTED_PROPOSAL"
-    stage_5_planning_action:
-      substrate: "EDGE_NPU_SYSTOLIC"
-      execution_rate_hz: 20.0
-      memory_substrate: "UNIFIED_LPDDR5"
-      dram_allocation_mb: 350.0
-      trust_domain: "UNTRUSTED_PROPOSAL"
-    stage_6_reflex_enforcer:
-      substrate: "MCU_CORTEX_M4"
-      execution_rate_hz: 1000.0
-      memory_substrate: "STATIC_SRAM"
-      sram_allocation_kb: 48.0
-      trust_domain: "TRUSTED_SAFETY_CORE"
-    stage_7_governance_lineage:
-      substrate: "LINUX_MPU_SECURE_STORAGE"
-      execution_rate_hz: 10.0
-      memory_substrate: "NVRAM_FLASH"
-      dram_allocation_mb: 500.0
-      trust_domain: "UNTRUSTED_PROPOSAL"
-  resource_budgets:
-    mcu_sram_total_kb: 256.0
-    mcu_sram_allocated_kb: 64.0
-    mcu_heap_dynamic_bytes: 0
-    mpu_dram_total_mb: 4096.0
-    mpu_dram_allocated_mb: 1150.0
-    soc_tdp_nominal_watts: 8.5
-    soc_tdp_max_watts: 15.0
-    thermal_derating_knee_celsius: 85.0
-    thermal_warning_threshold_celsius: 80.0
-    chassis_battery_capacity_wh: 360.0
-    nominal_operating_hours: 3.5
-  interconnect_qos:
-    shared_mailbox_substrate: "ZERO_WAIT_ONCHIP_SRAM"
-    shared_mailbox_base_address: "0x38000000"
-    qos_tier_0_emergency_estop: 0xF # Highest AXI Priority
-    qos_tier_1_mcu_safety_mailbox: 0xE
-    qos_tier_2_imu_encoder_dma: 0xC
-    qos_tier_3_npu_weight_streaming: 0x8
-    qos_tier_4_camera_video_dma: 0x2 # Throttled / Paced
-  fallback_escalation:
-    wireless_drop_timeout_ms: 100.0 # Engage local MPU action chunk
-    mpu_heartbeat_timeout_ms: 50.0  # MCU asserts Category 1 Deceleration
-    thermal_knee_breach_action: "CLAMP_MAX_VELOCITY_DERATE_50_PCT"
-    bus_saturation_action: "DROP_CAMERA_DMA_FRAME_PRESERVE_SAFETY"
+ system_id: "PHYSICAL-AGENT-01"
+ version: "1.0.0"
+ notebook_checkpoint: "placement ledger"
+ stage_placement:
+ stage_1_transduction:
+ substrate: "MCU_CORTEX_M4"
+ execution_rate_hz: 1000.0
+ memory_substrate: "STATIC_SRAM"
+ sram_allocation_kb: 16.0
+ trust_domain: "TRUSTED_SAFETY_CORE"
+ stage_2_perception:
+ substrate: "EDGE_NPU_SYSTOLIC"
+ execution_rate_hz: 30.0
+ memory_substrate: "UNIFIED_LPDDR5"
+ dram_allocation_mb: 180.0
+ trust_domain: "UNTRUSTED_PROPOSAL"
+ stage_3_memory_belief:
+ substrate: "LINUX_MPU_ARM64"
+ execution_rate_hz: 50.0
+ memory_substrate: "UNIFIED_LPDDR5"
+ dram_allocation_mb: 120.0
+ trust_domain: "UNTRUSTED_PROPOSAL"
+ stage_4_deliberation:
+ substrate: "CLOUD_MEC_OR_EDGE_VLM"
+ execution_rate_hz: 1.0
+ memory_substrate: "HOST_DRAM_HIGH_BW"
+ dram_allocation_mb: 4096.0
+ trust_domain: "UNTRUSTED_PROPOSAL"
+ stage_5_planning_action:
+ substrate: "EDGE_NPU_SYSTOLIC"
+ execution_rate_hz: 20.0
+ memory_substrate: "UNIFIED_LPDDR5"
+ dram_allocation_mb: 350.0
+ trust_domain: "UNTRUSTED_PROPOSAL"
+ stage_6_reflex_enforcer:
+ substrate: "MCU_CORTEX_M4"
+ execution_rate_hz: 1000.0
+ memory_substrate: "STATIC_SRAM"
+ sram_allocation_kb: 48.0
+ trust_domain: "TRUSTED_SAFETY_CORE"
+ stage_7_governance_lineage:
+ substrate: "LINUX_MPU_SECURE_STORAGE"
+ execution_rate_hz: 10.0
+ memory_substrate: "NVRAM_FLASH"
+ dram_allocation_mb: 500.0
+ trust_domain: "UNTRUSTED_PROPOSAL"
+ resource_budgets:
+ mcu_sram_total_kb: 256.0
+ mcu_sram_allocated_kb: 64.0
+ mcu_heap_dynamic_bytes: 0
+ mpu_dram_total_mb: 4096.0
+ mpu_dram_allocated_mb: 1150.0
+ soc_tdp_nominal_watts: 8.5
+ soc_tdp_max_watts: 15.0
+ thermal_derating_knee_celsius: 85.0
+ thermal_warning_threshold_celsius: 80.0
+ chassis_battery_capacity_wh: 360.0
+ nominal_operating_hours: 3.5
+ interconnect_qos:
+ shared_mailbox_substrate: "ZERO_WAIT_ONCHIP_SRAM"
+ shared_mailbox_base_address: "0x38000000"
+ qos_tier_0_emergency_estop: 0xF # Highest AXI Priority
+ qos_tier_1_mcu_safety_mailbox: 0xE
+ qos_tier_2_imu_encoder_dma: 0xC
+ qos_tier_3_npu_weight_streaming: 0x8
+ qos_tier_4_camera_video_dma: 0x2 # Throttled / Paced
+ fallback_escalation:
+ wireless_drop_timeout_ms: 100.0 # Engage local MPU action chunk
+ mpu_heartbeat_timeout_ms: 50.0 # MCU asserts Category 1 Deceleration
+ thermal_knee_breach_action: "CLAMP_MAX_VELOCITY_DERATE_50_PCT"
+ bus_saturation_action: "DROP_CAMERA_DMA_FRAME_PRESERVE_SAFETY"
 ```
 :::
 

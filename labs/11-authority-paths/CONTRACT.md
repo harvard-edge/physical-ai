@@ -4,4 +4,4 @@
 - **Status:** draft
 - **Phenomenon:** approve, MCU stop/override, revoke, inspect, forget as timed operations.
 - **Decision:** authority map; measure intervention/revocation where timing matters.
-- **Dossier:** `AUTH-11`
+- **Notebook:** authority design

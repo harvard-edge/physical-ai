@@ -5,4 +5,4 @@
 - **Phenomenon:** complete cross-brain trajectory; reject bad lineage/consent; shadow candidate.
 - **Out of scope:** training a large model on the board.
 - **Decision:** admit/reject experience; hold or reject candidate update.
-- **Dossier:** `DATA-12`
+- **Notebook:** data governance record

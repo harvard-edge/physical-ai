@@ -7,4 +7,4 @@
 - **Decision:** classify the system; write loop charter; name who holds physical authority.
 - **MPU owns:** model inference / proposal logging.
 - **MCU owns:** optional direct actuation path once closed-loop mode is enabled.
-- **Dossier:** `LOOP-01`
+- **Notebook:** loop charter

@@ -5,4 +5,4 @@
 - **Phenomenon:** task efficacy decays with observation age.
 - **Perturbation:** inject controlled delay; vary target dynamics if available.
 - **Decision:** choose operating regime (faster path, prediction, less authority, refuse).
-- **Dossier:** `REQ-02`
+- **Notebook:** requirements ledger

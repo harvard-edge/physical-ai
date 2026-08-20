@@ -11,7 +11,7 @@ By the conclusion of this chapter, you will be able to:
 4. **Enforce Dynamic Stopping Envelopes ($d_{\text{stop}}$):** Intercept and veto trajectory proposals that violate clearance margins relative to stationary and moving obstacles before physical contact occurs.
 5. **Architect Standardized Fallback Escalations:** Realize the IEC 60204-1 emergency stop hierarchy—from Category 2 closed-loop position holds to Category 1 controlled deceleration halts (SS1) and Category 0 hardware Safe Torque Off (STO).
 6. **Execute Asynchronous Re-Anchoring Handshakes:** Synchronize the Linux MPU trajectory planner following safety interventions to eliminate integral windup and prevent policy covariate shift in telemetry logs.
-7. **Freeze the Enforcement Design (`ENF-01`):** Construct the eighth quantitative artifact of the Cumulative Design Dossier establishing barrier matrices, stopping envelopes, and hardware interlock parameters.
+7. **Freeze the Enforcement Design (enforcement design):** Construct the eighth quantitative artifact of the engineering notebook establishing barrier matrices, stopping envelopes, and hardware interlock parameters.
 :::
 
 ::: {.callout-autopsy}
@@ -38,7 +38,6 @@ By the conclusion of this chapter, you will be able to:
 * **What the Bench Measures:** In the physical world, a safety violation bends metal linkages, strips cycloidal gear teeth, and injures humans. Neural networks are stochastic function approximators that cannot provide mathematical safety guarantees. Physical safety must be enforced as a hard, inviolable mathematical constraint executed on isolated real-time silicon.
 :::
 
----
 
 ## The Incorruptible Gatekeeper: Why System 1 Must Live on Bare-Metal Silicon
 
@@ -59,16 +58,15 @@ The central systems insight of Physical AI is that we do not attempt to make neu
 : Heterogeneous Silicon Partitioning across the Proposal-Permission Privilege Boundary. Structural separation of non-deterministic deliberation from hard real-time safety enforcement. {#tbl-silicon-partitioning}
 
 ::: {.callout-note title="Cross-Embodiment Anchor: 1 kHz Safety Enforcement Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (High-Speed Drone & Autonomous Vehicle):**  
-  At $20\text{ m/s}$ flight speed, a drone's neural navigation policy proposes a high-bank turn. The 1 kHz MCU enforcer evaluates an Exponential Control Barrier Function (ECBF) encoding geofence boundaries ($h_{\text{geo}}(\mathbf{p}, \mathbf{v}) \ge 0$) and dynamic stopping envelopes ($d_{\text{stop}}(v) \le d_{\text{clear}}$). If an unmodeled obstacle appears within $d_{\text{stop}}$, the QP solver minimally projects the attitude command, executing an emergency flare to arrest forward flight before boundary penetration.
+* **Archetype 1: Locomotion & Mobility (High-Speed Drone & Autonomous Vehicle):** 
+ At $20\text{ m/s}$ flight speed, a drone's neural navigation policy proposes a high-bank turn. The 1 kHz MCU enforcer evaluates an Exponential Control Barrier Function (ECBF) encoding geofence boundaries ($h_{\text{geo}}(\mathbf{p}, \mathbf{v}) \ge 0$) and dynamic stopping envelopes ($d_{\text{stop}}(v) \le d_{\text{clear}}$). If an unmodeled obstacle appears within $d_{\text{stop}}$, the QP solver minimally projects the attitude command, executing an emergency flare to arrest forward flight before boundary penetration.
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
-  During an automated peg-in-hole assembly, an ACT action chunk commands a downward step into a misaligned fixture. The Cortex-M4 microcontroller's 1 kHz loop detects an axial force spike ($F_z > F_{\text{contact\_max}}$), trips the contact barrier constraint ($h_{\text{force}} \ge 0$), and clamps motor currents in under $175\,\mu\text{s}$. It asserts `IS_INTERVENTION = 1`, flushes the pending action chunk, and safely transitions to a compliant position hold, protecting harmonic drive gears from tooth shear.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):** 
+ During an automated peg-in-hole assembly, an ACT action chunk commands a downward step into a misaligned fixture. The Cortex-M4 microcontroller's 1 kHz loop detects an axial force spike ($F_z > F_{\text{contact\_max}}$), trips the contact barrier constraint ($h_{\text{force}} \ge 0$), and clamps motor currents in under $175\,\mu\text{s}$. It asserts `IS_INTERVENTION = 1`, flushes the pending action chunk, and safely transitions to a compliant position hold, protecting harmonic drive gears from tooth shear.
 
-* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter Protection):**  
-  A learned neural inverter controller proposes aggressive reactive power injection during a grid voltage sag. The bare-metal digital signal controller (DSC) runs an inverter barrier filter evaluating semiconductor die junction temperature ($T_j \le 150^\circ\text{C}$) and AC voltage distortion ($V_{\text{THD}} \le 5\%$). If the candidate modulation index would push IGBT currents beyond Safe Operating Area (SOA) curves, the enforcer clamps PWM gate duty cycles in $<5\,\mu\text{s}$, preventing explosive semiconductor bridge shoot-through.
+* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter Protection):** 
+ A learned neural inverter controller proposes aggressive reactive power injection during a grid voltage sag. The bare-metal digital signal controller (DSC) runs an inverter barrier filter evaluating semiconductor die junction temperature ($T_j \le 150^\circ\text{C}$) and AC voltage distortion ($V_{\text{THD}} \le 5\%$). If the candidate modulation index would push IGBT currents beyond Safe Operating Area (SOA) curves, the enforcer clamps PWM gate duty cycles in $<5\,\mu\text{s}$, preventing explosive semiconductor bridge shoot-through.
 :::
-
 
 
 ### The Non-Deterministic Operating System Trap
@@ -109,7 +107,6 @@ The microcontroller's execution environment is strictly governed by three embedd
 
 : **Architectural comparison between the Proposal Engine and Permission Supervisor.** By decoupling stochastic neural deliberation from deterministic bare-metal safety enforcement, the dual-brain architecture ensures that software freezes, kernel panics, or model hallucinations on the MPU cannot cause physical damage. {#tbl-mcu-mpu-split}
 
----
 
 ## Mathematical Grounding: Control Barrier Functions (CBFs) and Forward Invariance
 
@@ -177,9 +174,9 @@ A critical subtlety in physical robotics arises from **relative degree**. The re
 
 In mechanical systems where the state is $x = [q, \dot{q}]^T$ (joint position and velocity) and the control input $u = \tau$ is motor torque or current:
 
-* If the safety barrier is formulated purely at the position level (e.g., $h(q) = q_{\text{max}} - q \ge 0$), the first derivative is:
-  $$\dot{h}(q, \dot{q}) = -\dot{q}$$
-  which contains **zero dependence on control torque $u$** ($L_g h(x) = 0$).
+* **Position-Only Formulation ($r=2$):** If the safety barrier is formulated purely at the position level (e.g., $h(q) = q_{\text{max}} - q \ge 0$), the first derivative is:
+ $$\dot{h}(q, \dot{q}) = -\dot{q}$$
+ which contains **zero dependence on control torque $u$** ($L_g h(x) = 0$).
 
 Because motor torque accelerates velocity ($\ddot{q} = M^{-1}(\tau - C\dot{q} - g)$), the input $u$ only appears in the *second* derivative $\ddot{h}(x, u)$ (relative degree $r = 2$). Attempting to apply a standard relative-degree-1 CBF directly to position limits results in an un-actuated constraint where the solver cannot exert corrective torque.
 
@@ -193,7 +190,6 @@ $$\dot{h}_e(x, u) = \ddot{h}(x, u) + \kappa \dot{h}(x) = \nabla \dot{h}(x)^T \le
 
 Because $\ddot{h}$ contains acceleration ($\ddot{q}$), the control input $u$ appears explicitly ($L_g h_e(x) \ne 0$), allowing the 1 kHz microcontroller to compute the exact motor torque required to arrest motion before the position limit is reached.
 
----
 
 ## The Minimal-Intervention Quadratic Program (QP) on Embedded Silicon
 
@@ -217,8 +213,8 @@ The safety filter exhibits three profound systems properties:
 
 1. **Complete Proposal Transparency (Nominal Operation):** If the candidate proposal $p_t$ satisfies all safety barrier conditions ($p_t \in \mathcal{U}_{\text{safe}}(x_t)$), the objective function achieves its global minimum at $u_t^* = p_t$. The enforcer permits the neural command with **$0\%$ alteration**, allowing the AI model to execute aggressive, high-performance task trajectories.
 2. **Minimal Least-Squares Intervention (Boundary Violation):** If the neural policy proposes an unsafe command ($p_t \notin \mathcal{U}_{\text{safe}}(x_t)$), the QP projects $p_t$ onto the nearest boundary of the safe half-space:
-   $$u_t^* = \Pi_{\mathcal{U}_{\text{safe}}(x_t)}(p_t)$$
-   The enforcer clips only the orthogonal component that breaches the barrier, preserving the tangential task velocity to slide safely along the constraint boundary.
+ $$u_t^* = \Pi_{\mathcal{U}_{\text{safe}}(x_t)}(p_t)$$
+ The enforcer clips only the orthogonal component that breaches the barrier, preserving the tangential task velocity to slide safely along the constraint boundary.
 
 3. **Guaranteed Invariant Containment:** Regardless of how erratically or catastrophically the neural network hallucinates, the permitted command $u_t^*$ is mathematically constrained to the safe set $\mathcal{C}$.
 
@@ -260,20 +256,20 @@ The listing below illustrates the complete, deterministic C implementation of th
 #include <stdbool.h>
 #include <math.h>
 
-#define NUM_ACTUATORS       3
-#define NUM_BARRIERS        4
-#define CBF_GAMMA_ALPHA     15.0f   /* Linear Class-K gain: alpha(h) = gamma * h */
+#define NUM_ACTUATORS 3
+#define NUM_BARRIERS 4
+#define CBF_GAMMA_ALPHA 15.0f /* Linear Class-K gain: alpha(h) = gamma * h */
 
 typedef struct {
-    float q[NUM_ACTUATORS];         /* Joint positions (rad) */
-    float q_dot[NUM_ACTUATORS];     /* Joint velocities (rad/s) */
-    float tau_limit[NUM_ACTUATORS]; /* Maximum joint torque limits (Nm) */
+ float q[NUM_ACTUATORS]; /* Joint positions (rad) */
+ float q_dot[NUM_ACTUATORS]; /* Joint velocities (rad/s) */
+ float tau_limit[NUM_ACTUATORS]; /* Maximum joint torque limits (Nm) */
 } RobotState_t;
 
 typedef struct {
-    float h_val;                    /* Barrier value h(x) */
-    float Lf_h;                     /* Lie derivative Lf h(x) */
-    float Lg_h[NUM_ACTUATORS];      /* Lie derivative Lg h(x) */
+ float h_val; /* Barrier value h(x) */
+ float Lf_h; /* Lie derivative Lf h(x) */
+ float Lg_h[NUM_ACTUATORS]; /* Lie derivative Lg h(x) */
 } BarrierConstraint_t;
 
 /**
@@ -285,74 +281,73 @@ static BarrierConstraint_t s_barriers[NUM_BARRIERS];
  * @brief Evaluate workspace geofence barrier: h(x) = pos_max - pos >= 0
  */
 static void evaluate_geofence_barriers(const RobotState_t *state) {
-    /* Barrier 0: Joint 1 Upper Limit (h0(q) = q_max - q1 >= 0) */
-    const float q1_max = 1.5708f; /* +90 deg */
-    s_barriers[0].h_val = q1_max - state->q[0];
-    s_barriers[0].Lf_h  = -state->q_dot[0];
-    s_barriers[0].Lg_h[0] = -1.0f;
-    s_barriers[0].Lg_h[1] =  0.0f;
-    s_barriers[0].Lg_h[2] =  0.0f;
+ /* Barrier 0: Joint 1 Upper Limit (h0(q) = q_max - q1 >= 0) */
+ const float q1_max = 1.5708f; /* +90 deg */
+ s_barriers[0].h_val = q1_max - state->q[0];
+ s_barriers[0].Lf_h = -state->q_dot[0];
+ s_barriers[0].Lg_h[0] = -1.0f;
+ s_barriers[0].Lg_h[1] = 0.0f;
+ s_barriers[0].Lg_h[2] = 0.0f;
 
-    /* Additional barriers (table clearance, payload force) populated statically */
+ /* Additional barriers (table clearance, payload force) populated statically */
 }
 
 /**
  * @brief 1000 Hz Minimal-Intervention QP Projection (Deterministic WCET < 65 us)
  */
 void cbf_safety_filter_tick(const RobotState_t *state, 
-                            const float p_t[NUM_ACTUATORS], 
-                            float u_permitted[NUM_ACTUATORS],
-                            bool *is_intervention) {
-    *is_intervention = false;
+ const float p_t[NUM_ACTUATORS], 
+ float u_permitted[NUM_ACTUATORS],
+ bool *is_intervention) {
+ *is_intervention = false;
 
-    /* 1. Initialize permitted control to raw candidate proposal */
-    for (int i = 0; i < NUM_ACTUATORS; i++) {
-        u_permitted[i] = p_t[i];
-    }
+ /* 1. Initialize permitted control to raw candidate proposal */
+ for (int i = 0; i < NUM_ACTUATORS; i++) {
+ u_permitted[i] = p_t[i];
+ }
 
-    /* 2. Evaluate all active barrier constraints */
-    evaluate_geofence_barriers(state);
+ /* 2. Evaluate all active barrier constraints */
+ evaluate_geofence_barriers(state);
 
-    /* 3. Sequential Active-Set Projection across barrier constraints */
-    for (int k = 0; k < NUM_BARRIERS; k++) {
-        float h      = s_barriers[k].h_val;
-        float Lf     = s_barriers[k].Lf_h;
-        float *Lg    = s_barriers[k].Lg_h;
-        float alpha_h = CBF_GAMMA_ALPHA * h;
+ /* 3. Sequential Active-Set Projection across barrier constraints */
+ for (int k = 0; k < NUM_BARRIERS; k++) {
+ float h = s_barriers[k].h_val;
+ float Lf = s_barriers[k].Lf_h;
+ float *Lg = s_barriers[k].Lg_h;
+ float alpha_h = CBF_GAMMA_ALPHA * h;
 
-        /* Compute dot{h}(x, u) = Lf + Lg * u */
-        float Lg_u = 0.0f;
-        float Lg_Lg = 0.0f;
-        for (int i = 0; i < NUM_ACTUATORS; i++) {
-            Lg_u  += Lg[i] * u_permitted[i];
-            Lg_Lg += Lg[i] * Lg[i];
-        }
+ /* Compute dot{h}(x, u) = Lf + Lg * u */
+ float Lg_u = 0.0f;
+ float Lg_Lg = 0.0f;
+ for (int i = 0; i < NUM_ACTUATORS; i++) {
+ Lg_u += Lg[i] * u_permitted[i];
+ Lg_Lg += Lg[i] * Lg[i];
+ }
 
-        float cbf_lhs = Lf + Lg_u + alpha_h;
+ float cbf_lhs = Lf + Lg_u + alpha_h;
 
-        /* If barrier condition violated (cbf_lhs < 0), project minimally */
-        if (cbf_lhs < 0.0f && Lg_Lg > 1e-6f) {
-            float lambda_star = -cbf_lhs / Lg_Lg;
+ /* If barrier condition violated (cbf_lhs < 0), project minimally */
+ if (cbf_lhs < 0.0f && Lg_Lg > 1e-6f) {
+ float lambda_star = -cbf_lhs / Lg_Lg;
 
-            for (int i = 0; i < NUM_ACTUATORS; i++) {
-                u_permitted[i] += lambda_star * Lg[i];
-            }
-            *is_intervention = true;
-        }
-    }
+ for (int i = 0; i < NUM_ACTUATORS; i++) {
+ u_permitted[i] += lambda_star * Lg[i];
+ }
+ *is_intervention = true;
+ }
+ }
 
-    /* 4. Enforce physical actuator saturation clamps */
-    for (int i = 0; i < NUM_ACTUATORS; i++) {
-        if (u_permitted[i] > state->tau_limit[i]) {
-            u_permitted[i] = state->tau_limit[i];
-        } else if (u_permitted[i] < -state->tau_limit[i]) {
-            u_permitted[i] = -state->tau_limit[i];
-        }
-    }
+ /* 4. Enforce physical actuator saturation clamps */
+ for (int i = 0; i < NUM_ACTUATORS; i++) {
+ if (u_permitted[i] > state->tau_limit[i]) {
+ u_permitted[i] = state->tau_limit[i];
+ } else if (u_permitted[i] < -state->tau_limit[i]) {
+ u_permitted[i] = -state->tau_limit[i];
+ }
+ }
 }
 ```
 
----
 
 ## Dynamic Stopping Distance Envelopes ($d_{\text{stop}}$) and Hardware Fail-Safe Interlocks
 
@@ -408,7 +403,6 @@ When a physical safety invariant is breached, an intent lease expires, or an eme
 
 : **The 4-tier emergency stop and hardware interlock matrix.** Standardized fallback escalations ensure that mild timing jitter results in controlled position holds, while severe boundary breaches trigger hardware power isolation. {#tbl-fallback-matrix}
 
----
 
 ## Asynchronous State Re-Anchoring and Safe Telemetry Lineage
 
@@ -454,29 +448,27 @@ $$\mathcal{T}_t = \left\langle t_{\text{timestamp}}, \; O_t, \; p_t, \; u_t^*, \
 
 Retraining pipelines filter on $\mathbf{1}_{\text{intervention}} = 1$, isolating intervention episodes for targeted imitation learning (DAgger) or root-cause hazard analysis.
 
----
 
 ## Systems Fallacies and Pitfalls
 
 ::: {.callout-warning}
 ### Common Engineering Fallacies in Real-Time Safety
-* **Fallacy 1: "A policy trained with reinforcement learning safety penalties does not need an external hardware enforcer."**  
-  *Correction:* Neural policies are stochastic function approximators. While reward penalties reduce the *probability* of collisions in nominal training domains, they provide zero formal guarantees against out-of-distribution hallucinations, adversarial lighting shifts, or sensor degradation. Physical safety requires hard mathematical barriers enforced independently in silicon.
-* **Fallacy 2: "Implementing safety checks in Python or ROS 2 on Linux provides adequate protection."**  
-  *Correction:* Operating system kernel scheduling jitter, memory page compaction, and garbage collection introduce multi-millisecond tail latency spikes ($P_{99.9} > 200\text{ ms}$). During an OS freeze, unchecked motor current commands continue driving gate drivers. Safety enforcement must reside on a bare-metal microcontroller with bounded WCET ($< 250\,\mu\text{s}$).
-* **Fallacy 3: "Software collision detection algorithms can replace hardware Safe Torque Off (STO)."**  
-  *Correction:* Software collision detection relies on functional CPU execution, intact memory buses, and uncorrupted firmware. In the event of a firmware crash, microcode lockup, or power stage short circuit, software cannot de-energize actuators. Hardware STO provides a physically isolated, optocoupler-gated power cut with zero software dependency.
-* **Fallacy 4: "Position-level barrier functions ($h(q) \ge 0$) can be directly applied to motor torque control."**  
-  *Correction:* Second-order mechanical systems have relative degree $r = 2$ with respect to torque inputs. Attempting to enforce a relative-degree-1 CBF on position bounds produces zero control authority ($L_g h = 0$). Embedded safety filters must formulate Exponential Control Barrier Functions (ECBFs) that explicitly incorporate velocity dynamics.
+* **Fallacy 1: "A policy trained with reinforcement learning safety penalties does not need an external hardware enforcer."** 
+ *Correction:* Neural policies are stochastic function approximators. While reward penalties reduce the *probability* of collisions in nominal training domains, they provide zero formal guarantees against out-of-distribution hallucinations, adversarial lighting shifts, or sensor degradation. Physical safety requires hard mathematical barriers enforced independently in silicon.
+* **Fallacy 2: "Implementing safety checks in Python or ROS 2 on Linux provides adequate protection."** 
+ *Correction:* Operating system kernel scheduling jitter, memory page compaction, and garbage collection introduce multi-millisecond tail latency spikes ($P_{99.9} > 200\text{ ms}$). During an OS freeze, unchecked motor current commands continue driving gate drivers. Safety enforcement must reside on a bare-metal microcontroller with bounded WCET ($< 250\,\mu\text{s}$).
+* **Fallacy 3: "Software collision detection algorithms can replace hardware Safe Torque Off (STO)."** 
+ *Correction:* Software collision detection relies on functional CPU execution, intact memory buses, and uncorrupted firmware. In the event of a firmware crash, microcode lockup, or power stage short circuit, software cannot de-energize actuators. Hardware STO provides a physically isolated, optocoupler-gated power cut with zero software dependency.
+* **Fallacy 4: "Position-level barrier functions ($h(q) \ge 0$) can be directly applied to motor torque control."** 
+ *Correction:* Second-order mechanical systems have relative degree $r = 2$ with respect to torque inputs. Attempting to enforce a relative-degree-1 CBF on position bounds produces zero control authority ($L_g h = 0$). Embedded safety filters must formulate Exponential Control Barrier Functions (ECBFs) that explicitly incorporate velocity dynamics.
 :::
 
----
 
-## Dossier Delta: Enforcement Design and CBF Matrices (`ENF-01`)
+## Notebook checkpoint: Enforcement Design and CBF Matrices (enforcement design)
 
-Every chapter in this text freezes an industrial-grade engineering specification for the **Cumulative Design Dossier**. In Chapter 8, we establish the eighth milestone: **Enforcement Design & CBF Matrices (`ENF-01`)**, defining the real-time timing loop, barrier function parameters, stopping distance envelopes, and hardware fallback escalations:
+Every chapter in this text freezes an industrial-grade engineering specification for the **engineering notebook**. In Chapter 8, we establish the eighth milestone: **Enforcement Design & CBF Matrices (enforcement design)**, defining the real-time timing loop, barrier function parameters, stopping distance envelopes, and hardware fallback escalations:
 
-### The `ENF-01` Specification Matrix
+### The enforcement design Specification Matrix
 
 | Subsystem | Spec Field | Value & Limits | Verification |
 | :--- | :--- | :--- | :--- |
@@ -486,76 +478,75 @@ Every chapter in this text freezes an industrial-grade engineering specification
 | **Fallback Levels** | `cat2_hold_kp`<br>`cat1_decel`<br>`cat0_sto_pin`<br>`watchdog_ms` | $180.0\text{ Nm/rad}$ (Stiffness)<br>$4.0\text{ m/s}^2$ controlled decel<br>`GPIO_PB12` ($<5\,\mu\text{s}$ cut)<br>$15.0\text{ ms}$ heartbeat trip | Seeded MPU Crash & E-Stop Injection |
 | **IPC Re-Anchoring** | `flag_addr`<br>`handshake_ms`<br>`hmac_enabled` | `0x38000400` (Non-Cache SRAM)<br>$25.0\text{ ms}$ flush budget<br>`true` (Cryptographic Lineage) | SRAM Ring Buffer Logic Analyzer Trace |
 
-: **The `ENF-01` Enforcement Design and Safety Specification Ledger.** This specification freezes the mathematical barrier parameters, dynamic stopping bounds, and hardware interlock mechanisms for the cumulative release dossier. {#tbl-enf01-ledger}
+: **The enforcement design Enforcement Design and Safety Specification Ledger.** This specification freezes the mathematical barrier parameters, dynamic stopping bounds, and hardware interlock mechanisms for the cumulative release dossier. {#tbl-enf01-ledger}
 
 ::: {.callout-decision}
-### Dossier Checkpoint: Freeze `ENF-01`
+### Dossier Checkpoint: Freeze enforcement design
 
 ```yaml
 # ==============================================================================
-# CUMULATIVE DESIGN DOSSIER: ENF-01
+# CUMULATIVE DESIGN DOSSIER: enforcement design
 # Organ 6: Real-Time Reflex and 1 kHz Bare-Metal Safety Enforcers
 # Architecture: Proposal–Permission Privilege Split (Heterogeneous Silicon)
 # ==============================================================================
 
 enforcement_design:
-  system_id: "PHYSICAL-AGENT-01"
-  dossier_milestone: "ENF-01"
-  version: "1.0.0"
-  status: "FROZEN"
+ system_id: "PHYSICAL-AGENT-01"
+ notebook_checkpoint: "enforcement design"
+ version: "1.0.0"
+ status: "FROZEN"
 
-  mcu_timing_substrate:
-    core: "ARM Cortex-M4 (STM32 / Arduino UNO Q)"
-    clock_frequency_mhz: 168.0
-    timer_interrupt_channel: "TIM2_IRQn"
-    target_frequency_hz: 1000.0
-    max_execution_time_us: 175.0
-    cpu_headroom_percent: 82.5
-    heap_allocation_bytes: 0
+ mcu_timing_substrate:
+ core: "ARM Cortex-M4 (STM32 / Arduino UNO Q)"
+ clock_frequency_mhz: 168.0
+ timer_interrupt_channel: "TIM2_IRQn"
+ target_frequency_hz: 1000.0
+ max_execution_time_us: 175.0
+ cpu_headroom_percent: 82.5
+ heap_allocation_bytes: 0
 
-  control_barrier_functions:
-    formulation: "ZEROING_CONTROL_BARRIER_FUNCTION"
-    relative_degree: 2
-    class_k_comparison_gamma: 15.0
-    workspace_geofence_box_m:
-      x: [-0.35, 0.35]
-      y: [ 0.10, 0.60]
-      z: [ 0.00, 0.50]
-    min_table_clearance_m: 0.015
-    max_payload_force_n: 12.5
-    qp_solver_algorithm: "CLOSED_FORM_KKT_ACTIVE_SET"
-    max_qp_iterations: 4
+ control_barrier_functions:
+ formulation: "ZEROING_CONTROL_BARRIER_FUNCTION"
+ relative_degree: 2
+ class_k_comparison_gamma: 15.0
+ workspace_geofence_box_m:
+ x: [-0.35, 0.35]
+ y: [ 0.10, 0.60]
+ z: [ 0.00, 0.50]
+ min_table_clearance_m: 0.015
+ max_payload_force_n: 12.5
+ qp_solver_algorithm: "CLOSED_FORM_KKT_ACTIVE_SET"
+ max_qp_iterations: 4
 
-  dynamic_stopping_envelope:
-    max_deceleration_mps2: 4.0
-    total_reaction_delay_ms: 12.0
-    safety_clearance_margin_m: 0.020
-    velocity_clamping_enabled: true
+ dynamic_stopping_envelope:
+ max_deceleration_mps2: 4.0
+ total_reaction_delay_ms: 12.0
+ safety_clearance_margin_m: 0.020
+ velocity_clamping_enabled: true
 
-  fallback_escalation_hierarchy:
-    category_2_hold:
-      trigger: "INTENT_LEASE_EXPIRED_OR_PACKET_DROP"
-      timeout_ms: 15.0
-      holding_stiffness_kp: 180.0
-    category_1_stop:
-      trigger: "STOPPING_CLEARANCE_BREACH_OR_CBF_VIOLATION"
-      deceleration_mps2: 4.0
-      target_stop_time_ms: 250.0
-    category_0_sto:
-      trigger: "HARDWARE_ESTOP_OR_WATCHDOG_TIMEOUT"
-      watchdog_timeout_ms: 15.0
-      gpio_pin: "GPIO_PB12_ESTOP_TRIP"
-      isolation_response_us: 4.8
+ fallback_escalation_hierarchy:
+ category_2_hold:
+ trigger: "INTENT_LEASE_EXPIRED_OR_PACKET_DROP"
+ timeout_ms: 15.0
+ holding_stiffness_kp: 180.0
+ category_1_stop:
+ trigger: "STOPPING_CLEARANCE_BREACH_OR_CBF_VIOLATION"
+ deceleration_mps2: 4.0
+ target_stop_time_ms: 250.0
+ category_0_sto:
+ trigger: "HARDWARE_ESTOP_OR_WATCHDOG_TIMEOUT"
+ watchdog_timeout_ms: 15.0
+ gpio_pin: "GPIO_PB12_ESTOP_TRIP"
+ isolation_response_us: 4.8
 
-  reanchoring_handshake:
-    shared_sram_mailbox_addr: "0x38000400"
-    atomic_intervention_flag: "IS_INTERVENTION"
-    pipeline_flush_timeout_ms: 25.0
-    telemetry_tagging_enabled: true
+ reanchoring_handshake:
+ shared_sram_mailbox_addr: "0x38000400"
+ atomic_intervention_flag: "IS_INTERVENTION"
+ pipeline_flush_timeout_ms: 25.0
+ telemetry_tagging_enabled: true
 ```
 :::
 
----
 
 ::: {.callout-lab}
 ### Hands-On Realization: Lab 8 — 1 kHz MCU Safety Enforcer
@@ -565,5 +556,5 @@ enforcement_design:
 * **Controlled Perturbation:** Inject four distinct fault regimes: (1) workspace geofence penetration, (2) sudden simulated obstacle intrusion violating $d_{\text{stop}}$, (3) MPU intent lease expiration ($t > 100\text{ ms}$), and (4) forced Linux kernel panic (`kill -9` of proposal daemon).
 * **Measurement:** Using a 4-channel mixed-signal oscilloscope and logic analyzer, probe the MCU GPIO intervention pins, PWM gate drive lines, and current sense shunts. Measure the exact intervention latency from proposal receipt to gate clamping ($t \le 175\,\mu\text{s}$) and verify that physical stopping occurs within $d_{\text{stop}} \le d_{\text{clearance}}$.
 * **Native Failure Diagnosis:** Observe how failing to execute the asynchronous re-anchoring handshake induces severe motor shudder when proposal streaming resumes; apply the SRAM mailbox handshake to restore smooth bumpless motion.
-* **Dossier Milestone:** Validate, test, and freeze the `ENF-01` YAML specification in your team's Cumulative Design Dossier.
+* **Lab checkpoint:** Validate, test, and freeze the enforcement design YAML specification in your team's engineering notebook.
 :::

@@ -5,4 +5,4 @@
 - **Phenomenon:** MCU refuses invalid/stale/out-of-envelope MPU proposals; MPU crash cannot bypass.
 - **Perturbation:** valid, invalid, stale, malformed, out-of-limit intents.
 - **Decision:** skill limits, check owner, recovery policy.
-- **Dossier:** `ENF-08`
+- **Notebook:** enforcement design

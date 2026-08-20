@@ -4,4 +4,4 @@
 - **Status:** draft
 - **Phenomenon:** integrated task, failure, recovery, egress, authority, rollback checks.
 - **Decision:** deploy, deploy under conditions, or refuse — with evidence.
-- **Dossier:** `REL-13`
+- **Notebook:** release case

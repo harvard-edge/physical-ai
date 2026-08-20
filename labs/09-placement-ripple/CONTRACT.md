@@ -5,4 +5,4 @@
 - **Phenomenon:** moving one capability changes latency, energy, data movement, failure behavior.
 - **Constraint:** enforcement stays on MCU.
 - **Decision:** accept or reject re-placement; fill placement map and resource ledger.
-- **Dossier:** `PLACE-09`
+- **Notebook:** placement ledger

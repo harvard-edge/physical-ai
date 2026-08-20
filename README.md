@@ -1,14 +1,19 @@
 # Physical AI Systems: Machine Learning Systems That Sense and Act
 
-**An Open Textbook, Curriculum, and Hardware Studio on Engineering Autonomous Physical Agents**
+**Open textbook, curriculum, and hardware studio** for machines where learned software may act in the physical world.
 
-* **Author & Lecturer:** **Prof. Vijay Janapa Reddi** (Harvard University / Visiting Professor, ETH Zurich)
-* **Kit & Studio Lead:** **Dr. Andrea Mattia Garavagno** (Integrated Systems Laboratory, IIS, D-ITET, ETH Zurich)
-* **Book & Course Portal:** [`physical.mlsysbook.ai`](https://physical.mlsysbook.ai)
+| | |
+| --- | --- |
+| **Portal** | [physical.mlsysbook.ai](https://physical.mlsysbook.ai) |
+| **Course syllabus (students)** | [`course/README.md`](course/README.md) — GitHub renders this page |
+| **Book (Quarto)** | [`book/`](book/) — preface, chapters, HTML/PDF build |
+| **Labs** | [`labs/`](labs/) — kit contracts |
+| **Author** | Prof. Vijay Janapa Reddi (Harvard / ETH Zurich) · [vj@eecs.harvard.edu](mailto:vj@eecs.harvard.edu) |
 
-> *"TinyML taught you how to deploy a neural model to a microchip. Physical AI teaches you how to build an intelligent, safe machine under physical and resource laws."*
+> TinyML taught you how to deploy a neural model to a microchip. Physical AI teaches you how to build an intelligent, safe machine under physical and resource laws.
 
----
+**Repo layout in one line:** syllabus lives as Markdown under `course/`; the book is its own Quarto project under `book/`; labs are separate. You do not need a special HTML syllabus skin—GitHub (or any Markdown preview) is enough for the course page.
+
 
 ## The Big Picture: What is Physical AI Systems?
 
@@ -20,7 +25,6 @@ Because physical actions cannot be rewound (**you cannot `ctrl+z` kinetic moment
 
 > **"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"**
 
----
 
 ## The Three Universal Defining Properties of Physical AI
 
@@ -34,7 +38,6 @@ Across robotics, autonomous mobility, smart energy grids, and industrial automat
 
 : The Three Universal Defining Properties of Physical AI. {#tbl-defining-properties}
 
----
 
 ## The Three Canonical Archetypes
 
@@ -49,24 +52,23 @@ To ensure broad engineering generalization beyond any single robotics niche, eve
 
 : The Three Canonical Archetypes and the Desk Bench Twin. {#tbl-canonical-archetypes}
 
----
 
 ## The Grand Systems Conflict: Less Time vs. More Time
 
 The foundational tension of Physical AI is the structural collision between two opposing vectors:
 
 ```
-                  THE FUNDAMENTAL TUG-OF-WAR IN PHYSICAL AI
-                  
-     PHYSICS & HARDWARE LAWS                 COGNITIVE FOUNDATION MODELS
-     (Chapter 2: The Physical Columns)       (Chapter 3: The Cognitive Rows)
-   ─────────────────────────────────────   ─────────────────────────────────────
-   • LESS TIME IS BETTER ($t \to 0$)       • MORE TIME IS BETTER ($t \to \infty$)
-   • Moving mass travels ($v \cdot \Delta t$)      • Foundation models need FLOPs & tokens
-   • Stator coils heat ($I^2 R$)           • Spatial transformers need self-attention
-   • Sensor evidence decays instantly      • Diffusion policies need denoising steps
-   • Phase margin erodes ($e^{-s T_d}$)    • VLMs need chain-of-thought reasoning
-   • "Act in 1 ms or the arm collides!"    • "Give me 500 ms to resolve ambiguity!"
+ THE FUNDAMENTAL TUG-OF-WAR IN PHYSICAL AI
+ 
+ PHYSICS & HARDWARE LAWS COGNITIVE FOUNDATION MODELS
+ (Chapter 2: The Physical Columns) (Chapter 3: The Cognitive Rows)
+ ───────────────────────────────────── ─────────────────────────────────────
+ • LESS TIME IS BETTER ($t \to 0$) • MORE TIME IS BETTER ($t \to \infty$)
+ • Moving mass travels ($v \cdot \Delta t$) • Foundation models need FLOPs & tokens
+ • Stator coils heat ($I^2 R$) • Spatial transformers need self-attention
+ • Sensor evidence decays instantly • Diffusion policies need denoising steps
+ • Phase margin erodes ($e^{-s T_d}$) • VLMs need chain-of-thought reasoning
+ • "Act in 1 ms or the arm collides!" • "Give me 500 ms to resolve ambiguity!"
 ```
 
 ### The Resolution: The Three Cadences of Intelligence
@@ -81,7 +83,6 @@ Physical AI reconciles this conflict by decoupling execution across **three asyn
 
 : The Three Cadences of Intelligence. Decoupling cognitive speeds across heterogeneous silicon. {#tbl-three-cadences}
 
----
 
 ## The Grand Map: The Physical AI Co-Design Matrix
 
@@ -99,7 +100,6 @@ The curriculum and book are organized around the **$5 \times 5$ Co-Design Matrix
 
 Columns 3 and 4 are often taught as one. They are separated because they bind different rows: actuation limits reach only the stages that command motion, while heat reaches the sensor mount, the inference accelerator, and the motor alike.
 
----
 
 ## The 4-Pillar Pedagogical Formula for Part II (Chapters 4–8)
 
@@ -110,30 +110,28 @@ Every chapter in Part II systematically conquers one row of the matrix using a s
 3. **The Timing Cadence & Multi-Rate Mapping:** The operational clock frequency, synchronization mechanisms (PTP exposure midpoints, delay amortization), and IPC mailboxes.
 4. **The Physical Invariant & Safety Constraint:** The mathematical conservation laws, geometric bounds, and safety filters that prevent physical destruction.
 
----
 
-## Textbook Structure & Cumulative Design Dossier
+## Textbook Structure & engineering notebook
 
-Across the 12 chapters, students and engineers construct an 11-artifact **Cumulative Design Dossier** for an embodied physical system:
+Across the 12 chapters, students and engineers construct an 11-artifact **engineering notebook** for an embodied physical system:
 
-| Part | Chapter | Title / Subsystem Focus | Design Dossier Deliverable | Companion Lab |
+| Part | Chapter | Title / Subsystem Focus | engineering notebook Deliverable | Companion Lab |
 | :--- | :--- | :--- | :--- | :--- |
-| **Part I: Foundations & Co-Design Matrix** | Chapter 1 | **The Causal Boundary & The Co-Design Challenge** | `LOOP-01` (Loop Charter & Invariants) | `labs/01-close-the-loop` |
-| | Chapter 2 | **The Physical Constraints: Freshness, Stopping & Silicon** | `REQ-01` (Requirements & Latency Ledger) | `labs/02-metrology-wall` |
-| | Chapter 3 | **The Cognitive Dimensions: The 5 Stages & Co-Design Matrix** | `FLOW-01` (Workflow & Multi-Rate Charter) | `labs/03-agent-workflow` |
-| **Part II: The Embodied Lifecycle** | Chapter 4 | **Perception: Spatial Grounding & Ingestion Taxes** | `OBS-01` (Observation Contract & 3D Tokens) | `labs/04-dma-tokens` |
-| | Chapter 5 | **Memory & State: Latent World Models & SE(3) Trees** | `STATE-01` (State & Timing Model) | `labs/05-latent-state` |
-| | Chapter 6 | **Semantic Intent: Multimodal VLMs & Expiring Leases** | `INTENT-01` (Policy & Intent Schema) | `labs/06-vlm-intent` |
-| | Chapter 7 | **Planning & Chunking: Diffusion Policies & C2 Jerk** | `PLAN-01` (Planning Schema & Chunking) | `labs/07-action-chunking` |
-| | Chapter 8 | **Execution & Safety: 1 kHz MCU Safety Invariants** | `ENF-01` (Enforcement Design & CBFs) | `labs/08-cbf-enforcer` |
-| **Part III: Placement, Governance & Release** | Chapter 9 | **Placement: Heterogeneous Silicon & Memory Bus QoS** | `PLACE-01` (Placement Map & Resource Ledger) | `labs/09-heterogeneous-placement` |
-| | Chapter 10 | **Governance: Bumpless Transfer & Governed Flywheels** | `AUTH-01` (Authority & Governance Record) | `labs/10-bumpless-governance` |
-| | Chapter 11 | **Assurance & Release: Seeded Faults & Safety Cases** | `REL-01` (Claim-Argument-Evidence Case) | `labs/11-fault-injection-rig` |
+| **Part I: Foundations & Co-Design Matrix** | Chapter 1 | **The Causal Boundary & The Co-Design Challenge** | loop charter (Loop Charter & Invariants) | `labs/01-close-the-loop` |
+| | Chapter 2 | **The Physical Constraints: Freshness, Stopping & Silicon** | requirements ledger (Requirements & Latency Ledger) | `labs/02-metrology-wall` |
+| | Chapter 3 | **The Cognitive Dimensions: The 5 Stages & Co-Design Matrix** | workflow charter (Workflow & Multi-Rate Charter) | `labs/03-agent-workflow` |
+| **Part II: The Embodied Lifecycle** | Chapter 4 | **Perception: Spatial Grounding & Ingestion Taxes** | observation contract (Observation Contract & 3D Tokens) | `labs/04-dma-tokens` |
+| | Chapter 5 | **Memory & State: Latent World Models & SE(3) Trees** | state and timing model (State & Timing Model) | `labs/05-latent-state` |
+| | Chapter 6 | **Semantic Intent: Multimodal VLMs & Expiring Leases** | intent schema (Policy & Intent Schema) | `labs/06-vlm-intent` |
+| | Chapter 7 | **Planning & Chunking: Diffusion Policies & C2 Jerk** | planning schema (Planning Schema & Chunking) | `labs/07-action-chunking` |
+| | Chapter 8 | **Execution & Safety: 1 kHz MCU Safety Invariants** | enforcement design (Enforcement Design & CBFs) | `labs/08-cbf-enforcer` |
+| **Part III: Placement, Governance & Release** | Chapter 9 | **Placement: Heterogeneous Silicon & Memory Bus QoS** | placement ledger (Placement Map & Resource Ledger) | `labs/09-heterogeneous-placement` |
+| | Chapter 10 | **Governance: Bumpless Transfer & Governed Flywheels** | authority design (Authority & Governance Record) | `labs/10-bumpless-governance` |
+| | Chapter 11 | **Assurance & Release: Seeded Faults & Safety Cases** | release case (Claim-Argument-Evidence Case) | `labs/11-fault-injection-rig` |
 | **Capstone** | Chapter 12 | **Whole-System Bench Defense Under Seeded Faults** | **Full Dossier Sign-Off & Release Verdict** | `labs/99-capstone-defense` |
 
-: The Complete 12-Chapter Textbook Curriculum and Cumulative Design Dossier Milestones. {#tbl-curriculum-dossier}
+: The Complete 12-Chapter Textbook Curriculum and engineering notebook Milestones. {#tbl-curriculum-dossier}
 
----
 
 ## Hardware Lab Track: The Arduino UNO Q Dual-Brain Kit
 
@@ -144,52 +142,31 @@ The laboratory track grounds every theoretical concept on zero-magic, reproducib
 * **Sensory Suite:** MIPI CSI-2 camera with hardware DMA ring buffers, high-resolution optical encoders, and 6-DoF IMU.
 * **Actuation Suite:** Multi-axis precision motion stage with phase current telemetry, thermal sensing, and hardware Safe Torque Off (STO) relays.
 
----
 
 ## Repository Structure
 
 ```text
 PhysicalAI/
-├── README.md               # Master course & textbook overview
-├── PERMITTER-CHECKLIST.md  # The audit Part II is derived from
-│
-├── course/                 # Academic administration & syllabus
-│   └── syllabus.md         # Official 14-week ETH Zurich syllabus (6 ECTS)
-│
-├── book/                   # Quarto publication source
-│   ├── index.qmd           # Preface & Manifesto (3 Defining Properties, 3 Archetypes)
-│   ├── chapters/           # 12 Chapter manuscripts (01-boundary through 99-capstone)
-│   │   ├── 01-boundary/    # Chapter 1: The Causal Boundary
-│   │   ├── 02-constraints/ # Chapter 2: The Physical Constraints (The Columns)
-│   │   ├── 03-cognition/   # Chapter 3: The Cognitive Dimensions (The Rows)
-│   │   ├── 04-perception/  # Chapter 4: Stage 1 — Perceive (Spatial Tokens & DMA)
-│   │   ├── 05-state/       # Chapter 5: Stage 2 — Remember (Latent World Models)
-│   │   ├── 06-intent/      # Chapter 6: Stage 3 — Reason (VLMs & Intent Leases)
-│   │   ├── 07-planning/    # Chapter 7: Stage 4 — Plan (Diffusion Chunking & Jerk)
-│   │   ├── 08-enforcement/ # Chapter 8: Stage 5 — Execute (1 kHz CBF Enforcers)
-│   │   ├── 09-placement/   # Chapter 9: Workload Placement & Bus QoS
-│   │   ├── 10-governance/  # Chapter 10: Human Authority & Data Flywheels
-│   │   ├── 11-assurance/   # Chapter 11: Seeded Faults & Defensible Release
-│   │   └── 99-capstone/    # Chapter 12: Whole-System Defense
-│   ├── appendix/           # Dossier templates, hardware schematics & math reference
-│   └── _quarto.yml         # Master Quarto configuration (Web + PDF LuaLaTeX)
-│
-└── labs/                   # Hands-on Dual-Brain Laboratory Track
-    ├── 01-close-the-loop/  # Lab 1: Advisory open-loop vs closed-loop state mutation
-    ├── 02-metrology-wall/  # Lab 2: Tail latency metrology (P99, P99.9) & stopping bounds
-    ├── 03-agent-workflow/  # Lab 3: Multi-rate scheduling & proposal-permission split
-    ├── 04-dma-tokens/      # Lab 4: MIPI DMA bus contention & 3D spatial tokenization
-    ├── 05-latent-state/    # Lab 5: SE(3) frame trees & belief persistence under occlusion
-    ├── 06-vlm-intent/      # Lab 6: VLM prompt grounding & expiring intent leases
-    ├── 07-action-chunking/ # Lab 7: ACT trajectory decoding & C2 quintic jerk splines
-    ├── 08-cbf-enforcer/    # Lab 8: 1 kHz MCU Control Barrier Function safety filtering
-    ├── 09-heterogeneous-placement/ # Lab 9: UMA memory arbitration & thermal derating
-    ├── 10-bumpless-governance/     # Lab 10: Bumpless joystick takeover & policy flywheels
-    ├── 11-fault-injection-rig/     # Lab 11: Cross-layer seeded fault injection & safety cases
-    └── 99-capstone-defense/        # Lab 12: Whole-system oral jury defense
+├── README.md                 # This hub (overview + links)
+├── course/
+│   ├── README.md             # Student-facing syllabus (start here for the course)
+│   └── syllabus.md           # ETH packaging / instructor detail notes
+├── book/                     # Quarto book project (website + PDF)
+│   ├── _quarto.yml
+│   ├── index.qmd             # Preface
+│   ├── chapters/             # 01-boundary … 99-capstone
+│   └── _build/               # Rendered HTML (after `quarto render`)
+├── labs/                     # Dual-brain lab contracts
+└── slides/                   # Course overview deck
 ```
 
----
+| Want | Open |
+| --- | --- |
+| Syllabus | [`course/README.md`](course/README.md) |
+| Book source | [`book/`](book/) |
+| Book HTML (local build) | `book/_build/index.html` after `cd book && quarto render` |
+| Labs | [`labs/README.md`](labs/README.md) |
+
 
 ## Building the Book
 
@@ -205,20 +182,18 @@ quarto preview
 quarto render
 ```
 
----
 
 ## Teaching Team & Academic Credits
 
-* **Prof. Vijay Janapa Reddi** — Author & Course Lecturer  
-  *Gordon McKay Professor of Electrical Engineering and Computer Engineering, Harvard University*  
-  *Visiting Professor, Integrated Systems Laboratory (IIS), D-ITET, ETH Zurich*  
-  Email: [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) · Web: [Homepage](https://profvjreddi.github.io/homepage)
+* **Prof. Vijay Janapa Reddi** — Author & Course Lecturer 
+ *Gordon McKay Professor of Electrical Engineering and Computer Engineering, Harvard University* 
+ *Visiting Professor, Integrated Systems Laboratory (IIS), D-ITET, ETH Zurich* 
+ Email: [vjanapa@ethz.ch](mailto:vjanapa@ethz.ch) · Web: [Homepage](https://profvjreddi.github.io/homepage)
 
-* **Dr. Andrea Mattia Garavagno** — Kit & Studio Lead / Co-Instructor  
-  *Postdoctoral Researcher, Integrated Systems Laboratory (IIS), D-ITET, ETH Zurich*  
-  Leads the Physical AI Kit hardware design, bench laboratory firmware contracts, and hands-on studio checkpoints.
+* **Dr. Andrea Mattia Garavagno** — Kit & Studio Lead / Co-Instructor 
+ *Postdoctoral Researcher, Integrated Systems Laboratory (IIS), D-ITET, ETH Zurich* 
+ Leads the Physical AI Kit hardware design, bench laboratory firmware contracts, and hands-on studio checkpoints.
 
----
 
 ## The Lineage of Open Systems Education
 

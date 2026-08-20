@@ -2,7 +2,6 @@
 
 The **Physical AI Kit** uses the **Arduino UNO Q** as the reference educational platform. This appendix provides the hardware specs, core partitioning, and inter-processor communication (IPC) contracts.
 
----
 
 ## Dual-Brain System Topology
 
@@ -12,7 +11,6 @@ The **Physical AI Kit** uses the **Arduino UNO Q** as the reference educational 
 | **Real-Time Controller (MCU)** | ARM Cortex-M / RISC-V<br>FreeRTOS / Bare-Metal | **Trusted Permission Authority:** Runs deterministic 1 kHz timing loop, dynamic stopping enforcer ($d_{\text{stop}}$), and hardware PWM timers. |
 | **Inter-Processor Link (IPC)** | Shared SRAM Mailbox<br>RPMSG / OpenAMP Protocol | Zero-copy lock-free circular ring buffers with atomic sequence counters and hardware mailbox interrupts. |
 
----
 
 ## Hardware Resource Partitioning
 
@@ -25,7 +23,6 @@ The **Physical AI Kit** uses the **Arduino UNO Q** as the reference educational 
 | **Determinism** | Best-effort ($P_{99} \approx 20\text{--}80\text{ ms}$) | Hard real-time (Jitter $< 5\,\mu\text{s}$) |
 | **Physical I/O** | USB, MIPI-CSI Camera, Wi-Fi / Ethernet | Direct Timer PWM, Encoders, E-Stop GPIO |
 
----
 
 ## Shared Memory RPMSG Message Contract
 
@@ -35,26 +32,25 @@ The MPU sends timestamped intent proposals to the MCU over the non-blocking RPMS
 // Shared C Header for MPU and MCU: physical_agent_ipc.h
 
 typedef struct __attribute__((packed)) {
-    uint32_t message_id;
-    uint64_t timestamp_us;       // Microsecond hardware timestamp
-    uint32_t lease_duration_ms;  // Proposal expiration timeout
-    
-    // Target Spatial Goal (Cartesian in end-effector or world frame)
-    float target_pos_x;          // Meters
-    float target_pos_y;          // Meters
-    float target_pos_z;          // Meters
-    
-    // Trajectory Derivative Bounds
-    float max_velocity_m_s;      // Clamped velocity limit
-    float max_acceleration_m_s2; // Clamped acceleration limit
-    
-    // Confidence and CRC
-    float model_confidence;      // [0.0, 1.0]
-    uint32_t crc32;              // Payload integrity checksum
+ uint32_t message_id;
+ uint64_t timestamp_us; // Microsecond hardware timestamp
+ uint32_t lease_duration_ms; // Proposal expiration timeout
+ 
+ // Target Spatial Goal (Cartesian in end-effector or world frame)
+ float target_pos_x; // Meters
+ float target_pos_y; // Meters
+ float target_pos_z; // Meters
+ 
+ // Trajectory Derivative Bounds
+ float max_velocity_m_s; // Clamped velocity limit
+ float max_acceleration_m_s2; // Clamped acceleration limit
+ 
+ // Confidence and CRC
+ float model_confidence; // [0.0, 1.0]
+ uint32_t crc32; // Payload integrity checksum
 } PhysicalAgent_IntentProposal_t;
 ```
 
----
 
 ## Hardware Safety Watchdog Protocol
 

@@ -6,4 +6,4 @@
 - **Perturbation:** timestamp skew, stale observation, or frame error.
 - **MCU role:** minimum safety-relevant state independent of MPU belief.
 - **Decision:** state schema, correction trigger, validity horizon.
-- **Dossier:** `STATE-06`
+- **Notebook:** state model

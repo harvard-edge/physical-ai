@@ -2,84 +2,72 @@
 
 ![Systems Organ Focus: Tracing Sense-to-Actuation latency tails, information freshness, and physical timing deadlines across the complete agent pipeline.](figures/fig_pipeline_locator.svg){#fig-locator-ch02 width=100%}
 
+Chapter 1 drew the causal boundary and the privilege split. This chapter supplies the budgets that make that split quantitative. The physical world does not wait for a model to finish; every millisecond of delay moves mass, ages sensor evidence, and spends thermal headroom. You will decompose the sense-to-actuation waterfall, treat mean latency as a dangerous fiction, and derive the freshness wall, dynamic stopping envelope, actuation and thermal limits, and silicon determinism rules that later chapters must obey.
+
+The engineering notebook’s requirements ledger is the deliverable here: timing budgets, stopping envelopes, thermal limits, and memory allocations written in numbers a microcontroller can enforce. Chapter 3 will then ask what computational work an embodied agent must still perform inside those budgets.
+
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Deconstruct the 7-Stage Sense-to-Actuation Waterfall:** Trace end-to-end delay ($t_{\text{total}}$) through photon transduction, DMA ingestion, neural tokenization, policy planning, inter-core IPC, MCU safety evaluation, and motor coil electrical rise time.
-2. **Evaluate Tail Latency Distributions ($P_{90}, P_{99}, P_{99.9}$):** Prove why average throughput ($P_{50}$) is a lethal illusion that masks operating system scheduling freezes occurring thousands of times per hour on real hardware.
-3. **Model Information Freshness Decay ($\Delta t$):** Quantify how sensory staleness expands spatial state uncertainty ($\sigma_{\text{pos}}(t)$) and calculate the critical Freshness Wall ($\Delta t_{\text{wall}}$) beyond which model proposals collapse into collision hazards.
-4. **Derive Dynamic Stopping Distance ($d_{\text{stop}}$):** Formulate the physical stopping envelope separating linear reaction distance ($v \cdot \Delta t$) from quadratic braking distance ($\frac{v^2}{2a_{\text{max}}}$) under worst-case latency tails.
-5. **Enforce Actuation Limits:** Bound commanded torque rates ($\dot{\boldsymbol{\tau}}$) and jerk ($\dddot{\mathbf{q}}$) to prevent gearbox shear, resonance excitation, and flexspline fatigue.
-6. **Budget Energy and Heat Across the Whole Machine:** Model motor stator Joule heating ($C_{\text{th}} \frac{d(\Delta T)}{dt} = I^2 R - \frac{\Delta T}{R_{\text{th}}}$) to prevent insulation burnout, and trace the same thermal law through silicon junction temperature, frequency throttling, and shared power rails.
-7. **Eliminate Silicon Memory Contention:** Quantify the pre-inference ingestion tax on Unified Memory Architecture (UMA) crossbars, configure non-cacheable DMA ring buffers, and enforce zero-heap execution rules in real-time loops.
-8. **Map the 2D Co-Design Matrix:** Connect the Five Physical Constraint Columns against the Five Cognitive Lifecycle Stages.
-9. **Freeze the Requirements Ledger (`REQ-01`):** Author the second formal specification of the Cumulative Design Dossier establishing timing budgets, stopping envelopes, thermal limits, and silicon memory allocations.
+1. Trace end-to-end delay ($t_{\text{total}}$) through the seven-stage sense-to-actuation waterfall, from photon transduction and DMA ingestion through neural inference, inter-core IPC, microcontroller safety evaluation, and motor coil electrical rise time.
+2. Show why average latency ($P_{50}$) is an unsafe design metric, and evaluate measured tail distributions ($P_{90}$, $P_{99}$, $P_{99.9}$) against closed-loop deadlines.
+3. Model information freshness decay ($\Delta t$), quantify how sensory staleness expands spatial uncertainty ($\sigma_{\text{pos}}(t)$), and locate the freshness wall ($\Delta t_{\text{wall}}$) beyond which proposals become collision hazards.
+4. Derive dynamic stopping distance ($d_{\text{stop}}$) as the sum of linear reaction travel ($v \cdot \Delta t$) and quadratic braking distance ($v^2 / 2a_{\text{max}}$) under worst-case latency tails.
+5. Bound commanded torque rates ($\dot{\boldsymbol{\tau}}$) and jerk ($\dddot{\mathbf{q}}$) so trajectories respect gearbox shear, resonance, and flexspline fatigue limits.
+6. Budget energy and heat across windings and silicon, using the stator thermal law $C_{\text{th}}\,d(\Delta T)/dt = I^2 R - \Delta T / R_{\text{th}}$ and the same physics at the junction temperature that throttles clocks.
+7. Account for unified-memory bus contention, configure non-cacheable DMA ring buffers, and enforce zero-heap rules in real-time loops.
+8. Map the five physical constraint columns against the five cognitive lifecycle stages as the columns of the co-design matrix.
+9. Freeze the requirements ledger in the engineering notebook with timing budgets, stopping envelopes, thermal limits, and silicon memory allocations.
 :::
+
+## The World Sets the Clock: Physical Deadlines ($\tau_{\text{world}}$)
+
+In classical digital computing, the clock is synthetic. A quartz oscillator pulses at a fixed frequency, and the processor steps through instructions until an output is ready. A slow query, a garbage-collection pause, or a stalled web request does not violate physical law: the client waits, the socket stays open, and transactions may roll back.
+
+On a machine that moves mass, the physical world sets the clock. Elapsed time is never neutral. Every microsecond spent computing continues to displace moving mass ($d = v \cdot \Delta t$), accumulate irreversible Joule heat ($Q = \int I^2 R \, dt$), age sensor evidence while spatial uncertainty expands ($\sigma(t) = \sigma_0 + v_{\text{target}} \Delta t$), and inject transport lag ($e^{-s T_d}$) that erodes phase margin. Physics therefore pulls compute latency toward zero ($t \to 0$), while high-capacity neural deliberation pulls the other way. That tension is the systems problem this chapter budgets.
 
 ::: {.callout-autopsy title="The Late Commanded Deceleration"}
-* **System:** 6-DoF Articulated Material-Handling Manipulator ($1.8\text{ m/s}$ end-effector velocity).
-* **Incident:** Manipulator arm struck a rigid steel structural fixture during a high-speed pick-and-place transfer; fractured the wrist harmonic drive flexspline and crushed the vacuum gripper tooling ($4,200\text{ USD}$ hardware replacement).
-* **Telemetry Snapshot:** At $T+14.820\text{ s}$, an optical obstacle boundary was detected at a clearance distance of $d_{\text{clearance}} = 0.280\text{ m}$. The neural motion planner running on the Linux application processor had a nominal inference latency of $25\text{ ms}$ ($40\text{ Hz}$). At $T+14.822\text{ s}$, a background system logging daemon triggered a dirty page-cache writeback and memory compaction storm across the shared LPDDR4 bus; user-space thread scheduling stalled for $140\text{ ms}$ ($P_{99.9}$ tail spike).
-* **Root Cause:** During the $140\text{ ms}$ scheduling blackout, the unbuffered controller emitted no updated deceleration commands. The manipulator continued forward at full velocity ($1.8\text{ m/s}$), traveling $0.252\text{ m}$ in pure reaction delay before the emergency braking command was issued at $T+14.962\text{ s}$. The remaining physical clearance ($0.028\text{ m}$) was far smaller than the $0.081\text{ m}$ required for kinetic braking under maximum motor counter-torque.
-* **Architectural Flaw:** The safety envelope was certified against mean inference latency ($25\text{ ms}$) rather than measured $P_{99.9}$ tail distributions, and the real-time microcontroller lacked an independent dynamic stopping distance supervisor to initiate active braking before the software timeout expired.
-* **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
-
+* **System:** Six-degree-of-freedom articulated material-handling manipulator at $1.8\text{ m/s}$ end-effector velocity.
+* **Incident:** The arm struck a rigid steel structural fixture during a high-speed pick-and-place transfer, fracturing the wrist harmonic-drive flexspline and crushing the vacuum gripper tooling (about $4{,}200\text{ USD}$ hardware replacement).
+* **Telemetry Snapshot:** At $T+14.820\text{ s}$ an optical obstacle boundary was detected at clearance $d_{\text{clearance}} = 0.280\text{ m}$. The neural motion planner on the Linux application processor had a nominal inference latency of $25\text{ ms}$ ($40\text{ Hz}$). At $T+14.822\text{ s}$ a background logging daemon triggered dirty page-cache writeback and memory compaction across the shared LPDDR4 bus; user-space scheduling stalled for $140\text{ ms}$ ($P_{99.9}$).
+* **Root Cause:** During the $140\text{ ms}$ blackout the controller emitted no deceleration command. The manipulator continued at $1.8\text{ m/s}$, traveling $0.252\text{ m}$ before braking began at $T+14.962\text{ s}$. Remaining clearance ($0.028\text{ m}$) was far smaller than the $0.081\text{ m}$ required under maximum motor counter-torque.
+* **Architectural Flaw:** The safety envelope was certified against mean inference latency ($25\text{ ms}$) rather than measured $P_{99.9}$ tails, and the real-time microcontroller lacked an independent dynamic-stopping supervisor.
+* **Provenance:** Engineered composite. The mechanism and failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
 :::
 
-{{< pagebreak >}}
+That failure is not a model-accuracy story. It is a metrology and privilege story: mean latency hid the tail, and permission silicon had no independent stopping law. The contract below is the architectural reply this chapter will justify in equations.
 
-::: {.callout-contract title="The Proposal–Permission Contract Box"}
+::: {.callout-contract title="The Proposal–Permission Contract"}
 $$\begin{aligned}
 \text{MPU Proposals } p_t \in \mathcal{P} &\xrightarrow{\quad \text{Shared SRAM Mailbox} \quad} \left[ \text{MCU Safety Enforcer} \right] \\
 &\xrightarrow{\quad \text{Permitted Setpoints} \quad} u_t \in \mathcal{U}_{\text{safe}}
 \end{aligned}$$
 
-| Component | Authority & Substrate | Contract Specification |
+| Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
-| **What MPU Proposes (S2 / S1.5)** | *Untrusted · Linux MPU* | • Trajectory chunk: $p_t(t_{\text{transduce}})$<br>• Inference budget: $t_{\text{infer}} \le 40\text{ ms}$<br>• Freshness stamp: $t_{\text{transduce}}$, seq $k$ |
-| **What MCU Permits (S1)** | *Trusted · Bare-Metal MCU* | • Freshness audit: $\Delta t \le \Delta t_{\text{wall}}$<br>• Dynamic stop: $d_{\text{stop}}(v, \Delta t) \le d_{\text{clear}}$<br>• Clamps: jerk $\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\max}$, current $I \le I_{\text{cont}}$ |
-| **Failure Escalation** | *MCU Hardware Reflex* | Heartbeat lapse ($t > 10\text{ ms}$) triggers Category 1 dynamic stop $\to$ Safe Torque Off. |
+| MPU proposes (S2 / S1.5) | Untrusted · Linux MPU | Trajectory chunk $p_t(t_{\text{transduce}})$; inference budget $t_{\text{infer}} \le 40\text{ ms}$; freshness stamp $t_{\text{transduce}}$, sequence $k$ |
+| MCU permits (S1) | Trusted · bare-metal MCU | Freshness audit $\Delta t \le \Delta t_{\text{wall}}$; dynamic stop $d_{\text{stop}}(v, \Delta t) \le d_{\text{clear}}$; jerk $\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\max}$ and current $I \le I_{\text{cont}}$ |
+| Failure escalation | MCU hardware reflex | Heartbeat lapse ($t > 10\text{ ms}$) triggers Category 1 dynamic stop, then Safe Torque Off |
 :::
+
+Simulation often erases exactly the physics this contract exists to catch.
 
 ::: {.callout-note title="The Sim-to-Real Delta" icon=false}
-* **What Simulation Assumes:** Sensors deliver frames at perfect, unvarying $33.333\text{ ms}$ intervals; operating system thread scheduling has zero jitter; memory access is instantaneous; motor torque appears without electrical lag; gearboxes have infinite stiffness; collisions produce numeric scalar reward penalties without mechanical plastic deformation.
-* **What the Bench Measures:** DMA memory transfers compete with neural accelerator weight streaming for shared DRAM crossbar bandwidth; Linux kernel background daemons trigger 140+ ms latency tail spikes; motor stator inductance ($L/R$) delays torque generation by 5–15 ms; harmonic drive flexsplines shear under excessive jerk ($\dddot{\mathbf{q}}$); copper windings accumulate Joule heat ($I^2 R$) requiring active thermal current derating.
+Simulation typically assumes fixed frame intervals, zero scheduling jitter, instantaneous memory, and torque without electrical lag, while collisions reduce to scalar reward penalties. The bench measures DMA competing with accelerator weight streaming on a shared DRAM crossbar, Linux daemons producing $140\text{ ms}$ and longer latency tails, stator $L/R$ delaying torque by $5$–$15\text{ ms}$, flexsplines shearing under excessive jerk, and windings accumulating $I^2 R$ heat that forces current derating.
 :::
 
----
+![The Physical Constraint Columns of Physical AI. Cognitive software operates inside five unyielding physical domains: time and freshness, inertia and stopping, actuation limits, energy and thermal, and silicon determinism. Every action a neural policy proposes must satisfy all five before a motor inverter is energized.](figures/fig02_physical_columns.svg){#fig-physical-columns width=100%}
 
-## The World Sets the Clock: Physical Deadlines ($\tau_{\text{world}}$)
+Five columns carry the rest of this chapter. Each answers a different question about a proposed action.
 
-In classical digital computing, the clock is synthetic. A quartz oscillator pulses at a fixed frequency (for example, $2.4\text{ GHz}$), and the processor steps through instructions in logical lockstep. If a complex database query, a garbage collection cycle, or a web server request takes longer than expected, the clock simply keeps ticking until the output is ready. The client waits, the network socket remains open, transactions roll back safely, and no physical laws are violated.
-
-In physical systems, **the physical world sets the clock**.
-
-### The Core Physics Imperative: *Less Time Is Better ($t \to 0$)*
-
-In the physical universe, elapsed time is never neutral, it is active physical destruction.
-
-Every microsecond that passes while an algorithm computes creates four compounding physical costs:
-
-1. **Kinetic Displacement:** Moving mass continues traveling along its current trajectory ($d = v \cdot \Delta t$), eating through available clearance margins.
-2. **Thermal Energy Accumulation:** Motor stator coils and power electronic inverters accumulate irreversible Joule heat ($Q = \int I^2 R \, dt$).
-3. **Information Decay:** Sensor evidence rots the instant it is transduced; dynamic obstacles move, and spatial uncertainty expands ($\sigma(t) = \sigma_0 + v_{\text{target}} \Delta t$).
-4. **Phase Erosion:** Computational delay injects transport lag ($e^{-s T_d}$), eroding phase margin and driving closed-loop feedback systems toward violent oscillatory instability.
-
-Physics relentlessly pulls for compute latency to approach zero ($t \to 0$). This sets up the fundamental systems tension of Physical AI: **while physics demands less time, high-capacity neural deliberation demands more time.**
-
-![**The Physical Constraint Columns of Physical AI.** Cognitive software operates inside five unyielding physical domains: Time and Freshness, Inertia and Stopping, Actuation Limits, Energy and Thermal, and Silicon Determinism. Every action a neural policy proposes must satisfy all five before a motor inverter is energized.](figures/fig02_physical_columns.svg){#fig-physical-columns width=100%}
-
-Five columns carry the rest of this chapter, and each one answers a different question about a proposed action.
-
-1. **Column 1: Time Constants and the Freshness Wall ($\tau_{\text{world}}, \Delta t, P_{99}$).** *Is the evidence still true?* The physical world changes continuously. Information decays the instant photons strike a sensor, and tail latency, not average latency, decides survivability.
-2. **Column 2: Inertia, Momentum, and Dynamic Stopping ($\mathbf{p} = m\mathbf{v}, d_{\text{stop}}$).** *Can the machine still stop?* Moving mass carries momentum. Stopping requires a distance envelope split into linear reaction travel and quadratic braking.
-3. **Column 3: Actuation Limits ($\dot{\boldsymbol{\tau}}, \dddot{\mathbf{q}}$).** *How fast may the command change?* Gearbox shear limits, jerk continuity, and torque saturation bound the shape of any trajectory, independent of where it goes.
-4. **Column 4: Energy and Thermal ($I^2 R$, $T_j$).** *What does the command cost to sustain?* Windings heat, junctions heat, and both derate. A machine that meets every other budget can still fail on the tenth minute of a shift.
-5. **Column 5: Silicon Determinism (UMA DRAM, Zero Heap, QoS).** *Will the computer answer on time, every time?* Camera DMA steals bandwidth from accelerators, and real-time supervisors require statically allocated memory.
+1. Time constants and the freshness wall ($\tau_{\text{world}}$, $\Delta t$, $P_{99}$): is the evidence still true? The world changes continuously; information decays at transduction; tail latency, not average latency, decides survivability.
+2. Inertia, momentum, and dynamic stopping ($\mathbf{p} = m\mathbf{v}$, $d_{\text{stop}}$): can the machine still stop? Stopping distance splits into linear reaction travel and quadratic braking.
+3. Actuation limits ($\dot{\boldsymbol{\tau}}$, $\dddot{\mathbf{q}}$): how fast may the command change? Gearbox shear, jerk continuity, and torque saturation bound trajectory shape independently of destination.
+4. Energy and thermal ($I^2 R$, $T_j$): what does the command cost to sustain? Windings and junctions heat and derate; a machine that meets every other budget can still fail on the tenth minute of a shift.
+5. Silicon determinism (UMA DRAM, zero heap, QoS): will the computer answer on time, every time? Camera DMA steals bandwidth from accelerators, and real-time supervisors require statically allocated memory.
 
 Columns 3 and 4 are often taught as one. They are separated here because they bind different stages. Actuation limits reach only the stages that command motion, while heat reaches the sensor mount, the inference accelerator, and the motor alike. Fusing them hides the reach of the second and manufactures a constraint for stages the first never touches.
 
----
 
 ## Column 1: Time Constants and The Freshness Wall
 
@@ -115,14 +103,14 @@ To eliminate the illusion of instantaneous computation, we trace every microseco
 ::: {.callout-note title="Cross-Embodiment Anchor: The Freshness Wall in Action"}
 How does the 7-stage latency chain play out across our three canonical archetypes?
 
-* **Archetype 1: Locomotion & Mobility (High-Speed Delivery Drone):**  
-  A delivery drone flying at $15\text{ m/s}$ through a forest must detect thin branches and replan. During a $P_{99}$ latency tail blowout of $126.0\text{ ms}$, the drone traverses **$1.89\text{ meters}$ completely open-loop** before its motor ESCs receive new thrust commands. If branch clearance is less than $1.89\text{ m}$, an avoidance maneuver is physically impossible.
+* **Archetype 1: Locomotion & Mobility (High-Speed Delivery Drone):** 
+ A delivery drone flying at $15\text{ m/s}$ through a forest must detect thin branches and replan. During a $P_{99}$ latency tail blowout of $126.0\text{ ms}$, the drone traverses **$1.89\text{ meters}$ completely open-loop** before its motor ESCs receive new thrust commands. If branch clearance is less than $1.89\text{ m}$, an avoidance maneuver is physically impossible.
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
-  A 6-DoF arm descending at $1.5\text{ m/s}$ toward a circuit board fixture experiences a $15\text{ ms}$ CMOS exposure window. Features smear across $22.5\text{ mm}$ of optical space ($\Delta x_{\text{blur}} = v \cdot t_{\text{exp}}$), degrading grasp pose accuracy from $\pm 0.5\text{ mm}$ to $\pm 22.5\text{ mm}$ and causing an end-effector fixture collision.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):** 
+ A 6-DoF arm descending at $1.5\text{ m/s}$ toward a circuit board fixture experiences a $15\text{ ms}$ CMOS exposure window. Features smear across $22.5\text{ mm}$ of optical space ($\Delta x_{\text{blur}} = v \cdot t_{\text{exp}}$), degrading grasp pose accuracy from $\pm 0.5\text{ mm}$ to $\pm 22.5\text{ mm}$ and causing an end-effector fixture collision.
 
-* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter):**  
-  A $60\text{ Hz}$ AC power grid completes one electrical cycle every $16.67\text{ ms}$. If an islanding event occurs, a grid-forming inverter has a Freshness Wall of $\Delta t_{\text{wall}} \le 4.0\text{ ms}$ to detect phase drift and disconnect before out-of-phase reconnection destroys high-voltage step-up transformers.
+* **Archetype 3: Cybernetic Energy (Smart Grid Power Inverter):** 
+ A $60\text{ Hz}$ AC power grid completes one electrical cycle every $16.67\text{ ms}$. If an islanding event occurs, a grid-forming inverter has a Freshness Wall of $\Delta t_{\text{wall}} \le 4.0\text{ ms}$ to detect phase drift and disconnect before out-of-phase reconnection destroys high-voltage step-up transformers.
 :::
 
 ### The Closed-Loop Stability Criterion
@@ -146,9 +134,9 @@ In academic machine learning literature, model efficiency is almost universally 
 
 Average latency ($P_{50}$) describes only the benign, cache-hot operational path. Physical destruction occurs in the extreme tails of the latency distribution ($P_{99}, P_{99.9}$). Consider the relentless mathematics of continuous real-time operation:
 
-* A robotic system operating at a control loop cadence of $50\text{ Hz}$ executes **180,000 cycles every single hour** ($50 \times 3,600$).
-* If the engineering safety envelope is certified to the 99th percentile ($P_{99}$), the remaining $1\%$ tail represents **1,800 timing violations every hour**, an unmitigated failure once every two seconds.
-* Even certifying to the 99.9th percentile ($P_{99.9}$) leaves **180 catastrophic tail events per hour** (three timing blowouts every minute).
+* **High-Frequency Execution Cycles:** A robotic system operating at a control loop cadence of $50\text{ Hz}$ executes **180,000 cycles every single hour** ($50 \times 3,600$).
+* **Unacceptable Failure Rates at $P_{99}$:** If the engineering safety envelope is certified to the 99th percentile ($P_{99}$), the remaining $1\%$ tail represents **1,800 timing violations every hour**—an unmitigated failure once every two seconds.
+* **Catastrophic Tail Risk at $P_{99.9}$:** Even certifying to the 99.9th percentile ($P_{99.9}$) leaves **180 catastrophic tail events per hour** (three timing blowouts every minute).
 
 | Latency Percentile | Execution Condition on Embedded SoC | Systems Impact on Bench Hardware |
 | :--- | :--- | :--- |
@@ -213,7 +201,6 @@ Beyond $\Delta t_{\text{wall}}$, the agent's spatial belief has drifted so far f
 
 : **Information freshness regimes and physical action authority.** How sensory staleness $\Delta t$ relative to the Freshness Wall $\Delta t_{\text{wall}}$ dictates whether candidate neural proposals are executed, derated, or vetoed. {#tbl-freshness-regimes}
 
----
 
 ## Column 2: Inertia, Momentum, and Dynamic Stopping Kinematics
 
@@ -269,17 +256,17 @@ $$\Delta t_{\text{delay}} = t_{\text{transduce}} + t_{\text{dma}} + t_{\text{per
 To appreciate how latency translates directly into physical collision hazard, consider a mobile cart traveling at $v_0 = 1.0\text{ m/s}$ with maximum safe braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$ approaching an obstacle at clearance distance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$):
 
 * **Nominal Execution ($P_{50}: \Delta t_{\text{delay}} = 30\text{ ms}$):**
-  $$d_{\text{react}} = 1.0\text{ m/s} \times 0.030\text{ s} = 0.030\text{ m} \; (3\text{ cm})$$
-  $$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \; (25\text{ cm})$$
-  $$d_{\text{stop}} = 0.030\text{ m} + 0.250\text{ m} = \mathbf{0.280\text{ m}} \; (28\text{ cm}) \quad \implies \quad \mathbf{\text{SAFE (Margin } = 7\text{ cm})}$$
+ $$d_{\text{react}} = 1.0\text{ m/s} \times 0.030\text{ s} = 0.030\text{ m} \; (3\text{ cm})$$
+ $$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \; (25\text{ cm})$$
+ $$d_{\text{stop}} = 0.030\text{ m} + 0.250\text{ m} = \mathbf{0.280\text{ m}} \; (28\text{ cm}) \quad \implies \quad \mathbf{\text{SAFE (Margin } = 7\text{ cm})}$$
 
 * **$P_{99}$ Tail Latency Spike ($\Delta t_{\text{delay}} = 230\text{ ms}$):**
-  $$d_{\text{react}} = 1.0\text{ m/s} \times 0.230\text{ s} = 0.230\text{ m} \; (23\text{ cm})$$
-  $$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \; (25\text{ cm})$$
-  $$\begin{aligned}
-  d_{\text{stop}} &= 0.230\text{ m} + 0.250\text{ m} = \mathbf{0.480\text{ m}} \; (48\text{ cm}) \\
-  &\implies \mathbf{\text{CRASH (Overrun } = +13\text{ cm})}
-  \end{aligned}$$
+ $$d_{\text{react}} = 1.0\text{ m/s} \times 0.230\text{ s} = 0.230\text{ m} \; (23\text{ cm})$$
+ $$d_{\text{brake}} = \frac{(1.0\text{ m/s})^2}{2 \times 2.0\text{ m/s}^2} = 0.250\text{ m} \; (25\text{ cm})$$
+ $$\begin{aligned}
+ d_{\text{stop}} &= 0.230\text{ m} + 0.250\text{ m} = \mathbf{0.480\text{ m}} \; (48\text{ cm}) \\
+ &\implies \mathbf{\text{CRASH (Overrun } = +13\text{ cm})}
+ \end{aligned}$$
 
 A $200\text{ ms}$ operating system scheduling stall added $+20\text{ cm}$ of unguided blind travel, converting a safe stop into an unavoidable high-energy collision.
 
@@ -292,17 +279,16 @@ $$d_{\text{clearance}} \ge d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) +
 If the measured obstacle clearance drops below this threshold, the microcontroller overrides the neural policy's proposed trajectory chunk and commands immediate controlled deceleration.
 
 ::: {.callout-note title="Cross-Embodiment Anchor: Stopping Distance and Reaction Lag Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle / Robotaxi):**  
-  At $v_0 = 25\text{ m/s}$ ($90\text{ km/h}$), a $140\text{ ms}$ OS scheduling tail spike adds **$3.5\text{ meters}$ of pure linear reaction distance** before hydraulic braking even begins ($d_{\text{react}} = 25 \times 0.14 = 3.5\text{ m}$). Even with aggressive ABS braking ($a_{\text{max}} = 8.0\text{ m/s}^2 \implies d_{\text{brake}} = 39.06\text{ m}$), the total stopping envelope expands from $40.5\text{ m}$ to $42.56\text{ m}$, converting a close stop into a pedestrian crosswalk collision.
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle / Robotaxi):** 
+ At $v_0 = 25\text{ m/s}$ ($90\text{ km/h}$), a $140\text{ ms}$ OS scheduling tail spike adds **$3.5\text{ meters}$ of pure linear reaction distance** before hydraulic braking even begins ($d_{\text{react}} = 25 \times 0.14 = 3.5\text{ m}$). Even with aggressive ABS braking ($a_{\text{max}} = 8.0\text{ m/s}^2 \implies d_{\text{brake}} = 39.06\text{ m}$), the total stopping envelope expands from $40.5\text{ m}$ to $42.56\text{ m}$, converting a close stop into a pedestrian crosswalk collision.
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):**  
-  A 6-DoF arm swinging a $4\text{ kg}$ payload at $1.8\text{ m/s}$ approaching an assembly fixture requires $d_{\text{brake}} = 0.081\text{ m}$ ($8.1\text{ cm}$) under peak motor counter-torque ($a_{\text{max}} = 20\text{ m/s}^2$). If the fixture clearance is $10\text{ cm}$, a $P_{99}$ latency spike of $120\text{ ms}$ adds $d_{\text{react}} = 1.8 \times 0.12 = 0.216\text{ m}$ ($21.6\text{ cm}$) of unguided travel, guaranteeing an impact that shears drive pins.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):** 
+ A 6-DoF arm swinging a $4\text{ kg}$ payload at $1.8\text{ m/s}$ approaching an assembly fixture requires $d_{\text{brake}} = 0.081\text{ m}$ ($8.1\text{ cm}$) under peak motor counter-torque ($a_{\text{max}} = 20\text{ m/s}^2$). If the fixture clearance is $10\text{ cm}$, a $P_{99}$ latency spike of $120\text{ ms}$ adds $d_{\text{react}} = 1.8 \times 0.12 = 0.216\text{ m}$ ($21.6\text{ cm}$) of unguided travel, guaranteeing an impact that shears drive pins.
 
-* **Archetype 3: Cybernetic Energy (EV Battery Thermal Runaway):**  
-  Thermal inertia in high-voltage lithium-ion battery packs: when charging current is cut, the cell temperature continues rising for several seconds ($d_{\text{stop, thermal}}$) due to internal chemical reaction enthalpy ($Q_{\text{thermal}}$) and heat diffusion from cell jelly rolls to outer casings. The battery management system must anticipate this thermal stopping envelope to prevent triggering thermal runaway.
+* **Archetype 3: Cybernetic Energy (EV Battery Thermal Runaway):** 
+ Thermal inertia in high-voltage lithium-ion battery packs: when charging current is cut, the cell temperature continues rising for several seconds ($d_{\text{stop, thermal}}$) due to internal chemical reaction enthalpy ($Q_{\text{thermal}}$) and heat diffusion from cell jelly rolls to outer casings. The battery management system must anticipate this thermal stopping envelope to prevent triggering thermal runaway.
 :::
 
----
 
 ## Column 3: Actuation Limits, Torque Rate, and Jerk Continuity
 
@@ -347,17 +333,16 @@ $$\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}} \quad \left(\text{e.g., }
 Modern Action Chunking architectures achieve this by fitting cubic or quintic B-splines across predicted waypoint horizons and applying receding-horizon temporal ensembling.
 
 ::: {.callout-note title="Cross-Embodiment Anchor: Torque Rate and Jerk Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle & Drone):**  
-  In automotive steering, commanding a step-wise steering angle creates infinite yaw jerk ($\dddot{\psi} \to \infty$), saturating front tire friction coefficients ($\mu_{\text{slip}}$) and throwing the vehicle into an uncontrollable skid. The trajectory planner must enforce continuous steering angle curvature derivatives ($\mathcal{C}^2$).
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle & Drone):** 
+ In automotive steering, commanding a step-wise steering angle creates infinite yaw jerk ($\dddot{\psi} \to \infty$), saturating front tire friction coefficients ($\mu_{\text{slip}}$) and throwing the vehicle into an uncontrollable skid. The trajectory planner must enforce continuous steering angle curvature derivatives ($\mathcal{C}^2$).
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):**  
-  In robotic manipulators, harmonic drive flexsplines are thin-walled spring steel cups. A discrete acceleration step from an un-smoothed neural policy creates infinite torque rates ($\dot{\boldsymbol{\tau}} \to \infty$), generating high-frequency stress waves that shear flexspline gear teeth. The controller must clamp commanded torque rates to $\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):** 
+ In robotic manipulators, harmonic drive flexsplines are thin-walled spring steel cups. A discrete acceleration step from an un-smoothed neural policy creates infinite torque rates ($\dot{\boldsymbol{\tau}} \to \infty$), generating high-frequency stress waves that shear flexspline gear teeth. The controller must clamp commanded torque rates to $\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}$.
 
-* **Archetype 3: Cybernetic Process & Energy (Grid Inverter Switching):**  
-  In a grid-tied inverter there is no gearbox to shear, and the same constraint reappears as the current slew limit ($di/dt$) that protects the DC link and keeps switching transients inside the device's safe operating area. The mechanism differs; the bound on how fast a command may change does not.
+* **Archetype 3: Cybernetic Process & Energy (Grid Inverter Switching):** 
+ In a grid-tied inverter there is no gearbox to shear, and the same constraint reappears as the current slew limit ($di/dt$) that protects the DC link and keeps switching transients inside the device's safe operating area. The mechanism differs; the bound on how fast a command may change does not.
 :::
 
----
 
 ## Column 4: Energy, Thermal Accumulation, and Derating
 
@@ -416,17 +401,16 @@ This is why thermal state belongs in the requirements ledger and not in a hardwa
 The pattern repeats across every energy domain in the machine. Peak capability is bounded by a thermal mass that buys time; continuous capability is bounded by the rate heat leaves. Designing against the peak rating is how a system passes a demonstration and fails a shift.
 
 ::: {.callout-note title="Cross-Embodiment Anchor: Thermal Accumulation Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle & Drone):**  
-  A drone's motor windings and its perception SoC share one battery and one airflow path. Sustained aggressive flight raises both, and the compute throttles at exactly the moment the flight controller most needs fresh perception. Endurance is a thermal budget before it is an energy budget.
+* **Archetype 1: Locomotion & Mobility (Autonomous Vehicle & Drone):** 
+ A drone's motor windings and its perception SoC share one battery and one airflow path. Sustained aggressive flight raises both, and the compute throttles at exactly the moment the flight controller most needs fresh perception. Endurance is a thermal budget before it is an energy budget.
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):**  
-  A manipulator holding a payload against gravity draws near-stall current at zero velocity. No work is being done in the mechanical sense and the winding heats anyway, which is the case operators find least intuitive and the $I^2 t$ integrator exists to catch.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit / Humanoid Arm):** 
+ A manipulator holding a payload against gravity draws near-stall current at zero velocity. No work is being done in the mechanical sense and the winding heats anyway, which is the case operators find least intuitive and the $I^2 t$ integrator exists to catch.
 
-* **Archetype 3: Cybernetic Process & Energy (Battery Management & Inverters):**  
-  In an electric vehicle battery pack, $I^2R$ heating is the controlled variable rather than a side effect. The management system must prevent an electrochemical thermal runaway in which rising temperature raises reaction rate, which raises temperature. Here the thermal loop is the plant, not a constraint on it.
+* **Archetype 3: Cybernetic Process & Energy (Battery Management & Inverters):** 
+ In an electric vehicle battery pack, $I^2R$ heating is the controlled variable rather than a side effect. The management system must prevent an electrochemical thermal runaway in which rising temperature raises reaction rate, which raises temperature. Here the thermal loop is the plant, not a constraint on it.
 :::
 
----
 
 ## Column 5: Silicon Determinism and Memory Bus Contention
 
@@ -450,22 +434,22 @@ To eliminate this memory bus starvation, physical AI systems enforce two silicon
 * **Non-Cacheable Zero-Copy DMA Buffers:** Allocate dedicated, non-cacheable contiguous memory regions (CMA) for video frames, preventing camera ingestion from thrashing CPU and NPU cache lines.
 
 ::: {.callout-note title="Cross-Embodiment Anchor: Memory Bus Contention Across the 3 Archetypes"}
-* **Archetype 1: Locomotion & Mobility (Multi-Camera Autonomous Vehicles):**  
-  An autonomous vehicle streaming 8 high-resolution cameras ($4\text{K}$ at $60\text{ FPS}$) pumps over **$6\text{ GB/s}$ of DMA traffic** into the shared LPDDR5 memory bus. Without hardware QoS bus arbitration, camera ingestion starves NPU neural weight loads, inflating perception inference from $P_{50} = 22\text{ ms}$ to $P_{99} = 145\text{ ms}$.
+* **Archetype 1: Locomotion & Mobility (Multi-Camera Autonomous Vehicles):** 
+ An autonomous vehicle streaming 8 high-resolution cameras ($4\text{K}$ at $60\text{ FPS}$) pumps over **$6\text{ GB/s}$ of DMA traffic** into the shared LPDDR5 memory bus. Without hardware QoS bus arbitration, camera ingestion starves NPU neural weight loads, inflating perception inference from $P_{50} = 22\text{ ms}$ to $P_{99} = 145\text{ ms}$.
 
-* **Archetype 2: Contact Manipulation (The Desk Bench Kit):**  
-  On the Arduino UNO Q dual-brain kit, camera MIPI DMA transfers share the on-chip DRAM crossbar with the Linux MPU and FreeRTOS MCU. Allocating non-cacheable zero-copy ring buffers (`dma_alloc_coherent`) eliminates L2 cache thrashing, keeping the 1 kHz MCU safety reflex strictly below its $1\text{ ms}$ deadline.
+* **Archetype 2: Contact Manipulation (The Desk Bench Kit):** 
+ On the Arduino UNO Q dual-brain kit, camera MIPI DMA transfers share the on-chip DRAM crossbar with the Linux MPU and FreeRTOS MCU. Allocating non-cacheable zero-copy ring buffers (`dma_alloc_coherent`) eliminates L2 cache thrashing, keeping the 1 kHz MCU safety reflex strictly below its $1\text{ ms}$ deadline.
 
-* **Archetype 3: Cybernetic Energy (Smart Grid Substation Protection):**  
-  In substation automation, IEC 61850 Sampled Value (SV) streams arrive every $250\,\mu\text{s}$. Memory allocation stalls (`malloc` heap fragmentation) in protection relays cause dropped sampling frames, blinding the relay to phase-to-ground faults. The protection loop is enforced with static, zero-heap SRAM allocation.
+* **Archetype 3: Cybernetic Energy (Smart Grid Substation Protection):** 
+ In substation automation, IEC 61850 Sampled Value (SV) streams arrive every $250\,\mu\text{s}$. Memory allocation stalls (`malloc` heap fragmentation) in protection relays cause dropped sampling frames, blinding the relay to phase-to-ground faults. The protection loop is enforced with static, zero-heap SRAM allocation.
 :::
 
 ### Heterogeneous Cache Coherency Boundaries
 
 A critical systems challenge on dual-brain SoCs is coordinating data exchange between disparate processor cores:
 
-* The **Linux Application Core (ARM Cortex-A)** operates with multi-level hardware cache coherency (L1, L2, L3 caches), a Memory Management Unit (MMU), and virtual memory paging.
-* The **Real-Time Core (ARM Cortex-M / RISC-V)** operates with deterministic, tightly coupled memory (TCM) or static SRAM, with no MMU and no hardware cache snooping.
+* **The Linux Application Core (ARM Cortex-A):** Operates with multi-level hardware cache coherency (L1, L2, L3 caches), a Memory Management Unit (MMU), and virtual memory paging.
+* **The Real-Time Core (ARM Cortex-M / RISC-V):** Operates with deterministic, tightly coupled memory (TCM) or static SRAM, with no MMU and no hardware cache snooping.
 
 If the Linux MPU writes a trajectory chunk to DRAM and updates its local cache without flushing, the Cortex-M core reading from physical memory will read stale, invalid data.
 
@@ -491,7 +475,6 @@ In software engineering, dynamic heap allocation is convenient. On a real-time m
 
 All buffers, trajectory queues, and Control Barrier Function matrices on the MCU are **statically allocated at compile time** in dedicated zero-wait-state SRAM. Worst-case execution time (WCET) is mathematically bounded ($WCET \le 0.4\text{ ms}$), guaranteeing that the $1\text{ ms}$ real-time deadline is never breached.
 
----
 
 ## Integrating the Physical AI Co-Design Matrix
 
@@ -513,7 +496,6 @@ Read the empty entries as carefully as the full ones. Perception commands nothin
 
 Knowing which physics does not reach a stage is what lets an engineer spend attention on the physics that does. What the map does not contain is the answer to any of its cells. Those are Part II.
 
----
 
 ## Hardware-Triggered Metrology: Escaping Software Timestamp Delusions
 
@@ -546,32 +528,30 @@ To obtain true ground-truth timing measurements, we instrument the physical sili
 
 Connecting an external multi-channel logic analyzer and oscilloscope to these four hardware test points provides sub-microsecond timing accuracy with zero operating system interference.
 
----
 
 ## Systems Fallacies and Pitfalls
 
 ::: {.callout-warning}
 ### Common Engineering Fallacies in Physical AI Timing and Constraints
-* **Fallacy 1: High Frame Rate Means Low Latency.**  
-  *Correction:* Frame rate (FPS) measures throughput; latency measures elapsed time. A USB camera streaming at $60\text{ FPS}$ with a 4-frame internal driver buffer introduces $66.7\text{ ms}$ of unalterable stale information lag before data even reaches user memory.
-* **Fallacy 2: Software Timestamps Measure Information Age.**  
-  *Correction:* Software timestamps record when a user thread resumed execution, completely ignoring sensor exposure integration, DMA serialization, and motor coil electrical rise time.
-* **Fallacy 3: Average Latency Certifies Safety.**  
-  *Correction:* A system with a nominal latency of $30\text{ ms}$ that experiences $P_{99.9}$ spikes of $240\text{ ms}$ will experience 180 control freezes every single hour. In physical systems, the tail dictates survivability.
-* **Fallacy 4: Deep FIFO Buffers Prevent Data Loss.**  
-  *Correction:* In physical loops, old data is poison. Deep queues ensure the agent acts on obsolete history, causing phase lag and limit-cycle instability. Always sample the latest frame and discard the rest.
-* **Fallacy 5: Dynamic Memory Allocation is Safe if Pre-Warmed.**  
-  *Correction:* Pre-allocating heap pools in user space does not eliminate memory fragmentation, kernel TLB shootdowns, or page-fault jitter. Real-time safety supervisors must run on bare-metal or RTOS platforms with strictly static SRAM allocations.
+* **Fallacy 1: High Frame Rate Means Low Latency.** 
+ *Correction:* Frame rate (FPS) measures throughput; latency measures elapsed time. A USB camera streaming at $60\text{ FPS}$ with a 4-frame internal driver buffer introduces $66.7\text{ ms}$ of unalterable stale information lag before data even reaches user memory.
+* **Fallacy 2: Software Timestamps Measure Information Age.** 
+ *Correction:* Software timestamps record when a user thread resumed execution, completely ignoring sensor exposure integration, DMA serialization, and motor coil electrical rise time.
+* **Fallacy 3: Average Latency Certifies Safety.** 
+ *Correction:* A system with a nominal latency of $30\text{ ms}$ that experiences $P_{99.9}$ spikes of $240\text{ ms}$ will experience 180 control freezes every single hour. In physical systems, the tail dictates survivability.
+* **Fallacy 4: Deep FIFO Buffers Prevent Data Loss.** 
+ *Correction:* In physical loops, old data is poison. Deep queues ensure the agent acts on obsolete history, causing phase lag and limit-cycle instability. Always sample the latest frame and discard the rest.
+* **Fallacy 5: Dynamic Memory Allocation is Safe if Pre-Warmed.** 
+ *Correction:* Pre-allocating heap pools in user space does not eliminate memory fragmentation, kernel TLB shootdowns, or page-fault jitter. Real-time safety supervisors must run on bare-metal or RTOS platforms with strictly static SRAM allocations.
 :::
 
----
 
 ::: {.callout-decision}
-### Dossier Delta: Requirements, Latency Budgets, and Environmental Ledger (`REQ-01`)
+### Notebook checkpoint: Requirements, Latency Budgets, and Environmental Ledger (requirements ledger)
 
-Every chapter in this textbook freezes a formal, versioned engineering specification for the **Cumulative Design Dossier**. In Chapter 2, we establish **`REQ-01` (Requirements, Latency Budgets, and Environmental Ledger)**, codifying the quantitative timing, kinematic, thermal, and silicon constraints for our reference platform:
+Every chapter in this textbook freezes a formal, versioned engineering specification for the **engineering notebook**. In Chapter 2, we establish **requirements ledger (Requirements, Latency Budgets, and Environmental Ledger)**, codifying the quantitative timing, kinematic, thermal, and silicon constraints for our reference platform:
 
-#### 1. Sense-to-Actuation 7-Stage Latency Budget Ledger (`REQ-01`)
+#### 1. Sense-to-Actuation 7-Stage Latency Budget Ledger (requirements ledger)
 
 | Stage | Subsystem and Physical Boundary | Nominal $P_{50}$ | Tail Ceiling $P_{99}$ | Budget Ceiling Allocation | Constraint Classification |
 | :--- | :--- | :---: | :---: | :--- | :--- |
@@ -584,9 +564,9 @@ Every chapter in this textbook freezes a formal, versioned engineering specifica
 | **Stage 7** | Motor Phase Inductance Rise Time ($L/R$) | $6.0\text{ ms}$ | $15.0\text{ ms}$ | Electrical torque generation | Physics-Bound (Coil inductance) |
 | **Total** | **End-to-End Sense-to-Actuation Path** | **$52.2\text{ ms}$** | **$80.0\text{ ms}$** | **$\le \Delta t_{\text{wall}}$ (Freshness Wall)** | **Whole-System Constraint** |
 
-: **Sense-to-actuation 7-stage latency budget ledger (`REQ-01`).** {#tbl-dossier-req01-latency}
+: **Sense-to-actuation 7-stage latency budget ledger (requirements ledger).** {#tbl-dossier-req01-latency}
 
-#### 2. Dynamic Stopping Kinematics and Jerk Invariants (`REQ-01`)
+#### 2. Dynamic Stopping Kinematics and Jerk Invariants (requirements ledger)
 
 | Parameter | Spec | Units | Justification & Derivation |
 | :--- | :---: | :---: | :--- |
@@ -598,9 +578,9 @@ Every chapter in this textbook freezes a formal, versioned engineering specifica
 | **Stopping Distance ($d_{\text{stop}}$)** | **$0.1225$** | **$\text{m}$** | $d_{\text{react}} + d_{\text{brake}}$ ($12.25\text{ cm}$) |
 | **Clearance Buffer ($d_{\text{clear}}$)** | $0.150$ | $\text{m}$ | Envelope before MCU override |
 
-: **Dynamic stopping kinematics and jerk invariants (`REQ-01`).** {#tbl-dossier-req01-kinematics}
+: **Dynamic stopping kinematics and jerk invariants (requirements ledger).** {#tbl-dossier-req01-kinematics}
 
-#### 3. Electrical, Thermal, and Actuation Ledger (`REQ-01`)
+#### 3. Electrical, Thermal, and Actuation Ledger (requirements ledger)
 
 | Parameter | Value | Units | Safety Limit & Monitoring Mechanism |
 | :--- | :---: | :---: | :--- |
@@ -612,9 +592,9 @@ Every chapter in this textbook freezes a formal, versioned engineering specifica
 | **Max Temperature ($T_{\text{max}}$)** | $85.0$ | $^\circ\text{C}$ | Limit before insulation degradation |
 | **Max Torque Derivative ($\dot{\tau}_{\text{max}}$)** | $45.0$ | $\text{Nm/s}$ | Clamp to prevent flexspline fatigue |
 
-: **Electrical, thermal, and actuation ledger (`REQ-01`).** {#tbl-dossier-req01-thermal}
+: **Electrical, thermal, and actuation ledger (requirements ledger).** {#tbl-dossier-req01-thermal}
 
-#### 4. Silicon Determinism, Memory, and Hardware Leases (`REQ-01`)
+#### 4. Silicon Determinism, Memory, and Hardware Leases (requirements ledger)
 
 | Parameter | Specification | Domain | Enforcement Rule |
 | :--- | :---: | :---: | :--- |
@@ -624,81 +604,80 @@ Every chapter in this textbook freezes a formal, versioned engineering specifica
 | **MCU Worst-Case ($WCET$)** | $\le 0.40\text{ ms}$ | Bare-Metal MCU | Guaranteed execution in $1.0\text{ ms}$ tick |
 | **Watchdog Lease ($\tau_{\text{watchdog}}$)** | $10.0\text{ ms}$ | Hardware Timer | NMI cuts motor gate power on expiry |
 
-: **Silicon determinism, memory, and hardware leases (`REQ-01`).** {#tbl-dossier-req01-silicon}
+: **Silicon determinism, memory, and hardware leases (requirements ledger).** {#tbl-dossier-req01-silicon}
 
 ```yaml
 # ==============================================================================
-# PHYSICAL AI DESIGN DOSSIER: REQ-01 (REQUIREMENTS & LATENCY LEDGER)
+# PHYSICAL AI DESIGN DOSSIER: requirements ledger (REQUIREMENTS & LATENCY LEDGER)
 # ==============================================================================
 schema_version: "2026.1"
-artifact_id: "REQ-01"
+artifact_id: "requirements ledger"
 chapter_reference: "02-constraints"
 qualification_verdict: "FROZEN"
 
 latency_budget:
-  time_units: "milliseconds"
-  percentile_target: "P99"
-  nominal_p50_total: 52.2
-  tail_p99_total: 80.0
-  freshness_wall_limit: 100.0
-  stages:
-    - id: "STAGE_1_TRANSDUCE"
-      p50: 8.0
-      p99: 15.0
-      mechanism: "CMOS photodiode well charge integration"
-    - id: "STAGE_2_DMA_INGEST"
-      p50: 3.0
-      p99: 8.0
-      mechanism: "MIPI CSI-2 DMA ring transfer into LPDDR4"
-    - id: "STAGE_3_PERCEPTION"
-      p50: 12.0
-      p99: 25.0
-      mechanism: "INT8 DINOv2 spatial affordance tokenization"
-    - id: "STAGE_4_POLICY_VLA"
-      p50: 22.0
-      p99: 60.0
-      mechanism: "Diffusion ACT action chunk prediction (H=16)"
-    - id: "STAGE_5_INTER_IPC"
-      p50: 0.8
-      p99: 2.0
-      mechanism: "Non-cacheable shared SRAM mailbox with IPCC IRQ"
-    - id: "STAGE_6_MCU_ENFORCE"
-      p50: 0.4
-      p99: 1.0
-      mechanism: "1 kHz Control Barrier Function QP projection"
-    - id: "STAGE_7_ACTUATOR"
-      p50: 6.0
-      p99: 15.0
-      mechanism: "Motor stator L/R phase current rise time"
+ time_units: "milliseconds"
+ percentile_target: "P99"
+ nominal_p50_total: 52.2
+ tail_p99_total: 80.0
+ freshness_wall_limit: 100.0
+ stages:
+ - id: "STAGE_1_TRANSDUCE"
+ p50: 8.0
+ p99: 15.0
+ mechanism: "CMOS photodiode well charge integration"
+ - id: "STAGE_2_DMA_INGEST"
+ p50: 3.0
+ p99: 8.0
+ mechanism: "MIPI CSI-2 DMA ring transfer into LPDDR4"
+ - id: "STAGE_3_PERCEPTION"
+ p50: 12.0
+ p99: 25.0
+ mechanism: "INT8 DINOv2 spatial affordance tokenization"
+ - id: "STAGE_4_POLICY_VLA"
+ p50: 22.0
+ p99: 60.0
+ mechanism: "Diffusion ACT action chunk prediction (H=16)"
+ - id: "STAGE_5_INTER_IPC"
+ p50: 0.8
+ p99: 2.0
+ mechanism: "Non-cacheable shared SRAM mailbox with IPCC IRQ"
+ - id: "STAGE_6_MCU_ENFORCE"
+ p50: 0.4
+ p99: 1.0
+ mechanism: "1 kHz Control Barrier Function QP projection"
+ - id: "STAGE_7_ACTUATOR"
+ p50: 6.0
+ p99: 15.0
+ mechanism: "Motor stator L/R phase current rise time"
 
 stopping_kinematics:
-  max_velocity_mps: 0.75
-  max_deceleration_mps2: 4.50
-  max_jerk_radps3: 120.0
-  reaction_distance_m: 0.060
-  braking_distance_m: 0.0625
-  total_stopping_distance_m: 0.1225
-  required_clearance_barrier_m: 0.150
+ max_velocity_mps: 0.75
+ max_deceleration_mps2: 4.50
+ max_jerk_radps3: 120.0
+ reaction_distance_m: 0.060
+ braking_distance_m: 0.0625
+ total_stopping_distance_m: 0.1225
+ required_clearance_barrier_m: 0.150
 
 thermal_actuation_limits:
-  continuous_current_a: 4.20
-  peak_current_a: 8.50
-  peak_duration_max_ms: 250
-  phase_resistance_ohms: 0.38
-  thermal_resistance_c_per_w: 2.10
-  thermal_capacitance_j_per_c: 45.0
-  max_winding_temp_c: 85.0
-  max_torque_rate_nm_per_s: 45.0
+ continuous_current_a: 4.20
+ peak_current_a: 8.50
+ peak_duration_max_ms: 250
+ phase_resistance_ohms: 0.38
+ thermal_resistance_c_per_w: 2.10
+ thermal_capacitance_j_per_c: 45.0
+ max_winding_temp_c: 85.0
+ max_torque_rate_nm_per_s: 45.0
 
 silicon_determinism:
-  real_time_mcu_heap: "ZERO_DYNAMIC_ALLOCATION"
-  mcu_max_wcet_ms: 0.40
-  watchdog_lease_timeout_ms: 10.0
-  dma_memory_isolation: "NON_CACHEABLE_CONTIGUOUS"
+ real_time_mcu_heap: "ZERO_DYNAMIC_ALLOCATION"
+ mcu_max_wcet_ms: 0.40
+ watchdog_lease_timeout_ms: 10.0
+ dma_memory_isolation: "NON_CACHEABLE_CONTIGUOUS"
 ```
 :::
 
----
 
 ## Hands-On Bench Laboratory: `labs/02-metrology-wall`
 
@@ -707,10 +686,9 @@ silicon_determinism:
 * **Phase 1 (Hardware GPIO Instrumentation):** Connect a multi-channel digital logic analyzer to `GPIO 1` (camera SOF interrupt), `GPIO 2` (Linux kernel RPMSG emit), and `GPIO 3` (MCU Control Barrier Function validation). Connect an oscilloscope current probe across the motor low-side current shunt. Execute 10,000 continuous closed-loop cycles while running synthetic memory bus stress on the Linux MPU (`stress-ng --vm 2 --vm-bytes 512M` combined with uncompressed video streaming).
 * **Phase 2 (Tail Latency CDF Construction):** In Python, construct the empirical Cumulative Distribution Function (CDF) from hardware timestamps. Calculate $P_{50}, P_{90}, P_{99}$, and $P_{99.9}$. Verify that measured tail latency satisfies $P_{99} \le 80.0\text{ ms}$ under heavy memory contention.
 * **Phase 3 (Mapping the Freshness Wall):** Inject artificial transport delay $\Delta t_{\text{delay}} \in [0\text{ ms}, 250\text{ ms}]$ in steps of $10\text{ ms}$ into the camera pipeline. Record tracking error, obstacle stopping margins, and emergency override interventions. Identify the empirical critical threshold $\Delta t_{\text{wall}}$ where task success drops to zero.
-* **Dossier Milestone:** Validate all measured parameters against `REQ-01` and freeze the specification in your team's Cumulative Design Dossier.
+* **Lab checkpoint:** Validate all measured parameters against requirements ledger and freeze the specification in your team's engineering notebook.
 :::
 
----
 
 ## Summary and What Comes Next
 
@@ -725,6 +703,6 @@ In this chapter, we established the fundamental physical constraints governing P
 7. **Mechanical and Thermal Envelopes:** Enforced jerk continuity ($\dddot{\mathbf{q}}$), torque rate limits ($\dot{\boldsymbol{\tau}}$), and stator winding thermal dissipation ($C_{\text{th}} \frac{d(\Delta T)}{dt} = I^2 R - \frac{\Delta T}{R_{\text{th}}}$).
 8. **Silicon Determinism:** Addressed UMA DRAM bus contention, heterogeneous cache boundaries, and the zero-heap rule on real-time microcontrollers.
 9. **Hardware-Triggered Metrology:** Replaced the software timestamp delusion with sub-microsecond GPIO logic analyzer triggers and shunt current probes.
-10. **Dossier Artifact `REQ-01`:** Formalized the latency budgets, stopping envelopes, thermal limits, and silicon constraints in the Cumulative Design Dossier.
+10. **Notebook checkpoint requirements ledger:** Formalized the latency budgets, stopping envelopes, thermal limits, and silicon constraints in the engineering notebook.
 
 In **Chapter 3 (*The Cognitive Dimensions: The 5-Stage Lifecycle and The Co-Design Matrix*)**, we complete Part I by examining the horizontal rows of the Co-Design Matrix: tracing how an embodied machine perceives 3D space, maintains temporal memory, reasons about high-level intent, plans action chunks, and executes deterministic physical reflexes.

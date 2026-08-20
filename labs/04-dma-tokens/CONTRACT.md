@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Lab ID:** `LAB-04`
+- **Lab ID:** lab
 - **Book chapter:** Chapter 4 (*Perception and Spatial Encoders*)
 - **Title:** DMA Ingestion, UMA Bus Contention, and 3D Spatial Affordance Tokens
 - **Status:** accepted
@@ -16,7 +16,7 @@
 - **Metric, units, regime, efficacy floor:** Memory bus bandwidth (MB/s), L3 cache miss rate (%), sense-to-token latency ($P_{50}, P_{99}$ in ms), PTP hardware timestamp skew ($\mu\text{s}$). Efficacy floor: $P_{99} \le 20\text{ ms}$ under full 720p @ 60 Hz streaming.
 - **Chapter-native failure to diagnose:** Memory bus starvation causing $P_{99}$ inference blowout from $22\text{ ms}$ to $135\text{ ms}$, tripping the watchdog safety veto.
 - **Engineering decision:** Lock sensor operating resolution to 720p @ 60 Hz / 1080p @ 30 Hz with zero-copy DMA ring buffers and AXI QoS prioritization.
-- **Dossier artifact update:** `OBS-01` (Observation Contract & Token Schema).
+- **Dossier artifact update:** observation contract (Observation Contract & Token Schema).
 
 ## Dual-Brain Responsibilities
 
@@ -29,13 +29,13 @@
 
 - **Sensors / actuators required:** Arduino UNO Q Dual-Brain Kit, MIPI CSI-2 RGB-D / global-shutter camera module, 6-axis IMU over SPI, logic analyzer / oscilloscope for GPIO strobe verification.
 - **Optional vs required hardware:** Required: Arduino UNO Q board and camera. Optional: external logic analyzer for sub-microsecond PTP validation.
-- **Starter checkpoint input:** `LAB-03` (Multi-Rate IPC Mailboxes).
+- **Starter checkpoint input:** lab (Multi-Rate IPC Mailboxes).
 - **Acceptance test on physical kit:** Run `python3 test_ingestion_qos.py`. Verify zero dropped frames over 10,000 cycles, $P_{99} \le 20\text{ ms}$, and PTP timestamp skew $\le 500\,\mu\text{s}$.
 - **Analytical / hosted fallback:** Simulated camera DMA trace and synthetic memory bus contention injector running on Linux PREEMPT_RT kernel.
 
 ## Out of Scope
 
-- Multi-step action chunking decoders (owned by Chapter 7).
-- Temporal JEPA world model latent belief state (owned by Chapter 5).
-- Multimodal VLM natural language reasoning (owned by Chapter 6).
-- 1 kHz Control Barrier Function QP solver (owned by Chapter 8).
+- **Action Chunking Decoders:** Multi-step trajectory decoders (owned by Chapter 7).
+- **Latent World Models:** Temporal JEPA world model latent belief states (owned by Chapter 5).
+- **Multimodal Language Reasoning:** VLM natural language intent reasoning (owned by Chapter 6).
+- **Real-Time Safety Solvers:** 1 kHz Control Barrier Function QP solvers (owned by Chapter 8).

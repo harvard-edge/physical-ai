@@ -5,4 +5,4 @@
 - **Phenomenon:** fast vs slow proposal paths; escalation cost; no direct actuation.
 - **Perturbation:** uncertainty, stale state, unavailable tool, forced deliberation.
 - **Decision:** policy interface, validity horizon, escalation rule; intent contract only.
-- **Dossier:** `INTENT-07`
+- **Notebook:** intent schema

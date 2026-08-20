@@ -4,4 +4,4 @@
 - **Status:** draft
 - **Phenomenon:** shadow policy divergence; faults across MPU, link, and enforcement.
 - **Decision:** promote, hold, or reject candidate under predeclared criteria.
-- **Dossier:** `EVID-10`
+- **Notebook:** evidence pack
