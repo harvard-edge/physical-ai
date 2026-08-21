@@ -16,7 +16,7 @@ class BookContext:
         self.chapters_dir = self.book_dir / "chapters"
         self.bib_path = self.book_dir / "references.bib"
         self.pdf_path = self.book_dir / "_build" / "Physical-AI.pdf"
-        self.html_dir = self.book_dir / "_build"
+        self.html_dir = (self.book_dir / "_html") if (self.book_dir / "_html").exists() else (self.book_dir / "_build")
         self.log_path = self.book_dir / "Physical-AI.log"
         self.chapter_filter = chapter_filter
 

@@ -20,6 +20,15 @@ After studying this chapter, you will be able to:
 7. **Architect** silicon determinism on heterogeneous System-on-Chips using unified memory bus quality-of-service arbitration, lock-free static SRAM mailboxes, and the Iron Law of Zero-Heap Execution (`malloc = 0`).
 :::
 
+::: {.callout-autopsy title="The Late Commanded Deceleration"}
+* **Incident:** A six-degree-of-freedom articulated material-handling arm operating at $1.8\text{ m/s}$ struck an unmodeled workpiece fixture at $1.2\text{ m/s}$, shattering the harmonic drive flexspline and shearing the joint 3 output bearing pins.
+* **System:** 6-DoF articulated arm driven by cycloidal and harmonic actuators, executing an open-vocabulary vision transformer and diffusion trajectory policy on an embedded SoC with a shared LPDDR4 memory bus.
+* **Telemetry Snapshot:** At $T-0.180\text{ s}$ ($d_{\text{clearance}} = 0.280\text{ m}$), an obstacle entered the trajectory. Under nominal conditions, the policy generates deceleration commands within $P_{50} = 25\text{ ms}$. However, background Linux kernel dirty-page writeback and memory compaction saturated the shared DRAM crossbar, causing a $140\text{ ms}$ tail latency blackout. The arm coasted unguided for $0.252\text{ m}$ ($d_{\text{coast}} = v \cdot \Delta t$) before deceleration was emitted at $T-0.040\text{ s}$, leaving only $0.028\text{ m}$ of clearance when $0.081\text{ m}$ of quadratic braking was required.
+* **Root Cause:** Memory bus crossbar saturation on a Unified Memory Architecture (UMA) edge SoC, inducing a $140\text{ ms}$ tail latency spike ($P_{99.9}$) that consumed ninety percent of the available physical clearance before software initiated braking.
+* **Architectural Flaw:** Monolithic scheduling and tail latency blindness—relying on host processor inference without an isolated real-time microcontroller evaluating dynamic stopping bounds ($d_{\text{stop}} \le d_{\text{clearance}}$) at $1000\text{ Hz}$ in static SRAM.
+* **Provenance:** Engineered composite based on industrial robotics crash investigations and embedded memory bus contention benchmarks.
+:::
+
 
 ## Sense-to-Actuation Metrology and the Latency Waterfall
 
@@ -118,10 +127,12 @@ The physical world deadline ($\tau_{\text{world}}$) varies substantially across 
 * **Archetype 2: Contact Manipulation (Rigid & Compliant Linkages):** Physical contact dynamics, grasping, and tactile slip-prevention reflexes operate on tighter horizons of $\tau_{\text{world}} \approx 5\text{ to } 20\text{ ms}$. Delaying motor counter-torque allows micro-slips to escalate into dropped objects or excessive contact forces to fracture workpieces.
 * **Archetype 3: Cybernetic Energy & Processes (Fluid, Chemical & Grid Flows):** High-voltage power electronics and grid-tied battery inverters demand sub-millisecond phase-lock synchronization ($\tau_{\text{world}} < 1\text{ ms}$) to prevent feeder instability, while bulk chemical reactors and fluid thermal loops operate across slower transport horizons ($\tau_{\text{world}} \approx 0.5\text{ to } 5\text{ s}$). Regardless of the archetype, the stability criterion remains invariant: total worst-case latency must never breach $\tau_{\text{world}}$.
 
+![**The Five Physical Constraint Columns of Physical AI.** What each column asks of any proposed action, governing physics, systems metrics, and physical failure modes. Every cognitive action proposed by high-level software must satisfy all five columns before motor gate drivers are energized.](figures/fig02_physical_columns.svg){#fig-physical-columns width=100%}
+
 
 ## Column 1: Time Constants and Freshness
 
-Having established hardware ground-truth metrology and mapped the seven sequential stages of delay in Section 1, we now formalize the first physical column bounding embodied agency: the physics of time and information freshness. In classical software engineering, latency is treated as a quality-of-service tuning parameter; if a cloud database responds slowly, the user interface simply displays a loading indicator. In Physical AI, time is an irreversible thermodynamic coordinate. Sensory data degrades from the exact microsecond of photon exposure, and closed-loop stability is governed not by comfortable median averages, but by the catastrophic statistical tails of the execution distribution.
+Having established hardware ground-truth metrology and mapped the seven sequential stages of delay in Section 1, we now formalize the first physical column bounding embodied agency across the Five Physical Columns (@fig-physical-columns): the physics of time and information freshness. In classical software engineering, latency is treated as a quality-of-service tuning parameter; if a cloud database responds slowly, the user interface simply displays a loading indicator. In Physical AI, time is an irreversible thermodynamic coordinate. Sensory data degrades from the exact microsecond of photon exposure, and closed-loop stability is governed not by comfortable median averages, but by the catastrophic statistical tails of the execution distribution.
 
 ### Tail Latency: Why $P_{50}$ Is Unsafe
 
@@ -391,7 +402,7 @@ By inspecting @tbl-archetype-columns, an engineering team can immediately identi
 
 ### The Requirements Ledger
 
-The *Requirements Ledger* is the second formal artifact in the student's 11-artifact Engineering Dossier (@tbl-requirements-ledger). It records the eight fundamental physical constants and execution thresholds that define the platform's non-negotiable safety envelope. Every parameter in the ledger is grounded in SI units, derived from first principles, and verified through hardware bench metrology.
+The *Requirements Ledger* records the eight foundational physical constants and execution thresholds that define a platform's non-negotiable safety envelope (@tbl-requirements-ledger). Every parameter in the ledger is grounded in SI units, derived from first principles, and verified through hardware bench metrology.
 
 | Parameter Symbol | Physical Constraint Name | SI / Engineering Unit | Hardware Benchmark Method | Real-Time Safety Invariant Rule |
 | :--- | :--- | :---: | :--- | :--- |
@@ -400,11 +411,11 @@ The *Requirements Ledger* is the second formal artifact in the student's 11-arti
 | **$d_{\text{stop}}$** | Dynamic Stopping Distance | $\text{m}$ | High-speed optical tracking vs. bench ground truth | $d_{\text{clearance}} \ge v_0 \cdot \Delta t(P_{99.9}) + \frac{v_0^2}{2a_{\text{max}}} + d_{\text{margin}}$ |
 | **$\dot{\boldsymbol{\tau}}_{\text{max}}$** | Maximum Torque Slew Rate | $\text{N}\cdot\text{m}/\text{s}$ | Inverter current probe and dynamometer torque cell | $\|\dot{\boldsymbol{\tau}}(t)\| \le \dot{\tau}_{\text{max}} = W_p \sigma_{\text{yield}} / \Delta t_{\text{rise}}$ |
 | **$\dddot{q}_{\text{max}}$** | Maximum Mechanical Jerk | $\text{rad}/\text{s}^3$ or $\text{m}/\text{s}^3$ | Tri-axial MEMS accelerometer vibration spectral log | $\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$ via $\mathcal{C}^2$ quintic splines |
-| **$I_{\text{cont}}$** | Continuous Thermal Current | $\text{A}$ | Steady-state stall thermal equilibrium chamber | $I_{\text{RMS}} \le \sqrt{\Delta T_{\text{max}} / (R \cdot R_{\text{th}})}$ |
+| **$I_{\text{cont}}$** | Continuous Thermal Current | $\text{A}$ | Steady-state stall thermal equilibrium chamber | $I \le \sqrt{\Delta T_{\text{max}} / (R R_{\text{th}})}$ |
 | **$E_{\text{thermal, max}}$** | Maximum $I^2t$ Thermal Energy | $\text{A}^2\cdot\text{s}$ | Adiabatic pulse heating measurement | $\int_0^t \max(0, I^2 - I_{\text{cont}}^2) d\tau \le C_{\text{th}} \Delta T_{\text{max}}$ |
 | **`malloc = 0`** | Static Memory Heap Policy | $\text{Bytes allocated}$ | Static firmware ELF symbol table `.bss` audit | Dynamic allocations in 1 kHz loop $= 0\text{ B}$ |
 
-: The Requirements Ledger (Milestone 2 Deliverable). The eight foundational physical and silicon parameters that bound real-time safety enforcement on the hardware platform. {#tbl-requirements-ledger}
+: The Requirements Ledger. The eight foundational physical and silicon parameters that bound real-time safety enforcement on the hardware platform. {#tbl-requirements-ledger}
 
 Once measured and certified, the values in @tbl-requirements-ledger are compiled directly into the real-time microcontroller's immutable firmware constants. These values form the mathematical boundary conditions evaluated by the Control Barrier Function safety enforcer on every 1 kHz tick.
 
@@ -413,15 +424,13 @@ Once measured and certified, the values in @tbl-requirements-ledger are compiled
 
 When engineering embodied systems, teams frequently inherit intuitions from desktop software or cloud machine learning that fail catastrophically in the physical world:
 
-**Fallacy: High processing frame rate guarantees low-latency closed-loop control.** Frame rate measures throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ through a four-frame software FIFO queue delivers impressive throughput, but every processed frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop dynamical systems, throughput without freshness is an active collision hazard.
-
-**Pitfall: Trusting high-level software system timers (`time.time()`) for information age.** Software timers record only when an operating system thread was scheduled by the kernel. They are completely blind to optical photodiode charge integration, MIPI-CSI deserialization, DMA bus transfers, inter-processor shared memory handoffs, and motor phase electrical rise times. Only hardware-triggered logic analyzers and current probes measure true physical ground truth.
-
-**Pitfall: Certifying closed-loop safety against median latency ($P_{50}$) rather than extreme tails.** A machine executing at $50\text{ Hz}$ completes 180,000 control cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
-
-**Fallacy: Deep multi-stage FIFO queues smooth out neural inference jitter safely.** In advisory software, dropping frames loses data; in physical closed-loop control, buffering stale frames injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Closed-loop systems must sample only the single latest completed observation and immediately drop intermediate stale frames.
-
-**Pitfall: Relying on pre-warmed dynamic heap memory (`malloc`) in the real-time control path.** Pre-allocating heap pools in user-space during system initialization does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
+::: {.callout-fallacy title="Core Systems Fallacies in Physical Constraints"}
+* **Fallacy: High processing frame rate guarantees low-latency closed-loop control.** Frame rate measures throughput; latency measures elapsed transit time. A vision pipeline streaming at $60\text{ FPS}$ through a four-frame software FIFO queue delivers impressive throughput, but every processed frame is over $66\text{ ms}$ stale before neural inference even begins. In closed-loop dynamical systems, throughput without freshness is an active collision hazard.
+* **Pitfall: Trusting high-level software system timers (`time.time()`) for information age.** Software timers record only when an operating system thread was scheduled by the kernel. They are completely blind to optical photodiode charge integration, MIPI-CSI deserialization, DMA bus transfers, inter-processor shared memory handoffs, and motor phase electrical rise times. Only hardware-triggered logic analyzers and current probes measure true physical ground truth.
+* **Pitfall: Certifying closed-loop safety against median latency ($P_{50}$) rather than extreme tails.** A machine executing at $50\text{ Hz}$ completes 180,000 control cycles every hour. Certifying safety against median latency leaves 90,000 unmitigated cycles per hour where timing deadlines may be breached. Physical survival is dictated exclusively by the extreme statistical tails ($P_{99}$ and $P_{99.9}$).
+* **Fallacy: Deep multi-stage FIFO queues smooth out neural inference jitter safely.** In advisory software, dropping frames loses data; in physical closed-loop control, buffering stale frames injects destructive phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes the plant. Closed-loop systems must sample only the single latest completed observation and immediately drop intermediate stale frames.
+* **Pitfall: Relying on pre-warmed dynamic heap memory (`malloc`) in the real-time control path.** Pre-allocating heap pools in user-space during system initialization does not prevent runtime memory fragmentation, free-list traversal jitter, or kernel TLB shootdowns over multi-hour physical missions. Real-time safety filters must execute exclusively in compile-time static SRAM (`malloc = 0`).
+:::
 
 
 ## Summary
