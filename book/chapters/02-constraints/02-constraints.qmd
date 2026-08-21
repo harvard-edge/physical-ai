@@ -12,13 +12,13 @@ In digital cloud computing, software treats time as an artificial, turn-based co
 After studying this chapter, you will be able to:
 
 1. Contrast synthetic software clock domains with physical world time, explaining why physical closed-loop stability requires hardware-grounded metrology.
-2. Trace end-to-end latency across the seven-stage sense-to-actuation waterfall, accounting for microsecond delays from photon transduction to electromagnetic motor torque generation.
-3. Evaluate tail latency distributions ($P_{90}$, $P_{99}$, $P_{99.9}$) against the $P_{50}$ throughput illusion, proving why extreme tail blowouts govern physical survival.
-4. Model information freshness decay across time and calculate the geometric Freshness Wall ($\Delta t_{\text{wall}}$) where spatial belief diverges catastrophically from physical reality.
-5. Derive two-phase dynamic stopping kinematics ($d_{\text{stop}}$) combining linear reaction displacement and quadratic braking distance under worst-case tail latency spikes.
-6. Enforce electromagnetic inductance limits ($\tau_e = L/R$) and $\mathcal{C}^2$ differential jerk continuity ($\dddot{\mathbf{q}}$) to protect mechanical transmissions from stress fracture and tooth shear.
-7. Budget thermal and energy headroom using stator winding Joule heating differential equations and edge silicon thermal throttling models.
-8. Architect silicon determinism on heterogeneous System-on-Chips using unified memory bus quality-of-service arbitration, lock-free static SRAM mailboxes, and the Iron Law of Zero-Heap Execution (`malloc = 0`).
+2. Navigate the Five Physical Columns that define the non-negotiable operating envelope of any embodied AI system.
+3. Trace end-to-end latency across the seven-stage sense-to-actuation waterfall, calculating the geometric Freshness Wall ($\Delta t_{\text{wall}}$) where internal belief diverges from physical reality.
+4. Derive two-phase dynamic stopping kinematics ($d_{\text{stop}}$) combining linear reaction displacement and quadratic braking distance under worst-case tail latency spikes.
+5. Enforce electromagnetic inductance limits ($\tau_e = L/R$) and $\mathcal{C}^2$ differential jerk continuity ($\dddot{\mathbf{q}}$) to protect mechanical transmissions from stress fracture and tooth shear.
+6. Budget thermal and energy headroom using stator winding Joule heating differential equations and edge silicon thermal throttling models.
+7. Architect silicon determinism on heterogeneous System-on-Chips using unified memory bus quality-of-service arbitration, lock-free static SRAM mailboxes, and the Iron Law of Zero-Heap Execution (`malloc = 0`).
+8. Compile the empirical Requirements Ledger to freeze physical safety invariants prior to deploying learned models on hardware.
 :::
 
 
@@ -28,27 +28,33 @@ In traditional computer science and machine learning, algorithms execute inside 
 
 Deploying software into the physical world completely destroys this comfortable abstraction. In Physical AI, the physical universe serves as the master clock. Physical time cannot be paused, suspended, or rolled back. While an onboard processor executes floating-point matrix multiplications, the physical environment continues evolving along continuous differential equations of motion. A vehicle moving at speed continues covering physical meters of roadway; an articulated arm carrying a payload continues deflecting under gravity; a power converter continues conducting high electrical currents that heat copper windings.
 
-To engineer dependable physical AI systems, we must organize these unyielding physical boundaries into a coherent framework. Regardless of whether an intelligent machine is an autonomous drone navigating a forest, a six-axis arm assembling electronics, or a battery inverter stabilizing an electrical grid, its physical reality is governed by Five Physical Columns: Time, Inertia, Actuation, Energy, and Silicon (@fig-physical-columns). 
+To engineer dependable physical AI systems, we must organize these unyielding physical boundaries into a coherent, systematic framework. Rather than viewing physical limitations as disconnected engineering headaches, we structure them into Five Physical Columns that collectively define the boundary between safe agency and catastrophic hardware failure.
 
-Before we can formulate the mathematical laws governing each column, however, we must first establish how to measure reality on the physical hardware bench. We begin by examining an incident autopsy that exposes what happens when a system relies on synthetic software timestamps rather than physical ground truth.
+
+## The Five Physical Columns: A Guided Map
+
+Every physical intelligent machine—whether an autonomous drone navigating a forest, a six-axis arm assembling electronics, or a megawatt battery inverter stabilizing an electrical grid—operates within an envelope bounded by Five Physical Columns (@fig-physical-columns):
+
+1. **Column 1: Time (Information Freshness & Latency Tails):** How fast does sensory evidence age, and what happens when computational delay causes the agent's internal belief to drift away from physical reality?
+2. **Column 2: Inertia (Momentum & Dynamic Stopping):** Why moving mass cannot stop instantaneously, and how milliseconds of computational delay translate directly into physical meters of unguided collision hazard.
+3. **Column 3: Actuation (Inductive Rise Time & Mechanical Stress):** Why electric motors cannot deliver instantaneous torque, and why sharp, stepped software commands shear mechanical gearboxes.
+4. **Column 4: Energy (Joule Heating & Thermal Accumulation):** Why physical work dissipates irreversible heat in copper windings and power silicon, and how accumulating thermal load forces computational and mechanical derating.
+5. **Column 5: Silicon (Memory Crossbars & Deterministic Execution):** How internal memory bus contention on edge System-on-Chips generates catastrophic tail latency spikes, and why real-time safety paths must enforce compile-time static memory allocation.
 
 ![**The Five Physical Constraint Columns of Physical AI.** What each column asks of any proposed action, governing physics, systems metrics, and physical failure modes. Every cognitive action proposed by high-level software must satisfy all five columns before motor gate drivers are energized.](figures/fig02_physical_columns.svg){#fig-physical-columns width=100%}
 
+These five columns form an interdependent physical chain. If high-level software requests an aggressive motion, Column 1 dictates whether the sensory evidence is still fresh enough to justify it; Column 2 checks whether the machine has sufficient clearance to stop if an obstacle appears; Column 3 verifies that motor coils and gear teeth can deliver the torque without shearing; Column 4 confirms that copper windings will not overheat; and Column 5 ensures that the underlying silicon executes the command with microsecond determinism.
 
-## Anatomy of a Timing Failure: The Measuring Instrument
+We now examine each column in depth, deriving its governing mathematical laws and observing its physical consequences on real hardware.
 
-To understand why physical metrology is the foundation of Physical AI, consider the mechanical consequences of a timing failure on real hardware:
 
-::: {.callout-autopsy title="The Late Commanded Deceleration"}
-* **Incident:** A six-degree-of-freedom articulated material-handling arm operating at $1.8\text{ m/s}$ struck an unmodeled workpiece fixture at $1.2\text{ m/s}$, shattering the precision gearbox and shearing output bearing pins.
-* **System:** 6-DoF vision-guided robotic arm executing visual perception and motion planning software on an embedded processor with a shared system memory bus.
-* **Telemetry Snapshot:** At $T-0.180\text{ s}$ ($d_{\text{clearance}} = 0.280\text{ m}$), an obstacle entered the path. Under nominal conditions, the motion planning software generates deceleration commands in $25\text{ ms}$. However, background operating system memory maintenance saturated the shared memory bus, causing a $140\text{ ms}$ processing blackout. The arm coasted unguided for $0.252\text{ m}$ ($d_{\text{coast}} = v \cdot \Delta t$) before deceleration was emitted at $T-0.040\text{ s}$, leaving only $0.028\text{ m}$ of clearance when $0.081\text{ m}$ of mechanical braking was required.
-* **Root Cause:** Shared memory bus crossbar saturation, inducing a $140\text{ ms}$ tail latency spike that consumed ninety percent of the available physical clearance before software initiated braking.
-* **Architectural Flaw:** Monolithic scheduling and tail latency blindness—relying on high-level software inference without an isolated real-time safety supervisor evaluating dynamic stopping distance bounds at $1000\text{ Hz}$ in static memory.
-* **Provenance:** Engineered composite based on industrial robotics crash investigations and embedded memory bus contention benchmarks.
-:::
+## Column 1: Time and Information Freshness
 
-The incident autopsy exposes the fatal gap between software profiling and physical reality. Software engineers transitioning to embodied systems almost universally attempt to quantify latency by wrapping high-level code in standard user-space software timers:
+In classical software engineering, latency is treated as a quality-of-service tuning parameter; if a cloud database responds slowly, the user interface simply displays a loading indicator. In Physical AI, time is an irreversible thermodynamic coordinate. Sensory data degrades from the exact microsecond of photon exposure, and closed-loop stability is governed not by comfortable median averages, but by the statistical tails of the execution distribution.
+
+### True Metrology: The Software Timestamp Delusion
+
+Software engineers transitioning to embodied systems almost universally attempt to quantify latency by wrapping high-level code in standard user-space software timers:
 
 ```python
 # THE SOFTWARE TIMESTAMP DELUSION (DO NOT DO THIS)
@@ -66,17 +72,19 @@ Listing 2.1 illustrates this practice, which we term the *software timestamp del
 
 To measure true physical latency, engineers must measure physical electrical transitions directly: from the hardware strobe line when light strikes the camera sensor, across memory buses and processor mailboxes, all the way to the analog current probe measuring stator phase current rise on the motor inverter.
 
+### The 7-Stage Latency Waterfall
+
 ![The 7-Stage Sense-to-Actuation Latency Waterfall. Deconstructing physical transduction, memory bus transfer, neural compute, inter-processor communication, and electromagnetic delays across the complete pipeline. While nominal $P_{50}$ execution ($52.2\text{ ms}$) sits comfortably within closed-loop margins, a $P_{99}$ tail blowout ($126.0\text{ ms}$) breaches the physical world deadline ($\tau_{\text{world}} = 80\text{ ms}$), forcing instability.](figures/fig02_latency_waterfall.svg){#fig-latency-waterfall width=100%}
 
 When instrumented at the hardware level, the complete sense-to-actuation pathway decomposes into seven distinct, sequential physical and computational stages (@fig-latency-waterfall and @tbl-latency-breakdown):
 
-1. **Stage 1: Optical and Physical Transduction ($t_{\text{transduce}}$):** Photons striking the camera sensor require an integration exposure duration between $8\text{ and } 15\text{ ms}$ under ambient indoor lighting to accumulate sufficient electrical charge in silicon photodiode wells. This delay is governed by optical flux and semiconductor physics; it cannot be shortened by faster downstream computing.
-2. **Stage 2: Direct Memory Access (DMA) Ingestion ($t_{\text{dma}}$):** The camera serializes digitized pixel data across high-speed lanes into the host System-on-Chip, where an autonomous Direct Memory Access engine arbitrates across the memory bus to transfer frames into main DRAM ($3\text{ to } 8\text{ ms}$).
+1. **Stage 1: Optical and Physical Transduction ($t_{\text{transduce}}$):** Photons striking the camera sensor require an integration exposure duration between $8\text{ and } 15\text{ ms}$ under ambient indoor lighting to accumulate sufficient electrical charge in silicon photodiode wells.
+2. **Stage 2: Direct Memory Access (DMA) Ingestion ($t_{\text{dma}}$):** The camera serializes digitized pixel data across high-speed lanes into the host System-on-Chip, where an autonomous Direct Memory Access engine transfers frames into main DRAM ($3\text{ to } 8\text{ ms}$).
 3. **Stage 3: Spatial Perception and Feature Tokenization ($t_{\text{perceive}}$):** The vision model on the neural accelerator processes the raw image into compact 3D spatial feature tokens ($12\text{ to } 25\text{ ms}$).
-4. **Stage 4: Policy Planning and Trajectory Decoding ($t_{\text{inference}}$):** The policy network decodes spatial tokens into multi-step motion trajectories ($22\text{ to } 60\text{ ms}$). This stage constitutes the largest single computational workload and exhibits the highest latency variance under memory bus contention.
+4. **Stage 4: Policy Planning and Trajectory Decoding ($t_{\text{inference}}$):** The policy network decodes spatial tokens into multi-step motion trajectories ($22\text{ to } 60\text{ ms}$).
 5. **Stage 5: Inter-Processor Communication ($t_{\text{ipc}}$):** The host processor packages candidate trajectories into shared static memory and signals the real-time microcontroller via a hardware mailbox interrupt ($0.8\text{ to } 2.0\text{ ms}$).
-6. **Stage 6: Real-Time Safety Veto and Enforcement ($t_{\text{enforce}}$):** Operating deterministically at $1000\text{ Hz}$ in static microcontroller memory, the real-time safety supervisor validates the candidate trajectory against physical invariants and dynamic stopping bounds ($0.4\text{ to } 1.0\text{ ms}$).
-7. **Stage 7: Electromagnetic Actuator Rise Time ($t_{\text{actuator}}$):** Motor stator coils possess electrical inductance $L$ and resistance $R$. Due to Faraday's law of induction ($V = RI + L\frac{dI}{dt} + e_{\text{emf}}$), phase current rises exponentially according to $I(t) = I_{\text{target}}(1 - e^{-t/\tau_e})$ with electrical time constant $\tau_e = L/R$. Building ninety-five percent of commanded physical torque requires approximately $3\tau_e$ ($6\text{ to } 15\text{ ms}$).
+6. **Stage 6: Real-Time Safety Veto and Enforcement ($t_{\text{enforce}}$):** Operating deterministically at $1000\text{ Hz}$ in static microcontroller memory, the real-time safety supervisor validates the candidate trajectory against physical invariants ($0.4\text{ to } 1.0\text{ ms}$).
+7. **Stage 7: Electromagnetic Actuator Rise Time ($t_{\text{actuator}}$):** Motor stator coils possess electrical inductance $L$ and resistance $R$, requiring approximately three electrical time constants ($3\tau_e = 3L/R \approx 6\text{ to } 15\text{ ms}$) to build ninety-five percent of commanded physical torque.
 
 | Stage | Subsystem and Mechanism | $P_{50}$ | $P_{99}$ | Bottleneck Classification |
 | :--- | :--- | :---: | :---: | :--- |
@@ -91,84 +99,33 @@ When instrumented at the hardware level, the complete sense-to-actuation pathway
 
 : The 7-stage sense-to-actuation latency breakdown. Deconstructing end-to-end delay across physical transduction, memory bus transfers, neural processing, inter-core communication, real-time safety evaluation, and electromagnetic actuator rise time. {#tbl-latency-breakdown}
 
-The sum of these seven stages forms the total sense-to-actuation latency ($t_{\text{total}}$). Under nominal conditions ($P_{50}$), the pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus contention and scheduling jitter inflate the delay to $126.0\text{ ms}$—a catastrophic breach of the physical timing budget.
+The sum of these seven stages forms the total sense-to-actuation latency ($t_{\text{total}}$). Under nominal operating conditions ($P_{50}$), the pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus contention and scheduling jitter inflate the delay to $126.0\text{ ms}$—a catastrophic breach of the physical timing budget.
 
-In classical feedback control, computational delay acts as a pure transport lag that injects phase lag proportional to frequency: $\Delta \phi = -\omega \cdot t_{\text{total}}$. As latency grows, phase margin erodes until negative feedback flips into destructive positive feedback: minor disturbances amplify into violent oscillations. To guarantee physical stability, total worst-case latency must satisfy the *Closed-Loop Stability Criterion*:
+### The Freshness Wall
 
-$$t_{\text{total}}(P_{99}) + t_{\text{margin}} < \tau_{\text{world}}$$
+Sensory observations begin aging the exact microsecond photons strike the camera sensor. An image frame does not describe the present state of the physical world; it describes where the physical world was located at the historical instant of exposure.
 
-This physical world deadline ($\tau_{\text{world}}$) varies across our Three Canonical Archetypes: from $\tau_{\text{world}} \approx 30\text{--}80\text{ ms}$ in mobile navigation (Archetype 1) and $\tau_{\text{world}} \approx 5\text{--}20\text{ ms}$ in contact manipulation reflexes (Archetype 2), to sub-millisecond phase synchronization in high-voltage grid cybernetics (Archetype 3).
-
-With the complete sense-to-actuation pipeline mapped from photons to motor torque, where does physical delay first threaten system stability? It begins with our first physical constraint: Time.
-
-
-## Column 1: Time
-
-In classical software engineering, latency is treated as a quality-of-service tuning parameter; if a cloud database responds slowly, the user interface simply displays a loading indicator. In Physical AI, time is an irreversible thermodynamic coordinate. Sensory data degrades from the exact microsecond of photon exposure, and closed-loop stability is governed not by comfortable median averages, but by the catastrophic statistical tails of the execution distribution.
-
-### Tail Latency: Why $P_{50}$ Is Unsafe
-In web services and datacenter computing, engineering teams routinely evaluate system performance using median throughput ($P_{50}$) or moderate percentiles such as $P_{95}$. In digital workloads, occasional tail latency spikes merely delay page rendering or cause transient network packet retransmissions without corrupting persistent system state. In Physical AI systems, however, evaluating software efficiency through median latency is a dangerous practice that conceals fatal physical risks.
-
-Physical AI platforms operate within continuous, high-frequency closed-loop control environments. An autonomous robot or articulated manipulator executing at a standard $50\text{ Hz}$ control cadence completes exactly 180,000 discrete control cycles every hour ($50\text{ cycles/second} \times 3,600\text{ seconds/hour}$). In this high-frequency regime, statistical tail probabilities multiply rapidly into frequent operational events. Certifying a safety envelope against the 99th percentile ($P_{99}$) means that the remaining one percent tail manifests as 1,800 timing violations per hour—an unmitigated timing blowout once every two seconds. Even if an engineering team expends substantial effort to optimize software execution and certifies against the 99.9th percentile ($P_{99.9}$), the remaining 0.1% tail still unleashes 180 severe timing stalls every hour, translating to three computational blackouts every single minute. In high-speed physical interaction, where unbraked inertia carries mass into obstacles within tens of milliseconds, three stalls per minute represents an unacceptable operational hazard.
-
-| Latency Percentile | Execution Condition on Embedded SoC | Systems Impact on Hardware |
-| :--- | :--- | :--- |
-| **$P_{50}$ ($33.0\text{ ms}$)** | Nominal cache-hot execution; low bus contention | Baseline tracking performance within safety margin |
-| **$P_{90}$ ($68.0\text{ ms}$)** | L2 cache misses; background DMA frame transfer | Consumes $85\%$ of closed-loop timing budget |
-| **$P_{99}$ ($126.0\text{ ms}$)** | Memory crossbar saturation; thread preemption | Breaches $\tau_{\text{world}}$; triples dynamic stopping distance |
-| **$P_{99.9}$ ($240.0\text{ ms}$)** | Kernel page writeback; memory compaction stall | Loss of closed-loop control; blind travel over $0.48\text{ m}$ |
-
-: Latency percentile behavior on embedded heterogeneous System-on-Chips. As execution shifts from nominal cache-hot states to operating system scheduling stalls, latency expands substantially. {#tbl-latency-percentiles}
-
-On embedded Linux Systems-on-Chip (SoCs), latency distributions are heavily right-skewed (@tbl-latency-percentiles). These catastrophic tail spikes are driven by concrete silicon and operating system resource contention mechanisms. When high-priority kernel interrupts or asynchronous device drivers preempt user-space neural runtime threads, hot L1 and L2 cache lines holding active weights and spatial feature maps are evicted. Upon thread resumption, the processor suffers a cascade of pipeline stalls while reloading data from main memory. Furthermore, virtual memory management operations such as page migration, memory compaction, and dirty page writebacks trigger inter-processor interrupts (IPIs) that force synchronous Translation Lookaside Buffer (TLB) shootdowns across all CPU cores, freezing instruction pipelines for tens of microseconds. Simultaneously, high-bandwidth camera Direct Memory Access (DMA) channels and background storage daemons saturate the shared memory crossbar interconnect. When neural accelerator weight streaming contends with concurrent DMA bursts for DRAM access, memory controller queues back up, inflating nominal $33.0\text{ ms}$ inference passes into $240.0\text{ ms}$ computational blackouts. For an agent moving at $2.0\text{ m/s}$, a $240.0\text{ ms}$ tail blowout forces more than $0.48\text{ m}$ of uncommanded, blind forward travel before braking can even be initiated.
-
-### The Pipelining Paradox
-In classical computer architecture, instruction pipelining and multi-stage FIFO queues are fundamental techniques used to maximize processing throughput. By dividing a task into sequential stages (such as ingestion, feature extraction, neural inference, and command dispatch) and executing successive frames concurrently across specialized execution units, a system can maintain a high frame rate (such as $60\text{ frames per second}$) even when the total latency of each individual frame is substantial.
-
-In Physical AI systems, applying this classical pipelining paradigm creates the *Pipelining Paradox*: maximizing computational throughput through deep queues systematically degrades information freshness. While pipelining increases the frequency of emitted control commands, it increases the temporal age of the sensory evidence upon which those commands are based. If an autonomous agent buffers three consecutive camera frames through a multi-stage FIFO queue, the motor torque vector executed at time $t$ is derived from sensory photons captured three full cycles in the past. If a dynamic obstacle moves into the robot's trajectory or an unexpected contact occurs, the agent remains completely oblivious, continuing to execute obsolete commands until the deep queue drains. In physical systems, high throughput with stale data is an active hazard.
-
-Embodied AI architectures resolve the pipelining paradox by combining low-latency latest-frame sampling with action chunking. Under latest-frame sampling, the system replaces deep FIFO queues with a drop-oldest, zero-queue shared memory buffer. Whenever the neural policy completes an inference cycle, it samples exclusively the single most recently completed sensor frame from memory, instantly discarding any intermediate frames that arrived while the processor was busy. To bridge the frequency mismatch between relatively slow neural inference ($10\text{ to } 50\text{ Hz}$) and high-frequency deterministic motor control ($500\text{ to } 1000\text{ Hz}$), the neural policy does not output single-step commands. Instead, it predicts multi-step action chunks—temporal horizons of future joint waypoints and feedforward torques. A deterministic real-time safety supervisor running on an independent microcontroller consumes these chunks, verifying physical constraints and interpolating smooth setpoints at $1\text{ kHz}$ while the high-level policy deliberates on the latest available observation.
-
-### Spatial Uncertainty Expansion
-Sensory observations begin aging the exact microsecond photons strike the photodiode depletion region or acoustic waves reach a transducer. An image frame does not describe the present state of the physical world; it describes where the physical world was located at the historical instant of exposure.
-
-We define the *information age* ($\Delta t$) as the total elapsed time between physical sensor exposure and the application of motor torque. During this elapsed interval $\Delta t$, any moving entity in the workspace continues along its trajectory. For an obstacle moving with velocity $\mathbf{v}_{\text{target}}$, the spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding the agent's internal belief expands linearly:
+We define the *information age* ($\Delta t$) as the total elapsed time between sensor exposure and the application of motor torque. During this elapsed interval $\Delta t$, any moving obstacle in the workspace continues along its trajectory with velocity $\mathbf{v}_{\text{target}}$. The spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding the agent's internal belief expands linearly:
 
 $$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t$$
 
-where $\sigma_0$ represents intrinsic sensor calibration noise. As computational delays, memory bus transfers, and actuator rise times accumulate, the spatial volume in which the obstacle might reside expands outward from its last observed coordinates, steadily eroding the physical clearance margin available for safe motion.
-
-### The Freshness Wall
-Every physical manipulation or navigation task defines a finite geometric clearance boundary $d_{\text{clearance}}$ between the robot's physical body and surrounding workspace obstacles. When the spatial uncertainty envelope $\sigma_{\text{pos}}(t)$ expands to equal the available clearance $d_{\text{clearance}}$, the robot can no longer guarantee that its planned trajectory is collision-free. Setting $\sigma_{\text{pos}}(t) = d_{\text{clearance}}$ and solving for elapsed time yields the *Freshness Wall* ($\Delta t_{\text{wall}}$):
+where $\sigma_0$ represents intrinsic sensor calibration noise. When the spatial uncertainty envelope $\sigma_{\text{pos}}(t)$ expands to equal the available physical clearance $d_{\text{clearance}}$, the robot can no longer guarantee collision-free operation. Setting $\sigma_{\text{pos}}(t) = d_{\text{clearance}}$ and solving for elapsed time yields the *Freshness Wall* ($\Delta t_{\text{wall}}$):
 
 $$\Delta t_{\text{wall}} = \frac{d_{\text{clearance}} - \sigma_0}{\|\mathbf{v}_{\text{target}}\|}$$
 
-The Freshness Wall is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards rather than safe control actions.
+The Freshness Wall is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards.
 
-The physical meaning of the Freshness Wall manifests distinctly across our Three Canonical Archetypes:
-
-In mobile systems (Archetype 1), the Freshness Wall $\Delta t_{\text{wall}}$ is governed by closing velocity with external workspace obstacles ($\|\mathbf{v}_{\text{target}}\|$). For a warehouse AMR traveling at $2.0\text{ m/s}$ with an obstacle clearance of $0.20\text{ m}$ (and sensor noise $\sigma_0 = 0.02\text{ m}$), the Freshness Wall collapses to $\Delta t_{\text{wall}} = (0.20 - 0.02)/2.0 = 90\text{ ms}$. Any sense-to-actuation latency tail exceeding $90\text{ ms}$ guarantees that the robot makes steering decisions based on hallucinated spatial clearance.
-
-In contact manipulation (Archetype 2), the Freshness Wall $\Delta t_{\text{wall}}$ is dictated by end-effector approach velocities and microscopic tactile slip rates. When an articulated manipulator inserts a peg into a chamfered hole with $2\text{ mm}$ clearance at an approach velocity of $0.2\text{ m/s}$, the Freshness Wall is a razor-thin $\Delta t_{\text{wall}} = 10\text{ ms}$. Exceeding this limit causes the gripper to jam against the fixture before contact forces can be sensed and relieved.
-
-In cybernetic energy and processes (Archetype 3), the Freshness Wall $\Delta t_{\text{wall}}$ represents the critical phase angle drift window during grid frequency disturbances or the chemical reaction runaway horizon in an exothermic reactor. If a power inverter's telemetry age exceeds the grid fault clearing window ($16\text{ to } 33\text{ ms}$), active current injection exacerbates voltage collapse rather than stabilizing the grid.
-
-@tbl-freshness-regimes formalizes the three operational regimes governed by information freshness relative to the Freshness Wall:
-
-| Operating Regime | Information Age $\Delta t$ | Physical State and Action Authority |
-| :--- | :--- | :--- |
-| **Fresh Observation** | $\Delta t \ll \Delta t_{\text{wall}}$ | Spatial uncertainty is bounded ($\sigma_{\text{pos}} < d_{\text{clearance}}$); candidate neural proposals are valid and permitted. |
-| **Degraded Freshness** | $\Delta t \to \Delta t_{\text{wall}}$ | Clearance margins erode; microcontroller enforces velocity derating. |
-| **Beyond Freshness Wall** | $\Delta t \ge \Delta t_{\text{wall}}$ | Belief diverges from reality; proposals vetoed; immediate controlled braking engaged. |
-
-: Operational regimes governed by information freshness relative to the Freshness Wall. {#tbl-freshness-regimes}
+::: {.callout-note title="Micro-Case: The Stale Sensor Collision"}
+Consider an autonomous mobile robot navigating a warehouse aisle at $2.0\text{ m/s}$ with an obstacle clearance margin of $d_{\text{clearance}} = 0.20\text{ m}$ and sensor calibration noise $\sigma_0 = 0.02\text{ m}$. The Freshness Wall collapses to $\Delta t_{\text{wall}} = (0.20 - 0.02) / 2.0 = 90\text{ ms}$. When a background operating system garbage collection sweep delayed neural inference, total latency spiked to $130\text{ ms}$. Although the neural model generated a mathematically valid steering command based on the captured frame, the command arrived $40\text{ ms}$ after the Freshness Wall had been breached. The robot steered into the new physical position of the obstacle, colliding at full operational speed.
+:::
 
 
-## Column 2: Inertia
+## Column 2: Inertia, Momentum, and Stopping Kinematics
 
-In digital computing, changing a velocity variable or zeroing an actuator setpoint in software memory is an instantaneous, single-cycle operation. In physical mechanics, moving bodies possess physical mass and inertia ($p = mv$, $E_k = \frac{1}{2}mv^2$). Bringing mass to rest requires applying opposing force over time, dissipating kinetic energy as friction and heat. Consequently, physical mass cannot halt instantaneously; deceleration is a continuous physical process that unfolds over both time and space.
+In digital computing, setting an actuator velocity to zero in software memory is an instantaneous, single-cycle operation. In physical mechanics, moving bodies possess physical mass and inertia ($p = mv$, $E_k = \frac{1}{2}mv^2$). Bringing mass to rest requires applying opposing force over time, dissipating kinetic energy as friction and heat. Consequently, physical mass cannot halt instantaneously; deceleration is a continuous physical process that unfolds over both time and space.
 
 ### The Two-Phase Stopping Equation
+
 ![Dynamic Stopping Distance Physics ($d_{\text{stop}}$). Translating milliseconds of computational delay into physical centimeters of stopping hazard. The total stopping distance is the sum of the linear reaction phase ($v \cdot \Delta t_{\text{delay}}$) and the quadratic braking phase ($\frac{v^2}{2a_{\text{max}}}$). A tail latency spike expands reaction travel, converting a safe stop into a collision.](figures/fig02_stopping_distance.svg){#fig-stopping-distance width=100%}
 
 As illustrated in @fig-stopping-distance, the total dynamic stopping distance ($d_{\text{stop}}$)—from the instant an obstacle appears until the machine reaches a complete halt—divides into two distinct physical phases:
@@ -178,6 +135,7 @@ $$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stoppi
 During Phase 1 (the linear reaction phase, $v_0 \cdot \Delta t_{\text{delay}}$), the robot is mechanically blind to the obstacle while computation transpires. It coasts forward at velocity $v_0$ with zero deceleration, exposing the fundamental bridge between computer systems and physics: computational delay is linear unguided travel through space. Once braking begins in Phase 2 (the quadratic braking phase, $\frac{v_0^2}{2 a_{\text{max}}}$), the machine decelerates at maximum available deceleration $a_{\text{max}}$, dissipating kinetic energy over a distance that scales quadratically with initial velocity.
 
 ### Quantitative Case Walkthrough
+
 To observe how computational tail latency directly determines physical survival, consider an autonomous mobile platform operating in a warehouse with an initial velocity $v_0 = 1.0\text{ m/s}$, a maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and an available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
 
 Under nominal $P_{50}$ execution ($\Delta t = 30\text{ ms}$), the reaction distance is $1.0 \times 0.030 = 3\text{ cm}$, the braking distance is $\frac{1.0^2}{2 \times 2.0} = 25\text{ cm}$, and the total stopping distance is $28\text{ cm}$. The robot halts safely with a $7\text{ cm}$ safety margin. 
@@ -187,6 +145,7 @@ However, under a tail $P_{99}$ latency spike ($\Delta t = 230\text{ ms}$) caused
 The systems takeaway is stark: a $200\text{ ms}$ computational scheduling stall adds exactly $20\text{ cm}$ of unguided projectile travel, turning a certified safe maneuver into a destructive physical impact.
 
 ### Dynamic Safety Clearance Invariants
+
 To guarantee collision-free operation under worst-case tail latency, the real-time microcontroller continuously evaluates the *Dynamic Safety Clearance Invariant* on every 1 kHz tick in static SRAM:
 
 $$d_{\text{clearance}} \ge d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) + d_{\text{margin}}$$
@@ -194,11 +153,12 @@ $$d_{\text{clearance}} \ge d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) +
 Whenever available obstacle clearance violates this invariant, the microcontroller automatically vetoes high-level neural proposals and commands immediate controlled braking.
 
 
-## Column 3: Actuation
+## Column 3: Actuation Limits and Mechanical Jerk
 
 Actuators are not idealized mathematical torque sources. They must build magnetic flux against stator winding impedance, transmit torque through finite-stiffness gear teeth, and continuously respect mechanical structural limits.
 
 ### Stator Inductance and Electrical Rise Time
+
 The voltage-current relationship of a motor phase winding follows Faraday's law:
 
 $$V(t) = R \cdot I(t) + L \frac{dI(t)}{dt} + K_e \cdot \omega(t)$$
@@ -210,20 +170,29 @@ $$\tau_e = \frac{L}{R}$$
 When applying voltage, phase current rises exponentially: $I(t) = \frac{V_{\text{bus}} - K_e\omega}{R}\left(1 - e^{-t/\tau_e}\right)$. Achieving 95% commanded torque consumes approximately $3\tau_e$ ($6\text{ to } 15\text{ ms}$). Furthermore, as rotor speed $\omega(t)$ increases, back-EMF ($K_e\omega$) opposes bus voltage, reducing torque responsiveness at high speeds.
 
 ### Transmissions and Jerk Continuity
+
 Transmissions (such as harmonic drives, planetary reducers, and cycloidal drives) transfer torque through gear teeth subject to shear stress limits ($\sigma_{\text{shear}} \le \sigma_{\text{yield}}$). If a discrete neural policy emits step changes in trajectory waypoints, commanded acceleration jumps discontinuously, implying unbounded mechanical jerk:
 
 $$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} \longrightarrow \infty$$
 
-Unbounded jerk triggers three severe physical failure modes. First, it excites structural resonances across wide frequency bandwidths, causing mechanical vibrations in robotic linkages. Second, thin-walled flexsplines and gear teeth suffer cyclical shock loading, causing micro-fractures, tooth pitting, and catastrophic gear shear. Third, high-frequency structural vibration saturates MEMS IMUs and accelerometers, corrupting state estimators and causing closed-loop tracking to diverge.
+Unbounded jerk triggers three severe physical failure modes:
+1. *Structural Resonance:* High-frequency vibration modes in robotic linkages are excited, leading to violent oscillations.
+2. *Gear Tooth Shear:* Thin-walled flexsplines and precision gear teeth suffer shock loading, causing tooth pitting, micro-fractures, and tooth shear.
+3. *Sensor Saturation:* Mechanical vibrations propagate through the chassis, saturating MEMS IMUs and corrupting state estimators.
 
 To protect mechanical hardware, trajectory commands must maintain $\mathcal{C}^2$ differential continuity with bounded jerk ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$). Modern systems enforce this by fitting quintic splines across predicted action chunks and applying temporal ensembling to blend overlapping trajectory chunks smoothly across time.
 
+::: {.callout-note title="Micro-Case: The Sheared Harmonic Flexspline"}
+During high-speed trajectory tracking on an articulated 6-axis manipulator, a neural policy updated its target joint positions at $50\text{ Hz}$ using un-smoothed step setpoints. At an aggressive direction reversal, the commanded acceleration stepped instantaneously from $+12\text{ rad/s}^2$ to $-12\text{ rad/s}^2$, generating an impulsive jerk spike exceeding $2400\text{ rad/s}^3$. The resulting shock load exceeded the shear yield limit of the titanium-alloy flexspline cup, stripping the gear teeth and permanently destroying the joint actuator.
+:::
 
-## Column 4: Energy
+
+## Column 4: Energy, Joule Heating, and Thermal Derating
 
 Every actuation command requests physical work, and no energy conversion is perfectly conservative. Resistive losses in motor coils and power converters generate irreversible Joule heat ($P_{\text{loss}} = I^2 R$).
 
 ### Thermal Time Constants and Continuous Ratings
+
 An electric motor has thermal capacitance $C_{\text{th}}$ (heat storage in copper and iron) and thermal resistance $R_{\text{th}}$ (dissipation to ambient). These parameters define the thermal time constant:
 
 $$\tau_{\text{th}} = R_{\text{th}} C_{\text{th}}$$
@@ -241,26 +210,18 @@ $$\Delta t_{\text{burst, max}} \le \tau_{\text{th}} \left( \frac{I_{\text{cont}}
 Commanding double the continuous current reduces the safe burst window to one-quarter of $\tau_{\text{th}}$; commanding four times the continuous current reduces it to one-sixteenth. Exceeding this limit causes stator insulation breakdown ($>180^\circ\text{C}$) or irreversible rotor magnet demagnetization ($>100^\circ\text{C}$).
 
 ### Firmware $I^2t$ Thermal Clamping
+
 Because physical thermistors mounted on motor casings exhibit a $5\text{--}30\text{ s}$ spatial conduction lag, the real-time microcontroller cannot wait for thermistor readings during stall events. Instead, the firmware maintains an $I^2 t$ thermal energy accumulator in static SRAM on every 1 kHz tick:
 
 $$E_{\text{thermal}}[k] = \max\left( 0, \; E_{\text{thermal}}[k-1] + \left( I^2[k] - I_{\text{cont}}^2 \right) \Delta t \right)$$
 
 When $E_{\text{thermal}}$ crosses safety thresholds, the microcontroller autonomously scales down allowed current, clamping motor drive to $I_{\text{cont}}$ before wire insulation melts.
 
-::: {.callout-archetype title="Archetype Focus: Cybernetic Energy and Process Systems — Megawatt Grid Storage Inverter"}
-* **Physical System:** 500 kW grid-tied battery energy storage inverter with liquid cooling loop.
-* **Archetype Domain:** Archetype 3 (Cybernetic Energy and Process Systems).
-* **Governing Physical Column:** Column 4 (Energy, Thermal Accumulation, and Derating).
-* **Physical State Dynamics ($W_t \to W_{t+1}$):** Thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics.
-* **The Systems Tension:** A high-level neural policy running on an edge server optimizes wholesale grid price arbitrage and battery state-of-charge ($1\text{ Hz}$ dispatch). If a sudden grid voltage sag occurs, the model commands maximum reactive current, but thermal accumulation ($\tau_{\text{th}} = 45\text{ s}$) threatens to destroy power semiconductor junctions ($T_j \ge 150^\circ\text{C}$).
-* **The Proposal–Permission Contract:** The untrusted MPU proposes active/reactive power dispatch vectors ($P_t, Q_t$). The trusted DSP/microcontroller permission supervisor executes at $1000\text{ Hz}$ in zero-allocation static SRAM, continuously integrating the $I^2t$ thermal accumulator and autonomously clamping current to $I_{\text{cont}}$ before silicon breakdown occurs.
-* **Cross-Archetype Synthesis:** While Mobility (Archetype 1) is bounded by kinetic stopping distances ($d_{\text{stop}}$) and Contact Manipulation (Archetype 2) is bounded by gearbox tooth shear ($\sigma_{\text{shear}}$), Cybernetic Energy Systems (Archetype 3) are bounded by thermal accumulation ($I^2t$) and fluid transport lags under the exact same proposal-permission architecture.
-:::
+### Silicon Thermal Throttling: The Cold Bench Fallacy
 
-### Silicon Thermal Throttling
 Thermal accumulation also governs edge silicon executing neural models ($P_{\text{SoC}} \propto V_{\text{core}}^2 f_{\text{clk}}$). When junction temperatures exceed throttling thresholds ($85\text{--}95^\circ\text{C}$), on-die Dynamic Thermal Management downclocks the neural accelerator to protect the package.
 
-This creates the Cold Bench Fallacy: a vision-language-action policy benchmarked on a cold laboratory bench executes in $22\text{ ms}$, comfortably meeting its $50\text{ ms}$ real-time intent lease. But after 20 minutes of continuous operation inside an enclosed chassis, thermal throttling cuts clock frequencies in half. Inference latency inflates to $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy produces mathematically valid outputs, but they arrive after the intent lease has expired, causing the microcontroller to reject proposals and engage dynamic braking, collapsing system operational availability.
+This creates the *Cold Bench Fallacy*: a vision-language-action policy benchmarked on a cold laboratory bench executes in $22\text{ ms}$, comfortably meeting its $50\text{ ms}$ real-time intent lease. But after 20 minutes of continuous operation inside an enclosed chassis, thermal throttling cuts clock frequencies in half. Inference latency inflates to $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy produces mathematically valid outputs, but they arrive after the intent lease has expired, causing the microcontroller to reject proposals and engage dynamic braking, collapsing system operational availability.
 
 | Physical Subsystem | Dominant Thermal Mechanism | Characteristic $\tau_{\text{th}}$ | Critical Temperature Limit | Physical Breakdown Failure Mode | Real-Time Safety Countermeasure |
 | :--- | :--- | :---: | :---: | :--- | :--- |
@@ -271,58 +232,68 @@ This creates the Cold Bench Fallacy: a vision-language-action policy benchmarked
 
 : Thermal characteristics, breakdown mechanisms, and safety countermeasures across physical and computational subsystems in Physical AI architectures. {#tbl-thermal-domains}
 
+::: {.callout-archetype title="Cybernetic Energy and Process Systems — Megawatt Grid Storage Inverter"}
+* **Physical System:** 500 kW grid-tied battery energy storage inverter with liquid cooling loop.
+* **Archetype Domain:** Archetype 3 (Cybernetic Energy and Process Systems).
+* **Governing Physical Column:** Column 4 (Energy, Thermal Accumulation, and Derating).
+* **Physical State Dynamics ($W_t \to W_{t+1}$):** Thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics.
+* **The Systems Tension:** A high-level neural policy running on an edge server optimizes wholesale grid price arbitrage and battery state-of-charge ($1\text{ Hz}$ dispatch). If a sudden grid voltage sag occurs, the model commands maximum reactive current, but thermal accumulation ($\tau_{\text{th}} = 45\text{ s}$) threatens to destroy power semiconductor junctions ($T_j \ge 150^\circ\text{C}$).
+* **The Proposal–Permission Contract:** The untrusted MPU proposes active/reactive power dispatch vectors ($P_t, Q_t$). The trusted DSP/microcontroller permission supervisor executes at $1000\text{ Hz}$ in zero-allocation static SRAM, continuously integrating the $I^2t$ thermal accumulator and autonomously clamping current to $I_{\text{cont}}$ before silicon breakdown occurs.
+* **Cross-Archetype Synthesis:** While Mobility (Archetype 1) is bounded by kinetic stopping distances ($d_{\text{stop}}$) and Contact Manipulation (Archetype 2) is bounded by gearbox tooth shear ($\sigma_{\text{shear}}$), Cybernetic Energy Systems (Archetype 3) are bounded by thermal accumulation ($I^2t$) and fluid transport lags under the exact same proposal-permission architecture.
+:::
 
-## Column 5: Silicon
 
-While Columns 1 through 4 examined the physical constraints governing the external world and the robotic plant—time freshness, inertial momentum, electromagnetic torque rise time, and thermal accumulation—the fifth physical column addresses the solid-state silicon substrate itself. In conventional software engineering, algorithms are abstracted as mathematical operations executing inside an idealized, infinite-bandwidth computing fabric. In Physical AI, however, intelligence executes on physical semiconductor circuits characterized by finite memory crossbar bandwidth, shared interconnect buses, multi-level cache hierarchies, and independent clock domains. When dense neural policies, high-bandwidth camera ingestion pipelines, and deterministic real-time control loops share this physical silicon substrate, resource contention within the memory subsystem becomes the primary physical root cause of the tail latency blowouts ($P_{99}$ and $P_{99.9}$) introduced in Column 1. To guarantee deterministic closed-loop stability, the physical AI architect must design memory transactions, inter-core communication, and execution runtimes with the same architectural rigor applied to mechanical gearboxes and thermal cooling loops.
+## Column 5: Silicon Contention and Hardware Determinism
+
+While Columns 1 through 4 examined the physical constraints governing the external world and the robotic plant—time freshness, inertial momentum, electromagnetic torque rise time, and thermal accumulation—the fifth physical column addresses the solid-state silicon substrate itself. In Physical AI, intelligence executes on physical semiconductor circuits characterized by finite memory crossbar bandwidth, shared interconnect buses, multi-level cache hierarchies, and independent clock domains.
 
 ### UMA DRAM Crossbar Contention
-Modern embedded computing platforms deployed at the physical edge—such as autonomous mobile robots, quadrupedal platforms, and articulated industrial manipulators—almost universally adopt heterogeneous System-on-Chip (SoC) architectures. To minimize physical silicon area, package footprint, and electrical power consumption, these edge SoCs rely on a Unified Memory Architecture (UMA). Under a UMA design, multi-core application central processing units (CPUs), high-throughput Neural Processing Units (NPUs), graphics processing units (GPUs), integrated image signal processors (ISPs), and autonomous Direct Memory Access (DMA) engines all connect to a single shared dynamic random-access memory (DRAM) subsystem through an on-die system crossbar interconnect.
 
-This unified topology introduces an intense architectural tax during real-time perception workloads, termed the *ingestion tax*. Modern embodied policies require rich visual observations to resolve environmental geometry and semantic affordances, streaming uncompressed high-definition video from multiple cameras (such as stereo $1080\text{p}$ or $4\text{K}$ video streams at $60\text{ frames per second}$). A dual-camera $1080\text{p}$ RGB streaming pipeline at $60\text{ FPS}$ ingests approximately $746\text{ MB/s}$ of raw pixel data, while an uncompressed $4\text{K}$ perception stream demands over $1.49\text{ GB/s}$ of continuous memory write throughput. The camera interface receivers and DMA engines autonomously blast these massive byte streams across the system crossbar directly into DRAM circular buffers.
+Modern embedded computing platforms deployed at the physical edge almost universally adopt heterogeneous System-on-Chip (SoC) architectures based on a Unified Memory Architecture (UMA). Under a UMA design, multi-core application CPUs, high-throughput Neural Processing Units (NPUs), GPUs, image signal processors (ISPs), and autonomous Direct Memory Access (DMA) engines all connect to a single shared dynamic RAM (DRAM) subsystem through an on-die system crossbar interconnect.
 
-Concurrently, the neural accelerator executes vision-language-action backbones or diffusion policy models. Unlike compute-bound matrix multiplications in large datacenter clusters with gigabytes of high-bandwidth memory (HBM), edge neural inference is heavily memory-bandwidth bound. During every forward evaluation pass, the NPU must stream hundreds of megabytes of neural network weights from DRAM into its local on-chip SRAM register files and multiply-accumulate (MAC) arrays. 
+This unified topology introduces an intense architectural tax during real-time perception workloads, termed the *ingestion tax*. A dual-camera $1080\text{p}$ RGB streaming pipeline at $60\text{ FPS}$ ingests approximately $746\text{ MB/s}$ of raw pixel data, while an uncompressed $4\text{K}$ perception stream demands over $1.49\text{ GB/s}$ of continuous memory write throughput. The camera interface receivers and DMA engines autonomously blast these massive byte streams across the system crossbar directly into DRAM circular buffers.
 
-When high-bandwidth camera DMA write bursts coincide with dense NPU weight read transactions, the aggregate demand exceeds the saturation threshold of the shared DRAM crossbar interconnect. The memory controller's internal read queues become congested behind queued DMA write transactions. Because dynamic RAM requires physical bank precharge and row-activation cycles ($\text{tRP}$ and $\text{tRCD}$) when switching across disparate memory addresses, rapid interleaving between sequential camera frame writes and non-contiguous neural weight reads degrades effective memory bus efficiency by forty to sixty percent. As a direct consequence, the NPU compute pipeline suffers extensive memory stall cycles, waiting for weight tensors to arrive. This silicon bus contention inflates neural inference execution time from a nominal median of $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$, transforming an otherwise capable neural planner into an unpredictable bottleneck that starves downstream real-time control.
+Concurrently, the neural accelerator executes vision-language-action backbones or diffusion policy models. During every forward evaluation pass, the NPU must stream hundreds of megabytes of neural network weights from DRAM into its local on-chip SRAM register files. When high-bandwidth camera DMA write bursts coincide with dense NPU weight read transactions, the aggregate demand exceeds the saturation threshold of the shared DRAM crossbar interconnect. The memory controller's internal read queues become congested behind queued DMA write transactions, degrading effective memory bus efficiency by 40 to 60 percent. As a direct consequence, the NPU compute pipeline suffers extensive memory stall cycles, inflating neural inference execution time from a nominal median of $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
 
 ### Hardware QoS and Zero-Copy Buffers
-To prevent memory bus contention from inducing catastrophic latency tails, physical AI architectures enforce hardware-level traffic shaping and zero-copy memory pipelines across the SoC fabric. Relying on operating system thread scheduling alone is insufficient because standard software schedulers have no visibility into low-level hardware bus transactions occurring on the silicon crossbar.
 
-First, the embedded architecture configures the memory controller's hardware Quality-of-Service (QoS) arbitration logic, such as ARM CoreLink AXI QoS priority engines. In an unmanaged SoC, the crossbar interconnect treats all bus transactions under simple round-robin or first-come, first-served arbitration, allowing bulk sensor DMA writes to block time-critical compute requests. By configuring hardware QoS registers at the silicon interconnect level, the system establishes strict priority hierarchies. Read requests originating from the neural processing unit and high-frequency real-time control packets are assigned the highest hardware priority classes, while bulk sensor DMA ingestion streams are assigned lower, bandwidth-throttled priority tiers. When crossbar congestion occurs, the memory controller autonomously pauses lower-priority DMA write bursts, servicing time-critical neural weight reads with bounded, deterministic memory access latency.
+To prevent memory bus contention from inducing catastrophic latency tails, physical AI architectures enforce hardware-level traffic shaping and zero-copy memory pipelines across the SoC fabric:
 
-Second, the perception pipeline must eliminate cache hierarchy pollution through non-cacheable zero-copy DMA buffers. In naive software implementations, incoming camera frames are ingested into standard user-space memory pools allocated by the operating system. As the CPU and NPU process these incoming frames, gigabytes of transient pixel data stream through the shared multi-level cache hierarchy (L2 and L3 caches). This flood of bulk pixel data rapidly evicts hot neural network weight tensors, activation scratchpads, and real-time state estimation lookup tables from the cache lines, forcing subsequent computation passes to incur costly cache misses and main memory reloads.
-
-Physical AI architectures eliminate this cache thrashing by allocating dedicated, physically contiguous memory regions using contiguous memory allocators (such as Linux DMA-BUF or CMA subsystems) configured with non-cacheable memory attributes. The camera DMA engine writes digitized pixel packets directly into these physically mapped circular ring buffers in DRAM without routing data through the CPU or NPU cache hierarchies. The neural accelerator and image signal processor then read raw pixel tensors directly from these shared physical addresses via hardware pointers, achieving zero-copy data transfer. By bypassing cache allocation entirely during high-bandwidth ingestion, the system preserves cache residency for critical model weights and execution stacks, isolating neural inference from sensory ingestion jitter.
+1. **Hardware Quality-of-Service (QoS) Arbitration:** Embedded architectures configure the memory controller's hardware QoS priority registers (such as ARM CoreLink AXI QoS engines). Read requests originating from the neural processing unit and high-frequency real-time control packets are assigned the highest hardware priority classes, while bulk sensor DMA ingestion streams are assigned lower, bandwidth-throttled priority tiers. When crossbar congestion occurs, the memory controller autonomously pauses lower-priority DMA write bursts, servicing time-critical neural weight reads with bounded, deterministic memory access latency.
+2. **Non-Cacheable Zero-Copy DMA Buffers:** In naive software implementations, incoming camera frames stream through the CPU/NPU cache hierarchy (L2 and L3 caches), evicting hot neural network weights and activation scratchpads. Physical AI architectures eliminate this cache thrashing by allocating physically contiguous memory regions using contiguous memory allocators (such as Linux DMA-BUF) configured with non-cacheable memory attributes. The camera DMA engine writes digitized pixel packets directly into DRAM without routing data through cache lines, preserving cache residency for critical model weights.
 
 ### Cache Coherency and SRAM Mailboxes
-Embodied autonomy fundamentally relies on a heterogeneous compute topology: an application processor (MPU) executes the complex, non-deterministic cognitive and perception stack under an operating system such as Linux, while a dedicated real-time microcontroller (MCU) executes hard real-time dynamic safety enforcement and high-frequency motor commutation. However, bridging these two distinct silicon domains exposes the cache coherency chasm.
 
-The host application processor operates with complex multi-level cache hierarchies (L1 instruction and data caches, private L2 caches, and a shared system L3 cache), out-of-order execution pipelines, and a Memory Management Unit (MMU) governing virtual memory paging. In contrast, the real-time microcontroller operates in physical address space using deterministic, single-cycle static SRAM (such as Tightly-Coupled Memory, TCM), completely lacking an MMU, virtual page tables, or hardware cache snooping logic.
+Embodied autonomy fundamentally relies on a heterogeneous compute topology: an application processor (MPU) executes the complex, non-deterministic cognitive stack under Linux, while a dedicated real-time microcontroller (MCU) executes hard real-time dynamic safety enforcement in physical address space using deterministic static SRAM.
 
-When the application processor computes a multi-step trajectory chunk and writes candidate waypoints into shared DRAM, the newly generated data initially resides in the application core's dirty L1 or L2 write-back cache lines rather than in physical DRAM. Because the real-time microcontroller reads physical memory directly without participating in the application core's hardware cache coherency protocol, the microcontroller reads stale, uninitialized, or corrupted memory if it accesses the buffer before the application core's cache lines are evicted. Conversely, if the application core continuously performs explicit cache maintenance operations—issuing cache clean and invalidate instructions—the resulting software overhead introduces millisecond-scale execution jitter that undermines temporal predictability.
-
-To bridge this cache coherency chasm deterministically, physical AI systems implement a three-part data exchange topology. First, inter-core communication is hosted entirely within a dedicated region of on-chip static SRAM that is mapped as non-cacheable and strongly-ordered (or device memory) in the application processor's MMU page tables. By ensuring that writes from the application processor bypass the cache hierarchy and commit immediately to physical SRAM cells, the architecture eliminates the need for software cache flushing while guaranteeing zero staleness for the receiving microcontroller. Second, trajectory proposals and actuator telemetry are transferred across shared SRAM using lock-free single-producer single-consumer circular ring buffers synchronized via 64-bit atomic monotonic sequence counters aligned to hardware cache line boundaries, eliminating operating system mutexes, semaphores, and spinlocks. Third, when the application processor commits an action chunk into the shared ring buffer, it asserts a memory-mapped hardware mailbox peripheral interrupt line, firing directly into the microcontroller's physical interrupt vector table to wake the safety loop in sub-microsecond time.
+To bridge these two distinct silicon domains without cache coherency bugs or OS locking overhead:
+1. Inter-core communication is hosted entirely within a dedicated region of on-chip static SRAM mapped as non-cacheable in the MPU's MMU page tables.
+2. Trajectory proposals and actuator telemetry are transferred across shared SRAM using lock-free single-producer single-consumer circular ring buffers synchronized via 64-bit atomic monotonic sequence counters.
+3. When the application processor commits an action chunk into the shared ring buffer, it asserts a memory-mapped hardware mailbox interrupt line, firing directly into the microcontroller's physical interrupt vector table to wake the safety loop in sub-microsecond time.
 
 ### The Iron Law: Zero Dynamic Heap Allocation
-While high-level cognitive models running on application processors rely extensively on dynamic software abstractions, the low-level safety enforcer running on the real-time microcontroller operates under a radically different computational paradigm. Mechanical systems and closed-loop control laws cannot tolerate execution timing uncertainty; a motor control interrupt service routine that misses its $1.0\text{ ms}$ execution deadline by fifty microseconds can trigger current overshoot, inverter shoot-through, or dynamic instability.
 
-To guarantee that worst-case execution time (WCET) remains strictly bounded and deterministic, real-time embedded safety systems enforce the Iron Law of Zero Dynamic Heap Allocation.
+To guarantee that worst-case execution time (WCET) on the real-time microcontroller remains strictly bounded and deterministic, real-time embedded safety systems enforce the Iron Law of Zero Dynamic Heap Allocation.
 
 ::: {.callout-important title="The Iron Law of Real-Time Safety: Zero Dynamic Heap Allocation"}
 Zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing STL containers such as `std::vector` and `std::map`) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines.
 :::
 
-Permitting dynamic heap allocation within real-time control silicon introduces three severe, irrecoverable failure modes. First, standard free-list dynamic allocators exhibit non-deterministic execution times due to variable-length pointer chasing during free-list traversal, causing timing stalls that miss real-time deadlines. Second, continuous dynamic allocation and deallocation over multi-hour physical missions fragments the heap into non-contiguous blocks, eventually triggering catastrophic out-of-memory allocation failures. Third, real-time microcontrollers lack Memory Management Units to catch stack-heap collisions; an expanding dynamic heap silently collides with and overwrites descending execution call stack frames, destroying return addresses and causing fatal unhandled processor lockups (`HardFault_Handler`) that leave actuators in free-wheeling, unguided states.
+Permitting dynamic heap allocation within real-time control silicon introduces three severe, irrecoverable failure modes:
+1. *Non-Deterministic Pointer Chasing:* Standard free-list allocators exhibit variable execution times during free-list traversal, causing timing stalls that miss real-time deadlines.
+2. *Heap Fragmentation:* Continuous dynamic allocation over multi-hour physical missions fragments memory, eventually triggering catastrophic out-of-memory allocation failures.
+3. *Stack-Heap Collisions:* Real-time microcontrollers lack MMUs to catch memory collisions; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing fatal unhandled processor lockups (`HardFault_Handler`) that leave actuators unguided.
 
-To eliminate these vulnerabilities, all memory structures on the real-time safety microcontroller are statically allocated at compile time. Every action chunk ring buffer, state estimation vector, kinematic transformation matrix, and Control Barrier Function quadratic program workspace is declared as fixed-size global static storage residing in dedicated SRAM memory sections (`.bss` and `.data`). Compile-time static allocation guarantees that the total memory footprint of the safety system is mathematically verifiable prior to flashing firmware onto silicon. The memory layout remains completely immutable throughout operation, reducing dynamic allocation overhead to zero, eliminating memory fragmentation, and guaranteeing that the real-time safety enforcer executes with absolute temporal determinism.
+All memory structures on the real-time safety microcontroller are statically allocated at compile time. Every ring buffer, state vector, transformation matrix, and quadratic program workspace is declared as fixed-size global static storage residing in dedicated SRAM sections (`.bss` and `.data`). Compile-time static allocation guarantees that the total memory footprint is mathematically verifiable prior to flashing firmware, ensuring absolute temporal determinism.
 
 
 ## The Requirements Ledger: Freezing Physical Invariants
 
-Every engineering discipline requires a formal specification sheet that establishes the physical operating envelope of a machine prior to deployment. In civil engineering, structural blueprints record maximum load capacities and material yield strengths; in aeronautics, flight manuals record stall speeds, flutter margins, and service ceilings. In Physical AI, deploying learned policies without an empirical, hardware-verified specification sheet invites unmitigated hardware destruction. Before any autonomous agent or neural policy is permitted to command physical actuators, the engineering team must measure, calculate, and freeze the system's physical operating limits in a formal *Requirements Ledger*.
+Every engineering discipline requires a formal specification sheet that establishes the physical operating envelope of a machine prior to deployment. In Physical AI, deploying learned policies without an empirical, hardware-verified specification sheet invites hardware destruction. Before any autonomous agent is permitted to command physical actuators, the engineering team must measure, calculate, and freeze the system's physical operating limits in a formal *Requirements Ledger*.
 
 ### The Five Columns Across Applications
-The Five Physical Columns provide a universal analytical framework that applies across the entire spectrum of physical AI embodiments (@tbl-columns-across-applications). By understanding how governing physical principles map to concrete application domains, engineering teams can identify the specific failure modes and hardware test points relevant to their platform.
+
+The Five Physical Columns provide a universal analytical framework that applies across the entire spectrum of physical AI embodiments (@tbl-columns-across-applications).
 
 | Physical Column | Governing Physical Principle | Terrestrial & Aerial Mobility (AMRs, Drones, Quadrupeds) | Contact Manipulation & Surgery (Industrial Arms, Grippers) | High-Voltage Cybernetics (Grid Inverters, Fast Chargers) | Fluid, Thermal & Chemical (Datacenter Cooling, Reactors) | Active Medical & Bio-Cybernetics (Ventilators, Dialysis) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -335,7 +306,8 @@ The Five Physical Columns provide a universal analytical framework that applies 
 : The Five Physical Columns across the application spectrum. Mapping foundational physical principles to diverse Physical AI embodiments. {#tbl-columns-across-applications}
 
 ### Archetypes across the Physical Columns
-Not all physical systems are constrained equally by every column. A multi-megawatt grid battery storage system does not experience mechanical stopping distance or gearbox backlash, while a high-speed agile quadrotor is dominated by aerodynamic drag and translational momentum rather than high-voltage semiconductor thermal runaway. Understanding how the Three Canonical Archetypes map across the Five Physical Columns allows engineers to tailor safety enforcement architectures to the specific physical laws that bind their hardware platform (@tbl-archetype-columns).
+
+Not all physical systems are constrained equally by every column. Understanding how the Three Canonical Archetypes map across the Five Physical Columns allows engineers to tailor safety enforcement architectures to the specific physical laws that bind their hardware platform (@tbl-archetype-columns).
 
 | Physical Column | Archetype 1: Mobility (Rovers, Drones, AMRs) | Archetype 2: Contact Manipulation (Arms, Hands, Tooling) | Archetype 3: Cybernetic Energy & Processes (Grid Inverters, Fluid Loops) |
 | :--- | :--- | :--- | :--- |
@@ -347,9 +319,8 @@ Not all physical systems are constrained equally by every column. A multi-megawa
 
 : The Canonical Archetypes across the Five Physical Columns. Qualitative binding severity across physical embodiments (Binding constraint, Moderate constraint, Non-binding constraint). {#tbl-archetype-columns}
 
-By inspecting @tbl-archetype-columns, an engineering team can immediately identify the binding physical invariants that must be codified in firmware. For a mobile robot (Archetype 1), safety hinges primarily on Columns 1, 2, and 5: ensuring that latency tails do not cause the vehicle to overrun its dynamic stopping distance. For an articulated industrial arm (Archetype 2), Columns 1, 3, 4, and 5 dominate: preventing impulsive jerk from shearing gear teeth and clamping continuous motor currents to protect stator insulation. For a cybernetic power system (Archetype 3), Columns 3, 4, and 5 govern survival: preventing thermal semiconductor breakdown and maintaining microsecond silicon determinism.
-
 ### The Requirements Ledger
+
 The *Requirements Ledger* records the eight foundational physical constants and execution thresholds that define a platform's non-negotiable safety envelope (@tbl-requirements-ledger). Every parameter in the ledger is grounded in SI units, derived from first principles, and verified through hardware bench metrology.
 
 | Parameter Symbol | Physical Constraint Name | SI / Engineering Unit | Hardware Benchmark Method | Real-Time Safety Invariant Rule |
@@ -400,8 +371,6 @@ When engineering embodied systems, teams frequently inherit intuitions from desk
 
 ## Summary
 
-Physical AI begins where digital software abstractions collide with unyielding physical laws. Throughout this chapter, we established the quantitative instruments, physical constraints, and silicon mechanisms that govern the boundary between learned deliberation and physical reality. Unlike digital cloud computing where threads wait benignly for data, physical dynamical systems evolve along an unyielding time axis, dictating that worst-case tail latency plus an empirical safety margin must remain strictly within the physical world deadline ($t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}}$) to prevent phase margin erosion ($\text{PM} \le 0^\circ$).
+Physical AI begins where digital software abstractions collide with unyielding physical laws. Throughout this chapter, we established the quantitative instruments, physical constraints, and silicon mechanisms that govern the boundary between learned deliberation and physical reality. Unlike digital computing where execution delay is benign, physical dynamical systems evolve along an unyielding time axis, dictating that worst-case tail latency must remain strictly within the physical world deadline ($t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}}$) to prevent destructive phase margin erosion ($\text{PM} \le 0^\circ$).
 
-By deconstructing the complete seven-stage sense-to-actuation waterfall—from optical photodiode charge integration and DMA bus ingestion, through neural perception and action chunk decoding, to inter-processor SRAM mailboxes, real-time safety enforcement, and electromagnetic stator rise times—we mapped the microsecond budgets across the Five Physical Columns. We proved why $P_{50}$ throughput is a statistical illusion, derived the geometric Freshness Wall ($\Delta t_{\text{wall}}$), established the Two-Phase Stopping Equation ($d_{\text{stop}} = v_0 \Delta t + \frac{v_0^2}{2a_{\text{max}}}$), bounded electromagnetic rise times ($\tau_e = L/R$), enforced $\mathcal{C}^2$ polynomial jerk continuity ($\dddot{\mathbf{q}}$), and codified the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`) in static SRAM.
-
-With the Five Physical Columns established, the vertical pillars of the Physical Agent Co-Design Matrix are complete. In the following chapter on *Cognitive Architecture and Multi-Rate Runtimes*, we turn our focus to the horizontal rows of the Co-Design Matrix (*Perceive*, *Remember*, *Reason*, *Plan*, and *Execute*), examining how an embodied machine constructs spatial representations of 3D geometry, maintains persistent memory under sensory occlusion, reasons about long-horizon goals, plans multi-step action chunks, and executes real-time reflexes across heterogeneous, multi-rate silicon runtimes.
+By tracing the seven-stage sense-to-actuation waterfall—from optical charge integration through neural compute to electromagnetic rise times—we established the Five Physical Columns. We proved why $P_{50}$ throughput is an illusion, derived the Freshness Wall ($\Delta t_{\text{wall}}$), formalized dynamic stopping kinematics ($d_{\text{stop}}$), bounded inductive rise times ($\tau_e = L/R$), enforced $\mathcal{C}^2$ jerk continuity ($\dddot{\mathbf{q}}$), and codified the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`) in static SRAM. With the physical columns established, Chapter 3 turns to the horizontal rows of the Co-Design Matrix (*Perceive*, *Remember*, *Reason*, *Plan*, *Execute*), orchestrating multi-rate cognitive execution across heterogeneous silicon.
