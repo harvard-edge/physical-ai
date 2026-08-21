@@ -1,6 +1,6 @@
 # Cognitive Architecture and Multi-Rate Runtimes\chaptersubtitle{The Five Dimensions, Multi-Rate Runtimes, and the Co-Design Matrix}
 
-![Systems Organ Focus: Tracing the complete cognitive lifecycle across the five sensory-motor stages, the multi-rate temporal hierarchy, and the Physical Agent Co-Design Matrix. Chapter 3 establishes the computational workflows and runtime architectures that execute within physical constraints.](figures/fig_pipeline_locator.svg){#fig-locator-ch03 width=100%}
+![Systems Organ Focus: Tracing the complete cognitive lifecycle across the five sensory-motor stages, the multi-rate temporal hierarchy, and the Physical Agent Co-Design Matrix. Chapter 3 establishes the computational workflows and runtime architectures that execute within physical constraints.](figures/fig_pipeline_locator.svg){#fig-locator-ch03 width=100% fig-pos="H"}
 
 *How do we bridge the massive temporal gap between a slow, stochastic foundation model and a microsecond-deterministic motor reflex without crashing the machine?*
 
@@ -22,14 +22,32 @@ After studying this chapter, you will be able to:
 7. Implement a multi-rate dual-brain execution runtime with lock-free SRAM ring buffers, atomic sequence counters, and zero dynamic heap allocation (`malloc = 0`).
 :::
 
+
+## The Cognitive Imperative: Why Embodiment Demands Layered Intelligence
+
+In modern artificial intelligence research, the prevailing trend has been the relentless pursuit of scale: training larger autoregressive foundation models on vast datasets to produce increasingly capable general-purpose systems. In the digital realm, scaling model parameter count from billions to hundreds of billions yields remarkable emergent capabilities in reasoning, coding, and open-world language understanding. When software operates purely on text tokens or static pixels, the non-deterministic execution latency of these massive models—spanning hundreds of milliseconds to several seconds per forward pass—is an acceptable trade-off for their high semantic competence.
+
+Attempting to apply this monolithic, single-model approach directly to physical embodied systems creates a profound computational and physical contradiction. A physical machine interacting with the real world does not operate on a single time scale. Consider what is required when an autonomous mobile robot navigates a crowded logistics warehouse. At the highest level of abstraction, the agent must interpret human instructions, recognize novel objects, and plan multi-step routes around dynamic obstacles—a high-level semantic deliberation workload that requires billions of parameters and consumes several hundred milliseconds. Simultaneously, the robot must track continuous motion trajectories at intermediate frequencies ($20\text{ to } 50\text{ Hz}$) to negotiate moving pedestrians. At the lowest level, the physical hardware must maintain magnetic field alignment across multi-phase motor windings and evaluate kinematic safety constraints at deterministic rates ($1000\text{ Hz}$ to $20\text{ kHz}$).
+
+If a system attempts to execute these disparate tasks inside a single monolithic software loop, the computational variance of the high-level deliberative model directly pollutes the low-level real-time control loop. When the foundation model encounters a complex visual scene or suffers an operating system memory compaction stall, motor commands stop arriving. In the physical world, inertia does not pause: the unguided machine coasts blindly into obstacles, destroys mechanical transmissions, or loses dynamic balance.
+
+Embodied Physical AI demands a principled cognitive architecture. Rather than forcing a single model to span all time scales, we must decompose intelligence into a layered hierarchy of asynchronous runtimes spanning four orders of temporal magnitude. We begin by examining an incident autopsy that demonstrates the catastrophic consequences of cadence coupling.
+
+
+## Anatomy of a Cadence Failure: The Desynchronization Overrun
+
+To understand why monolithic execution architectures fail on physical hardware, consider the following incident from industrial logistics:
+
 ::: {.callout-autopsy title="The Cadence Desynchronization Overrun"}
 * **System:** Autonomous mobile manipulator sorting parcels in an active logistics warehouse, driven by an onboard vision-language-action (VLA) policy running in user-space Linux with direct Ethernet socket control to motor drives.
 * **Incident:** While navigating toward a pallet at $1.4\text{ m/s}$, the robot failed to detect a newly positioned steel roll cage, collided at full speed, bent the chassis steering tie-rods, and fractured an active stereo depth camera mount.
 * **Telemetry Snapshot:** At $T+44.120\text{ s}$, the high-level VLA model issued an open-ended navigation waypoint. Two hundred milliseconds later, the robot's visual backbone encountered a dynamic scene shift, triggering a massive key-value (KV) attention cache reallocation and garbage collection sweep in the Python runtime. The user-space control thread stalled for $1.150\text{ seconds}$. Because the trajectory was streamed without an expiring intent lease or real-time microcontroller safety supervisor, the motor drives continued executing the last latched velocity setpoint ($1.4\text{ m/s}$ forward) for $1.61\text{ meters}$ blind.
 * **Root Cause:** Temporal coupling and unbounded execution leases—the high-level deliberative AI was directly coupled to actuation timing without an intermediate trajectory chunker or a bare-metal microcontroller enforcing dynamic stopping distance limits.
 * **Architectural Flaw:** Monolithic cadence architecture. The system lacked multi-rate cadence decoupling, hardware-enforced intent leases, and an independent 1 kHz safety reflex to initiate autonomous dynamic braking upon host deliberation stalls.
-* **Provenance:** Engineered composite. The mechanism and failure path are drawn from documented field incidents; the system parameters and telemetry are constructed for pedagogical instruction.
+* **Provenance:** Engineered composite based on documented industrial automation incident classes; telemetry and system parameters are constructed for pedagogical instruction.
 :::
+
+The incident autopsy exposes the fundamental vulnerability of monolithic cadence systems: when slow, stochastic neural deliberation is directly coupled to physical actuator setpoints, an operating system stall transforms into a physical projectile hazard. To eliminate this vulnerability, Physical AI architectures structure dataflow across nine canonical lifecycle stations.
 
 
 ## The Embodied Cognitive Lifecycle: 9 Stations of Dataflow
@@ -105,8 +123,7 @@ The cognitive lifecycle concludes—and immediately restarts—at Station 9. As 
 
 Station 9 captures these emissions as the subsequent observation vector $O_{t+1}$, closing the causal loop. By comparing measured observations against predicted forward dynamics ($r = O_{\text{measured}} - O_{\text{predicted}}$), the system extracts innovation residuals to update state estimates, correct model drift, detect unexpected physical collisions, and trigger re-deliberation if an obstacle blocks progress.
 
-### Grounding the 9 Stations Across the Three Canonical Archetypes
-
+### Grounding Across the Three Canonical Archetypes
 To appreciate the universal applicability of this 9-station dataflow lifecycle, @tbl-lifecycle-archetypes illustrates how its execution manifests across the Three Canonical Archetypes of Physical AI:
 
 | Lifecycle Station | Archetype 1: Mobility (e.g., Quadruped on Scree) | Archetype 2: Contact Manipulation (e.g., Dual-Arm Assembly) | Archetype 3: Cybernetic Processes (e.g., Chemical Batch Reactor) |
@@ -136,7 +153,7 @@ The 9 stations of dataflow group naturally into five primary horizontal work dim
 | **Row 4: Plan** | Station 6 | Lease $\to$ Multi-Step Trajectory Chunks & Splines | Action Chunk $\mathbf{A}_{t:t+H}$ | Rolling horizon ($0.3\text{--}1.0\text{ s}$) |
 | **Row 5: Execute** | Stations 7, 8 | Chunks $\to$ Certified Phase Current & Commutation | Verified Control Command $\mathbf{u}_t^*$ | Micro-cadence ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
 
-: The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, temporal lifetimes, and owning chapters. {#tbl-five-cognitive-rows}
+: The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, and temporal lifetimes. {#tbl-five-cognitive-rows}
 
 ### Row 1 (Perceive): Spatial Grounding and 3D Affordance Tokens
 The primary systems responsibility of the perception dimension is spatial grounding: converting high-dimensional sensory arrays into compact, metric geometric tokens (3D poses, surface normals, bounding volumes, and contact friction) referenced to the physical coordinate frame of the robot.
@@ -164,8 +181,7 @@ The fourth cognitive dimension is trajectory planning: translating high-level sp
 
 Action Chunking Transformers (ACT) and Diffusion Policies decode an entire Action Chunk $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$):
 
-$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \dots, \; \mathbf{a}_{t+H-1} \right]
-$$
+$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \dots, \; \mathbf{a}_{t+H-1} \right]$$
 
 Action chunking provides delay amortization: a $30\text{ ms}$ inference yields $320\text{ ms}$ of continuous motion. Fitting quintic splines across waypoints guarantees $\mathcal{C}^2$ continuity (bounded jerk $\|\dddot{\mathbf{q}}\| \le \mathbf{J}_{\text{max}}$), while receding-horizon temporal ensembling eliminates step-to-step jerk discontinuities.
 
@@ -199,189 +215,93 @@ Operating at frequencies between $20\text{ Hz}$ and $50\text{ Hz}$ (periods of $
 
 Workloads in System 1.5 consist of compact, continuous control policies, such as Action Chunking Transformers (ACT) and conditional Diffusion Policies ($50\text{M}\text{ to } 200\text{M}$ parameters). In contrast to open-ended autoregressive language models, diffusion denoising schedules and transformer trajectory decoders execute over a fixed, predetermined number of tensor operations. This guarantees a tightly bounded forward-pass execution latency of $20\text{ to } 45\text{ ms}$.
 
-System 1.5 operates as a candidate trajectory generator. It ingests the active intent lease $\mathcal{L}_{\text{intent}}$ from System 2 alongside real-time proprioceptive joint feedback, generating action chunks $\mathbf{A}_{t:t+H}$ across a rolling horizon $H$.
+System 1.5 amortizes computational delay by predicting multi-step action chunks $\mathbf{A}_{t:t+H}$ across a rolling time horizon $H = 16\text{--}64$ steps ($300\text{--}1000\text{ ms}$). By evaluating overlapping chunks via receding-horizon temporal ensembling, System 1.5 delivers smooth, continuous trajectory waypoints while filtering out high-frequency sensor noise and inference jitter.
 
-To prevent inter-cadence race conditions and memory bus contention, System 1.5 writes action chunks into lock-free, single-producer single-consumer (SPSC) ring buffers residing in shared static SRAM or pinned DMA-accessible memory. By double-buffering trajectory chunks and decoupling chunk generation from motor commutation, System 1.5 absorbs neural inference latency jitter and ensures downstream execution never experiences starvation.
+### System 1 (Fast Cadence · $1000\text{ Hz}$): Real-Time Safety Reflex
+System 1 represents the deterministic real-time execution tier. Its primary responsibility is verifying candidate action chunks against hard physical invariants, solving real-time Control Barrier Function (CBF) quadratic programs, evaluating dynamic stopping distances ($d_{\text{stop}} \le d_{\text{clearance}}$), enforcing joint kinematic limits, and synthesizing high-frequency motor phase commutation.
 
-### System 1 (Fast Cadence · $1000\text{ Hz}$): Hard Real-Time Reflex and Invariant Gatekeeper
-System 1 represents the fast, hard real-time reflex tier responsible for deterministic safety invariant auditing, dynamic stopping distance calculation, Control Barrier Function projection, quintic spline interpolation, and high-frequency Field-Oriented Control motor phase commutation.
+Operating at a strict $1000\text{ Hz}$ loop frequency ($1.0\text{ ms}$ period with timing jitter $\le 5\,\mu\text{s}$), System 1 executes on dedicated Real-Time Microcontrollers (MCUs, such as ARM Cortex-M7 or lockstep RISC-V cores) or isolated bare-metal CPU cores. The software environment is a hard real-time operating system (such as FreeRTOS, Zephyr, or bare metal).
 
-Operating deterministically at $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$ period) at the supervisory level and down to $20\text{--}40\text{ kHz}$ ($25\text{--}50\,\mu\text{s}$) at the motor current loop level, System 1 executes on dedicated Real-Time Microcontroller Units (such as ARM Cortex-M7 or dual-core 32-bit RISC-V processors) residing on physically isolated power and clock domains. The software environment is bare-metal firmware or a certified hard Real-Time Operating System (RTOS) such as FreeRTOS or Zephyr.
+Crucially, System 1 enforces the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`). All memory arrays, ring buffers, matrix workspaces, and state vectors reside in static SRAM allocated at compile time.
 
-System 1 operates under a strict memory management constraint: zero dynamic heap allocation (`malloc` and `free` are strictly forbidden after boot). Every data structure, matrix workspace, and quadratic program solver state is statically allocated in tightly-coupled memory (TCM) or on-chip SRAM, eliminating memory fragmentation, page faults, and cache eviction jitter. Workloads consist of closed-form algebraic kinematic evaluations, friction cone projections, and microsecond-deterministic active-set QP solvers executing in under $400\,\mu\text{s}$ per millisecond tick.
+System 1 holds exclusive physical privilege: it alone is connected to hardware PWM timer compare registers, gate-driver enable lines, and emergency Safe Torque Off (STO) hardware interlocks. System 1 possesses absolute authority to veto, reshape, or clamp candidate proposals from System 2 and System 1.5, guaranteeing that physical hardware invariants are never breached.
 
-System 1 holds the sole hardware permission authority. The MCU possesses exclusive, hardware-locked memory-mapped write authority over motor inverter PWM timer compare registers, dynamic braking FETs, and gate-driver enable pins.
+| Cadence Tier | Cognitive Role | Target Frequency | Hardware Substrate | Software Runtime | Trust & Authority Level |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **System 2** | Semantic Deliberation & Affordance Parsing | $0.5\text{--}2\text{ Hz}$ | Multi-core MPU / Cloud Accelerator | Linux (`PREEMPT_RT`) / Python / PyTorch | Untrusted (Advisory Intent Leases) |
+| **System 1.5** | Trajectory Planning & Action Chunking | $20\text{--}50\text{ Hz}$ | Edge NPU / Tensor Core GPU | Real-time C++ / TensorRT / ONNX Runtime | Semi-trusted (Candidate Action Chunks) |
+| **System 1** | Safety Barrier Reflex & FOC Commutation | $1000\text{ Hz}$ | Hard Real-Time MCU / Bare-metal Core | FreeRTOS / Zephyr (`malloc = 0`) | Trusted (Sole Inverter & Gate Privilege) |
 
-On every $1.0\text{ ms}$ tick, System 1 consumes the next interpolated waypoint from the SPSC ring buffer, audits it against Control Barrier Functions and physical stopping distance bounds, and either approves it or minimally projects it onto the safe control boundary. System 1 continuously refreshes independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$). If inter-processor communication drops or upstream software fails to assert its heartbeat, System 1 autonomously overrides all external inputs, executing an active Category 1 dynamic deceleration profile before asserting hardware Safe Torque Off (STO).
+: The Three Cadences of Physical AI. Dimension comparison across the asynchronous multi-rate temporal hierarchy. {#tbl-three-cadences}
 
-### Master Cadence Comparison
 
-The architectural boundaries, hardware substrates, memory models, privilege tiers, and failure semantics across all three cadences are summarized in @tbl-three-cadences:
+## Resolving the Compute-vs-Physics Conflict: The Three Contracts
 
-| Technical Dimension | System 2: Deliberation | System 1.5: Trajectory | System 1: Real-Time Reflex |
-| :--- | :--- | :--- | :--- |
-| **Cadence & Period ($\Delta t$)** | $0.5\text{ to } 2\text{ Hz}$ ($500\text{ to } 2000\text{ ms}$) | $20\text{ to } 50\text{ Hz}$ ($20\text{ to } 50\text{ ms}$) | $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
-| **Silicon Substrate** | Multi-Core ARM Cortex-A / x86 + NPU | Edge NPU / Tensor Core Accelerator | Bare-Metal ARM Cortex-M7 / RISC-V |
-| **Operating Runtime / OS** | Embedded Linux (`PREEMPT_RT`) | Linux Real-Time (`SCHED_FIFO`) | Bare-Metal Firmware / Hard RTOS |
-| **Memory Model** | Dynamic Virtual Memory / Paged Heap | Pinned Paged Memory (`mlockall`) | Zero Heap (Static SRAM Only) |
-| **Workload Architecture** | Multimodal VLM ($7\text{B}\text{ to } 70\text{B}$) | Diffusion / ACT ($50\text{M}\text{ to } 200\text{M}$) | CBF-QP Solver / Splines / FOC |
-| **Output Representation** | Expiring Intent Lease ($\mathcal{L}_{\text{intent}}$) | Action Trajectory Chunk $\mathbf{A}_{t:t+H}$ | Permitted PWM Duty Ratio ($u_t^*$) |
-| **Privilege & Authority Tier** | Untrusted Advisory Proposal | Candidate Trajectory Generator | Sole Hardware Gatekeeper (PWM Locks) |
-| **IPC Interface** | Asynchronous DRAM Shared Mailbox | Lock-Free SPSC SRAM Ring Buffer | Memory-Mapped Hardware Registers |
-| **Failure Containment** | Passive lease timeout ($\Delta t_{\text{TTL}}$) | Discard chunk and replan | Category 1 Deceleration to STO |
+Decoupling cognition across three distinct cadences resolves the compute-versus-physics conflict, but introduces a new systems challenge: how do asynchronous runtimes operating at vastly different frequencies exchange data safely without race conditions, stale buffers, or missed deadlines?
 
-: Comparison of the Three Cadences. Substrates, operating runtimes, memory models, workloads, privilege tiers, communication interfaces, and failure containment mechanisms across the multi-rate temporal hierarchy. {#tbl-three-cadences}
+Physical AI systems resolve this inter-cadence coordination challenge through Three Architectural Contracts (@fig-conflict-resolution).
 
-### Grounding the Cadences Across the Three Canonical Archetypes
+![Resolving the Compute-versus-Physics Conflict. The Three Architectural Contracts: (1) Proposal–Permission Privilege Separation, (2) Action Chunk Delay Amortization, and (3) Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$).](figures/fig03_great_tension.svg){#fig-conflict-resolution width=100%}
 
-To understand how the Three Cadences operate in physical hardware, we examine how the temporal hierarchy manifests across the Three Canonical Archetypes of Physical AI:
+### Contract 1: Proposal–Permission Privilege Separation
+The first architectural contract establishes the fundamental boundary of hardware trust. As formalized in Chapter 1, learned models running on application processors occupy the *untrusted proposal tier*, while real-time microcontroller firmware occupies the *trusted permission tier*.
 
-In mobile systems (Archetype 1, such as a legged quadruped on scree), System 2 operates at $1\text{ Hz}$ on an application processor, analyzing panoramic depth images to identify traversable terrain corridors and emitting an intent lease designating a stable foothold region $2\text{ meters}$ ahead. System 1.5 operates at $50\text{ Hz}$ on an edge NPU, running a conditional diffusion policy to generate 16-step action chunks ($320\text{ ms}$ horizon) containing center-of-mass momentum targets and foot swing trajectories. System 1 operates at $1000\text{ Hz}$ on an ARM Cortex-M7 microcontroller, executing whole-body operational space control and auditing ground reaction forces against the friction cone ($F_{\text{tangential}} \le \mu F_{\text{normal}}$). When a foot encounters shifting scree and begins to slip, System 1 detects the loss of traction within $2\text{ ms}$, overrides the nominal trajectory chunk, and modulates foot penetration depth at $20\text{ kHz}$ via Field-Oriented Control motor torque adjustments—re-establishing traction long before System 1.5 or System 2 could process a single frame.
+The proposal tier generates rich, continuous candidate action trajectories $p_t$. The permission tier evaluates physical feasibility and projects candidate actions onto the forward-invariant safe set $\mathcal{U}_{\text{safe}}$:
 
-In contact manipulation (Archetype 2, such as high-precision dual-arm assembly), System 2 operates at $0.5\text{ Hz}$, parsing visual scene context to identify connector orientation and issuing an intent lease with a maximum insertion force limit ($F_{\text{max}} \le 15\text{ N}$) and a sub-millimeter approach corridor. System 1.5 operates at $30\text{ Hz}$, decoding 32-step hybrid position/force action chunks that guide the wrist toward the socket while seeking tactile alignment. System 1 operates at $1000\text{ Hz}$ on a bare-metal microcontroller, reading 6-axis force-torque load cells and tactile arrays. The moment the connector pin makes contact with the socket bevel, the contact force rises sharply ($F_c = k_{\text{contact}} \delta x$). System 1's Control Barrier Function projects the command onto the force boundary within $500\,\mu\text{s}$, preventing mechanical pin shear and maintaining compliance even if the neural trajectory policy attempts to drive deeper into the rigid surface.
+$$u_t^* = \arg\min_{u \in \mathcal{U}_{\text{safe}}} \|u - p_t\|^2 \quad \text{subject to } h(\mathbf{x}) \ge 0$$
 
-In cybernetic processes (Archetype 3, such as grid-forming inverters and chemical batch reactors), physical dynamics dictate temporal boundaries across silicon. In a solid-state grid-forming power inverter, System 2 operates at $0.1\text{ Hz}$ optimizing wholesale energy market economic dispatch, System 1.5 operates at $10\text{ Hz}$ generating reactive power droop curve chunks, and System 1 operates at $1000\text{ Hz}$ evaluating phase-locked loop (PLL) grid synchronization and anti-islanding invariants, supervising $40\text{ kHz}$ Space Vector PWM gate drivers to prevent catastrophic circulating reactive currents ($I_{\text{reactive}} \approx V_0 \Delta\phi / X_{\text{line}}$). In a fluid chemical reactor, System 2 operates at $0.01\text{ Hz}$ ($100\text{ s}$ period) optimizing reaction yield trajectories, System 1.5 operates at $1\text{ Hz}$ generating predictive valve aperture chunks, and System 1 operates at $100\text{ Hz}$ monitoring chamber pressure transducers and thermal runaway boundaries, maintaining direct electrical authority over mechanical emergency quench valves.
+where $h(\mathbf{x}) \ge 0$ represents Control Barrier Function safety constraints (such as maintaining dynamic stopping distance $d_{\text{clearance}} \ge d_{\text{stop}}$). The permission authority alone holds the electrical privilege to configure PWM timer registers and toggle gate drivers.
 
+### Contract 2: Action Chunk Delay Amortization
+The second architectural contract resolves the temporal mismatch between neural inference and motor execution. If a policy network predicted only single-step actions $\mathbf{a}_t$ at $30\text{ Hz}$, the real-time loop would starve for $33\text{ ms}$ between consecutive predictions.
 
-## The Great Conflict: When Agent Deliberation Meets Physical Dynamics
+Action chunking amortizes computational delay by predicting multi-step trajectories $\mathbf{A}_{t:t+H}$ across a rolling horizon $H = 16\text{--}64$ steps ($300\text{--}1000\text{ ms}$). The high-rate microcontroller consumes waypoints from the active chunk at $1\text{ kHz}$, fitting $\mathcal{C}^2$-continuous splines and applying temporal ensembling to blend overlapping predictions seamlessly.
 
-Physical AI is born from the collision of two engineering disciplines operating under fundamentally irreconcilable physical and computational paradigms. On one side stands modern generative artificial intelligence, whose foundational premise is that computational capacity, representational expressiveness, and task generalization scale directly with parameter volume, multi-head attention depth, and iterative chain-of-thought deliberation. On the other side stands physical dynamics, whose governing laws—conservation of momentum, irreversible thermodynamic entropy, and electromagnetic phase lag—demand microsecond-deterministic execution, unyielding temporal deadlines, and continuous physical contact stability.
+### Contract 3: Expiring Intent Leases
+The third architectural contract provides fail-safe containment for long-horizon deliberation. High-level foundation models issue time-bounded Expiring Intent Leases $\mathcal{L}_{\text{intent}} = \langle \text{GoalID}, \mathbf{T}_{\text{target}}, \mathcal{B}_{\text{safe}}, \|\mathbf{v}\|_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$.
 
-![The Fundamental Tug-of-War in Physical AI. The structural conflict between the AI Deliberation Realm (which demands time, tokens, and compute capacity) and the Physical Dynamics Realm (which demands microsecond speed, deterministic reflexes, and fresh evidence). Physical AI reconciles this conflict through three architectural contracts: the Proposal and Permission split, Action Chunking, and Expiring Leases.](figures/fig03_great_tension.svg){#fig-great-tension width=100%}
+If upstream deliberation hangs or experiences a scheduler blackout that exceeds $\Delta t_{\text{TTL}}$, the active lease expires passively. The real-time microcontroller detects the lease lapse within $20\text{ ms}$ and autonomously engages controlled dynamic braking, bringing the machine to a safe stop without requiring active shutdown commands from the crashed host.
 
-### The Structural Tension Between Two Realms
-As illustrated in @fig-great-tension, this systems conflict is not an incidental engineering inconvenience that can be eliminated through faster silicon or compiler optimization. Rather, it represents an intrinsic structural tension between two opposing operational realms:
 
-The AI Deliberation Realm operates in an environment where computation is fundamentally time-elastic. In digital machine learning, natural language processing, and multimodal reasoning, an algorithm benefits from being granted additional time to compute. An autoregressive vision-language-action (VLA) foundation model containing $7\text{B}$ to $70\text{B}$ parameters can evaluate multiple reasoning branches, search over topological task graphs, perform self-reflection across visual tokens, and execute multi-step diffusion denoising schedules ($10\text{ to } 100$ denoising steps) to refine its predictions. In the digital domain, if a complex scene requires an inference pipeline to expand its compute duration from $200\text{ ms}$ to $1200\text{ ms}$, the digital universe waits patiently. The host operating system suspends the process, incoming network packets reside in dynamic memory queues, and no physical state is compromised. Digital computation thrives under asynchronous, batch-oriented, variable-latency execution.
+## The Master Physical Agent Co-Design Matrix
 
-In stark contrast, the Physical Dynamics Realm operates in an environment where time is an immutable, continuous physical coordinate. The physical universe never pauses, yields, or buffers its state while a neural network deliberates. The moment photons strike a camera sensor or an encoder reads a joint displacement, the physical information begins an irreversible decay toward obsolescence. An ungrounded mass accelerates under gravity at $g = 9.81\text{ m/s}^2$; moving linkages carry kinetic momentum $\mathbf{p} = m\mathbf{v}$ along their dynamical vectors; and spatial uncertainty envelopes expand continuously:
+We now synthesize the vertical pillars from Chapter 2 (The Five Physical Columns: Time, Inertia, Actuation, Energy, Silicon) with the horizontal rows of Chapter 3 (The Five Cognitive Dimensions: Perceive, Remember, Reason, Plan, Execute) to construct the master intellectual compass of this book: the 5×5 Physical Agent Co-Design Matrix (@fig-codesign-matrix and @tbl-codesign-matrix-full).
 
-$$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \Delta t$$
+![The Physical Agent Co-Design Matrix. Crossing the five physical reality columns with the five cognitive agency rows; every intersection represents a fundamental systems tension developed across the chapters of this book.](figures/fig03_codesign_matrix.svg){#fig-codesign-matrix width=100%}
 
-Furthermore, computational latency $\tau_{\text{delay}}$ directly injects phase lag into the feedback control loop:
+Every cell in the matrix represents an active systems tension where a cognitive requirement intersects an unyielding physical constraint. Designing an embodied system requires identifying which cells represent binding constraints for a given embodiment and engineering the appropriate hardware/software contracts to satisfy them.
 
-$$\Delta \phi = -\omega \cdot \tau_{\text{delay}}$$
+| Cognitive Dimension (Rows) | Column 1: Time | Column 2: Inertia | Column 3: Actuation | Column 4: Energy | Column 5: Silicon |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Sensor integration delay ($t_{\text{transduce}}$) & shutter sync | Moving mass creates motion blur during rapid maneuvers | High-rate tactile force feedback & strain gauge bandwidth | Camera & sensor power dissipation; illumination energy | MIPI-CSI2 DMA bandwidth & UMA memory bus contention |
+| **Row 2: Remember** | Latent belief aging & spatial uncertainty expansion | Dynamic mass changes alter inertial parameters $\mathbf{M}(\mathbf{q})$ | Joint hysteresis, backlash, & transmission compliance | Non-volatile state logging energy & flash endurance | Cache hierarchy thrashing & DRAM crossbar saturation |
+| **Row 3: Reason** | Non-deterministic VLA inference latency tails | Momentum bounds maximum safe reasoning horizon | Kinematic reachability corridors & wrench cones | NPU thermal dissipation & DVFS clock downclocking | Shared-memory IPC mailboxes & lock-free ring buffers |
+| **Row 4: Plan** | Action chunk horizon ($H$) vs. world deadline ($\tau_{\text{world}}$) | Dynamic stopping distance bounds trajectory speed | $\mathcal{C}^2$ polynomial spline continuity & bounded jerk | Kinetic energy recovery & battery peak current discharge | Receding-horizon temporal ensembling in static memory |
+| **Row 5: Execute** | Deterministic 1 kHz tick deadline ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | Active momentum damping & dynamic braking profiles | Stator inductance ($\tau_e = L/R$) & FOC torque loops | Stator Joule heating ($I^2R$) & firmware $I^2t$ clamps | Iron Law of Zero Heap: static SRAM only (`malloc = 0`) |
 
-systematically eroding phase margin and driving mechanical actuators into violent limit-cycle instability. Electromagnetic motor drives require continuous phase commutation switching at $20\text{ to } 40\text{ kHz}$ to prevent catastrophic back-EMF voltage spikes, and structural transmissions risk tooth shear if subjected to discontinuous acceleration commands. The physical realm demands absolute, sub-millisecond determinism, bounded worst-case tail latencies ($P_{99.9} \le 1.0\text{ ms}$), and immediate reactive intervention.
+: The Master Physical Agent Co-Design Matrix. Mapping the 25 intersections between the five cognitive rows and five physical columns. {#tbl-codesign-matrix-full}
 
-### The Three Architectural Contracts
-Physical AI resolves this structural tension not by forcing large foundation models to execute at microsecond control frequencies—a physical impossibility—nor by constraining embodied agents to primitive, hardcoded state machines. Instead, Physical AI institutes Three Formal Architectural Contracts that decouple cognitive reasoning from real-time physical control across heterogeneous silicon:
 
-#### Contract 1: The Proposal–Permission Privilege Boundary
-Stochastic foundation models, multimodal vision transformers, and trajectory diffusion networks executing on application processors (such as Linux MPUs and edge NPUs) occupy the untrusted advisory proposal privilege tier. Because deep neural networks are prone to distributional hallucination, out-of-distribution drift, and operating system scheduling jitter, they are strictly prohibited from possessing direct memory-mapped write access to actuator registers, motor inverter pulse-width modulation (PWM) timers, or gate-driver enable pins.
+## Systems Fallacies and Pitfalls in Cognitive Architecture
 
-The physical machine is governed exclusively by a dedicated bare-metal microcontroller unit (MCU) executing at $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$). On every millisecond control tick, the MCU consumes candidate action proposals $p_t$ emitted by the upstream proposal engine and evaluates them against hard physical invariants using an embedded, zero-heap safety filter:
+When architecting cognitive pipelines for Physical AI, software engineers frequently carry over paradigms from cloud computing that create catastrophic failures on hardware:
 
-$$\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \|\mathbf{u} - p_t\|^2 \quad \text{subject to } d_{\text{stop}}(\mathbf{v}) \le d_{\text{clearance}}$$
-
-Under nominal conditions where the candidate action proposal resides safely within the admissible safe set, the filter outputs the proposal unmodified ($\mathbf{u}_t^* = p_t$). If the proposal threatens joint mechanical limits or obstacle boundaries, the filter minimally projects the command onto the safe boundary or initiates controlled dynamic braking. Stochastic AI proposes; deterministic physics permits.
-
-#### Contract 2: Action Chunking Delay Amortization
-Rather than predicting single-step actions that stall whenever neural inference encounters an operating system cache miss, a memory bus contention spike, or a diffusion denoising delay, the planning tier decodes rolling Action Chunks ($\mathbf{A}_{t:t+H}$).
-
-A diffusion policy requiring $35\text{ ms}$ of tensor compute generates an action chunk of $H = 32$ steps at $50\text{ Hz}$, yielding $640\text{ ms}$ of continuous physical trajectory. While the real-time microcontroller consumes and interpolates waypoints from the active chunk buffer in static SRAM using $\mathcal{C}^2$-continuous quintic splines, the neural accelerator computes the subsequent overlapping chunk in the background. Receding-horizon temporal ensembling blends overlapping chunks, delivering smooth physical actuation across continuous time.
-
-#### Contract 3: Expiring Intent Leases and Hardware Watchdog Interlocks
-System 2 foundation models communicate strictly through time-bounded Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$):
-
-$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}}, \; \mathcal{B}_{\text{safe}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}}, \; \tau_{\text{heartbeat}} \right\rangle$$
-
-Downstream controllers are authorized to execute motion planning exclusively within the active spatial corridor $\mathcal{B}_{\text{safe}}$ and only while current hardware time satisfies $t \le t_{\text{issue}} + \Delta t_{\text{TTL}}$. If the host application processor stalls due to garbage collection, thermal throttling, or an infinite loop, the intent lease expires passively in memory.
-
-Concurrently, independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$) monitor periodic heartbeat pulses from the host processor. If the host fails to refresh the watchdog or if an active intent lease expires, the microcontroller initiates an immediate, autonomous dynamic deceleration halt before asserting hardware Safe Torque Off (STO). Software failures on the application processor are cleanly contained within milliseconds, eliminating the possibility of physical runaway.
-
-
-## The Physical Agent Co-Design Matrix and Master Architectural Blueprint
-
-Crossing the five physical constraint columns established in Chapter 2 with the five cognitive work dimensions formalized in this chapter yields the foundational analytical instrument of this textbook: the *Physical Agent Co-Design Matrix* (@fig-codesign-matrix-ch3).
-
-![The Physical Agent Co-Design Matrix. Five cognitive obligations crossed with five physical constraint columns. Each cell defines a systems question resolved across the chapters of Part II.](figures/fig03_codesign_matrix.svg){#fig-codesign-matrix-ch3 width=100%}
-
-Every embodied intelligent machine represents a concrete realization of this $5 \times 5$ design space. Each intersection in the matrix defines a specific systems engineering challenge where a computational transformation must satisfy a physical constraint without violating closed-loop timing or energy envelopes. @tbl-codesign-matrix-summary formalizes the complete $5 \times 5$ topology, categorizing the architectural weight of each intersection into Dominant, Full, Thin, and Non-Binding couplings:
-
-| Cognitive Dimension | C1: Time & Freshness | C2: Inertia & Stopping | C3: Actuation Limits | C4: Thermal Budget | C5: Silicon Contention |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Row 1: Perceive (Ch 4)** | **Full**<br>Exposure vs. motion blur; rolling shutter skew | **Full**<br>Sensing horizon must exceed $d_{\text{stop}}(\mathbf{v})$ | **Non-Binding**<br>No direct motor phase interaction | **Thin**<br>Sensor die Joule dissipation ($\le 2.5\text{ W}$) | **Dominant**<br>DMA frame ingestion saturates DRAM crossbar |
-| **Row 2: Remember (Ch 5)** | **Dominant**<br>Belief covariance expansion $\mathbf{\Sigma}(t)$ | **Full**<br>Dynamic coordinate frame tracking ($\mathcal{T}_{\text{frames}}$) | **Thin**<br>Kinematic joint limit verification | **Full**<br>Continuous latent JEPA memory updating | **Full**<br>KV cache streaming vs. image tokenization |
-| **Row 3: Reason (Ch 6)** | **Dominant**<br>Asynchronous intent lease TTL ($\Delta t_{\text{TTL}}$) | **Non-Binding**<br>Abstract semantic task decomposition | **Non-Binding**<br>Zero direct torque generation authority | **Full**<br>Foundation model NPU power draw ($15\text{--}60\text{ W}$) | **Full**<br>Large-parameter weights compete for memory bus |
-| **Row 4: Plan (Ch 7)** | **Full**<br>Action chunk horizon $H \Delta t \le \tau_{\text{world}}$ | **Full**<br>Braking profile generation and corridor containment | **Dominant**<br>$\mathcal{C}^2$ jerk bounds ($\dddot{\mathbf{q}} \le \mathbf{J}_{\text{max}}$) and splines | **Full**<br>Diffusion denoising compute overhead | **Thin**<br>Fixed-step tensor compute in isolated threads |
-| **Row 5: Execute (Ch 8)** | **Full**<br>$1000\text{ Hz}$ control tick ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | **Dominant**<br>Dynamic stopping distance CBF projection | **Full**<br>Motor coil inductance $\tau_e$ and FOC current loops | **Full**<br>Inverter MOSFET and winding Joule heat ($I^2 R$) | **Full**<br>Lock-free SRAM vs. zero heap (`malloc=0`) |
-
-: The Physical Agent Co-Design Matrix Summary. Mapping the twenty-five systems intersections across the Five Cognitive Dimensions (Rows) and the Five Physical Constraints (Columns), detailing the primary systems questions and coupling severities governing Part II. {#tbl-codesign-matrix-summary}
-
-### How to Read an Uneven Grid
-
-A fundamental insight revealed by @tbl-codesign-matrix-summary is that an engineering co-design matrix is not uniformly dense. The presence of non-binding and thin intersections is not a deficiency; rather, it reflects natural physical decoupling that systems architects must actively exploit.
-
-First, non-binding cells enable formal isolation. Semantic Reasoning (Row 3) has zero direct coupling to Mechanical Actuation Limits (Column 3) or Inertia and Stopping (Column 2). This absence of physical coupling is precisely what makes the Proposal–Permission boundary viable. Because semantic foundation models produce high-level intent leases rather than raw motor voltages, they do not need to model the high-frequency inductance curves ($\tau_e = L/R$) of individual motor windings. Systems architects can formally isolate safety verification within the real-time microcontroller (Row 5), relieving the upstream deliberative models of microsecond control obligations.
-
-Second, the matrix cleanly delineates between universal physical constraints and localized physical constraints. Thermal Dissipation (Column 4) and Silicon Contention (Column 5) touch every single stage of the cognitive lifecycle. Thermal dissipation is universal because every component—from CMOS image sensors integrating charge ($2.5\text{ W}$), to edge NPUs streaming $70\text{B}$ model weights ($35\text{ W}$), to power MOSFET inverter bridges and motor copper windings ($150\text{ W}$)—dissipates non-recoverable Joule heat into the shared physical enclosure. Silicon contention is universal because sensory frame ingestion, latent memory lookups, neural inference, and real-time command buffers all arbitrate for shared memory interconnects, cache lines, and system crossbars. In contrast, Inertia and Stopping (Column 2) and Actuation Limits and Jerk (Column 3) bind only the motion generation and execution stages (Rows 4 and 5). A vision transformer extracting spatial tokens from pixels does not directly accelerate mass or experience mechanical back-EMF; those physical dynamics bind only when trajectory splines and motor phase currents are synthesized.
-
-### Archetype Specificity Across the Matrix
-
-While the structure of the Co-Design Matrix is universal, the specific cells that dominate system design shift dynamically depending on the physical embodiment and governing physical laws:
-
-In mobile systems (Archetype 1), design is heavily dominated by the intersection of Perceive/Remember with Time & Freshness (C1) and Inertia & Stopping (C2). Because a ground rover or aerial drone operates at high translational velocities ($v > 5\text{ m/s}$), linear reaction displacement ($d_{\text{react}} = v \tau_{\text{delay}}$) and quadratic braking distance ($d_{\text{brake}} = v^2 / 2\mu g$) expand rapidly. The perception sensing horizon must continuously exceed the dynamic stopping distance, forcing the spatial world model to maintain high information freshness over large geometric distances.
-
-In contact manipulation (Archetype 2), design is heavily dominated by the intersection of Plan/Execute with Actuation Limits & Jerk (C3) and Time & Freshness (C1). In rigid assembly tasks, the mechanical contact stiffness ($k_{\text{contact}} > 10^5\text{ N/m}$) is extremely high. Any unperceived penetration of even $0.5\text{ mm}$ causes contact forces to surge past structural failure limits within single milliseconds. The execution tier must enforce $\mathcal{C}^2$ jerk bounds ($\dddot{\mathbf{q}} \le \mathbf{J}_{\text{max}}$) and execute sub-millisecond Control Barrier Function projections to prevent gearbox tooth shear and tool destruction.
-
-In cybernetic energy and process systems (Archetype 3), non-kinematic processes are dominated by the intersection of Execute with Thermal Budget (C4) and Silicon Contention (C5). In solid-state grid-forming inverters and high-density battery reactors, mechanical inertia is replaced by electromagnetic reactance and thermal capacitance. The execution tier must maintain microsecond-deterministic phase-locked loop synchronization ($\Delta \phi \approx \omega_0 \tau_{\text{delay}}$) and continuously govern exothermic heat generation ($\dot{Q} = I^2 R$) to prevent dielectric breakdown and thermal runaway.
-
-### The Master Architectural Blueprint and Curriculum Roadmap
-
-The Co-Design Matrix serves as the master blueprint for the remainder of this textbook. As illustrated in @fig-modular-blueprint, the curriculum progresses systematically from physical foundations through sensory-motor organs to full-system governance and qualification:
-
-![The Physical AI Curriculum Blueprint and Roadmap. Tracing the progression from Part I foundations through the Part II sensory-motor organs to Part III integration, governance, and release qualification.](figures/fig03_modular_blueprint.svg){#fig-modular-blueprint width=100%}
-
-Part I (Foundations, Chapters 1–3) establishes the physical bedrock. Chapter 1 defines the Causal Boundary and the Proposal–Permission split; Chapter 2 establishes sense-to-actuation metrology, tail latency distributions, and physical constraint columns; Chapter 3 constructs the 9-station cognitive lifecycle, the Three Cadences, and the Co-Design Matrix.
-
-Part II (The Embodied Lifecycle, Chapters 4–8) deconstructs the rows of the Co-Design Matrix one by one, building the five canonical sensory-motor organs: Chapter 4 (Perceive: Spatial Grounding and 3D Affordance Tokens), Chapter 5 (Remember: Temporal World Modeling and Latent Belief States), Chapter 6 (Reason: Open-World Semantic Deliberation and Intent Leases), Chapter 7 (Plan: Trajectory Generation, Action Chunking, and $\mathcal{C}^2$ Splines), and Chapter 8 (Execute: Hard Real-Time Reflexes, Zero-Heap CBF-QP Solvers, and FOC).
-
-Part III (Integration, Placement, and Governance, Chapters 9–11) synthesizes the individual organs into production physical agents: Chapter 9 (Placement: Edge-to-Cloud Workload Partitioning and Dual-Brain Silicon), Chapter 10 (Governance: Safety Lifecycles, Fault Trees, and Fail-Safe Envelopes), and Chapter 11 (Assurance: Hardware-in-the-Loop Qualification, Sim-to-Real, and Release Gates).
-
-
-## The Intent Lease Protocol: Proposal–Permission in Practice
-
-To bridge the architectural theory of Chapter 3 into concrete engineering practice, we formalize the communication contract between System 2 semantic reasoning and downstream real-time control.
-
-The formal data structure governing the Intent Lease protocol is defined in @tbl-intent-lease-spec:
-
-| Field Identifier | Data Type | Units / Format | Systems Description and Verification Invariant |
-| :--- | :--- | :--- | :--- |
-| `goal_id` | `uint64_t` | Monotonic Integer | Unique transaction identifier; increments with every new sub-goal to detect replayed or stale payloads. |
-| `target_pose` | `Transform3D` | $SE(3)$ Matrix / Quaternion | 6-DoF target coordinate $[\mathbf{p} \in \mathbb{R}^3, \mathbf{q} \in \mathbb{H}]$ referenced strictly to the base kinematic frame $\mathcal{F}_{\text{base}}$. |
-| `safe_corridor` | `Polytope3D` | Metric Polytope ($\mathbf{A}\mathbf{x} \le \mathbf{b}$) | Convex 3D geometric volume within which downstream trajectory splines are certified collision-free. |
-| `max_velocity` | `VelocityBound` | $[\text{m/s}, \text{rad/s}]$ | Hard kinematic ceiling authorized for the active sub-goal ($\|\mathbf{v}\| \le v_{\text{max}}, \|\boldsymbol{\omega}\| \le \omega_{\text{max}}$). |
-| `issue_timestamp` | `uint64_t` | Microseconds ($\mu\text{s}$) | Monotonic hardware clock timestamp captured at the exact instant the lease is committed to shared memory. |
-| `time_to_live` | `uint32_t` | Microseconds ($\mu\text{s}$) | Strict temporal validity duration ($\Delta t_{\text{TTL}}$, typically $500{,}000\text{ to } 1{,}500{,}000\,\mu\text{s}$); un-renewed leases expire instantly. |
-| `heartbeat_interval` | `uint32_t` | Microseconds ($\mu\text{s}$) | Maximum permissible interval between successive host keep-alive strobes ($\tau_{\text{heartbeat}} \le 100{,}000\,\mu\text{s}$). |
-| `failure_action` | `enum8_t` | Fallback Enum | Deterministic fail-safe mode triggered upon expiration (`0x01: DECEL_TO_HOLD`, `0x02: RETURN_HOME`, `0x03: DYNAMIC_BRAKE_STO`). |
-
-: The Formal Intent Lease Data Structure ($\mathcal{L}_{\text{intent}}$). Encapsulating spatial targets, convex safety corridors, velocity ceilings, monotonic timestamps, time-to-live bounds, and deterministic failure actions. {#tbl-intent-lease-spec}
-
-In hardware execution, the intent lease struct is laid out as a 128-byte cache-aligned memory block in shared tightly-coupled SRAM. To guarantee thread safety without blocking the real-time microcontroller, writes from the Linux MPU are synchronized using atomic 64-bit sequence counters and memory barrier instructions (`__atomic_thread_fence(__ATOMIC_RELEASE)` on ARMv8-A; `dmb ish` on ARM Cortex-M). The microcontroller performs an acquire barrier before reading the payload, verifying that the start sequence counter matches the end sequence counter, guaranteeing zero data corruption across asynchronous memory access.
-
-
-## Common Systems Fallacies in Cognitive Architectures
-
-Embodied artificial intelligence shatters many intuitive assumptions inherited from classical computer science and digital machine learning. Before synthesizing the foundational principles of Part I, we examine four widespread systems fallacies:
-
-::: {.callout-fallacy title="Monolithic Model Frequency Scaling"}
-* **The Fallacy:** With sufficient semiconductor scaling, specialized tensor compilers, and deep model quantization, a single $70\text{B}$ parameter Vision-Language-Action foundation model will eventually execute at $1000\text{ Hz}$, eliminating the need for complex multi-rate cadences and heterogeneous dual-brain architectures.
-* **The Physical Reality:** Even if digital floating-point computation latency were reduced to zero, the physical universe imposes immutable physical time constants. Optical sensor charge integration requires $8\text{ to } 15\text{ ms}$ under ambient illumination; electromagnetic motor coils require $5\text{ to } 15\text{ ms}$ of electrical rise time ($\tau_e = L/R$) to establish magnetic flux; and mechanical inertia restricts acceleration. Because physical sensing and actuation possess intrinsic analog time constants, high-rate reflex stabilization ($1000\text{ Hz}$) and deliberative semantic reasoning ($1\text{ Hz}$) operate on fundamentally different physical timescales that semiconductor scaling cannot compress into a single monolithic loop.
+::: {.callout-fallacy title="Single-Cadence Monolithic Loops"}
+* **The Fallacy:** Executing perception, foundation model reasoning, and motor trajectory generation within a single synchronous software loop ensures tight algorithmic coordination.
+* **The Physical Reality:** Monolithic loops bind high-frequency motor control to the slowest, most variable component in the pipeline. A 500 ms inference tail in a vision-language model stalls the entire control loop, causing motor current starvation, loss of dynamic balance, and destructive crashes. Embodied architectures must decouple execution into asynchronous multi-rate cadences.
 :::
 
-::: {.callout-fallacy title="Infinite Action Chunk Horizons"}
-* **The Fallacy:** If an action chunk horizon of $H = 16$ steps ($320\text{ ms}$) effectively amortizes neural network inference latency, then generating massive action chunks of $H = 256$ steps ($5.12\text{ s}$) is sixteen times better because it virtually eliminates inference compute bottlenecks.
-* **The Physical Reality:** Action chunks execute open-loop with respect to unobserved environmental changes. While a long action chunk is unrolling on hardware, the external world continues to evolve dynamically. If a person steps into the robot's workspace or a target workpiece shifts during second two of a five-second chunk, the machine blindly executes its pre-computed trajectory, causing collision. Action chunk horizons must be strictly bounded by the physical information freshness horizon ($H \cdot \Delta t_{\text{step}} \le \tau_{\text{world}}$).
+::: {.callout-fallacy title="Stateless Single-Step Policy Inferences"}
+* **The Fallacy:** Formulating physical control as stateless single-step Markov decision processes ($\mathbf{a}_t = \pi(o_t)$) is sufficient for complex manipulation and locomotion.
+* **The Physical Reality:** Single-step inference creates a brittle dependency where any dropped sensor frame or inference jitter halts motion. Furthermore, instantaneous observations fail under sensory occlusions. Robust systems maintain continuous temporal belief states and predict multi-step action chunks to amortize computational delay.
 :::
 
-::: {.callout-fallacy title="User-Space Software Profiling"}
+::: {.callout-fallacy title="Software Timers for Multi-Rate Synchronization"}
 * **The Fallacy:** Wrapping neural network inference and control loops in high-level Python software timers (`time.time()` or `time.perf_counter()`) provides an accurate, reliable measure of closed-loop sense-to-actuation latency and multi-rate synchronization.
-* **The Physical Reality:** User-space timers measure only thread execution duration within the operating system; they are completely blind to sensor photodiode integration, MIPI-CSI2 DMA transfers, memory bus crossbar contention, IPC mailbox handoffs, and motor phase current rise time. Furthermore, invoking profiling system calls invalidates CPU cache lines and triggers OS context switches, distorting the very tail latencies under evaluation. Closed-loop latency metrology requires external hardware logic analyzers and current probes.
+* **The Physical Reality:** User-space timers measure only thread execution duration within the operating system; they are completely blind to sensor photodiode integration, MIPI-CSI2 DMA transfers, memory bus crossbar contention, IPC mailbox handoffs, and motor phase current rise time. Closed-loop latency metrology requires external hardware logic analyzers and current probes.
 :::
 
-::: {.callout-fallacy title="Static Discrete Setpoint Command"}
+::: {.callout-fallacy title="Static Discrete Setpoint Commands"}
 * **The Fallacy:** Commanding a sequence of discrete step position setpoints $(\mathbf{q}_k, \mathbf{q}_{k+1})$ from a neural policy directly to motor drives is perfectly acceptable as long as the control frequency is reasonably high ($50\text{ to } 100\text{ Hz}$).
 * **The Physical Reality:** Stepped position commands represent mathematical step functions whose second and third time derivatives are infinite Dirac delta spikes ($\ddot{\mathbf{q}} \to \infty, \dddot{\mathbf{q}} \to \infty$). In physical hardware, unbounded kinematic jerk excites high-frequency structural resonances, induces destructive current surges through inverter MOSFETs, and rapidly shears the precision gear teeth of cycloidal drives and harmonic reducers. All discrete neural proposals must be continuously smoothed using $\mathcal{C}^2$-continuous quintic polynomial splines.
 :::
