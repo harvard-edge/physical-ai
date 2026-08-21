@@ -115,6 +115,7 @@ $$t_{\text{total}}(P_{99}) + t_{\text{margin}} < \tau_{\text{world}}$$
 Designing reliable Physical AI systems requires budgeting and certifying every microsecond of the 7-stage latency waterfall against extreme tail distributions rather than nominal averages.
 
 The physical world deadline ($\tau_{\text{world}}$) varies substantially across the Three Canonical Archetypes:
+
 * **Archetype 1: Mobility (Kinematic & Aerodynamic Systems):** Obstacle avoidance and flight stabilization impose world deadlines between $\tau_{\text{world}} \approx 30\text{ and } 80\text{ ms}$. A drone in turbulent gusts or an autonomous rover in a warehouse must close its loop before unguided momentum breaches safety clearance margins.
 * **Archetype 2: Contact Manipulation (Rigid & Compliant Linkages):** Physical contact dynamics, grasping, and tactile slip-prevention reflexes operate on tighter horizons of $\tau_{\text{world}} \approx 5\text{ to } 20\text{ ms}$. Delaying motor counter-torque allows micro-slips to escalate into dropped objects or excessive contact forces to fracture workpieces.
 * **Archetype 3: Cybernetic Energy & Processes (Fluid, Chemical & Grid Flows):** High-voltage power electronics and grid-tied battery inverters demand sub-millisecond phase-lock synchronization ($\tau_{\text{world}} < 1\text{ ms}$) to prevent feeder instability, while bulk chemical reactors and fluid thermal loops operate across slower transport horizons ($\tau_{\text{world}} \approx 0.5\text{ to } 5\text{ s}$). Regardless of the archetype, the stability criterion remains invariant: total worst-case latency must never breach $\tau_{\text{world}}$.
@@ -168,6 +169,7 @@ $$\Delta t_{\text{wall}} = \frac{d_{\text{clearance}} - \sigma_0}{\|\mathbf{v}_{
 The Freshness Wall is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards rather than safe control actions.
 
 The physical meaning of the Freshness Wall manifests distinctly across our Three Canonical Archetypes:
+
 * In **Archetype 1 (Mobility)**, $\Delta t_{\text{wall}}$ is governed by closing velocity with external workspace obstacles ($\|\mathbf{v}_{\text{target}}\|$). For a warehouse AMR traveling at $2.0\text{ m/s}$ with an obstacle clearance of $0.20\text{ m}$ (and sensor noise $\sigma_0 = 0.02\text{ m}$), the Freshness Wall collapses to $\Delta t_{\text{wall}} = (0.20 - 0.02)/2.0 = 90\text{ ms}$. Any sense-to-actuation latency tail exceeding $90\text{ ms}$ guarantees that the robot is making steering decisions based on hallucinated spatial clearance.
 * In **Archetype 2 (Contact Manipulation)**, $\Delta t_{\text{wall}}$ is dictated by end-effector approach velocities and microscopic tactile slip rates. When an articulated manipulator inserts a peg into a chamfered hole with $2\text{ mm}$ clearance at an approach velocity of $0.2\text{ m/s}$, the Freshness Wall is a razor-thin $\Delta t_{\text{wall}} = 10\text{ ms}$. Exceeding this limit causes the gripper to jam against the fixture before contact forces can be sensed and relieved.
 * In **Archetype 3 (Cybernetic Energy & Processes)**, $\Delta t_{\text{wall}}$ represents the critical phase angle drift window during grid frequency disturbances or the chemical reaction runaway horizon in an exothermic reactor. If a power inverter's telemetry age exceeds the grid fault clearing window ($16\text{ to } 33\text{ ms}$), active current injection exacerbates voltage collapse rather than stabilizing the grid.
@@ -199,6 +201,7 @@ $$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stoppi
 ### Quantitative Kinematic Case Walkthrough
 
 To observe how computational tail latency directly determines physical survival, consider an autonomous mobile platform operating in a warehouse:
+
 * **Operating parameters:** Velocity $v_0 = 1.0\text{ m/s}$, maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
 * **Nominal $P_{50}$ Execution ($\Delta t = 30\text{ ms}$):** Reaction distance is $1.0 \times 0.030 = 3\text{ cm}$, braking distance is $\frac{1.0^2}{2 \times 2.0} = 25\text{ cm}$, and total stopping distance is $28\text{ cm}$. The robot stops safely with a $7\text{ cm}$ margin.
 * **Tail $P_{99}$ Spike ($\Delta t = 230\text{ ms}$):** Due to memory bus contention and kernel thread preemption, latency spikes to $230\text{ ms}$. Reaction distance expands from $3\text{ cm}$ to $23\text{ cm}$, while braking distance remains $25\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, causing a destructive collision with an overrun of $+13\text{ cm}$.
@@ -237,6 +240,7 @@ Transmissions (harmonic drives, planetary reducers, cycloidal drives) transfer t
 $$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} \longrightarrow \infty$$
 
 Unbounded jerk triggers three severe failure modes:
+
 1. **Resonance Excitation:** Injects energy across wide bandwidths, exciting structural vibrations in robotic linkages.
 2. **Gear Tooth Fatigue:** Thin-walled flexsplines and gear teeth suffer cyclical shock loading, causing micro-fractures and tooth shear.
 3. **Sensor Noise Saturation:** High-frequency vibration saturates MEMS IMUs and accelerometers, causing state estimators to diverge.
@@ -340,6 +344,7 @@ To bridge this cache coherency chasm deterministically, physical AI systems impl
 3. **Hardware Mailbox Peripheral Interrupts:** When the application processor commits a verified action chunk into the shared ring buffer, it asserts a memory-mapped hardware mailbox peripheral line (such as an ARM Message Handling Unit). This hardware signal bypasses operating system software interrupt dispatch, firing directly into the microcontroller's Nested Vectored Interrupt Controller (NVIC) or physical interrupt vector table. The microcontroller transitions from its idle state or control baseline in sub-microsecond time, eliminating operating system polling loops and establishing microsecond-accurate inter-processor synchronization.
 
 This heterogeneous silicon topology serves distinct real-time roles across our Three Canonical Archetypes:
+
 * In **Archetype 1 (Mobility)**, silicon determinism isolates navigation models from sensory ingestion bursts. When autonomous rovers or drones ingest simultaneous multi-view RGB and depth streams, hardware QoS ensures that camera DMA transactions cannot stall the NPU during obstacle avoidance inference.
 * In **Archetype 2 (Contact Manipulation)**, lock-free static SRAM mailboxes provide the sub-millisecond bridge required for tactile reflex loops. High-frequency joint torque sensors and tactile array interrupts stream directly into MCU TCM memory, enabling 1 kHz Control Barrier Functions to intervene before physical contact forces exceed part-breakage limits.
 * In **Archetype 3 (Cybernetic Energy & Processes)**, hardware interrupt lines synchronize digital signal processors (DSPs) to high-voltage AC grid waveforms. Operating without operating system jitter, the DSP samples analog-to-digital converters (ADCs) at microsecond intervals, computing phase angles and driving PWM inverter gates in lockstep with the 50/60 Hz electrical utility grid.
