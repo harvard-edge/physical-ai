@@ -115,7 +115,7 @@ $$\Delta t_{\text{wall}} = \frac{d_{\text{clearance}} - \sigma_0}{\|\mathbf{v}_{
 
 The Freshness Wall is a hard, geometrically grounded temporal deadline imposed by the kinematics of the physical environment. If total sense-to-actuation latency $\Delta t$ equals or exceeds $\Delta t_{\text{wall}}$, the agent's internal representation has drifted so far from physical ground truth that candidate neural proposals become active collision hazards.
 
-::: {.callout-note title="Micro-Case: The Stale Sensor Collision"}
+::: {.callout-case title="The Stale Sensor Collision"}
 Consider an autonomous mobile robot navigating a warehouse aisle at $2.0\text{ m/s}$ with an obstacle clearance margin of $d_{\text{clearance}} = 0.20\text{ m}$ and sensor calibration noise $\sigma_0 = 0.02\text{ m}$. The Freshness Wall collapses to $\Delta t_{\text{wall}} = (0.20 - 0.02) / 2.0 = 90\text{ ms}$. When a background operating system garbage collection sweep delayed neural inference, total latency spiked to $130\text{ ms}$. Although the neural model generated a mathematically valid steering command based on the captured frame, the command arrived $40\text{ ms}$ after the Freshness Wall had been breached. The robot steered into the new physical position of the obstacle, colliding at full operational speed.
 :::
 
@@ -134,15 +134,13 @@ $$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stoppi
 
 During Phase 1 (the linear reaction phase, $v_0 \cdot \Delta t_{\text{delay}}$), the robot is mechanically blind to the obstacle while computation transpires. It coasts forward at velocity $v_0$ with zero deceleration, exposing the fundamental bridge between computer systems and physics: computational delay is linear unguided travel through space. Once braking begins in Phase 2 (the quadratic braking phase, $\frac{v_0^2}{2 a_{\text{max}}}$), the machine decelerates at maximum available deceleration $a_{\text{max}}$, dissipating kinetic energy over a distance that scales quadratically with initial velocity.
 
-### Quantitative Case Walkthrough
-
-To observe how computational tail latency directly determines physical survival, consider an autonomous mobile platform operating in a warehouse with an initial velocity $v_0 = 1.0\text{ m/s}$, a maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and an available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
+::: {.callout-case title="The Dynamic Stopping Overrun"}
+Consider an autonomous mobile platform operating in a warehouse with an initial velocity $v_0 = 1.0\text{ m/s}$, a maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and an available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
 
 Under nominal $P_{50}$ execution ($\Delta t = 30\text{ ms}$), the reaction distance is $1.0 \times 0.030 = 3\text{ cm}$, the braking distance is $\frac{1.0^2}{2 \times 2.0} = 25\text{ cm}$, and the total stopping distance is $28\text{ cm}$. The robot halts safely with a $7\text{ cm}$ safety margin. 
 
-However, under a tail $P_{99}$ latency spike ($\Delta t = 230\text{ ms}$) caused by memory bus contention and kernel thread preemption, the reaction distance expands from $3\text{ cm}$ to $23\text{ cm}$, while the mechanical braking distance remains fixed at $25\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, causing a destructive collision with an overrun of $+13\text{ cm}$.
-
-The systems takeaway is stark: a $200\text{ ms}$ computational scheduling stall adds exactly $20\text{ cm}$ of unguided projectile travel, turning a certified safe maneuver into a destructive physical impact.
+However, under a tail $P_{99}$ latency spike ($\Delta t = 230\text{ ms}$) caused by memory bus contention and kernel thread preemption, the reaction distance expands from $3\text{ cm}$ to $23\text{ cm}$, while the mechanical braking distance remains fixed at $25\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, causing a destructive collision with an overrun of $+13\text{ cm}$. A $200\text{ ms}$ computational scheduling stall adds exactly $20\text{ cm}$ of unguided projectile travel.
+:::
 
 ### Dynamic Safety Clearance Invariants
 
@@ -182,7 +180,7 @@ Unbounded jerk triggers three severe physical failure modes:
 
 To protect mechanical hardware, trajectory commands must maintain $\mathcal{C}^2$ differential continuity with bounded jerk ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$). Modern systems enforce this by fitting quintic splines across predicted action chunks and applying temporal ensembling to blend overlapping trajectory chunks smoothly across time.
 
-::: {.callout-note title="Micro-Case: The Sheared Harmonic Flexspline"}
+::: {.callout-case title="The Sheared Harmonic Flexspline"}
 During high-speed trajectory tracking on an articulated 6-axis manipulator, a neural policy updated its target joint positions at $50\text{ Hz}$ using un-smoothed step setpoints. At an aggressive direction reversal, the commanded acceleration stepped instantaneously from $+12\text{ rad/s}^2$ to $-12\text{ rad/s}^2$, generating an impulsive jerk spike exceeding $2400\text{ rad/s}^3$. The resulting shock load exceeded the shear yield limit of the titanium-alloy flexspline cup, stripping the gear teeth and permanently destroying the joint actuator.
 :::
 
@@ -217,11 +215,11 @@ $$E_{\text{thermal}}[k] = \max\left( 0, \; E_{\text{thermal}}[k-1] + \left( I^2[
 
 When $E_{\text{thermal}}$ crosses safety thresholds, the microcontroller autonomously scales down allowed current, clamping motor drive to $I_{\text{cont}}$ before wire insulation melts.
 
-### Silicon Thermal Throttling: The Cold Bench Fallacy
-
+::: {.callout-case title="Thermal Throttling in a Sealed Enclosure"}
 Thermal accumulation also governs edge silicon executing neural models ($P_{\text{SoC}} \propto V_{\text{core}}^2 f_{\text{clk}}$). When junction temperatures exceed throttling thresholds ($85\text{--}95^\circ\text{C}$), on-die Dynamic Thermal Management downclocks the neural accelerator to protect the package.
 
 This creates the *Cold Bench Fallacy*: a vision-language-action policy benchmarked on a cold laboratory bench executes in $22\text{ ms}$, comfortably meeting its $50\text{ ms}$ real-time intent lease. But after 20 minutes of continuous operation inside an enclosed chassis, thermal throttling cuts clock frequencies in half. Inference latency inflates to $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy produces mathematically valid outputs, but they arrive after the intent lease has expired, causing the microcontroller to reject proposals and engage dynamic braking, collapsing system operational availability.
+:::
 
 | Physical Subsystem | Dominant Thermal Mechanism | Characteristic $\tau_{\text{th}}$ | Critical Temperature Limit | Physical Breakdown Failure Mode | Real-Time Safety Countermeasure |
 | :--- | :--- | :---: | :---: | :--- | :--- |
@@ -253,7 +251,9 @@ Modern embedded computing platforms deployed at the physical edge almost univers
 
 This unified topology introduces an intense architectural tax during real-time perception workloads, termed the *ingestion tax*. A dual-camera $1080\text{p}$ RGB streaming pipeline at $60\text{ FPS}$ ingests approximately $746\text{ MB/s}$ of raw pixel data, while an uncompressed $4\text{K}$ perception stream demands over $1.49\text{ GB/s}$ of continuous memory write throughput. The camera interface receivers and DMA engines autonomously blast these massive byte streams across the system crossbar directly into DRAM circular buffers.
 
+::: {.callout-case title="The UMA Bus Ingestion Blackout"}
 Concurrently, the neural accelerator executes vision-language-action backbones or diffusion policy models. During every forward evaluation pass, the NPU must stream hundreds of megabytes of neural network weights from DRAM into its local on-chip SRAM register files. When high-bandwidth camera DMA write bursts coincide with dense NPU weight read transactions, the aggregate demand exceeds the saturation threshold of the shared DRAM crossbar interconnect. The memory controller's internal read queues become congested behind queued DMA write transactions, degrading effective memory bus efficiency by 40 to 60 percent. As a direct consequence, the NPU compute pipeline suffers extensive memory stall cycles, inflating neural inference execution time from a nominal median of $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
+:::
 
 ### Hardware QoS and Zero-Copy Buffers
 
