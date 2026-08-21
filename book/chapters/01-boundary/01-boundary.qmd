@@ -201,89 +201,23 @@ Furthermore, the governance of Physical AI systems demands that verification ext
 [^cae]: *Claim-Argument-Evidence (CAE)* is a structured assurance framework where safety claims (e.g., "The vehicle will not collide with static obstacles") are justified through deductive arguments supported by concrete empirical evidence (e.g., fault-injection test logs and formal invariant proofs) [@bishop1998methodology].
 
 
-## Physical Constraints in Silicon and Steel
+## Physical Realities of Silicon and Steel
 
-When machine learning software transitions from cloud datacenters to physical bench hardware, four physical realities immediately assert themselves (@tbl-software-vs-physics). In simulation and digital sandboxes, these realities are routinely abstracted away: state transitions occur instantaneously upon variable assignment, commanded torques materialize without inductive rise times, and collisions register as scalar cost penalties without causing plastic deformation or structural fracture. On the physical bench, however, digital bits commanding an actuator must negotiate directly with conservation of momentum, finite inductive rise times, thermal dissipation limits, and mechanical transmission tolerances [@horowitz2015art]. Every systems engineer designing physical AI architectures must be equipped to compute these physical boundaries on the back of an envelope before energizing a power stage.
+When machine learning software transitions from cloud datacenters and simulators to physical bench hardware, five physical realities immediately assert themselves (@tbl-software-vs-physics). In simulation and digital sandboxes, these realities are routinely abstracted away: state transitions occur instantaneously upon variable assignment, commanded torques materialize without inductive rise times, continuous peak power is assumed without thermal accumulation, and collisions register as scalar cost penalties without causing plastic deformation or structural fracture. On the physical bench, however, digital bits commanding an actuator must negotiate directly with conservation of momentum, finite inductive rise times, thermal dissipation limits, mechanical transmission compliance, and memory bus contention within the underlying computing silicon [@horowitz2015art].
 
 | Physical Phenomenon | Software Assumption (Simulation) | Physical Bench Reality | Systems & Architectural Impact |
 | :--- | :--- | :--- | :--- |
-| **Kinetic Momentum ($\mathbf{p} = m\mathbf{v}$)** | Velocity drops to zero instantly upon command | Continuous momentum requires finite stopping distance ($d_{\text{stop}}$) | Unmitigated compute latency causes physical collisions |
-| **Joule Heating ($I^2 R$)** | Motor produces unlimited continuous peak torque | Resistive winding losses accumulate as heat in thermal capacitance ($C_{\text{th}}$) | Sustained stall current destroys stator insulation and demagnetizes rotors |
-| **Inductance ($\tau_e = L/R$)** | Torque setpoint responds in $0\text{ ms}$ | Stator inductance enforces exponential current rise time | Actuation phase lag erodes closed-loop stability margin |
-| **Backlash & Compliance** | Infinitely rigid, continuous kinematic chain | Gearbox tooth clearances create angular deadbands during reversals | Limit-cycle oscillation and impact shock upon tooth re-engagement |
-| **Mechanical Jerk ($\dddot{\mathbf{q}}$)** | Step acceleration and discontinuous force allowed | Infinite torque rate ($\dot{\boldsymbol{\tau}} \to \infty$) injects high-frequency shock waves | Excites structural resonances, chips gear teeth, and shears drive pins |
+| **Time & Information** | Synchronous, turn-based clock; sensory data static | Physical world evolves continuously; sensory evidence decays | Outdated observations induce spatial uncertainty and collision |
+| **Inertia & Momentum** | Velocity drops to zero instantly upon command | Continuous momentum requires finite stopping distance ($d_{\text{stop}}$) | Unmitigated compute latency causes unguided projectile travel |
+| **Actuation Limits** | Torque setpoint responds in $0\text{ ms}$; infinite force | Stator inductance enforces exponential current rise; finite gear strength | Phase lag erodes stability; discontinuous steps strip gear teeth |
+| **Energy & Thermal** | Motor produces unlimited continuous peak torque | Resistive winding losses accumulate as heat in thermal mass ($C_{\text{th}}$) | Sustained stall current destroys stator insulation and demagnetizes rotors |
+| **Silicon Substrate** | Infinite-bandwidth, zero-contention compute fabric | Shared DRAM memory bus crossbar; cache line evictions; interrupt jitter | Multi-camera DMA bursts inflate neural inference latency tails |
 
-: Digital software assumptions versus physical hardware realities. {#tbl-software-vs-physics}
+: Digital software assumptions versus physical hardware realities across the five foundational physical domains. {#tbl-software-vs-physics}
 
+These five physical domains—Time, Inertia, Actuation, Energy, and Silicon—form the inescapable physical boundary within which all embodied intelligence must operate. When a neural policy commands a high-speed motion or attempts a delicate mechanical insertion, it cannot treat the physical robot as an idealized mathematical abstraction. A high-level policy that ignores inertial stopping distance will coast moving mass directly into obstacles during computational latency spikes. A policy that commands discontinuous joint waypoints will launch mechanical shock waves that shatter precision gearboxes. A policy that commands continuous peak torque will overheat copper windings and melt stator insulation. And an embedded software architecture that treats dynamic memory and shared buses as infinite resources will suffer catastrophic tail latency spikes when high-bandwidth camera ingestion starves neural weight streaming.
 
-### Kinetic Momentum and Inertia
-
-In digital computing, an executing thread can be paused instantly with a software breakpoint, freezing execution state without physical side effects. In the physical realm, a mass $m$ translating at linear velocity $\mathbf{v}$ carries kinetic momentum $\mathbf{p} = m\mathbf{v}$ and scalar kinetic energy:
-
-$$E_k = \frac{1}{2} m \|\mathbf{v}\|^2$$
-
-For articulated robotic mechanisms with multiple rotating joints, this relationship generalizes across configuration space $\mathbf{q} \in \mathbb{R}^n$ through the configuration-dependent generalized inertia tensor $\mathbf{M}(\mathbf{q}) \in \mathbb{R}^{n \times n}$:
-
-$$E_k = \frac{1}{2} \dot{\mathbf{q}}^T \mathbf{M}(\mathbf{q}) \dot{\mathbf{q}}$$
-
-Because energy and momentum are strictly conserved physical quantities, software cannot instantly zero the kinetic energy of a moving mechanism. Bringing mass to rest requires applying an opposing physical force over a finite displacement and time interval, dissipating that energy through controlled deceleration or unconstrained structural deformation. If an application processor freezes or drops frames while the mechanism is in motion, mechanical momentum continues carrying the linkage along its unguided trajectory.
-
-A concrete calculation on benchtop hardware demonstrates how rapidly an unmitigated software stall translates into mechanical destruction. Consider a lightweight manipulator carrying a tooling mass of $m = 0.40\text{ kg}$ operating at an end-effector velocity of $v = 1.2\text{ m/s}$, representative of standard industrial pick-and-place operation. If an application processor crashes or experiences an operating system scheduling stall that creates an unmitigated permission outage of $\Delta t = 50\text{ ms}$, the unguided mechanism coasts over a blind displacement:
-
-$$d_{\text{coast}} = v \cdot \Delta t = (1.2\text{ m/s})(0.050\text{ s}) = 0.060\text{ m} = 60\text{ mm}$$
-
-During this $60\text{ mm}$ displacement, the mechanism delivers kinetic energy:
-
-$$E_k = \frac{1}{2} m v^2 = \frac{1}{2}(0.40\text{ kg})(1.2\text{ m/s})^2 = 0.288\text{ J}$$
-
-directly into any rigid obstacle in its path. While $0.288\text{ J}$ appears modest in macroscopic terms, concentrating that energy across the rigid contact boundary of a calibration fixture generates localized contact forces exceeding several hundred newtons. The resulting stress wave easily shears precision dowel pins and cracks cycloidal gear teeth. Dynamic stopping distance is not a theoretical abstraction; it is an inescapable kinematic cost dictated by velocity and permission latency.
-
-
-### Joule Heating and Thermal Accumulation
-
-Transducing electrical energy into mechanical work through electromagnetic actuators incurs unavoidable resistive losses. When an inverter drives phase current $I(t)$ across motor stator windings having phase resistance $R$, the instantaneous electrical power dissipated as heat is governed by Joule's law, accumulating total thermal energy according to:
-
-$$Q(t) = \int_{0}^{t} I^2(\tau) R \, d\tau$$
-
-An electric actuator possesses a lumped thermal capacitance $C_{\text{th}}$ (representing the heat capacity of the copper coils and stator iron core) and a thermal resistance $R_{\text{th}}$ governing conductive and convective heat transfer to the ambient environment. During brief dynamic acceleration bursts, stator windings safely absorb transient heat spikes because $C_{\text{th}}$ buffers the temperature rise. In steady-state operation, however, heat dissipation must balance ambient rejection, strictly limiting continuous current to the manufacturer's rated threshold $I_{\text{cont}}$.
-
-When an autonomous policy encounters a planning deadlock, an unmodeled obstacle, or an out-of-distribution visual occlusion, it frequently commands sustained stall torque against an immovable surface. Under stall conditions, the back-electromotive force drops to zero, and the motor draws continuous stall current $I_{\text{stall}} \gg I_{\text{cont}}$. Within seconds, thermal energy accumulation exceeds the thermal dissipation capacity of the motor housing. As winding temperatures exceed the dielectric breakdown rating of the wire enamel insulation (typically $155^\circ\text{C}$ to $180^\circ\text{C}$ for Class F and H insulation), inter-turn electrical short circuits form, destroying the stator. Simultaneously, excessive core temperatures risk exceeding the thermal knee limit of rare-earth rotor magnets (such as neodymium-iron-boron, NdFeB[^ndfeb]), causing permanent, irreversible demagnetization that degrades the motor's torque constant $K_t$. Thermal accumulation transforms transient software deadlocks into permanent hardware destruction.
-
-[^ndfeb]: *Neodymium-Iron-Boron (NdFeB)* magnets are high-strength permanent magnets used in brushless electric motors. If heated beyond their thermal knee threshold (typically $80\text{--}150^\circ\text{C}$ depending on grade), they suffer permanent loss of magnetic strength.
-
-
-### Electromagnetic Actuation and Inductance
-
-In discrete-time policy simulation, roboticists often assume that commanding a joint torque $\boldsymbol{\tau}_{\text{cmd}}$ results in instantaneous torque production at the physical joint. In physical silicon and copper, however, electric current cannot change discontinuously due to stator winding inductance $L$. The voltage-current relationship of a brushless motor phase is governed by Faraday's law of induction:
-
-$$V(t) = R I(t) + L \frac{dI(t)}{dt} + K_e \omega(t)$$
-
-where $V(t)$ is the applied inverter terminal phase voltage, $R$ is winding resistance, $L$ is winding inductance, and $K_e \omega(t)$ represents the counter-electromotive force (back-EMF[^backemf]) generated by rotor angular velocity $\omega(t)$.
-
-[^backemf]: *Back-Electromotive Force (Back-EMF)* is a counter-voltage induced in motor windings as the permanent-magnet rotor spins, proportional to rotational speed. When back-EMF equals the supply voltage, the motor reaches its top speed and cannot accelerate further.
-
-The electrical time constant of the motor winding, defined as $\tau_e = L / R$, dictates the fundamental physical rate at which magnetic flux and electromagnetic torque can ramp up. Even if an artificial intelligence model evaluates instantaneously with zero compute latency, the physical inductance of the stator enforces an exponential current rise time:
-
-$$I(t) = \frac{V - K_e \omega}{R} \left(1 - e^{-t / \tau_e}\right)$$
-
-This inductive lag introduces an unavoidable phase delay between digital software commands and physical force generation. Furthermore, as rotor velocity $\omega(t)$ increases during high-speed maneuvers, back-EMF rises proportionally, opposing the applied terminal voltage. When the sum of resistive drop and back-EMF matches the maximum DC supply rail voltage $V_{\text{bus}}$, the inverter encounters a hard voltage saturation boundary. Beyond this boundary, the motor cannot produce additional torque, regardless of the magnitude of the torque vector output by a neural network.
-
-
-### Backlash, Compliance, and Jerk
-
-Physical mechanical transmissions—such as cycloidal speed reducers, harmonic strain-wave drives, and planetary gearboxes—diverge substantially from ideal rigid kinematic linkages. Precision gear teeth require microscopic manufacturing clearances to prevent binding, introducing angular backlash ($\theta_{\text{backlash}}$)[^backlash]. Backlash manifests as a non-linear deadband during motion reversals: when an actuator reverses direction, the motor rotor rotates through the backlash gap without transmitting torque to the output link until mechanical contact is re-established on the opposing tooth face. When a neural policy commands high-frequency sign reversals in joint velocity, crossing this deadband creates phase lag and limit-cycle chattering, followed by abrupt impact shock when the gear teeth collide.
-
-[^backlash]: *Backlash* is the mechanical play or lost clearance between mating gear teeth. During reversals, the input shaft rotates through this small angle before re-engaging the output shaft.
-
-Furthermore, physical mechanisms exhibit structural compliance across drive shafts, flexsplines, and structural linkages. When a manipulator makes contact with an environment having material stiffness $k_{\text{contact}}$ and damping $b_{\text{contact}}$, the normal contact force scales with penetration depth $\Delta x$ and contact velocity $\Delta \dot{x}$:
-
-$$F_{\text{contact}}(t) = k_{\text{contact}} \Delta x(t) + b_{\text{contact}} \Delta \dot{x}(t)$$
-
-In rigid industrial and scientific workspaces where contact stiffness routinely exceeds $k_{\text{contact}} > 10^5\text{ N/m}$, an unperceived positional overshoot of merely $0.5\text{ mm}$ generates an instantaneous contact force exceeding $50\text{ N}$. If the control loop cannot react within sub-millisecond timescales, the impact shock propagates directly through the drivetrain, damaging delicate load cells and bearings.
-
-Finally, discrete-time policies that output discontinuous joint trajectory steps inject severe mechanical jerk[^jerk], defined as the third time derivative of joint position $\dddot{\mathbf{q}} = d^3\mathbf{q} / dt^3$. Discontinuous acceleration profiles demand infinite torque rates ($\dot{\boldsymbol{\tau}} \to \infty$), exciting structural resonant frequencies in the robot chassis, accelerating gear tooth fatigue, and shearing drive pins. Robust physical AI architectures must treat mechanical jerk, contact compliance, and inductive lag as primary physical constraints that bound policy execution.
-
-[^jerk]: *Jerk* is the time rate of change of acceleration ($d\mathbf{a}/dt$). Discontinuous acceleration steps from a neural network act as mechanical hammer blows against gear teeth and linkages.
+In Chapter 2, we attach physical measuring instruments to every microsecond of the sense-to-actuation pipeline, deriving the exact International System of Units (SI) equations, tail latency distributions, and quantitative budgets across these Five Physical Columns. Before diving into the quantitative metrology of each column, however, we must first establish the architectural covenant that allows non-deterministic neural networks to safely interact with physical hardware: the Proposal and Permission Privilege Split.
 
 
 ## The Proposal and Permission Privilege Split
