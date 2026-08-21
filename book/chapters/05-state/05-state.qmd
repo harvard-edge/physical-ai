@@ -16,20 +16,19 @@ By the conclusion of this chapter, you will be able to:
 3. **Formulate Spatial Persistence Under Occlusion:** Model object permanence across visual dropouts using forward kinematic prediction and stochastic state propagation.
 4. **Quantify Spatial Uncertainty Expansion & Expiration:** Formulate positional covariance growth ($\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t$) and enforce hard Time-To-Live (TTL) state leases.
 5. **Architect Memory Domain Isolation:** Decouple high-bandwidth, non-deterministic latent belief updates (Linux MPU) from deterministic, high-rate proprioceptive state estimation (Real-Time MCU).
-6. **Freeze the State and Timing Model (state and timing model):** Author the fifth artifact of the engineering notebook establishing coordinate hierarchies, TTL windows, covariance bounds, and thermal derating regimes.
+6. **Freeze the State and Timing Model (STATE-01):** Author the fifth artifact of the engineering notebook establishing coordinate hierarchies, TTL windows, covariance bounds, and thermal derating regimes.
 :::
 
-::: {.callout-autopsy}
+::: {.callout-autopsy title="The Stale Frame Tree PCB Collision"}
 * **System:** Precision Electronic Assembly Arm (6-DoF Articulated Manipulator + Wrist-Mounted Camera).
 * **Incident:** Vacuum gripper slammed into an aluminum printed circuit board (PCB) mounting fixture at $0.9\text{ m/s}$; shattered optical vacuum nozzle and crushed surface-mount components ($1,450\text{ USD}$ tooling damage).
 * **Telemetry Snapshot:** Camera detected target PCB position at $T+08.100\text{ s}$. Due to MIPI-CSI image decoding and neural tokenization latency, the vision transform matrix arrived stamped $65\text{ ms}$ in the past. During the final descent phase, the robot's own mechanical forearm occluded the camera's optical line-of-sight for $180\text{ ms}$.
 * **Root Cause:** The arm forward-kinematics tree was evaluated using current joint angles ($t_{\text{now}}$) but stale camera observations ($t_{\text{now}} - 65\text{ ms}$) without coordinate timestamp synchronization. Furthermore, the policy lacked a metric uncertainty model; upon visual occlusion, it treated the stale target pose as ground truth rather than expanding its spatial covariance bounds.
 * **Architectural Flaw:** The system lacked a time-indexed $SE(3)$ transform buffer and failed to model spatial uncertainty expansion during visual occlusion.
 * **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
-
 :::
 
-::: {.callout-contract}
+::: {.callout-contract title="The State and Timing Contract (STATE-01)"}
 | Component | Authority and Substrate | Contract Specification |
 | :--- | :--- | :--- |
 | **What the MPU Proposes (System 2)** | *Untrusted · Stochastic · Linux MPU* | • Estimated world state: $S_t = [T_{\text{target}}^{\text{world}}, \mathbf{v}_t, \Sigma_t]$<br>• Latent predictive rollout: $\mathbf{z}_{t+H} = g_\phi(\mathbf{z}_t, \mathbf{a}_{t:t+H})$<br>• Spatial uncertainty covariance bound: $\text{Tr}(\Sigma_t) \le \sigma_{\text{max}}^2$ |
@@ -37,10 +36,9 @@ By the conclusion of this chapter, you will be able to:
 | **Failure Escalation** | *MCU Hardware Reflex* | If state lease expires ($\Delta t > \tau_{\text{TTL}}$) or innovation residual breaches $3\sigma$, invalidate downstream MPU proposals and execute Category 2 smooth closed-loop velocity hold. |
 :::
 
-::: {.callout-note icon=false}
-**The Sim-to-Real Delta:**
-* **What Simulation Assumes:** The robot base and world origin share a static, mathematically perfect transformation matrix; coordinate transforms across all rigid bodies are instantaneous and perfectly synchronized; joint states and object positions are known with absolute certainty at every simulator step.
-* **What the Bench Measures:** Camera mounting brackets flex under mechanical acceleration, distorting extrinsic calibration matrices ($T_{\text{cam}}^{\text{base}}$); microsecond crystal oscillator drift between sensor microcontrollers causes artificial velocity estimation spikes; physical objects are continuously occluded by robot links or environmental clutter, causing spatial uncertainty to expand rapidly in the absence of sensory updates.
+::: {.callout-case title="Sim-to-Real Delta: Kinematic Transforms vs. Mounting Flex"}
+* **What Simulation Assumes:** The robot base and world origin share a static, mathematically perfect transformation matrix; coordinate transforms across all rigid bodies are instantaneous and perfectly synchronized; joint states and object positions are known with absolute certainty at every simulator step [@todorov2012mujoco; @makoviychuk2021isaac].
+* **What the Bench Measures:** Camera mounting brackets flex under mechanical acceleration, distorting extrinsic calibration matrices ($T_{\text{cam}}^{\text{base}}$); microsecond crystal oscillator drift between sensor microcontrollers causes artificial velocity estimation spikes; physical objects are continuously occluded by robot links or environmental clutter, causing spatial uncertainty to expand rapidly in the absence of sensory updates [@tobin2017domain; @peng2018sim].
 :::
 
 
@@ -141,22 +139,21 @@ Because the entire predictive loop operates in compact latent space without pixe
 
 : Quantitative Comparison of Physical World Modeling Paradigms. Contrasting generative pixel diffusion, latent world models (JEPAs, RSSMs), and metric kinematic trees across compute, latency, and geometric fidelity. {#tbl-world-model-comparison}
 
-::: {.callout-note title="Cross-Embodiment Anchor: World Modeling and State Persistence Across the 3 Archetypes"}
+::: {.callout-archetype title="World Modeling and State Persistence Across the Three Canonical Archetypes"}
 * **Archetype 1: Locomotion & Mobility (Autonomous Vehicles & Delivery Drones):** 
- At $25\text{ m/s}$ highway cruising speed, entering an unmapped tunnel or experiencing heavy camera glare blinds optical perception for $1.5\text{ seconds}$. High-rate IMU dead-reckoning integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) sustains vehicle trajectory estimation. However, uncorrected accelerometer bias drift causes spatial uncertainty covariance $\text{Tr}(\Sigma_t)$ to swell to $\pm 1.8\text{ meters}$, triggering pre-emptive lane-centering and speed derating before visual TTL leases expire.
+  At $25\text{ m/s}$ highway cruising speed, entering an unmapped tunnel or experiencing heavy camera glare blinds optical perception for $1.5\text{ seconds}$. High-rate IMU dead-reckoning integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) sustains vehicle trajectory estimation. However, uncorrected accelerometer bias drift causes spatial uncertainty covariance $\text{Tr}(\Sigma_t)$ to swell to $\pm 1.8\text{ meters}$, triggering pre-emptive lane-centering and speed derating before visual TTL leases expire.
 
 * **Archetype 2: Contact Manipulation (The Desk Bench Kit / Manipulator):** 
- When a 6-DoF robot arm lowers a vacuum gripper toward an electronic component, the mechanical wrist inevitably occludes overhead camera line-of-sight for $250\text{ ms}$. The dynamic $SE(3)$ transform graph queries historical $T_{\text{camera}}^{\text{base}}(t_{\text{capture}})$, locks the component's metric position in the base coordinate frame, and uses high-rate joint encoder kinematics ($1000\text{ Hz}$) to complete sub-millimeter component placement without stalling.
+  When a 6-DoF robot arm lowers a vacuum gripper toward an electronic component, the mechanical wrist inevitably occludes overhead camera line-of-sight for $250\text{ ms}$. The dynamic $SE(3)$ transform graph queries historical $T_{\text{camera}}^{\text{base}}(t_{\text{capture}})$, locks the component's metric position in the base coordinate frame, and uses high-rate joint encoder kinematics ($1000\text{ Hz}$) to complete sub-millimeter component placement without stalling.
 
 * **Archetype 3: Cybernetic Energy (Smart Grid Battery Storage & Power Inverters):** 
- Internal electrochemical state variables—such as lithium-ion State of Charge (SoC) and State of Health (SoH)—cannot be observed with optical cameras. An Equivalent Circuit Model (ECM) combined with an Extended Kalman Filter estimates internal polarization overpotentials ($V_{\text{polarization}}$) while continuously evaluating winding and cell thermal diffusion equations ($C_{\text{th}} \frac{dT}{dt}$) to enforce current limits before thermal runaway thresholds are breached.
+  Internal electrochemical state variables—such as lithium-ion State of Charge (SoC) and State of Health (SoH)—cannot be observed with optical cameras. An Equivalent Circuit Model (ECM) combined with an Extended Kalman Filter estimates internal polarization overpotentials ($V_{\text{polarization}}$) while continuously evaluating winding and cell thermal diffusion equations ($C_{\text{th}} \frac{dT}{dt}$) to enforce current limits before thermal runaway thresholds are breached.
 :::
 
 
 ## Spatial Persistence Under Occlusion: Metric $SE(3)$ Frame Trees
 
-
-While Latent World Models excel at semantic prediction and affordance planning, motor controllers and safety filters require exact metric geometry. When an arm closes its gripper, the contact point must be specified not in abstract embedding dimensions, but in millimeters relative to the workpiece fixture.
+While Latent World Models excel at semantic prediction and affordance planning [@ha2018worldmodels; @lecun2022path; @hafner2023mastering], motor controllers and safety filters require exact metric geometry. When an arm closes its gripper, the contact point must be specified not in abstract embedding dimensions, but in millimeters relative to the workpiece fixture.
 
 Every physical AI system must maintain an explicit, dynamic **Spatial Frame Graph** (@fig-se3-tree).
 
@@ -164,22 +161,22 @@ Every physical AI system must maintain an explicit, dynamic **Spatial Frame Grap
 
 ### The Mathematics of Rigid Transformations: $SE(3)$
 
-In Euclidean three-dimensional space, the position and orientation of any rigid physical body $B$ relative to reference frame $A$ is uniquely represented by an element of the **Special Euclidean Group** $T_B^A \in SE(3)$:
+In Euclidean three-dimensional space, the position and orientation of any rigid physical body $B$ relative to reference frame $A$ is uniquely represented by an element of the **Special Euclidean Group** $T_B^A \in SE(3)$ [@murray2017mathematical]:
 
-$$T_B^A = \begin{bmatrix} R_B^A & \mathbf{p}_B^A \\ \mathbf{0}_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
+$$\mathbf{T}_B^A = \begin{bmatrix} \mathbf{R}_B^A & \mathbf{p}_B^A \\ \mathbf{0}_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
 
 Where:
 
-* **Rotation Matrix ($R_B^A \in SO(3)$):** $3 \times 3$ orthonormal rotation matrix satisfying $R^T R = I$ and $\det(R) = +1$.
+* **Rotation Matrix ($\mathbf{R}_B^A \in SO(3)$):** $3 \times 3$ orthonormal rotation matrix satisfying $\mathbf{R}^T \mathbf{R} = \mathbf{I}$ and $\det(\mathbf{R}) = +1$.
 * **Translation Vector ($\mathbf{p}_B^A \in \mathbb{R}^3$):** Vector $[x, y, z]^T$ pointing from origin $A$ to origin $B$.
 
 Coordinate transformations compose associatively via standard matrix multiplication:
 
-$$T_{\text{target}}^{\text{world}} = T_{\text{base}}^{\text{world}} \cdot T_{\text{camera}}^{\text{base}} \cdot T_{\text{target}}^{\text{camera}}$$
+$$\mathbf{T}_{\text{target}}^{\text{world}} = \mathbf{T}_{\text{base}}^{\text{world}} \cdot \mathbf{T}_{\text{camera}}^{\text{base}} \cdot \mathbf{T}_{\text{target}}^{\text{camera}}$$
 
 The inverse transformation represents the reverse coordinate mapping:
 
-$$\left(T_B^A\right)^{-1} = T_A^B = \begin{bmatrix} (R_B^A)^T & -(R_B^A)^T \mathbf{p}_B^A \\ \mathbf{0}_{1\times 3} & 1 \end{bmatrix}$$
+$$\left(\mathbf{T}_B^A\right)^{-1} = \mathbf{T}_A^B = \begin{bmatrix} (\mathbf{R}_B^A)^T & -(\mathbf{R}_B^A)^T \mathbf{p}_B^A \\ \mathbf{0}_{1\times 3} & 1 \end{bmatrix}$$
 
 ### Why Euler Angles Fail: The Lie Algebra $\mathfrak{se}(3)$
 
@@ -190,7 +187,7 @@ Euler angle parameterizations suffer from two fatal mathematical flaws:
 1. **Gimbal Lock Singularities:** When pitch reaches $\theta = \pm 90^\circ$, the roll and yaw axes align, causing the loss of one rotational degree of freedom. At this singularity, infinitesimal physical rotations require infinite angular rates in Euler space, causing numerical integration routines to crash or explode.
 2. **Non-Euclidean Topology:** Rotations form a curved manifold ($SO(3)$), not a vector space. You cannot add angular velocities directly ($\theta(t+\Delta t) \neq \theta(t) + \dot{\theta}\Delta t$).
 
-To integrate continuous joint velocities and IMU body rates without singularities or coordinate distortion, physical AI systems execute numerical integration in the **Lie algebra tangent space** ($\mathfrak{se}(3)$).
+To integrate continuous joint velocities and IMU body rates without singularities or coordinate distortion, physical AI systems execute numerical integration in the **Lie algebra tangent space** ($\mathfrak{se}(3)$) [@murray2017mathematical].
 
 A continuous velocity twist vector combining linear velocity $\mathbf{v} \in \mathbb{R}^3$ and angular velocity $\boldsymbol{\omega} \in \mathbb{R}^3$ is defined as $\boldsymbol{\xi} = [\mathbf{v}, \boldsymbol{\omega}]^T \in \mathbb{R}^6$. The Lie algebra element $\boldsymbol{\xi}^\wedge \in \mathfrak{se}(3)$ is constructed via the skew-symmetric "hat" operator:
 
@@ -198,9 +195,9 @@ $$\boldsymbol{\xi}^\wedge = \begin{bmatrix} \boldsymbol{\omega}^\wedge & \mathbf
 
 Continuous forward propagation over a discrete integration timestep $\Delta t$ is computed in closed form using the matrix exponential map ($\exp: \mathfrak{se}(3) \to SE(3)$):
 
-$$T(t + \Delta t) = T(t) \cdot \exp\left(\boldsymbol{\xi}^\wedge \cdot \Delta t\right)$$
+$$\mathbf{T}(t + \Delta t) = \mathbf{T}(t) \cdot \exp\left(\boldsymbol{\xi}^\wedge \cdot \Delta t\right)$$
 
-Using Rodrigues' rotation formula and the closed-form left Jacobian of $SO(3)$, this exponential map evaluates in microseconds without trigonometric singularities or numerical drift.^[For an angular velocity vector with magnitude $\theta = \|\boldsymbol{\omega}\|\Delta t$ and unit axis $\mathbf{n} = \boldsymbol{\omega}/\|\boldsymbol{\omega}\|$, Rodrigues' formula yields the exact rotation matrix $R = \exp(\boldsymbol{\omega}^\wedge \Delta t) = I + \sin(\theta)\mathbf{n}^\wedge + (1 - \cos(\theta))(\mathbf{n}^\wedge)^2$. Translation propagates via $\mathbf{p} = V(\theta) \mathbf{v}\Delta t$, where $V(\theta) = I + \frac{1-\cos(\theta)}{\theta}\mathbf{n}^\wedge + \frac{\theta - \sin(\theta)}{\theta}(\mathbf{n}^\wedge)^2$. This guarantees orthonormal integrity with zero matrix renormalization overhead.]
+Using Rodrigues' rotation formula and the closed-form left Jacobian of $SO(3)$, this exponential map evaluates in microseconds without trigonometric singularities or numerical drift.^[For an angular velocity vector with magnitude $\theta = \|\boldsymbol{\omega}\|\Delta t$ and unit axis $\mathbf{n} = \boldsymbol{\omega}/\|\boldsymbol{\omega}\|$, Rodrigues' formula yields the exact rotation matrix $\mathbf{R} = \exp(\boldsymbol{\omega}^\wedge \Delta t) = \mathbf{I} + \sin(\theta)\mathbf{n}^\wedge + (1 - \cos(\theta))(\mathbf{n}^\wedge)^2$. Translation propagates via $\mathbf{p} = \mathbf{V}(\theta) \mathbf{v}\Delta t$, where $\mathbf{V}(\theta) = \mathbf{I} + \frac{1-\cos(\theta)}{\theta}\mathbf{n}^\wedge + \frac{\theta - \sin(\theta)}{\theta}(\mathbf{n}^\wedge)^2$. This guarantees orthonormal integrity with zero matrix renormalization overhead.]
 
 ### The Time-Indexed Transform Buffer (`tf2`)
 
@@ -208,9 +205,8 @@ In a real robot, sensors do not publish synchronously. An IMU emits linear accel
 
 If a control policy naively composes transforms across different sensor arrivals without matching timestamps, the resulting spatial estimate is corrupted by **timestamp skew**:
 
-::: {.callout-caution}
-### The Danger of Timestamp Skew
-Imagine a robot arm moving at an end-effector velocity of $1.5\text{ m/s}$. If the vision system detects a target object in camera frame ($T_{\text{target}}^{\text{camera}}$) with a $65\text{ ms}$ ingestion delay, multiplying this delayed detection by the *current* forward-kinematics camera pose ($T_{\text{camera}}^{\text{base}}(t_{\text{now}})$) produces an artificial positional error of:
+::: {.callout-case title="Timestamp Skew and Coordinate Frame Distortion"}
+Imagine a robot arm moving at an end-effector velocity of $1.5\text{ m/s}$. If the vision system detects a target object in camera frame ($\mathbf{T}_{\text{target}}^{\text{camera}}$) with a $65\text{ ms}$ ingestion delay, multiplying this delayed detection by the *current* forward-kinematics camera pose ($\mathbf{T}_{\text{camera}}^{\text{base}}(t_{\text{now}})$) produces an artificial positional error of:
 
 $$\Delta p_{\text{error}} = v_{\text{arm}} \cdot \Delta t_{\text{lag}} = 1.5\text{ m/s} \cdot 0.065\text{ s} = \mathbf{97.5\text{ mm}}$$
 
@@ -251,16 +247,16 @@ For a target object with initial spatial covariance $\sigma_0$ at the moment of 
 
 $$\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t + \frac{1}{2} a_{\text{target}} \cdot (\Delta t)^2$$
 
-In the full multivariate Extended Kalman Filter (EKF) formulation, the spatial covariance matrix $P_t \in \mathbb{R}^{n \times n}$ evolves during open-loop propagation according to:
+In the full multivariate Extended Kalman Filter (EKF) formulation [@kalman1960new; @thrun2005probabilistic], the spatial covariance matrix $\mathbf{P}_t \in \mathbb{R}^{n \times n}$ evolves during open-loop propagation according to:
 
-$$P_t = F_t P_{t-1} F_t^T + Q_t$$
+$$\mathbf{P}_t = \mathbf{F}_t \mathbf{P}_{t-1} \mathbf{F}_t^T + \mathbf{Q}_t$$
 
 Where:
 
-* **Transition Jacobian ($F_t$):** $\left.\frac{\partial f}{\partial \mathbf{x}}\right|_{\hat{\mathbf{x}}_{t-1}}$, representing the Jacobian of the continuous physical transition model.
-* **Process Noise Covariance ($Q_t$):** $\mathbb{E}[\mathbf{w}_t \mathbf{w}_t^T]$, capturing unmodeled physical disturbances such as vibration, motor cogging, and turbulence.
+* **Transition Jacobian ($\mathbf{F}_t$):** $\left.\frac{\partial f}{\partial \mathbf{x}}\right|_{\hat{\mathbf{x}}_{t-1}}$, representing the Jacobian of the continuous physical transition model.
+* **Process Noise Covariance ($\mathbf{Q}_t$):** $\mathbb{E}[\mathbf{w}_t \mathbf{w}_t^T]$, capturing unmodeled physical disturbances such as vibration, motor cogging, and turbulence.
 
-In the absence of sensory measurement updates, process noise $Q_t$ continuously injects variance into the diagonal and cross-terms of $P_t$. The geometric volume of the **uncertainty ellipsoid**—proportional to $\sqrt{\det(P_t)}$—expands monotonically.
+In the absence of sensory measurement updates, process noise $\mathbf{Q}_t$ continuously injects variance into the diagonal and cross-terms of $\mathbf{P}_t$. The geometric volume of the **uncertainty ellipsoid**—proportional to $\sqrt{\det(\mathbf{P}_t)}$—expands monotonically.
 
 ### Innovation Residuals as Hardware Anomaly Detectors
 
@@ -270,15 +266,15 @@ $$\mathbf{y}_t = \mathbf{z}_t - h(\hat{\mathbf{x}}_t)$$
 
 Where $\mathbf{z}_t$ is the raw sensory measurement (e.g., detected 3D bounding box centroid $[x, y, z]$) and $h(\hat{\mathbf{x}}_t)$ is the non-linear observation model projecting the internal predicted state into measurement space.
 
-The innovation covariance matrix $S_t$ defines the expected statistical spread:
+The innovation covariance matrix $\mathbf{S}_t$ defines the expected statistical spread:
 
-$$S_t = H_t P_t H_t^T + R_t$$
+$$\mathbf{S}_t = \mathbf{H}_t \mathbf{P}_t \mathbf{H}_t^T + \mathbf{R}_t$$
 
-Where $H_t = \left.\frac{\partial h}{\partial \mathbf{x}}\right|_{\hat{\mathbf{x}}_t}$ is the observation Jacobian and $R_t$ is the sensor measurement noise covariance.
+Where $\mathbf{H}_t = \left.\frac{\partial h}{\partial \mathbf{x}}\right|_{\hat{\mathbf{x}}_t}$ is the observation Jacobian and $\mathbf{R}_t$ is the sensor measurement noise covariance.
 
-To determine whether the new measurement represents valid physical evidence or a corrupted sensor glitch, the system computes the normalized **Mahalanobis Distance** $d_M$:
+To determine whether the new measurement represents valid physical evidence or a corrupted sensor glitch, the system computes the normalized **Mahalanobis Distance** $d_M$[^mahalanobis]:
 
-$$d_M = \sqrt{\mathbf{y}_t^T S_t^{-1} \mathbf{y}_t}$$
+$$d_M = \sqrt{\mathbf{y}_t^T \mathbf{S}_t^{-1} \mathbf{y}_t}$$
 
 Physical AI systems enforce a strict **$3\sigma$ Innovation Gating Rule**:
 
@@ -291,18 +287,20 @@ If $d_M > 3.0$, the measurement is rejected. A sudden, massive innovation residu
 
 1. **False Positive Perception:** Optical glare or background clutter caused the vision model to detect an erroneous bounding box.
 2. **Mechanical Slippage / Jam:** The robot's end-effector struck an unmodeled obstacle, causing joint motor encoders to slip or stall while internal kinematics assumed free-space motion.
-3. **Severe Coordinate Frame Drift:** A camera mounting bracket was bumped or deformed, corrupting the extrinsic calibration matrix $T_{\text{camera}}^{\text{base}}$.
+3. **Severe Coordinate Frame Drift:** A camera mounting bracket was bumped or deformed, corrupting the extrinsic calibration matrix $\mathbf{T}_{\text{camera}}^{\text{base}}$.
 
 By gating updates with Mahalanobis distance, the state estimator prevents corrupted sensor frames from destabilizing internal belief.
+
+[^mahalanobis]: The squared Mahalanobis distance $d_M^2 = \mathbf{y}_t^T \mathbf{S}_t^{-1} \mathbf{y}_t$ follows a chi-square ($\chi^2$) distribution with degrees of freedom equal to measurement dimension $\dim(\mathbf{z}_t)$. Setting a gating threshold at $\gamma = 9.0$ corresponds to a $3\sigma$ ($99.73\%$) confidence ellipsoid, rejecting spurious visual reflections and extreme measurement outliers [@thrun2005probabilistic].
 
 
 ## State Expiration Leases (TTL) and Memory Domain Isolation
 
-In software web architectures, cache records carry Time-To-Live (TTL) timestamps to prevent stale database reads. In Physical AI, **a stale state estimate is an active physical hazard**.
+In software web architectures, cache records carry Time-To-Live (TTL) timestamps to prevent stale database reads [@gray1989leases]. In Physical AI, **a stale state estimate is an active physical hazard**.
 
 If an autonomous mobile robot believes a pedestrian is $5\text{ meters}$ away, that belief is actionable for $100\text{ ms}$. If visual tracking drops out and the robot continues driving at $2.0\text{ m/s}$ based on that same $100\text{-ms-old}$ belief, the pedestrian could have stepped directly into the vehicle's braking path.
 
-To enforce physical safety, every state estimate published by the perception and world modeling subsystem carries a strict **State Validity TTL Lease**:
+To enforce physical safety, every state estimate published by the perception and world modeling subsystem carries a strict **State Validity TTL Lease** [@gray1989leases]:
 
 $$\text{State Lease Valid } \iff (t_{\text{now}} - t_{\text{stamp}}) \le \tau_{\text{TTL}}$$
 
@@ -377,24 +375,33 @@ $$\tau_{\text{max}}(T_{\text{motor}}) = \begin{cases} \tau_{\text{nom}} & \text{
 By incorporating winding temperature, battery bus voltage ($V_{\text{bus}}$), and inverter current into the core state schema (state and timing model), high-level foundation models and motion planners are prevented from commanding aggressive physical maneuvers that the physical hardware cannot thermally sustain.
 
 
-## Systems Fallacies and Pitfalls
+## Systems Fallacies and Pitfalls in Embodied State Modeling
 
-::: {.callout-warning}
-### Common Engineering Fallacies in Embodied State Modeling
-* **Fallacy 1:** *"The internal latent representation or context window of a Multi-Modal LLM serves as a robotic world model."* 
- *Correction:* LLM context windows store token sequences, not metric spatial coordinates ($SE(3)$), Lie algebra velocity twists ($\mathfrak{se}(3)$), or physical mass distributions. Autoregressive token generation lacks geometric invariance, metric scale calibration, and hard physical boundary enforcement.
-* **Fallacy 2:** *"A high-resolution depth camera provides ground-truth 3D coordinates without extrinsic kinematic tracking."* 
- *Correction:* Camera mounting brackets flex and vibrate under mechanical robot accelerations ($>2g$). Without continuous extrinsic calibration tracking ($T_{\text{camera}}^{\text{base}}$) and timestamp synchronization, static camera assumptions introduce centimeter-level metric grasp errors.
-* **Fallacy 3:** *"A Kalman filter will never diverge as long as process noise covariance $Q$ is set to a tiny value."* 
- *Correction:* Setting process noise $Q$ artificially small makes the estimator overconfident in its internal physical model. When real-world disturbances occur (such as wheel slip or external contact), an overconfident filter rejects valid sensory innovation updates ($y_t$), causing the filter to diverge completely from physical reality.
-* **Fallacy 4:** *"State estimation can execute entirely in user-space Python on the Linux application processor."* 
- *Correction:* If Linux experiences a background page fault, memory compaction stall, or kernel panic, user-space Python state estimation freezes. The bare-metal microcontroller must maintain an independent proprioceptive state estimator ($1000\text{ Hz}$) to compute dynamic stopping envelopes and execute safe hardware stops during MPU stalls.
+When transitioning from software simulation to physical hardware, state modeling assumptions frequently break down:
+
+::: {.callout-fallacy title="LLM Context Windows Substitute for Physical World Models"}
+* **The Fallacy:** The internal latent representation or attention context window of a Multi-Modal LLM serves directly as an embodied world model.
+* **The Physical Reality:** LLM context windows store token sequences, not metric spatial coordinates ($SE(3)$), Lie algebra velocity twists ($\mathfrak{se}(3)$), or physical mass distributions [@murray2017mathematical]. Autoregressive token generation lacks geometric invariance, metric scale calibration, and hard physical boundary enforcement.
+:::
+
+::: {.callout-fallacy title="Depth Cameras Deliver Metric Ground Truth Without Kinematic Tracking"}
+* **The Fallacy:** A high-resolution depth camera provides ground-truth 3D coordinates without continuous extrinsic kinematic tracking.
+* **The Physical Reality:** Camera mounting brackets flex and vibrate under mechanical robot accelerations ($>2g$). Without continuous extrinsic calibration tracking ($\mathbf{T}_{\text{camera}}^{\text{base}}$) and timestamp synchronization, static camera assumptions introduce centimeter-level metric grasp errors [@tobin2017domain; @peng2018sim].
+:::
+
+::: {.callout-fallacy title="Zero Process Noise Guarantees Kalman Filter Convergence"}
+* **The Fallacy:** A Kalman filter will never diverge as long as process noise covariance $\mathbf{Q}$ is set to an arbitrarily small value.
+* **The Physical Reality:** Setting process noise $\mathbf{Q}$ artificially small makes the estimator overconfident in its internal physical model. When real-world disturbances occur (such as wheel slip or external contact), an overconfident filter rejects valid sensory innovation updates ($\mathbf{y}_t$), causing the filter to diverge completely from physical reality [@thrun2005probabilistic].
+:::
+
+::: {.callout-fallacy title="State Estimation Belongs Entirely in User-Space Software"}
+* **The Fallacy:** State estimation can execute entirely in user-space Python on the Linux application processor.
+* **The Physical Reality:** If Linux experiences a background page fault, memory compaction stall, or kernel panic, user-space Python state estimation freezes. The bare-metal microcontroller must maintain an independent proprioceptive state estimator ($1000\text{ Hz}$) to compute dynamic stopping envelopes and execute safe hardware stops during MPU stalls.
 :::
 
 
-::: {.callout-decision}
-### Notebook checkpoint: State and Timing Model (state and timing model)
-Freeze the fifth artifact of the engineering notebook establishing spatial coordinate hierarchies, transform buffer configurations, state TTL lease horizons, uncertainty thresholds, and thermal derating envelopes.
+::: {.callout-decision title="Notebook Checkpoint: The State and Timing Model (STATE-01)"}
+We freeze the fifth artifact of the engineering notebook—the **State and Timing Model (STATE-01)**—establishing spatial coordinate hierarchies, transform buffer configurations, state TTL lease horizons, uncertainty thresholds, and thermal derating envelopes:
 
 | Parameter Category | Specification Key | Engineering Target Value | Verification Boundary |
 | :--- | :--- | :--- | :--- |
@@ -408,81 +415,79 @@ Freeze the fifth artifact of the engineering notebook establishing spatial coord
 | **Thermal Warning Knee** | `thermal_limits.warning_temp_c` | $85.0^\circ\text{C}$ | Initiates linear torque derating |
 | **Thermal Emergency Cutoff** | `thermal_limits.critical_cutoff_c` | $105.0^\circ\text{C}$ | Immediate inverter bridge shutdown ($0\text{ Nm}$) |
 
-: Quantitative Specification Parameters for the State and Timing Model (state and timing model). Coordinate frame configurations, TTL leases, uncertainty bounds, and thermal limits. {#tbl-dossier-state-01}
+: Quantitative Specification Parameters for the State and Timing Model (STATE-01). Coordinate frame configurations, TTL leases, uncertainty bounds, and thermal limits. {#tbl-dossier-state-01}
 
 
 ```yaml
-# DOSSIER CHECKPOINT: state and timing model
+# DOSSIER CHECKPOINT: STATE-01
 state_timing_model:
- system_id: "PHYSICAL-AGENT-01"
- version: "1.0.0"
- notebook_checkpoint: "state and timing model"
- timestamp_standard: "IEEE_1588_PTP"
- 
- # Dynamic Metric Frame Tree (SE(3))
- frame_graph:
- root_frame: "world"
- transforms:
- - parent: "world"
- child: "robot_base"
- type: "static_calibrated"
- translation_m: [0.0, 0.0, 0.0]
- rotation_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
- - parent: "robot_base"
- child: "camera_optical"
- type: "extrinsic_rigid"
- translation_m: [0.085, -0.045, 0.420]
- rotation_quaternion_wxyz: [0.7071, 0.0, 0.7071, 0.0]
- - parent: "robot_base"
- child: "end_effector"
- type: "dynamic_forward_kinematics"
- update_rate_hz: 1000.0
- - parent: "end_effector"
- child: "tool_tip"
- type: "tool_offset"
- translation_m: [0.0, 0.0, 0.125]
- rotation_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
- 
- # Transform History & Buffer Allocation
- transform_buffer:
- storage_substrate: "SHM_PREALLOCATED"
- max_history_ms: 500.0
- interpolation_method: "SLERP_SO3_LINEAR_R3"
- max_query_latency_us: 10.0
- 
- # Ephemeral State Validity TTL Leases
- state_ttl_leases:
- visual_tracking_ttl_ms: 100.0
- kinematic_frame_ttl_ms: 20.0
- proprioceptive_ttl_ms: 5.0
- heartbeat_lease_ttl_ms: 10.0
- 
- # Stochastic Uncertainty & Anomaly Gating
- uncertainty_bounds:
- sigma_pos_nominal_mm: 2.0
- sigma_pos_max_mm: 15.0
- process_noise_q_pos: 1.0e-4
- process_noise_q_vel: 1.0e-2
- 
- anomaly_detection:
- mahalanobis_gate_threshold: 3.0
- consecutive_rejections_to_fault: 3
- escalation_action: "CATEGORY_2_VELOCITY_HOLD"
- 
- # Interoceptive Actuator Thermal Envelope
- thermal_limits:
- warning_temperature_c: 85.0
- critical_cutoff_temperature_c: 105.0
- derating_slope_pct_per_c: 5.0
- ambient_nominal_c: 25.0
- thermal_time_constant_tau_s: 42.0
+  system_id: "PHYSICAL-AGENT-01"
+  version: "1.0.0"
+  notebook_checkpoint: "STATE-01"
+  timestamp_standard: "IEEE_1588_PTP"
+  
+  # Dynamic Metric Frame Tree (SE(3))
+  frame_graph:
+    root_frame: "world"
+    transforms:
+      - parent: "world"
+        child: "robot_base"
+        type: "static_calibrated"
+        translation_m: [0.0, 0.0, 0.0]
+        rotation_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
+      - parent: "robot_base"
+        child: "camera_optical"
+        type: "extrinsic_rigid"
+        translation_m: [0.085, -0.045, 0.420]
+        rotation_quaternion_wxyz: [0.7071, 0.0, 0.7071, 0.0]
+      - parent: "robot_base"
+        child: "end_effector"
+        type: "dynamic_forward_kinematics"
+        update_rate_hz: 1000.0
+      - parent: "end_effector"
+        child: "tool_tip"
+        type: "tool_offset"
+        translation_m: [0.0, 0.0, 0.125]
+        rotation_quaternion_wxyz: [1.0, 0.0, 0.0, 0.0]
+  
+  # Transform History & Buffer Allocation
+  transform_buffer:
+    storage_substrate: "SHM_PREALLOCATED"
+    max_history_ms: 500.0
+    interpolation_method: "SLERP_SO3_LINEAR_R3"
+    max_query_latency_us: 10.0
+  
+  # Ephemeral State Validity TTL Leases
+  state_ttl_leases:
+    visual_tracking_ttl_ms: 100.0
+    kinematic_frame_ttl_ms: 20.0
+    proprioceptive_ttl_ms: 5.0
+    heartbeat_lease_ttl_ms: 10.0
+  
+  # Stochastic Uncertainty & Anomaly Gating
+  uncertainty_bounds:
+    sigma_pos_nominal_mm: 2.0
+    sigma_pos_max_mm: 15.0
+    process_noise_q_pos: 1.0e-4
+    process_noise_q_vel: 1.0e-2
+  
+  anomaly_detection:
+    mahalanobis_gate_threshold: 3.0
+    consecutive_rejections_to_fault: 3
+    escalation_action: "CATEGORY_2_VELOCITY_HOLD"
+  
+  # Interoceptive Actuator Thermal Envelope
+  thermal_limits:
+    warning_temperature_c: 85.0
+    critical_cutoff_temperature_c: 105.0
+    derating_slope_pct_per_c: 5.0
+    ambient_nominal_c: 25.0
+    thermal_time_constant_tau_s: 42.0
 ```
 :::
 
-
-::: {.callout-lab}
-### Hands-on Realization: Lab 5 — Latent State, Belief Drift and Frame Sync
-Implement the multi-tier state estimation and coordinate frame synchronization engine on the **Physical AI Kit (Arduino UNO Q Dual-Brain Kit)**:
+::: {.callout-lab title="Lab 5: Temporal State Tracking and SE(3) Transform Trees"}
+In the companion bench laboratory ([`labs/05-state-sync`](file:///Users/VJ/GitHub/PhysicalAI/labs/05-state-sync/CONTRACT.md)), you will implement the multi-tier state estimation and coordinate frame synchronization engine on the **Arduino UNO Q Dual-Brain Kit**:
 
 1. **PTP Hardware Timestamping:** Stream asynchronous sensor packets—$1000\text{ Hz}$ IMU and encoder telemetry from the Arm Cortex-M4 microcontroller alongside $30\text{ Hz}$ vision affordance tokens from the Linux MPU.
 2. **Artificial Timestamp Skew Injection:** Introduce a calibrated $50\text{--}100\text{ ms}$ software delay into the vision transform pipeline. Measure how uncompensated timestamp skew generates massive phantom velocity spikes in Lie algebra tangent space ($\mathfrak{se}(3)$).
@@ -490,3 +495,12 @@ Implement the multi-tier state estimation and coordinate frame synchronization e
 4. **Occlusion & Covariance Inflation:** Physically block the camera sensor to simulate visual occlusion. Record how spatial uncertainty $\sigma_{\text{pos}}(t)$ expands according to target velocity.
 5. **State Validity TTL Lease Trip:** Observe the system behavior when visual occlusion exceeds the $100\text{ ms}$ TTL lease window. Confirm that the MCU safety watchdog trips, invalidates MPU proposals, and safely transitions the robot into a Category 2 smooth position hold.
 :::
+
+
+## Summary and What Comes Next
+
+This chapter established how embodied physical agents maintain structured spatial belief and temporal continuity across sensory occlusions. Physical state is not a stateless token sequence; it is a metric, dynamic $SE(3)$ coordinate tree integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) and bounded by expanding uncertainty covariances.
+
+By pairing latent world models (JEPAs, RSSMs) on the MPU with deterministic transform buffers and $1000\text{ Hz}$ proprioceptive state estimators on the MCU, we ensure that missing visual photons never induce open-loop physical destruction.
+
+In the following chapter, **Chapter 6 (Reason: Expiring Intent Leases and Kinematic Affordances)**, we explore how physical agents reason about task goals, translate semantic instructions into bounded kinematic proposals, and enforce expiring intent leases before commanding multi-joint motion.
