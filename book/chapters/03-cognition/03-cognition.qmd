@@ -1,4 +1,4 @@
-# Cognitive Architecture and Multi-Rate Runtimes\chaptersubtitle{The Five Dimensions, Multi-Rate Runtimes, and the Co-Design Matrix}
+# Cognitive Architectures\chaptersubtitle{The Five Dimensions, Multi-Rate Temporal Hierarchy, and the Co-Design Matrix}
 
 ![Systems Organ Focus: Tracing the complete cognitive lifecycle across the five sensory-motor stages, the multi-rate temporal hierarchy, and the Physical Agent Co-Design Matrix. Chapter 3 establishes the computational workflows and runtime architectures that execute within physical constraints.](figures/fig_pipeline_locator.svg){#fig-locator-ch03 width=100% fig-pos="H"}
 
@@ -34,18 +34,59 @@ Embodied Physical AI demands a principled cognitive architecture. Rather than fo
 
 ## Anatomy of a Cadence Failure: The Desynchronization Overrun
 
-To understand why monolithic execution architectures fail on physical hardware, consider the following incident from industrial logistics:
+To understand why monolithic software execution fails on physical hardware, we must examine the multi-rate temporal dilemma that confronts every embodied system. A physical agent interacting with the real world cannot operate on a single, uniform clock. Instead, its internal processes naturally span three distinct operational time scales:
 
-::: {.callout-autopsy title="The Cadence Desynchronization Overrun"}
-* **System:** Autonomous mobile manipulator sorting parcels in an active logistics warehouse, driven by an onboard vision-language-action (VLA) policy running in user-space Linux with direct Ethernet socket control to motor drives.
-* **Incident:** While navigating toward a pallet at $1.4\text{ m/s}$, the robot failed to detect a newly positioned steel roll cage, collided at full speed, bent the chassis steering tie-rods, and fractured an active stereo depth camera mount.
-* **Telemetry Snapshot:** At $T+44.120\text{ s}$, the high-level VLA model issued an open-ended navigation waypoint. Two hundred milliseconds later, the robot's visual backbone encountered a dynamic scene shift, triggering a massive key-value (KV) attention cache reallocation and garbage collection sweep in the Python runtime. The user-space control thread stalled for $1.150\text{ seconds}$. Because the trajectory was streamed without an expiring intent lease or real-time microcontroller safety supervisor, the motor drives continued executing the last latched velocity setpoint ($1.4\text{ m/s}$ forward) for $1.61\text{ meters}$ blind.
-* **Root Cause:** Temporal coupling and unbounded execution leases—the high-level deliberative AI was directly coupled to actuation timing without an intermediate trajectory chunker or a bare-metal microcontroller enforcing dynamic stopping distance limits.
-* **Architectural Flaw:** Monolithic cadence architecture. The system lacked multi-rate cadence decoupling, hardware-enforced intent leases, and an independent 1 kHz safety reflex to initiate autonomous dynamic braking upon host deliberation stalls.
-* **Provenance:** Engineered composite based on documented industrial automation incident classes; telemetry and system parameters are constructed for pedagogical instruction.
+1. **Deliberative Perception and Scene Understanding ($1\text{--}10\text{ Hz}$):** Ingesting multi-camera video streams, running deep neural spatial backbones, and querying large vision-language models to identify objects and evaluate affordances. These workloads require billions of operations and introduce tens to hundreds of milliseconds of compute latency.
+2. **Trajectory Planning and Action Smoothing ($20\text{--}50\text{ Hz}$):** Generating continuous spatial waypoints, solving inverse kinematics, and blending multi-step action chunks into smooth reference paths.
+3. **Actuator Execution and Safety Reflexes ($1000\text{ Hz}$):** Modulating inverter gate pulses, measuring stator phase currents, and evaluating real-time kinematic safety envelopes every single millisecond.
+
+The fundamental architectural error occurs when software engineers couple these three disparate cadences into a monolithic, synchronous control loop or allow high-level neural models to exercise un-leased, direct electrical authority over physical actuators. When high-level deliberative software experiences an unexpected computational delay, garbage collection pause, or state estimation thrashing, low-level motor commands stop arriving or latch onto obsolete values. In the physical world, inertia never pauses: moving mass continues coasting along its last commanded trajectory, rapidly obliterating dynamic safety margins.
+
+### The Classification Thrashing and Suppression Trap
+
+Consider what happens on a real automated vehicle when high-level perception jitter interacts with open-loop actuator commands. In March 2018, an experimental Level 4 automated driving system struck and killed a pedestrian pushing a bicycle across a multi-lane road in Tempe, Arizona [@ntsb2019uber]. The formal investigation conducted by the National Transportation Safety Board (NTSB) revealed a classic systems engineering breakdown born of cadence desynchronization, tracking state resets, and an unmitigated software suppression policy (@fig-tempe-testbed).
+
+![**The Uber ATG Automated Driving System Test Platform.** The developmental automated driving system investigated in NTSB Report NTSB/HAR-19/03 was deployed on a modified Volvo XC90 platform equipped with a roof-mounted 64-beam LiDAR, radar clusters, and front-facing optical cameras. The investigation revealed that although the vehicle's sensors detected the pedestrian 5.6 seconds prior to collision, asynchronous classification toggling across the $10\text{ Hz}$ perception pipeline repeatedly reset tracking state velocity vectors, while a $1000\text{ ms}$ software suppression delay consumed the physical dynamic stopping margin.](figures/fig03_tempe_vehicle_cropped.jpg){#fig-tempe-testbed width=85%}
+
+The vehicle was traveling at $43.5\text{ mph}$ ($19.4\text{ m/s}$) on an unlit road at night. The high-level perception system ingested sensor data at $10\text{ Hz}$ ($100\text{ ms}$ intervals). As the vehicle approached the pedestrian over a 5.6-second window, the deep neural perception model failed to maintain a stable semantic classification:
+
+* At $T - 5.6\text{ s}$, the system detected an object and classified it as an *unknown vehicle*.
+* At $T - 4.5\text{ s}$, the classifier flipped the label to *other / static obstacle*.
+* At $T - 2.6\text{ s}$, the classifier flipped the label to *bicycle*.
+* At $T - 1.5\text{ s}$, the classifier flipped the label back to *unknown object*.
+
+In a classical digital application behind glass, classification oscillations simply represent intermediate categorical uncertainty. But in an embodied physical pipeline, this semantic instability had disastrous kinetic consequences. The vehicle's tracking module was architected such that every time the neural classifier flipped the object's categorical label, the tracker treated the detection as an entirely new entity: it wiped the historical tracking buffer, discarded the accumulated velocity vector, and re-initialized the Kalman filter state from scratch. Because the tracker could never maintain continuous velocity history across label flips, it could not project the pedestrian's path across the vehicle's future travel corridor.
+
+To compound the cadence failure, the system's software planners suffered from a severe architectural patch known as a **suppression delay**. Because the high-level neural perception pipeline frequently emitted transient false-positive detections, software engineers had introduced an artificial $1000\text{ ms}$ software delay to suppress emergency braking commands until an obstacle detection remained spatially persistent for a full second. 
+
+When the perception system finally recognized that a collision was imminent at $T - 1.2\text{ s}$ before impact, the obstacle clearance was $d_{\text{clearance}} = 23.3\text{ meters}$. Because of the hardcoded $1000\text{ ms}$ suppression delay, the automated driving software withheld braking commands. At $v = 19.4\text{ m/s}$, the linear reaction travel consumed:
+
+$$d_{\text{react}} = v \cdot \Delta t_{\text{suppression}} = 19.4\text{ m/s} \times 1.0\text{ s} = 19.4\text{ meters}$$
+
+During this one-second blackout, the vehicle traveled $19.4\text{ meters}$ forward with zero deceleration. By the time the suppression timer expired, only $d_{\text{remaining}} = 23.3\text{ m} - 19.4\text{ m} = 3.9\text{ meters}$ of clearance remained. Even under maximum emergency braking ($a_{\text{max}} = 8.0\text{ m/s}^2$), bringing a two-ton vehicle from $19.4\text{ m/s}$ to a complete stop requires quadratic braking distance:
+
+$$d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}} = \frac{(19.4\text{ m/s})^2}{2 \times 8.0\text{ m/s}^2} = 23.5\text{ meters}$$
+
+Because the suppression delay had consumed nearly the entire available clearance, a catastrophic collision was physically inevitable.
+
+::: {.callout-autopsy title="The Cadence Desynchronization and Latency Overrun"}
+* **System:** Level 4 Automated Driving System operating on public roadways, equipped with roof-mounted 64-beam LiDAR, 360° radar array, and forward optical cameras [@ntsb2019uber].
+* **Incident:** While traveling at $43.5\text{ mph}$ ($19.4\text{ m/s}$) on an unlit roadway, the vehicle struck a pedestrian crossing the road with zero automated braking initiated prior to impact.
+* **Telemetry Snapshot:** Over the $5.6\text{ seconds}$ preceding collision, the perception system repeatedly toggled classification between unknown object, vehicle, and bicycle across consecutive $10\text{ Hz}$ cycles. Each re-classification reset the tracking history and recomputed expected trajectory vectors. At $T - 1.2\text{ s}$ before impact ($d_{\text{clearance}} = 23.3\text{ m}$), when the system finally projected an unavoidable collision, an unmitigated software suppression policy enforced a $1000\text{ ms}$ delay before dispatching braking commands to prevent "erratic braking" false alarms.
+* **Root Cause:** Asynchronous cadence mismatch and unmitigated software suppression delay—the high-level perception model's classification thrashing induced tracking jitter, and the motion planning layer suppressed emergency braking during the critical stopping distance window without an independent real-time safety envelope.
+* **Architectural Flaw:** Monolithic authority and software suppression policy with zero independent microcontroller-level dynamic stopping supervisor ($d_{\text{clearance}} \ge d_{\text{stop}}$) and lack of expiring intent leases.
+* **Provenance:** National Transportation Safety Board (NTSB) Accident Report NTSB/HAR-19/03 [@ntsb2019uber].
 :::
 
-The incident autopsy exposes the fundamental vulnerability of monolithic cadence systems: when slow, stochastic neural deliberation is directly coupled to physical actuator setpoints, an operating system stall transforms into a physical projectile hazard. To eliminate this vulnerability, Physical AI architectures structure dataflow across nine canonical lifecycle stations.
+### Core Architectural Lessons for Physical AI
+
+The Tempe incident provides three foundational systems lessons that govern every chapter of this textbook:
+
+1. **Never Couple Safety to High-Level Stochastic Classifiers:** High-level neural models are stochastic pattern recognizers; their outputs exhibit classification jitter, out-of-distribution hallucinations, and variable latency. Physical safety must never depend on whether a neural network correctly categorizes an obstacle as a bicycle or an unknown object.
+2. **Real-Time Supervisors Must Enforce Dynamic Stopping Distance Invariants:** The mathematical invariant $d_{\text{clearance}} \ge d_{\text{stop}}(v_0, \Delta t)$ must be evaluated continuously at $1000\text{ Hz}$ on an independent microcontroller. If clearance falls below stopping distance, the safety enforcer must initiate dynamic braking immediately, completely bypassing high-level software suppression delays.
+3. **Decouple Cadences via Expiring Intent Leases:** High-level models must only emit time-bounded intent leases ($\mathcal{L}_{\text{intent}}$). If the high-level deliberative thread stalls or crashes, the lease expires within tens of milliseconds, causing the real-time runtime to gracefully decelerate rather than driving blindly ahead.
+
+To implement these lessons, Physical AI structures dataflow across nine canonical lifecycle stations operating across three decoupled temporal cadences.
 
 
 ## The Embodied Cognitive Lifecycle: 9 Stations of Dataflow
@@ -323,6 +364,6 @@ With the completion of Chapter 3, we conclude **Part I: Foundations**. Across th
 
 1. **Chapter 1 (The Causal Boundary):** We established that software in physical systems moves matter and dissipates non-recoverable heat ($I^2 R$). We formalized the irreversible state transition loop ($W_t \to W_{t+1}$), proved that physical consequences cannot be undone with `try/catch` blocks, categorized physical systems across the Three Canonical Archetypes (Mobility, Contact Manipulation, and Cybernetic Processes), and instituted the foundational Proposal–Permission privilege boundary.
 2. **Chapter 2 (The Physical Constraints):** We proved that the physical universe serves as the unyielding master clock. We deconstructed the 7-stage sense-to-actuation latency waterfall, demonstrated why extreme tail latency distributions ($P_{99.9}$) govern dynamic stopping distance ($d_{\text{stop}}$), formulated information freshness decay and the Freshness Wall ($\Delta t_{\text{wall}}$), derived mechanical stopping kinematics, and established the Iron Law of Zero-Heap Silicon Determinism (`malloc = 0`).
-3. **Chapter 3 (The Cognitive Dimensions):** We traced the 9-station dataflow lifecycle of embodied intelligence, formalized the Five Cognitive Work Dimensions (Perceive, Remember, Reason, Plan, Execute), established the Three Cadences spanning four orders of temporal magnitude, resolved the compute-versus-physics conflict through the Three Architectural Contracts, and constructed the Master Physical Agent Co-Design Matrix.
+3. **Chapter 3 (Cognitive Architectures):** We traced the 9-station dataflow lifecycle of embodied intelligence, formalized the Five Cognitive Work Dimensions (Perceive, Remember, Reason, Plan, Execute), established the Three Cadences spanning four orders of temporal magnitude, resolved the compute-versus-physics conflict through the Three Architectural Contracts, and constructed the Master Physical Agent Co-Design Matrix.
 
 Having mastered these foundational principles, we now cross from system constraints into concrete architectural construction. In **Part II (Chapters 4 through 8)**, we examine the Physical Agent Co-Design Matrix row by row, systematically designing, implementing, and validating the **Five Canonical Sensory-Motor Organs** that constitute an embodied agent. We begin in **Chapter 4 (Perceive: Spatial Grounding and 3D Affordance Tokens)**, investigating how physical CMOS image sensors and zero-copy Direct Memory Access engines transform raw, unprojected photons into metric, three-dimensional $SE(3)$ spatial affordances capable of guiding physical action in an uncertain world.
