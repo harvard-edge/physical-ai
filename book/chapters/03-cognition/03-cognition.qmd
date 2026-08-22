@@ -179,51 +179,25 @@ To appreciate the universal applicability of this 9-station dataflow lifecycle, 
 
 ## The Five Cognitive Work Dimensions (The 5 Rows)
 
-The 9 stations of dataflow group naturally into five primary horizontal work dimensions that form the rows of the Physical Agent Co-Design Matrix (@tbl-five-cognitive-rows):
+While the dataflow lifecycle traces the chronological journey of sensory evidence through nine stations, modular systems engineering groups these operations into five primary horizontal work dimensions (@tbl-five-cognitive-rows). These five dimensions form the rows of the Master Physical Agent Co-Design Matrix and define the architectural roadmap for **Part II (Chapters 4 through 8)** of this textbook:
 
-| Cognitive Row | Pipeline Stations | Primary Systems Transformation | Core Output Data Structure | Characteristic Lifetime |
-| :--- | :--- | :--- | :--- | :--- |
-| **Row 1: Perceive** | Stations 2, 3 | Photons $\to$ 3D Geometric Affordance Tokens | 3D Spatial Token Set $\mathbf{S}_t$ | Transient ($\approx 33\text{ ms}$) |
-| **Row 2: Remember** | Station 4 | History $\to$ Dynamic Latent State & Transform Tree | Belief State $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$ | Persistent ($10^1\text{--}10^3\text{ s}$) |
-| **Row 3: Reason** | Stations 1, 5 | Goal + Belief $\to$ Semantic Intent & Safety Corridors | Expiring Intent Lease $\mathcal{L}_{\text{intent}}$ | Macro-cadence ($0.5\text{--}1.5\text{ s}$) |
-| **Row 4: Plan** | Station 6 | Lease $\to$ Multi-Step Trajectory Chunks & Splines | Action Chunk $\mathbf{A}_{t:t+H}$ | Rolling horizon ($0.3\text{--}1.0\text{ s}$) |
-| **Row 5: Execute** | Stations 7, 8 | Chunks $\to$ Certified Phase Current & Commutation | Verified Control Command $\mathbf{u}_t^*$ | Micro-cadence ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
+| Cognitive Row | Pipeline Stations | Primary Systems Transformation | Core Output Data Structure | Characteristic Lifetime | Roadmap Chapter |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Stations 2, 3 | Photons $\to$ 3D Geometric Affordance Tokens | 3D Spatial Token Set $\mathbf{S}_t$ | Transient ($\approx 33\text{ ms}$) | Chapter 4 |
+| **Row 2: Remember** | Station 4 | History $\to$ Dynamic Latent State & Transform Tree | Belief State $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$ | Persistent ($10^1\text{--}10^3\text{ s}$) | Chapter 5 |
+| **Row 3: Reason** | Stations 1, 5 | Goal + Belief $\to$ Semantic Intent & Safety Corridors | Expiring Intent Lease $\mathcal{L}_{\text{intent}}$ | Macro-cadence ($0.5\text{--}1.5\text{ s}$) | Chapter 6 |
+| **Row 4: Plan** | Station 6 | Lease $\to$ Multi-Step Trajectory Chunks & Splines | Action Chunk $\mathbf{A}_{t:t+H}$ | Rolling horizon ($0.3\text{--}1.0\text{ s}$) | Chapter 7 |
+| **Row 5: Execute** | Stations 7, 8 | Chunks $\to$ Certified Phase Current & Commutation | Verified Control Command $\mathbf{u}_t^*$ | Micro-cadence ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | Chapter 8 |
 
-: The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, and temporal lifetimes. {#tbl-five-cognitive-rows}
+: The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, temporal lifetimes, and downstream chapters. {#tbl-five-cognitive-rows}
 
-### Row 1 (Perceive): Spatial Grounding and 3D Affordance Tokens
-The primary systems responsibility of the perception dimension is spatial grounding: converting high-dimensional sensory arrays into compact, metric geometric tokens (3D poses, surface normals, bounding volumes, and contact friction) referenced to the physical coordinate frame of the robot.
+Each cognitive dimension represents a self-contained systems subsystem with explicit input/output contracts:
 
-In digital ML, object detection operates in 2D pixel coordinates ($[u, v]$). In physical space, 2D coordinates contain no metric depth or surface normals. Attempting to grasp based on pixel boxes causes manipulators to close fingers on empty air or collide with obstacles.
-
-Spatial perception models (such as Vision Transformers) ingest raw frames transferred via zero-copy Direct Memory Access (DMA) over MIPI-CSI2 buses. The systems bottleneck in Row 1 is memory bus contention: streaming multi-camera $4\text{K}$ video at $60\text{ Hz}$ saturates memory bandwidth, competing directly with neural weight streaming.
-
-### Row 2 (Remember): Temporal World Modeling and Dynamic Belief Persistence
-Physical environments are partially observable and plagued by occlusions. When a robotic arm approaches a workpiece, its own wrist occludes the camera line of sight during the final centimeters. If an agent relies only on instantaneous perception, its representation collapses.
-
-Row 2 maintains an internal continuous belief state $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$. When an object is occluded, the world model propagates its kinematic state forward while expanding its spatial uncertainty envelope linearly over occlusion time:
-
-$$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t_{\text{occluded}}$$
-
-This signals downstream planners that clearance margins around occluded objects must widen over time.
-
-### Row 3 (Reason): Semantic Deliberation and Open-World Goal Decomposition
-The third cognitive dimension is semantic deliberation: parsing human directives, evaluating causal dependencies, decomposing complex tasks, and generating time-bounded Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$).
-
-Foundation models ($7\text{B}\text{ to } 70\text{B}$ parameters) exhibit non-deterministic inference latency ($400\text{--}1500\text{ ms}$) and must never directly command motor PWM registers. Instead, they produce intent leases specifying target poses, authorized velocity ceilings ($\|\mathbf{v}\|_{\text{max}}$), and strictly enforced times-to-live ($\Delta t_{\text{TTL}}$). If the model stalls, the lease expires, causing downstream controllers to decelerate smoothly to a safe holding state.
-
-### Row 4 (Plan): Trajectory Generation and Action Chunking
-The fourth cognitive dimension is trajectory planning: translating high-level spatial targets into continuous, kinematically feasible joint trajectories.
-
-Action Chunking Transformers (ACT) and Diffusion Policies decode an entire Action Chunk $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$):
-
-$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \dots, \; \mathbf{a}_{t+H-1} \right]$$
-
-Action chunking provides delay amortization: a $30\text{ ms}$ inference yields $320\text{ ms}$ of continuous motion. Fitting quintic splines across waypoints guarantees $\mathcal{C}^2$ continuity (bounded jerk $\|\dddot{\mathbf{q}}\| \le \mathbf{J}_{\text{max}}$), while receding-horizon temporal ensembling eliminates step-to-step jerk discontinuities.
-
-### Row 5 (Execute): Real-Time Reflex and Mathematical Safety Filtering
-The fifth cognitive dimension is the hard real-time execution gatekeeper. It evaluates candidate proposals against hard physical invariants using three strict design rules. First, it follows the minimal intervention principle: as long as candidate proposals satisfy physical safety constraints, the filter outputs $\mathbf{u}_t^* = p_t$ without modification, preserving the learned policy's nominal performance. Second, it executes deterministic projection: if a proposed action would drive the physical state toward joint limits, collisions, or thermal saturation boundaries, the safety filter minimally projects the command onto the boundary of the safe set. Third, it enforces hardware watchdog interlocks and zero-heap execution: to guarantee sub-millisecond execution deadlines without timing jitter, the execution runtime operates with strictly zero dynamic heap allocation (`malloc` and `free` are forbidden after boot; all data structures reside in static SRAM). Independent hardware watchdog timers ($\tau_{\text{watchdog}} \le 20\text{ ms}$) monitor communication health between the host processor and the MCU. If the host freezes or communication drops, the MCU autonomously overrides software, executing an active dynamic deceleration halt before asserting hardware Safe Torque Off (STO).
-
+* **Row 1 (Perceive · Chapter 4):** Resolves the *spatial grounding boundary*. It transforms raw, high-bandwidth pixel arrays into metric, coordinate-calibrated 3D bounding hulls and surface normal vectors referenced to the physical frame of the machine, isolating upstream sensor transport jitter from downstream logic.
+* **Row 2 (Remember · Chapter 5):** Resolves the *temporal persistence boundary*. It maintains kinematic coordinate transform trees and propagates dynamic state estimates forward across sensor dropouts and visual occlusions, bounding spatial uncertainty growth over time.
+* **Row 3 (Reason · Chapter 6):** Resolves the *semantic deliberation boundary*. It ingests open-world mission objectives and belief states to plan multi-step strategies, issuing time-bounded intent leases that authorize spatial safety corridors without exercising unmitigated electrical authority.
+* **Row 4 (Plan · Chapter 7):** Resolves the *delay amortization boundary*. It translates high-level intent leases into kinematically feasible multi-step trajectory chunks, fitting $\mathcal{C}^2$-continuous splines to eliminate derivative jerk spikes while bridging neural forward-pass latencies.
+* **Row 5 (Execute · Chapter 8):** Resolves the *deterministic physical invariant boundary*. Executing in static SRAM on dedicated real-time silicon, it validates candidate actions against Control Barrier Functions and dynamic stopping distances, ensuring absolute physical safety before pulsing inverter gate drivers.
 
 ## The Three Cadences: Decoupling Cognitive Speeds Across Silicon
 
@@ -259,6 +233,10 @@ Workloads in System 1.5 consist of compact, continuous control policies, such as
 
 System 1.5 amortizes computational delay by predicting multi-step action chunks $\mathbf{A}_{t:t+H}$ across a rolling time horizon $H = 16\text{--}64$ steps ($300\text{--}1000\text{ ms}$). By evaluating overlapping chunks via receding-horizon temporal ensembling, System 1.5 delivers smooth, continuous trajectory waypoints while filtering out high-frequency sensor noise and inference jitter.
 
+::: {.callout-case title="Action Chunk Drift Under Friction Collapse"}
+In a dual-arm precision manufacturing cell, a 6-DoF manipulator was programmed to insert polished steel shafts into bearing housings using an Action Chunking Transformer ($H=32$ steps, $640\text{ ms}$ horizon). During an assembly run, an unmetered drop of lubricating oil coated the shaft, reducing the Coulomb friction coefficient from $\mu = 0.45$ to $\mu = 0.08$. The ungrounded feedforward grasp trajectory experienced micro-slip, causing the shaft orientation to drift $4.2^\circ$ relative to the housing chamfer within $180\text{ ms}$. Because the real-time microcontroller continuously monitored wrist 6-axis force-torque sensor residuals at $1000\text{ Hz}$, it detected the contact shear mismatch ($F_{\text{lateral}} > 8.5\text{ N}$) on tick $T+192\text{ ms}$, overrode the stale open-loop action chunk, and engaged active admittance damping to seat the part without shearing the chamfer edges.
+:::
+
 ### System 1 (Fast Cadence · $1000\text{ Hz}$): Real-Time Safety Reflex
 System 1 represents the deterministic real-time execution tier [@kopetz2011real; @wilhelm2008worst]. Its primary responsibility is verifying candidate action chunks against hard physical invariants, solving real-time Control Barrier Function (CBF) quadratic programs [@ames2019control], evaluating dynamic stopping distances ($d_{\text{stop}} \le d_{\text{clearance}}$), enforcing joint kinematic limits, and synthesizing high-frequency motor phase commutation.
 
@@ -277,38 +255,6 @@ System 1 holds exclusive physical privilege: it alone is connected to hardware P
 | **System 1** | Safety Barrier Reflex & FOC Commutation | $1000\text{ Hz}$ | Hard Real-Time MCU / Bare-metal Core | FreeRTOS / Zephyr (`malloc = 0`) | Trusted (Sole Inverter & Gate Privilege) |
 
 : The Three Cadences of Physical AI. Dimension comparison across the asynchronous multi-rate temporal hierarchy. {#tbl-three-cadences}
-
-
-## Resolving the Compute-vs-Physics Conflict: The Three Contracts
-
-Decoupling cognition across three distinct cadences resolves the compute-versus-physics conflict, but introduces a new systems challenge: how do asynchronous runtimes operating at vastly different frequencies exchange data safely without race conditions, stale buffers, or missed deadlines [@saltzer1984end]?
-
-Physical AI systems resolve this inter-cadence coordination challenge through Three Architectural Contracts (@fig-conflict-resolution).
-
-![Resolving the Compute-versus-Physics Conflict. The Three Architectural Contracts: (1) Proposal–Permission Privilege Separation, (2) Action Chunk Delay Amortization, and (3) Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$).](figures/fig03_great_tension.svg){#fig-conflict-resolution width=100%}
-
-### Contract 1: Proposal–Permission Privilege Separation
-The first architectural contract establishes the fundamental boundary of hardware trust. As formalized in Chapter 1, learned models running on application processors occupy the *untrusted proposal tier*, while real-time microcontroller firmware occupies the *trusted permission tier*.
-
-The proposal tier generates rich, continuous candidate action trajectories $p_t$. The permission tier evaluates physical feasibility and projects candidate actions onto the forward-invariant safe set $\mathcal{U}_{\text{safe}}$:
-
-$$u_t^* = \arg\min_{u \in \mathcal{U}_{\text{safe}}} \|u - p_t\|^2 \quad \text{subject to } h(\mathbf{x}) \ge 0$$
-
-where $h(\mathbf{x}) \ge 0$ represents Control Barrier Function safety constraints (such as maintaining dynamic stopping distance $d_{\text{clearance}} \ge d_{\text{stop}}$) [@ames2019control]. The permission authority alone holds the electrical privilege to configure PWM timer registers and toggle gate drivers.
-
-### Contract 2: Action Chunk Delay Amortization
-The second architectural contract resolves the temporal mismatch between neural inference and motor execution. If a policy network predicted only single-step actions $\mathbf{a}_t$ at $30\text{ Hz}$, the real-time loop would starve for $33\text{ ms}$ between consecutive predictions.
-
-Action chunking amortizes computational delay by predicting multi-step trajectories $\mathbf{A}_{t:t+H}$ across a rolling horizon $H = 16\text{--}64$ steps ($300\text{--}1000\text{ ms}$) [@zhao2023learning]. The high-rate microcontroller consumes waypoints from the active chunk at $1\text{ kHz}$, fitting $\mathcal{C}^2$-continuous splines and applying temporal ensembling to blend overlapping predictions seamlessly.
-
-::: {.callout-case title="Action Chunk Drift Under Friction Collapse"}
-In a dual-arm precision manufacturing cell, a 6-DoF manipulator was programmed to insert polished steel shafts into bearing housings using an Action Chunking Transformer ($H=32$ steps, $640\text{ ms}$ horizon). During an assembly run, an unmetered drop of lubricating oil coated the shaft, reducing the Coulomb friction coefficient from $\mu = 0.45$ to $\mu = 0.08$. The ungrounded feedforward grasp trajectory experienced micro-slip, causing the shaft orientation to drift $4.2^\circ$ relative to the housing chamfer within $180\text{ ms}$. Because the real-time microcontroller continuously monitored wrist 6-axis force-torque sensor residuals at $1000\text{ Hz}$, it detected the contact shear mismatch ($F_{\text{lateral}} > 8.5\text{ N}$) on tick $T+192\text{ ms}$, overrode the stale open-loop action chunk, and engaged active admittance damping to seat the part without shearing the chamfer edges.
-:::
-
-### Contract 3: Expiring Intent Leases
-The third architectural contract provides fail-safe containment for long-horizon deliberation. High-level foundation models issue time-bounded Expiring Intent Leases $\mathcal{L}_{\text{intent}} = \langle \text{GoalID}, \mathbf{T}_{\text{target}}, \mathcal{B}_{\text{safe}}, \|\mathbf{v}\|_{\text{max}}, t_{\text{issue}}, \Delta t_{\text{TTL}} \rangle$ [@gray1989leases].
-
-If upstream deliberation hangs or experiences a scheduler blackout that exceeds $\Delta t_{\text{TTL}}$, the active lease expires passively. The real-time microcontroller detects the lease lapse within $20\text{ ms}$ and autonomously engages controlled dynamic braking, bringing the machine to a safe stop without requiring active shutdown commands from the crashed host.
 
 
 ## The Master Physical Agent Co-Design Matrix
