@@ -69,12 +69,17 @@ $$d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}} = \frac{(19.4\text{ m/s})^2}{2
 
 Because the suppression delay had consumed nearly the entire available clearance, a catastrophic collision was physically inevitable.
 
-::: {.callout-autopsy title="The Cadence Desynchronization and Latency Overrun"}
-* **System:** Level 4 Automated Driving System operating on public roadways, equipped with roof-mounted 64-beam LiDAR, 360° radar array, and forward optical cameras [@ntsb2019uber].
-* **Incident:** While traveling at $43.5\text{ mph}$ ($19.4\text{ m/s}$) on an unlit roadway, the vehicle struck a pedestrian crossing the road with zero automated braking initiated prior to impact.
-* **Telemetry Snapshot:** Over the $5.6\text{ seconds}$ preceding collision, the perception system repeatedly toggled classification between unknown object, vehicle, and bicycle across consecutive $10\text{ Hz}$ cycles. Each re-classification reset the tracking history and recomputed expected trajectory vectors. At $T - 1.2\text{ s}$ before impact ($d_{\text{clearance}} = 23.3\text{ m}$), when the system finally projected an unavoidable collision, an unmitigated software suppression policy enforced a $1000\text{ ms}$ delay before dispatching braking commands to prevent "erratic braking" false alarms.
-* **Root Cause:** Asynchronous cadence mismatch and unmitigated software suppression delay—the high-level perception model's classification thrashing induced tracking jitter, and the motion planning layer suppressed emergency braking during the critical stopping distance window without an independent real-time safety envelope.
-* **Architectural Flaw:** Monolithic authority and software suppression policy with zero independent microcontroller-level dynamic stopping supervisor ($d_{\text{clearance}} \ge d_{\text{stop}}$) and lack of expiring intent leases.
+::: {.callout-autopsy title="NTSB Incident Docket: Tempe Autonomous Collision"}
+* **Platform:** Level 4 Automated Driving System (Volvo XC90), roof-mounted 64-beam LiDAR, 360° radar array, and forward optical cameras [@ntsb2019uber].
+* **Incident Classification:** Fatal pedestrian impact ($v = 19.4\text{ m/s}$ / $43.5\text{ mph}$); zero automated braking prior to collision.
+* **Flight-Recorder Telemetry Log:**
+  - `T - 5.6 s` ($d = 82\text{ m}$): Ingested as `unknown_vehicle`; $\hat{\mathbf{v}} = \mathbf{0}$.
+  - `T - 4.5 s` ($d = 67\text{ m}$): Flipped to `static_obstacle`; Kalman velocity buffer wiped.
+  - `T - 2.6 s` ($d = 48\text{ m}$): Flipped to `bicycle`; tracking state re-initialized.
+  - `T - 1.2 s` ($d = 23.3\text{ m}$): Invariant breached; $1000\text{ ms}$ software suppression timer asserted.
+  - `T - 0.2 s` ($d = 3.9\text{ m}$): Suppression expired; $d_{\text{remaining}} < d_{\text{brake}}$ ($23.5\text{ m}$).
+* **Root Cause:** Perception classification thrashing prevented velocity vector convergence; $1000\text{ ms}$ software suppression blocked emergency braking during the stopping window.
+* **Architectural Flaw:** Monolithic authority—safety braking was subordinate to stochastic neural classifications and software timers rather than an independent 1 kHz microcontroller evaluating $d_{\text{clearance}} \ge d_{\text{stop}}$.
 * **Provenance:** National Transportation Safety Board (NTSB) Accident Report NTSB/HAR-19/03 [@ntsb2019uber].
 :::
 
