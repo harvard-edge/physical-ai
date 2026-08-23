@@ -12,8 +12,8 @@ In digital machine learning, sequential decision-making is framed as a Markov de
 By the conclusion of this chapter, you will be able to:
 
 1. **Deconstruct the Latency Starvation Bottleneck:** Contrast single-step Markovian policies ($H=1$) against multi-step trajectory decoders, diagnosing why discrete inference delays starve actuator loops and excite destructive mechanical resonances.
-2. **Implement Modern Action Chunking (ACT & Diffusion Policy):** Construct parallel multi-step decoders predicting $H$-step waypoint horizons ($H=16\text{ to }64$) conditioned on multimodal vision embeddings, proprioception, and semantic intent leases [@zhao2023learning; @chi2023diffusionpolicy].
-3. **Amortize Delay via Receding-Horizon Temporal Ensembling:** Formulate exponential ensemble blending ($w_i = \exp(-\lambda i)$) across overlapping prediction horizons, suppressing high-frequency diffusion sampling noise and eliminating boundary discontinuities.
+2. **Implement Modern Action Chunking (ACT & Diffusion Policy):** Construct parallel multi-step decoders predicting $H$-step waypoint horizons conditioned on multimodal vision embeddings, proprioception, and semantic intent leases [@zhao2023learning; @chi2023diffusionpolicy].
+3. **Amortize Delay via Receding-Horizon Temporal Ensembling:** Formulate exponential ensemble blending ($w_i \propto e^{-k(t - t_i)}$) across overlapping prediction horizons, suppressing high-frequency diffusion sampling noise and eliminating boundary discontinuities.
 4. **Enforce $\mathcal{C}^2$ Quintic Spline Continuity:** Formulate polynomial trajectory interpolation matching boundary position, velocity, and acceleration to strictly bound joint jerk ($\|\dddot{q}\| \le j_{\text{max}}$), protecting cycloidal reducers and harmonic drives from tooth shear [@murray2017mathematical].
 5. **Architect the Action Chunking Interface:** Formalize the multi-step trajectory chunk specification between the Linux MPU and the real-time MCU.
 6. **Evaluate the Co-Design Checkpoint:** Audit the 5-column matrix checkpoint of Trajectory Planning to resolve structural constraints.
@@ -21,55 +21,35 @@ By the conclusion of this chapter, you will be able to:
 **Core Chapter Takeaway:** Discrete neural steps starve actuators and excite destructive mechanical resonances; action chunking amortizes inference latency across time while continuous polynomial splines enforce the jerk limits required to protect physical gearboxes.
 :::
 
-## Delay Amortization: Bridging Neural Latency with Action Chunks
+## Framing and the Big-Picture Locator
 
-In digital artificial intelligence, autoregressive sequence models generate text token by token. If generating a single token requires $50\text{ ms}$, the user simply perceives a natural typing cadence. In the physical world, however, matter and momentum never pause. A mechanical manipulator in motion possesses kinetic momentum ($\mathbf{p} = m\mathbf{v}$) and inertia that cannot be frozen while a neural network deliberates.
+To understand the role of trajectory generation within embodied artificial intelligence, we must locate this subsystem within the broader cognitive pipeline, as illustrated in @fig-locator-ch07. Trajectory planning operates as the critical translation layer bridging the slow semantic cognition of the host processor and the high-frequency motor reflex loops executed on bare-metal silicon. Downstream of semantic reasoning, the planner receives abstract, expiring intent leases denoted by $\mathcal{L}_{\text{intent}}$. These leases encode the desired target pose or task objective generated at a sparse cadence of one to two Hertz. 
 
-When roboticists first attempted to connect deep neural policies directly to physical motors, they adopted the classical Reinforcement Learning formulation: at every time step $t$, the policy ingests current observation $o_t$ and emits a single next-step action $a_t$ (a single-step Markovian policy, $H=1$). In physical hardware, single-step Markovian neural execution fails catastrophically due to the Latency Starvation Bottleneck.
+The trajectory planner is responsible for unwrapping this semantic intent into a dense, physically realizable continuum of motion. By operating as a System 1.5 proposal engine, it emits continuous multi-step action chunks that map out the immediate future. This dense stream of target waypoints, denoted as $p_t$, feeds directly into the downstream real-time reflex enforcer. The reflex stage then evaluates safety constraints and computes the final high-frequency motor control effort $u_t^*$. Without this intermediate chunking stage, the high-frequency reflex controllers would be left waiting on slow semantic neural networks, resulting in disjointed and mechanically destructive behavior.
 
-An industrial motor inverter requires pulse-width modulation (PWM) updates at $1000\text{ Hz}$ ($1\text{ ms}$ control cycle) to maintain field-oriented control and stable magnetic flux. If the neural policy emits only one action every $50\text{ ms}$, the motor receives a command for $1\text{ ms}$ and is then starved of new guidance for the remaining $49\text{ ms}$. Between inference cycles, the motor either holds its last commanded velocity or comes to an abrupt halt, hammering gearbox teeth and drawing massive current spikes across inverter MOSFET bridges.
+## Delay Amortization, Multimodality, and Mechanical Dynamics
 
-![**The Three Speeds of Physical AI Intelligence and the Latency Starvation Bottleneck.** Single-step policies starve motor controllers during inference latency windows, causing discrete velocity jumps and mechanical chatter. In contrast, System 1.5 Action Chunking provides a continuous reservoir of future waypoints executed seamlessly by the 1 kHz real-time MCU reflex engine.](figures/fig07_three_speeds_latency.svg){#fig-three-speeds-latency width=100%}
+When roboticists first attempted to connect deep neural policies directly to physical motors, they overwhelmingly adopted single-step Markovian architectures. In this naive formulation, a neural network ingests an observation and outputs a single commanded waypoint for the next time step. Because neural inference demands heavy matrix multiplication, the computation time $T_{\text{infer}}$ typically spans 20 to 50 milliseconds. Driving a high-frequency control loop with a sensorimotor latency of 50 milliseconds introduces a massive phase lag into the feedback system. The motor controller, starved of fresh commands while the network computes, holds the previous setpoint, resulting in control loops that oscillate wildly and ultimately succumb to tracking instability.
 
-To bridge the gap between slow semantic deliberation and high-frequency physical actuation, Physical AI decomposes computation into three tiers. The semantic deliberation acts as System 2, operating at $0.5\text{--}2\text{ Hz}$. Trajectory generation operates as System 1.5 at $15\text{--}50\text{ Hz}$, generating continuous multi-step action chunks. Reflex enforcement operates as System 1 at $1000\text{ Hz}$. By outputting multi-step chunks, System 1.5 ensures the System 1 MCU always has a reservoir of target waypoints, effectively amortizing the neural delay over the chunk horizon.
+Beyond latency, deterministic single-step regression architectures fail to model the inherent multimodality of physical tasks. When minimizing a standard Mean Squared Error (MSE) loss function, a deterministic policy forced to choose between routing an end-effector to the left or the right of an obstacle will mathematically split the difference. Averaging two perfectly valid, disjoint trajectories yields a non-viable intermediate path, commanding the robot directly into the obstacle. True embodied policies must therefore model probability distributions over future states rather than regressing to a single mean prediction.
 
-## Mechanical Dynamics: Gearbox Shear, Resonance, and Jerk Continuity
+Furthermore, discrete trajectory updates generated across multi-millisecond intervals wreak havoc on mechanical transmissions. A step change in a velocity or position command produces an infinite derivative impulse. Because physical acceleration is the second time-derivative of position, instantaneous waypoint changes command infinite joint acceleration and infinite mechanical jerk ($\dddot{\mathbf{q}} \to \infty$). These discontinuous steps propagate down the kinematic chain, inducing severe torque ripple evaluated as $\dot{\boldsymbol{\tau}} = \mathbf{J}^T \mathbf{M} \dddot{\mathbf{q}}$. Unmitigated torque ripple fatigues harmonic drive flexsplines and regularly shears the rigid pins of cycloidal gearboxes, turning software latency directly into hardware destruction.
 
-Discrete action chunks, even when ensembled, represent discrete waypoints. Passing discrete waypoints directly to motor drives induces infinite acceleration derivatives ($\dddot{\mathbf{q}} \to \infty$). These discontinuous steps inject violent mechanical jerk that excites structural resonances and threatens harmonic drive tooth shear.
+This dynamic reality manifests uniquely across the three canonical archetypes of Physical AI. In mobility applications, planners chunk continuous curvature profiles to prevent sudden lateral accelerations from rolling the chassis. In contact manipulation, robots generate multi-axis force profile chunks, predicting the compliance necessary to insert pegs or mate surfaces without shattering them. In cybernetic process control, agents emit predictive switching schedules, anticipating thermal lag and fluid momentum to maintain equilibrium. Across all archetypes, chunking amortizes latency and enforces the continuity required by the laws of physics.
 
-To protect mechanical gearboxes, the real-time MCU fits a **Quintic Polynomial Spline** between consecutive waypoints $\mathbf{q}_0$ (at $t=0$) and $\mathbf{q}_1$ (at $t=T$):
+## Silicon Ingestion and the AI Engine: ACT and Diffusion Policies
 
-$$\mathbf{q}(t) = a_0 + a_1 t + a_2 t^2 + a_3 t^3 + a_4 t^4 + a_5 t^5$$
+Modern generative action decoders depart from single-step regression, predicting continuous multi-step horizons in a single parallel inference pass. Two architectures dominate this space: Action Chunking Transformers (ACT) and Conditional Diffusion Policies.
 
-Matching six boundary conditions (position $\mathbf{q}$, velocity $\dot{\mathbf{q}}$, and acceleration $\ddot{\mathbf{q}}$ at both endpoints) yields closed-form coefficients:
+The Action Chunking Transformer architecture frames trajectory generation as a conditional Sequence-to-Sequence task utilizing a Conditional Variational Autoencoder (CVAE). To overcome multimodal regression averaging, an encoder maps demonstration trajectories into a latent style variable parameterized as $z \sim \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$. During deployment, a transformer decoder ingests the sampled latent variable $z$ alongside visual observation tokens and proprioceptive state embeddings. The decoder utilizes cross-attention to output a fully unrolled $H$-step action chunk $\mathbf{A}_{t:t+H} = [\mathbf{q}_t, \mathbf{q}_{t+1}, \dots, \mathbf{q}_{t+H}]$ simultaneously, perfectly capturing the multimodal intent while bounding latency to a single network pass.
 
-$$\begin{bmatrix} a_0 \\ a_1 \\ a_2 \\ a_3 \\ a_4 \\ a_5 \end{bmatrix} = \begin{bmatrix} \mathbf{q}_0 \\ \dot{\mathbf{q}}_0 \\ \frac{1}{2}\ddot{\mathbf{q}}_0 \\ \frac{10(\mathbf{q}_1 - \mathbf{q}_0) - (6\dot{\mathbf{q}}_0 + 4\dot{\mathbf{q}}_1)T - (3\ddot{\mathbf{q}}_0 - \ddot{\mathbf{q}}_1)T^2}{T^3} \\ \frac{-15(\mathbf{q}_1 - \mathbf{q}_0) + (8\dot{\mathbf{q}}_0 + 7\dot{\mathbf{q}}_1)T + (3\ddot{\mathbf{q}}_0 - 2\ddot{\mathbf{q}}_1)T^2}{T^4} \\ \frac{6(\mathbf{q}_1 - \mathbf{q}_0) - 3(\dot{\mathbf{q}}_0 + \dot{\mathbf{q}}_1)T - (\ddot{\mathbf{q}}_0 - \ddot{\mathbf{q}}_1)T^2}{T^5} \end{bmatrix}$$
+Diffusion Policies tackle multimodality through iterative denoising score matching. During training, a forward process injects Gaussian noise into demonstration trajectories according to $q(\mathbf{A}^k | \mathbf{A}^{k-1})$. At inference time, the network begins with pure Gaussian noise and iteratively subtracts predicted noise over a series of steps. This reverse denoising process utilizes 1D Temporal U-Nets conditioned heavily on observation tokens $O_t$. To achieve real-time performance, accelerated sampling algorithms like DDIM converge on a smooth trajectory chunk in as few as $K=4\text{--}8$ denoising steps.
 
-Evaluating $\dddot{\mathbf{q}}(t) = 6 a_3 + 24 a_4 t + 60 a_5 t^2$ guarantees bounded mechanical jerk ($\|\dddot{\mathbf{q}}(t)\| \le j_{\text{max}}$) and continuous motor torque derivatives ($\dot{\boldsymbol{\tau}} = \mathbf{M}(\mathbf{q})\dddot{\mathbf{q}}$), preventing stress fractures.
+Regardless of the generative engine, outputting discrete neural waypoints is insufficient for mechanical safety. Trajectories must be smoothed using $\mathcal{C}^2$ Quintic Polynomial Splines. By formulating a closed-form parameterization $s(\tau) = a_0 + a_1\tau + a_2\tau^2 + a_3\tau^3 + a_4\tau^4 + a_5\tau^5$, the system matches position, velocity, and acceleration boundary conditions precisely at both ends of the chunk. This high-order spline provides a mathematical guarantee that the maximum mechanical jerk is strictly bounded ($\|\dddot{\mathbf{q}}\| \le j_{\text{max}}$), eliminating the torque transients that cause fatigue and shear.
 
-## Generative Action Decoders & Diffusion Policies
+Finally, because neural networks process streams of video and proprioception asynchronously, inference jitter is unavoidable. To ensure smooth execution, Physical AI systems employ Receding-Horizon Temporal Ensembling. As new action chunks arrive from the policy, they overlap with previously generated chunks for the same physical time step. By blending these overlapping action chunks using exponential temporal weights proportional to $w_i \propto e^{-k(t - t_i)}$, the system effectively acts as a low-pass filter on generative variance. This ensembling continuously updates the commanded trajectory based on the freshest sensory data while entirely eliminating the discontinuous boundaries between successive network predictions.
 
-Modern embodied policies abandon single-step Markovian action prediction in favor of **Generative Action Chunking** to predict a continuous horizon of $H$ future waypoints in a single parallel inference pass.
-
-### Action Chunking with Transformers (ACT)
-
-The ACT architecture [@zhao2023learning] frames trajectory generation as a conditional Sequence-to-Sequence task using a Conditional Variational Autoencoder (CVAE). Regression often fails on multimodal paths, averaging divergent yet valid choices into a non-viable intermediate path. ACT circumvents this: at training time, an encoder maps demonstration trajectories into a latent style variable $\mathbf{z} \sim \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$. At test time, a transformer decoder ingests the sampled latent $\mathbf{z}$ along with visual tokens and proprioceptive state, outputting all $H$ future waypoints simultaneously.
-
-### Diffusion Policies for Embodied Control
-
-Diffusion Policies [@chi2023diffusionpolicy] generate action chunks by modeling the conditional probability distribution via 1D Temporal U-Nets and iterative denoising score matching:
-
-$$\mathbf{A}_t^{k-1} = \alpha_k \left( \mathbf{A}_t^k - \beta_k \boldsymbol{\epsilon}_\theta(\mathbf{A}_t^k, o_t, k) \right) + \sigma_k \mathbf{\epsilon}$$
-
-Starting from pure Gaussian noise, the network iteratively subtracts predicted noise over $K$ steps, converging on a continuous, multi-modal trajectory chunk of length $H=16\text{--}64$. Diffusion policies naturally model complex human-like demonstrations without suffering mode collapse.
-
-### Receding-Horizon Temporal Ensembling
-
-Executing diffusion policies or transformers on embedded silicon produces stochastic sampling noise and non-zero inference jitter. To ensure smooth physical motion, Physical AI implements **Receding-Horizon Temporal Ensembling**.
-
-Instead of executing Chunk $k$ to completion, the policy queries the neural decoder at a high cadence. A continuously updated action command is derived from an exponentially weighted average of overlapping predictions ($w_i = \exp(-\lambda i)$). This suppresses high-frequency diffusion sampling variance and eliminates discontinuous boundaries.
-
-## Systems Failure Anatomy: The Sheared Cycloidal Drive Pin
+## Forensic Systems Failure Anatomy: The Sheared Cycloidal Drive Pin
 
 ::: {.callout-autopsy title="The Sheared Cycloidal Drive Pin"}
 **Platform:** Precision Articulated Bimanual Manipulator ($20\text{ Hz}$ Diffusion Policy).
@@ -80,7 +60,9 @@ Instead of executing Chunk $k$ to completion, the policy queries the neural deco
 
 ![The Precision Articulated Bimanual Manipulator. An unmitigated velocity step between consecutive chunks generated an instantaneous acceleration of $1{,}070\text{ rad/s}^2$, producing a $48.2\text{ N}\cdot\text{m}$ torque pulse that sheared the cycloidal reducer planetary drive pins.](figures/fig07_manipulator_arm_cropped.jpg){#fig-planning-platform width=100%}
 
-In this autopsy, a 6-DoF manipulator executed sequential action chunks directly. Without temporal ensembling or spline interpolation smoothing out the discrete waypoints, Joint 2 was commanded from $\dot{q}_2 = -0.42\text{ rad/s}$ to $+0.65\text{ rad/s}$ across a single $1\text{ ms}$ tick. This velocity jump demanded $\ddot{q}_2 = 1{,}070\text{ rad/s}^2$. With linkage inertia $I_2 = 0.045\text{ kg}\cdot\text{m}^2$, the required dynamic torque pulse was $\tau = I \ddot{q} = 48.2\text{ N}\cdot\text{m}$, exceeding the cycloidal drive pin shear limit ($28.0\text{ N}\cdot\text{m}$) and shearing the planetary pins.
+In the autopsy referenced above, a high-payload articulated manipulator was driven by a diffusion policy emitting sequential action chunks. The software architecture dispatched these discrete neural waypoints directly to the motor inverter arrays without applying receding-horizon temporal ensembling or quintic spline interpolation. During a downward sweeping motion, Joint 2 reached a chunk boundary and was instantly commanded from a velocity of $-0.42\text{ rad/s}$ to $+0.65\text{ rad/s}$. Because the motor controller operated on a one millisecond tick, this velocity discontinuity commanded an acceleration spike of $\ddot{q}_2 = 1{,}070\text{ rad/s}^2$. 
+
+The inertia of the linkage demanded a dynamic torque pulse of $48.2\text{ N}\cdot\text{m}$ to satisfy this sudden acceleration constraint. This massive, instantaneous demand vastly exceeded the $28.0\text{ N}\cdot\text{m}$ shear threshold of the cycloidal reducer's hardened steel planetary pins. The pins sheared completely, mechanically detaching the arm and dropping the heavy payload. @tbl-telemetry-ch07 reconstructs the microsecond-level telemetry sequence, revealing how a seemingly benign software discontinuity propagated through the motor inverter to cause catastrophic mechanical failure.
 
 | Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
 | :--- | :--- | :--- | :--- |
@@ -94,9 +76,9 @@ In this autopsy, a 6-DoF manipulator executed sequential action chunks directly.
 
 : Flight-Recorder Telemetry Ledger: The Sheared Cycloidal Drive Pin Incident. Tracing un-interpolated neural waypoints to mechanical shear fracture. {#tbl-telemetry-ch07}
 
-## The Action Chunking Interface & Co-Design Checkpoint
+## The Trajectory Chunk Interface Specification and Co-Design Checkpoint
 
-To establish a deterministic boundary between trajectory generation and real-time reflex enforcement, the planning subsystem standardizes the Trajectory Chunk specification: $p_t = [\mathbf{q}_1, \dots, \mathbf{q}_H]$.
+To formalize the handoff between the Linux-hosted generative planners and the bare-metal microcontrollers, systems architects define a strict Trajectory Chunk Interface. This specification ensures that the output vector $p_t = [\mathbf{q}_1, \dots, \mathbf{q}_H]$ is structurally sound, predictable, and within the dynamic limits of the actuation hardware before it ever reaches the motor drives.
 
 | Parameter Category | Specification Key | Engineering Target Value | Verification Boundary |
 | :--- | :--- | :--- | :--- |
@@ -110,9 +92,7 @@ To establish a deterministic boundary between trajectory generation and real-tim
 
 : The Trajectory Planning Specification. Chunk horizons, temporal ensembling parameters, and derivative continuity bounds bridging Planning to Execution. {#tbl-planning-spec}
 
-### The Planning Co-Design Checkpoint Ledger
-
-We conclude the Planning stage by auditing its resolution across all foundational physical constraints via the 5-Column Matrix Checkpoint audit:
+This rigorous definition of the planning interface is further scrutinized through a comprehensive 5-Column Matrix Checkpoint audit. By explicitly tracing each high-level software constraint back to its root physical cause, the matrix enforces an architectural resolution that guarantees safe mechanical execution.
 
 | Constraint Category | Subsystem Tension | Root Physical Cause | Architectural Resolution | Validation Boundary |
 | :--- | :--- | :--- | :--- | :--- |
@@ -124,27 +104,8 @@ We conclude the Planning stage by auditing its resolution across all foundationa
 
 : Planning 5-Column Co-Design Checkpoint Ledger. Systematic architectural accounting of trajectory planning across physical constraints. {#tbl-planning-matrix-checkpoint}
 
-### Systems Fallacies in Trajectory Planning
-
-::: {.callout-fallacy title="Simulation Smoothing Transfers Directly to Physical Gearboxes"}
-* **The Fallacy:** If a neural trajectory looks visually smooth in PyBullet, MuJoCo, or Isaac Gym, it is safe to execute on physical robot actuators.
-* **The Physical Reality:** Physics simulators compute forward dynamics using discrete numerical integration ($\Delta t = 10\text{ ms}$) with compliant contact solvers. Simulators do not model harmonic drive flexspline fatigue, gearbox tooth backlash, or continuous torque derivatives ($\dot{\boldsymbol{\tau}}$). A trajectory that is stable in simulation can snap physical cycloidal pins in under $2\text{ milliseconds}$ [@murray2017mathematical].
-:::
-
-::: {.callout-fallacy title="Single-Step Markovian Policies Are More Reactive Than Chunking"}
-* **The Fallacy:** Generating actions one step at a time ($H=1$) makes an agent more responsive to dynamic environmental changes than generating multi-step chunks.
-* **The Physical Reality:** Single-step neural policies are bottlenecked by inference latency: a 20 Hz policy leaves motors unguided for 95% of each control cycle. Multi-step chunking with receding-horizon ensembling provides continuous guidance while updating trajectory intent at every sensory tick.
-:::
-
-::: {.callout-fallacy title="Action Chunks Can Execute Open-Loop Without Real-Time Safety Vetoes"}
-* **The Fallacy:** Once a multi-step trajectory chunk is validated, it can be executed to completion by the microcontroller without evaluating safety checks.
-* **The Physical Reality:** Dynamic obstacles, human workers, and mechanical jams can materialize during the 800 ms execution window. The microcontroller must evaluate Control Barrier Functions at 1000 Hz, maintaining the authority to veto chunk execution at any millisecond tick.
-:::
-
 ## Chapter Summary and Forward Handoff
 
-This chapter established how high-level intent leases are translated into smooth, dynamically feasible motor trajectories through Action Chunking and polynomial splines. By predicting $H$-step future horizons in parallel, policies amortize neural inference latency across physical time.
+This chapter has established the necessity and the mechanics of trajectory action chunking as a critical bridge between cognitive inference and mechanical reality. We diagnosed the profound instability caused by single-step Markovian delay and demonstrated how generative decoders—like ACT and Diffusion Policies—amortize this latency by producing broad prediction horizons. Through receding-horizon temporal ensembling and $\mathcal{C}^2$ quintic polynomial splines, these discrete neural predictions are mathematically transformed into continuous, jerk-bounded trajectories that safely drive high-frequency motor inverters without shearing gearbox pins.
 
-By coupling Diffusion Policy decoders with receding-horizon temporal ensembling and $\mathcal{C}^2$ quintic polynomial splines, we eliminate discrete acceleration jumps and guarantee bounded mechanical jerk ($\|\dddot{\mathbf{q}}\| \le j_{\text{max}}$), protecting mechanical transmissions from shock fracture.
-
-In the following chapter, **Chapter 8 (Execute: Deterministic 1 kHz Reflexes and Control Barrier Functions)**, we examine the final cognitive stage: the real-time execution engine running on bare-metal microcontroller silicon that enforces non-negotiable physical safety invariants before gate drivers switch motor coils.
+With the trajectory securely chunked, smoothed, and deposited into the shared SRAM mailboxes, the baton passes to the lowest level of the physical stack. In the following chapter, **Chapter 8 (Execute: Deterministic 1 kHz Reflexes and Control Barrier Functions)**, we dive into the bare-metal microcontroller silicon. We will explore how real-time execution engines ingest these polynomial splines, calculate inverse kinematics at one kilohertz, and evaluate rigid non-negotiable safety invariants before finally committing current to the motor stator coils.
