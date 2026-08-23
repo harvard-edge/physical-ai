@@ -332,36 +332,6 @@ The *Requirements Ledger* records the eight foundational physical constants and 
 Once measured and certified, the values in @tbl-requirements-ledger are compiled directly into the real-time microcontroller's immutable firmware constants. These values form the mathematical boundary conditions evaluated by the Control Barrier Function safety enforcer on every 1 kHz tick.
 
 
-## Fallacies and Pitfalls in Physical Constraints
-
-When engineering embodied systems, teams frequently inherit intuitions from desktop software or cloud machine learning that fail catastrophically in the physical world:
-
-::: {.callout-fallacy title="Frame Rate Guarantees Low Latency"}
-* **The Fallacy:** A vision and policy pipeline operating at a high processing frame rate (such as $60\text{ frames per second}$) guarantees low closed-loop control latency and safe real-time interaction.
-* **The Physical Reality:** Frame rate measures computational throughput (frames processed per unit time); latency measures elapsed transit duration (photons to motor torque). A multi-stage FIFO pipeline processing 60 FPS through a four-frame queue achieves high throughput, but every dispatched action is derived from observations that are over $66\text{ ms}$ stale. In physical closed-loop dynamical systems, throughput without information freshness is an active collision hazard.
-:::
-
-::: {.callout-fallacy title="Software Timers Measure Information Age"}
-* **The Fallacy:** Measuring execution duration with high-level software timing functions (such as `time.time()` or `clock_gettime()`) provides an accurate measure of sense-to-actuation latency.
-* **The Physical Reality:** User-space software timers measure only thread scheduling duration on the host CPU. They are completely blind to optical photodiode integration ($8\text{--}15\text{ ms}$), MIPI-CSI serialization, DMA memory bus contention, inter-processor shared memory handoffs, and motor stator inductive rise times ($3\tau_e \approx 6\text{--}15\text{ ms}$). Ground-truth latency metrology requires external hardware logic analyzer strobes and analog current probes.
-:::
-
-::: {.callout-fallacy title="Certifying Against Median Latency ($P_{50}$)"}
-* **The Fallacy:** Certifying closed-loop safety against median response time ($P_{50}$) provides an adequate statistical margin for physical deployment.
-* **The Physical Reality:** A physical control loop running at $50\text{ Hz}$ completes 180,000 discrete cycles every hour. In this high-frequency regime, certifying against $P_{50}$ leaves 90,000 unmitigated timing violations per hour. Even a $0.1\%$ tail ($P_{99.9}$) generates 180 severe stalls per hour (3 computational blackouts per minute). Physical safety and stopping distance invariants must be certified exclusively against extreme tail distributions ($P_{99.9}$).
-:::
-
-::: {.callout-fallacy title="FIFO Queues Smooth Neural Inference Jitter"}
-* **The Fallacy:** Buffering incoming camera frames and outgoing action commands in deep FIFO queues absorbs neural inference timing jitter without compromising safety.
-* **The Physical Reality:** In closed-loop systems, deep FIFO queues inject catastrophic transport delay, rotating the phase angle of the control loop ($\Delta \phi = -\omega t_{\text{delay}}$) and destroying phase margin ($\text{PM} \le 0^\circ$). Physical AI architectures must drop stale intermediate frames, sampling exclusively the latest completed observation and bridging inference intervals with multi-step action chunks.
-:::
-
-::: {.callout-fallacy title="Permitting Dynamic Heap Allocation in Safety Paths"}
-* **The Fallacy:** Using dynamic memory allocation (`malloc`, `new`, or resizing containers) in microcontroller safety loops is safe as long as the memory heap is pre-warmed during startup.
-* **The Physical Reality:** Dynamic heap allocators exhibit non-deterministic pointer-chasing latency during free-list traversal and induce heap fragmentation over multi-hour missions. Furthermore, real-time microcontrollers lack MMUs to catch stack-heap collisions, resulting in silent memory corruption and unhandled CPU lockups. Real-time safety supervisors must execute strictly in compile-time static SRAM (`malloc = 0`).
-:::
-
-
 ## Summary
 
 Physical AI begins where digital software abstractions collide with unyielding physical laws. Throughout this chapter, we established the quantitative instruments, physical constraints, and silicon mechanisms that govern the boundary between learned deliberation and physical reality. Unlike digital computing where execution delay is benign, physical dynamical systems evolve along an unyielding time axis, dictating that worst-case tail latency must remain strictly within the physical world deadline ($t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}}$) to prevent destructive phase margin erosion ($\text{PM} \le 0^\circ$).

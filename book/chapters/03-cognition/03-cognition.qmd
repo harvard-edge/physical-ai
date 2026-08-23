@@ -128,31 +128,6 @@ In each domain, the interface between stages is defined by explicit mathematical
 Conditioned on this state belief, the semantic reasoner emits a bounded Expiring Intent Lease ($I_t = \mathcal{L}_{\text{intent}}$), establishing spatial bounds and validity horizons for candidate goals. The trajectory planner then decodes these leases into smooth, $\mathcal{C}^2$-continuous reference splines $\tau_t$ that respect physical torque and acceleration limits. Finally, the real-time execution tier filters candidate waypoints through Control Barrier Functions and modulates low-level electrical signals ($u_t$), guaranteeing forward safety invariance while physically transforming the material world ($W_{t+1}$).
 
 
-## Fallacies and Pitfalls in Cognitive Agency
-
-When engineering multi-stage cognitive architectures for Physical AI, software practitioners frequently fall victim to architectural fallacies inherited from disembodied machine learning, or stumble into low-level systems pitfalls when bridging neural models with physical hardware:
-
-::: {.callout-fallacy title="A Single End-to-End VLA Model Obsoletes Cognitive Stage Decomposition"}
-* **The Fallacy:** Scaling a single monolithic vision-language-action foundation model directly from raw camera pixels to kilohertz motor PWM currents eliminates the need for modular perception, memory, reasoning, planning, and execution stages.
-* **The Systems Reality:** A multi-billion parameter autoregressive model typically requires between $200\text{ and }1000\text{ ms}$ per forward pass. Driving a motor directly from such a model establishes an unmitigated reaction debt ($d_{\text{coast}} = v \cdot \Delta t$) and introduces severe control loop phase lag. Furthermore, stochastic neural activations inherently lack deterministic forward-invariance proofs. Physical survival fundamentally demands decomposing the cognitive lifecycle into layered temporal cadences, ultimately restricting massive foundation models to proposing untrusted intents rather than dictating real-time control.
-:::
-
-::: {.callout-fallacy title="Learned Latent World Models Eliminate Metric Kinematic Frame Trees"}
-* **The Fallacy:** Predicting dynamics in a continuous learned latent space $\mathcal{Z}$ (such as JEPA or RSSM architectures) makes explicit metric coordinate trees ($SE(3)$ frame graphs, pinhole camera intrinsics, and robotic DH parameters) obsolete.
-* **The Systems Reality:** While latent embeddings effectively capture topological relationships and semantic affordances, physical actuators operate squarely within a millimeter-scale metric space. Inserting a surgical needle or mating a sub-millimeter connector requires exact metric frame transformations ($T_{A \to B} \in SE(3)$) mapping one spatial coordinate system to another. Neglecting rigorous metric grounding inevitably causes high-precision assembly tasks to fail, regardless of how robust the latent similarity scores appear.
-:::
-
-::: {.callout-fallacy title="Pitfall: Single-Rate While Loops Coupling Deliberation with Reflexes"}
-* **The Pitfall:** Placing image acquisition, VLM intent inference, trajectory spline generation, and motor torque dispatch inside a single synchronous `while True:` loop in software (such as Python scripts or standard unmanaged ROS nodes).
-* **The Systems Reality:** Any transient latency spike in upstream deliberation—whether from Python garbage collection, operating system thread preemption, or GPU kernel launch delays—directly stalls the motor control tick. A $50\text{ ms}$ stall in a $1000\text{ Hz}$ control loop results in 50 dropped control cycles. This disruption causes power inverters to latch their current state, forcefully driving the mechanical plant into resonant vibration or outright physical impact.
-:::
-
-::: {.callout-fallacy title="Pitfall: Issuing Unbounded Semantic Intent Without Hardware-Enforced Expiration Leases"}
-* **The Pitfall:** Dispatching open-ended high-level semantic commands (such as instructing a mobile base to "drive forward to the loading dock") from a deliberative VLM to the low-level controller without a strictly enforced hardware expiration lease ($\Delta t_{\text{lease}}$).
-* **The Systems Reality:** If the upstream application processor crashes, hangs on a network socket, or encounters memory bus starvation, the low-level controller will continue executing the last valid command indefinitely. High-level intent must always be packaged as a rigorously defined, expiring intent lease ($\mathcal{L}_{\text{intent}}$). If this lease is not explicitly renewed before expiration, the real-time microcontroller must autonomously execute a controlled deceleration to safely bring the physical system to rest.
-:::
-
-
 ## Chapter Summary and Forward Handoff to Chapter 4
 
 This chapter deconstructed embodied physical agency into five foundational sensory-motor stages: Spatial Perception ($W_t \to O_t$), Temporal Memory ($O_t \to S_t$), Semantic Reasoning ($S_t \to I_t$), Trajectory Planning ($I_t \to \tau_t$), and Real-Time Safety Execution ($\tau_t \to u_t \to W_{t+1}$). We traced the evolutionary transition from classical hand-engineered heuristics to modern Physical AI foundation models, demonstrating how learned representations provide open-world generalizability while formal safety barriers preserve deterministic physical guarantees.
