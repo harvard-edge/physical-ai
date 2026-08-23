@@ -1,22 +1,23 @@
-# Memory and Latent World Models\chaptersubtitle{Spatial Frame Trees, Persistence, and Uncertainty Expansion}
+# Memory and Latent World Models\chaptersubtitle{Maintaining Dynamic Frame Trees and State Belief under Physical Occlusion}
 
-![Systems Organ Focus: Stage 3 (World Models, Latent Predictive Dynamics, and Spatial $SE(3)$ State).](figures/fig_pipeline_locator.svg){#fig-locator-ch05 width=100% fig-pos="H"}
+![**Systems Organ Focus:** Stage 3 (Temporal Memory & World Models) across the Proposal–Permission Privilege Boundary. This stage bridges immediate perceptual observations with durable semantic belief.](figures/fig_pipeline_locator.svg){#fig-locator-ch05 width=100% fig-pos="H"}
 
-*Why does an autonomous manipulator crush a workpiece the instant its own mechanical arm blocks its camera view?*
+*Why does an autonomous mobile manipulator drop a delicate glass object the moment an obstacle occludes the overhead camera?*
 
-In digital simulation, the physical state of every entity is permanently accessible in global memory arrays. In the physical world, sensory contact is intermittent: objects pass behind occlusions, sensors suffer dropouts, and cameras are blinded by the robot's own moving linkages. An embodied agent cannot rely solely on instantaneous sensory snapshots, nor can it afford the computational cost of generating raw video pixels in real time. Instead, it must maintain a structured, latent representation of physical reality—anchored by time-indexed coordinate frame trees in $SE(3)$, forward predictive dynamics in compact latent space, and expanding spatial uncertainty envelopes that mathematically enforce when memory expires.
+In digital simulation, the physical state of every entity is permanently accessible in global memory arrays. In the physical world, sensory contact is intermittent: objects pass behind occlusions, sensors suffer dropouts, and cameras are blinded by the robot's own moving linkages. Because observation is not state ($O_t \neq S_t$), an embodied agent cannot rely solely on instantaneous sensory snapshots. Nor can it afford the computational cost of generating raw video pixels in real time. Instead, it must maintain a structured, latent representation of physical reality—anchored by time-indexed coordinate frame trees in $SE(3)$, forward predictive dynamics in compact latent space, and expanding spatial uncertainty envelopes that mathematically enforce when memory expires.
 
 {{< pagebreak >}}
 
 ::: {.callout-objective}
 By the conclusion of this chapter, you will be able to:
 
-1. **Contrast Generative vs. Latent World Modeling:** Explain why real-time pixel generation (video diffusion) fails on compute and hallucination budgets, and deploy non-generative Latent World Models (JEPAs, RSSMs) that predict transitions in compact representation space $\mathcal{Z}$.
-2. **Maintain Dynamic Metric $SE(3)$ Transform Graphs:** Construct and query time-indexed Lie group coordinate frame trees ($\mathcal{T}_{\text{frames}}$) using Lie algebra ($\mathfrak{se}(3)$) tangent-space integration to eliminate gimbal lock and timestamp skew.
-3. **Formulate Spatial Persistence Under Occlusion:** Model object permanence across visual dropouts using forward kinematic prediction and stochastic state propagation.
-4. **Quantify Spatial Uncertainty Expansion & Expiration:** Formulate positional covariance growth ($\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t$) and enforce hard Time-To-Live (TTL) state leases.
-5. **Architect Memory Domain Isolation:** Decouple high-bandwidth, non-deterministic latent belief updates (Linux MPU) from deterministic, high-rate proprioceptive state estimation (Real-Time MCU).
-6. **Freeze the State and Timing Model:** Author the fifth artifact of the engineering notebook establishing coordinate hierarchies, TTL windows, covariance bounds, and thermal derating regimes.
+1. **Contrast Generative vs. Latent World Modeling:** Explain why real-time pixel generation fails on compute budgets and deploy non-generative Latent World Models (JEPAs, RSSMs).
+2. **Formulate Dynamic $SE(3)$ Transform Graphs:** Construct and query time-indexed Lie group coordinate frame trees ($\mathcal{T}_{\text{frames}}$) using Lie algebra ($\mathfrak{se}(3)$) tangent-space integration.
+3. **Model Spatial Persistence Under Occlusion:** Calculate object permanence across visual dropouts using forward kinematic prediction and stochastic state propagation.
+4. **Quantify Spatial Uncertainty Expansion:** Formulate positional covariance growth ($\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t$) over time.
+5. **Enforce State Expiration Leases:** Design hard Time-To-Live (TTL) state leases that automatically invalidate stale coordinate transforms.
+6. **Architect Memory Domain Isolation:** Decouple high-bandwidth latent belief updates on the Linux MPU from deterministic proprioceptive state estimation on the Real-Time MCU.
+7. **Audit the World State Belief Interface:** Author the fifth artifact of the engineering notebook establishing coordinate hierarchies, TTL windows, and thermal derating regimes.
 
 **Core Chapter Takeaway:** Observation is not state; because physical contact is intermittent and occlusions are inevitable, an embodied agent must sustain a persistent coordinate frame tree and model spatial uncertainty growth to survive sensory blackouts.
 :::
@@ -29,7 +30,15 @@ In digital computer science, memory is an infinite, addressable grid of bytes, a
 
 A naive perception system operating in a purely reactive loop suffers an immediate cognitive collapse in this scenario. Because photons are blocked, zero detections are produced, which leads to an instantaneous loss of spatial pose. The physical object did not dissolve into non-existence simply because a camera lens was occluded. It still occupies space, possesses inertia, and presents a rigid physical boundary. However, because the agent can no longer observe it directly, the agent's internal certainty regarding the object's precise coordinates begins to decay. If the object is resting on a stationary workbench, its coordinates remain fixed, but mechanical vibration and base drift introduce positional doubt over time. 
 
-To act competently in an un-instrumented physical world, an embodied agent cannot rely on instantaneous pixel reactions alone. It must construct and maintain a continuous, metric latent world model and temporal state belief. This internal state organ performs the load-bearing systems tasks of temporal synchronization across disparate sensor rates, spatial metric persistence in three-dimensional space, and bounded uncertainty tracking with state expiration leases.
+To act competently in an un-instrumented physical world, an embodied agent cannot rely on instantaneous pixel reactions alone. It must construct and maintain a continuous, metric latent world model and temporal state belief. This internal state organ performs the load-bearing systems tasks of temporal synchronization across disparate sensor rates, spatial metric persistence in three-dimensional space, and bounded uncertainty tracking with state expiration leases. The fundamental systems dilemma emerges precisely here: balancing the computational cost of maintaining an extensive memory representation against the inexorable growth of spatial uncertainty over time. Every microsecond a state is held in memory without fresh sensory confirmation, the physical variance of that state expands, demanding rigorous hardware-accelerated invalidation before the agent acts on stale coordinates.
+
+| Canonical Archetype | State Persistence Focus | Dominant Uncertainty Factor | Frame Tree Root |
+| :--- | :--- | :--- | :--- |
+| **Mobility** | Ego-localization and dynamic obstacle tracking | Global position drift and wheel slip over wide areas. | `map` (Earth-fixed) |
+| **Contact Manipulation** | Tool-tip tracking and workpiece coordinate geometry | Sub-millimeter mechanical backlash and transport latency skew. | `robot_base` (Static mount) |
+| **Cybernetic Process** | Actuator thermal capacitance and chemical states | Unobserved energy buildup and ambient heat dissipation. | `thermal_mass` (Internal) |
+
+: The State Persistence Landscape (@tbl-state-persistence-landscape). Diverse physical archetypes anchor their frame trees differently, yet all suffer from temporal uncertainty expansion when observation is lost. {#tbl-state-persistence-landscape}
 
 ## Kinematic Coordinate Frame Trees and Uncertainty Propagation
 
@@ -130,8 +139,6 @@ We conclude the Memory stage by auditing its resolution across all foundational 
 | **Silicon Determinism** | Unbounded state history thrashes cache and RAM. | **Fixed-size circular transform ring buffers** and compact latent state vectors. |
 
 : 5-Column Matrix Checkpoint. Systematic architectural accounting of state and memory across the physical constraints. {#tbl-memory-matrix-checkpoint}
-
-### Systems Fallacies in Embodied State Modeling
 
 ::: {.callout-fallacy title="LLM Context Windows Substitute for Physical World Models"}
 * **The Fallacy:** The internal latent representation or attention context window of a Multi-Modal LLM serves directly as an embodied world model.
