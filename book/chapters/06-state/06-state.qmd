@@ -88,30 +88,23 @@ $$\begin{bmatrix} \mathbf{P}_B \\ 1 \end{bmatrix} = \mathbf{T}_{\text{mount}}^B 
 If any transformation along this kinematic chain is queried using an out-of-date timestamp without spatial covariance tracking, the resulting coordinate multiplication injects massive spatial skew that drives downstream end-effectors into physical fixtures.
 
 
-## Classical State Estimation: Extended Kalman Filtering (EKF), Factor Graphs, and Sliding-Window Optimization
+## Classical State Estimation: The Extended Kalman Filter (EKF) and Matrix Stability
 
-To fuse high-rate proprioceptive joint encoders ($1000\text{ Hz}$) and IMU dynamic streams with lower-rate, asynchronous camera affordance tokens ($30\text{ Hz}$), Physical AI systems employ rigorous state estimation algorithms founded on Bayesian filtering and non-linear optimization (@tbl-state-estimation-paradigms).
+Consider the core dilemma of physical tracking: A robot's camera frames arrive at $30\text{ Hz}$, meaning a new observation occurs only every $33\text{ ms}$. Worse, the image processing pipeline introduces $50\text{ ms}$ of transport and compute latency. During those blind milliseconds, the robot's physical mass continues to travel forward with momentum ($mv$). If a robotic arm is moving at $1\text{ m/s}$, it travels $33\text{ mm}$ between frames—enough to crush a fragile workpiece. How does an embedded system maintain a continuous, high-rate ($1000\text{ Hz}$) state belief without drifting into obstacles while waiting for the next camera frame?
 
-| Estimation Architecture | Algorithmic Core | Compute Complexity | Memory Footprint | Temporal Lag & Consistency | Best Suited Physical Application |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Complementary Filter** | Direct frequency-split blend (High/Low pass) | $\mathcal{O}(1)$ microsecond | Static registers ($<1\text{ KB}$) | Zero latency; no statistical covariance tracking | Bare-metal MCU attitude estimation & drone balance |
-| **Extended Kalman Filter (EKF)** | Recursive linearization via Taylor expansion | $\mathcal{O}(n^3)$ state matrix | Minimal static SRAM ($\sim 10\text{ KB}$) | Zero lag; susceptible to linearization divergence | Real-Time $1000\text{ Hz}$ motor & robot kinematics |
-| **Unscented Kalman Filter (UKF)** | Deterministic sigma-point propagation | $\mathcal{O}(n^3)$ matrix square-roots | Moderate static SRAM ($\sim 30\text{ KB}$) | Zero lag; captures higher-order non-linearities | Highly non-linear legged impact dynamics |
-| **Factor Graph (iSAM2)** | Incremental non-linear smoothing optimization | $\mathcal{O}(K)$ variable elimination | Dynamic RAM ($\sim 10\text{--}50\text{ MB}$) | Multi-frame delay; global metric consistency | Visual-Inertial Odometry (VIO) & SLAM on MPU |
+To fuse high-rate proprioceptive joint encoders ($1000\text{ Hz}$) and IMU dynamic streams with lower-rate, asynchronous camera observations ($30\text{ Hz}$), Physical AI systems employ continuous-discrete **Extended Kalman Filters (EKF)**. The EKF bridges the temporal gap by continuously propagating a mathematical belief of where the robot is, even when it is blind. 
 
-: State Estimation Paradigms in Physical AI. Mathematical mechanisms, computational scaling, memory footprints, and architectural placement across heterogeneous silicon. {#tbl-state-estimation-paradigms}
-
-The workhorse of embedded real-time robotics is the continuous-discrete **Extended Kalman Filter (EKF)**. The system state vector $\mathbf{x} \in \mathbb{R}^n$ evolves according to continuous non-linear system dynamics with process noise $\mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q})$:
+The system state vector $\mathbf{x} \in \mathbb{R}^n$ evolves according to continuous non-linear system dynamics (representing Newtonian physics) with process noise $\mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q})$ representing unmodeled disturbances like wind or friction:
 
 $$\dot{\mathbf{x}}(t) = f(\mathbf{x}(t), \mathbf{u}(t)) + \mathbf{w}(t)$$
 
-Between measurement arrivals, the state estimate $\hat{\mathbf{x}}$ and error covariance matrix $\mathbf{P} \in \mathbb{R}^{n \times n}$ are propagated forward in time by solving continuous-time differential equations:
+Between visual measurement arrivals, the physical state estimate $\hat{\mathbf{x}}$ and its spatial error covariance matrix $\mathbf{P} \in \mathbb{R}^{n \times n}$ are propagated forward in time by solving continuous-time differential equations:
 
 $$\dot{\hat{\mathbf{x}}} = f(\hat{\mathbf{x}}, \mathbf{u}), \qquad \dot{\mathbf{P}} = \mathbf{F}(t)\mathbf{P}(t) + \mathbf{P}(t)\mathbf{F}(t)^T + \mathbf{Q}(t)$$
 
-where $\mathbf{F}(t) = \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}(t), \mathbf{u}(t)}$ is the continuous-time state transition Jacobian.
+where $\mathbf{F}(t) = \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}(t), \mathbf{u}(t)}$ is the continuous-time state transition Jacobian, mapping how a small error in current velocity geometrically expands into a larger position error in the future.
 
-When a discrete sensory measurement $\mathbf{z}_k \in \mathbb{R}^m$ arrives at time $t_k$ with measurement noise $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{R}_k)$, the filter evaluates the measurement innovation $\mathbf{y}_k$ and updates the state belief:
+When a delayed camera measurement $\mathbf{z}_k \in \mathbb{R}^m$ finally arrives at time $t_k$ with sensor noise $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{R}_k)$, the filter evaluates the measurement innovation $\mathbf{y}_k$ (the difference between what the camera saw and what the filter expected to see) and updates the state belief:
 
 $$\mathbf{y}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_k^-), \qquad \mathbf{S}_k = \mathbf{H}_k \mathbf{P}_k^- \mathbf{H}_k^T + \mathbf{R}_k$$
 
@@ -119,20 +112,20 @@ $$\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^T \mathbf{S}_k^{-1}$$
 
 $$\hat{\mathbf{x}}_k^+ = \hat{\mathbf{x}}_k^- + \mathbf{K}_k \mathbf{y}_k, \qquad \mathbf{P}_k^+ = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)\mathbf{P}_k^- (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)^T + \mathbf{K}_k \mathbf{R}_k \mathbf{K}_k^T$$
 
-where $\mathbf{H}_k = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_k^-}$ is the measurement Jacobian and $\mathbf{K}_k$ is the optimal Kalman gain. The Joseph-form covariance update guarantees that $\mathbf{P}_k^+$ remains strictly symmetric and positive semi-definite despite finite floating-point precision on embedded silicon.
+where $\mathbf{H}_k$ is the measurement Jacobian. Here, hardware realities intrude: calculating the Kalman gain $\mathbf{K}_k$ requires computing the matrix inversion $\mathbf{S}_k^{-1}$. On a resource-constrained embedded MCU using 32-bit floating-point (FP32) arithmetic, numerical rounding errors rapidly accumulate. If the covariance matrix $\mathbf{P}_k^+$ loses strict symmetry or positive definiteness, the filter mathematically collapses, commanding wild, divergent actuator torques. The Joseph-form covariance update shown above is structurally mandated because it guarantees $\mathbf{P}_k^+$ remains symmetric and positive semi-definite despite severe FP32 numerical truncation.
 
-To reject corrupt sensory outliers—such as optical reflections, sensor dropouts, or mixed-pixel artifacts—the state estimator evaluates the squared **Mahalanobis Distance** of the innovation:
+To reject corrupt sensory outliers—such as optical reflections or mixed-pixel artifacts—the state estimator evaluates the squared **Mahalanobis Distance** of the innovation:
 
 $$d_M^2 = \mathbf{y}_k^T \mathbf{S}_k^{-1} \mathbf{y}_k \le \chi_{m, 1-\alpha}^2$$
 
-If $d_M^2$ exceeds the Chi-squared threshold (e.g., $d_M > 3.0\sigma$), the innovation gate rejects the measurement entirely, preventing corrupted sensor data from destroying the filter's internal state estimate.
+If $d_M^2$ exceeds the threshold, the innovation gate rejects the measurement entirely, preventing corrupted sensor data from destroying the filter's internal physical state.
 
 
 ## Latent World Models: Joint-Embedding Predictive Architectures (JEPA) and Recurrent State-Space Models (RSSM)
 
-While classical Kalman filters excel at tracking known low-dimensional rigid-body kinematics, modern autonomous systems must forecast complex, multi-body environmental interactions across unstructured scenes. In recent machine learning literature, researchers have attempted to solve this using generative video models that predict future observations pixel-by-pixel.
+While classical Kalman filters excel at tracking rigid objects via 6-DoF state vectors, they collapse when confronted with the unconstrained physical world. How do you construct a 6-DoF state vector for a crumpled towel, a splashing liquid, or an unmodeled debris field? 
 
-In Physical AI, attempting autoregressive video generation to predict future states on an embodied platform is a catastrophic architectural trap (@fig-world-model-paradigms):
+In recent machine learning literature, researchers have attempted to solve open-world modeling using generative video models that predict future observations pixel-by-pixel. But in Physical AI, attempting autoregressive video generation on an embodied platform is a catastrophic architectural trap (@fig-world-model-paradigms):
 
 1. **Massive Computational Arithmetic:** Generating uncompressed $1080\text{p}$ video at 30 FPS requires $>10^{13}\text{ FLOPs/s}$, flooding shared memory buses, triggering thermal throttling, and inflating inference latency to several seconds.
 2. **High-Frequency Visual Hallucinations:** Generative pixel decoders frequently hallucinate fine visual details or subtly erase rigid obstacle boundaries across generation steps. An autonomous robot cannot gamble physical survival on a model that hallucinated an empty path.
@@ -140,7 +133,7 @@ In Physical AI, attempting autoregressive video generation to predict future sta
 
 ![**Latent World Model Paradigms in Physical AI.** (Top) Generative video world models waste immense compute generating uncompressed pixels prone to visual hallucinations. (Bottom) Non-generative Joint-Embedding Predictive Architectures (JEPAs) and Recurrent State-Space Models (RSSMs) predict state transitions strictly within compact, metric latent embedding spaces ($\mathbf{z} \in \mathbb{R}^d$), achieving microsecond execution speeds with zero pixel overhead.](figures/fig05_world_model_paradigms.svg){#fig-world-model-paradigms width=100%}
 
-Physical AI discards pixel generation in favor of **Latent World Models**. These architectures predict environmental dynamics strictly within compact, information-dense latent representation spaces $\mathbf{z} \in \mathbb{R}^d$.
+Physical AI discards pixel generation in favor of **Latent World Models**. These architectures predict environmental dynamics strictly within compact, information-dense latent representation spaces $\mathbf{z} \in \mathbb{R}^d$, capturing the essence of the scene without synthesizing individual photons.
 
 **Joint-Embedding Predictive Architectures (JEPAs)** provide the foundation for non-generative world modeling [@assran2023self]. A JEPA maps high-dimensional sensory observations $o_t$ into low-dimensional latent embeddings $\mathbf{z}_t = E_\theta(o_t) \in \mathbb{R}^d$. Given a sequence of candidate physical actions $\mathbf{a}_{t:t+H}$, a latent transition predictor $P_\phi$ forecasts future representations entirely in latent space:
 
