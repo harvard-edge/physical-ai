@@ -88,9 +88,11 @@ $$\begin{bmatrix} \mathbf{P}_B \\ 1 \end{bmatrix} = \mathbf{T}_{\text{mount}}^B 
 If any transformation along this kinematic chain is queried using an out-of-date timestamp without spatial covariance tracking, the resulting coordinate multiplication injects massive spatial skew that drives downstream end-effectors into physical fixtures.
 
 
-## Classical State Estimation: Extended Kalman Filtering (EKF), Factor Graphs, and Sliding-Window Optimization
+## Classical State Estimation: Extended Kalman Filtering, Factor Graphs, and Embedded Numerical Stability
 
-To fuse high-rate proprioceptive joint encoders ($1000\text{ Hz}$) and IMU dynamic streams with lower-rate, asynchronous camera affordance tokens ($30\text{ Hz}$), Physical AI systems employ rigorous state estimation algorithms founded on Bayesian filtering and non-linear optimization (@tbl-state-estimation-paradigms).
+Why can an autonomous robot not simply wait for the next camera frame to determine where it is? The answer lies in the temporal chasm between optical perception and physical dynamics. High-capacity visual backbones and spatial encoders operate at modest cadences—typically $20\text{ to }30\text{ Hz}$—with end-to-end pipeline latencies spanning $30\text{ to }70\text{ ms}$. In the $33.3\text{ ms}$ interval between consecutive camera frames, a terrestrial rover traveling at $2.0\text{ m/s}$ coasts forward by $6.7\text{ cm}$, while an aerial multirotor deflects by several degrees under an unmodeled wind gust. If the machine's control loops paused while waiting for visual confirmation, momentum would carry the system into unguided collision before the next image could be digitized.
+
+To maintain an uninterrupted, high-rate ($1000\text{ Hz}$) belief of physical reality, Physical AI systems implement recursive Bayesian state estimation (@tbl-state-estimation-paradigms). The state estimator acts as a high-frequency temporal bridge, propagating kinematic state forward during the sensory darkness between camera frames using fast proprioceptive sensors (IMU gyroscopes, accelerometers, and optical wheel encoders), and correcting this continuous belief whenever delayed, asynchronous exteroceptive measurements arrive.
 
 | Estimation Architecture | Algorithmic Core | Compute Complexity | Memory Footprint | Temporal Lag & Consistency | Best Suited Physical Application |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -101,31 +103,37 @@ To fuse high-rate proprioceptive joint encoders ($1000\text{ Hz}$) and IMU dynam
 
 : State Estimation Paradigms in Physical AI. Mathematical mechanisms, computational scaling, memory footprints, and architectural placement across heterogeneous silicon. {#tbl-state-estimation-paradigms}
 
-The workhorse of embedded real-time robotics is the continuous-discrete **Extended Kalman Filter (EKF)**. The system state vector $\mathbf{x} \in \mathbb{R}^n$ evolves according to continuous non-linear system dynamics with process noise $\mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q})$:
+The universal workhorse for high-rate kinematic tracking on resource-constrained embedded microcontrollers is the continuous-discrete **Extended Kalman Filter (EKF)**. The true physical state $\mathbf{x}(t) \in \mathbb{R}^n$ (comprising 3D position $\mathbf{p}$, velocity $\mathbf{v}$, orientation quaternion $\mathbf{q}$, and sensor biases $\mathbf{b}$) evolves according to continuous non-linear Newtonian mechanics subject to continuous process noise $\mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q})$:
 
 $$\dot{\mathbf{x}}(t) = f(\mathbf{x}(t), \mathbf{u}(t)) + \mathbf{w}(t)$$
 
-Between measurement arrivals, the state estimate $\hat{\mathbf{x}}$ and error covariance matrix $\mathbf{P} \in \mathbb{R}^{n \times n}$ are propagated forward in time by solving continuous-time differential equations:
+During the inter-frame propagation interval, while waiting for the next visual observation, the microcontroller integrates the state estimate $\hat{\mathbf{x}}$ forward in time at $1000\text{ Hz}$ using high-rate IMU specific forces and angular rates. Concurrently, the estimator tracks how uncertainty expands over time by integrating the continuous error covariance differential equation:
 
 $$\dot{\hat{\mathbf{x}}} = f(\hat{\mathbf{x}}, \mathbf{u}), \qquad \dot{\mathbf{P}} = \mathbf{F}(t)\mathbf{P}(t) + \mathbf{P}(t)\mathbf{F}(t)^T + \mathbf{Q}(t)$$
 
-where $\mathbf{F}(t) = \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}(t), \mathbf{u}(t)}$ is the continuous-time state transition Jacobian.
+where $\mathbf{F}(t) = \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}(t), \mathbf{u}(t)}$ is the continuous-time state transition Jacobian. Notice what this equation physically represents: as the robot travels forward in open-loop sensory darkness, unmodeled wheel slip, terrain roughness, and IMU bias drift continuously inflate the covariance diagonal elements ($\dot{\mathbf{P}} > 0$), expanding the spatial uncertainty envelope around the machine.
 
-When a discrete sensory measurement $\mathbf{z}_k \in \mathbb{R}^m$ arrives at time $t_k$ with measurement noise $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{R}_k)$, the filter evaluates the measurement innovation $\mathbf{y}_k$ and updates the state belief:
+When a delayed sensory measurement $\mathbf{z}_k \in \mathbb{R}^m$ (such as an asynchronous visual feature coordinate or LiDAR range return) arrives at discrete time $t_k$, the estimator evaluates the *measurement innovation* $\mathbf{y}_k$—the difference between what the sensor actually observed and what the internal kinematic model predicted:
 
 $$\mathbf{y}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_k^-), \qquad \mathbf{S}_k = \mathbf{H}_k \mathbf{P}_k^- \mathbf{H}_k^T + \mathbf{R}_k$$
 
-$$\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^T \mathbf{S}_k^{-1}$$
+where $h(\cdot)$ is the non-linear measurement model, $\mathbf{H}_k = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_k^-}$ is the measurement Jacobian, and $\mathbf{S}_k$ is the innovation covariance combining state uncertainty with sensor noise $\mathbf{R}_k$.
 
-$$\hat{\mathbf{x}}_k^+ = \hat{\mathbf{x}}_k^- + \mathbf{K}_k \mathbf{y}_k, \qquad \mathbf{P}_k^+ = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)\mathbf{P}_k^- (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)^T + \mathbf{K}_k \mathbf{R}_k \mathbf{K}_k^T$$
+To fuse this new evidence optimally, the estimator computes the Kalman gain $\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^T \mathbf{S}_k^{-1}$, which weights the correction based on relative certainty: if sensor noise $\mathbf{R}_k$ is massive, $\mathbf{K}_k \to 0$ and the measurement is largely ignored; if state uncertainty $\mathbf{P}_k^-$ is large, $\mathbf{K}_k$ scales up to aggressively correct the drift.
 
-where $\mathbf{H}_k = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_k^-}$ is the measurement Jacobian and $\mathbf{K}_k$ is the optimal Kalman gain. The Joseph-form covariance update guarantees that $\mathbf{P}_k^+$ remains strictly symmetric and positive semi-definite despite finite floating-point precision on embedded silicon.
+Crucially, implementing this correction on resource-constrained embedded silicon reveals a severe micro-architectural hazard. Textbook implementations often express the discrete covariance update in the simplified form $\mathbf{P}_k^+ = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)\mathbf{P}_k^-$. On an ARM Cortex-M7 or embedded RISC-V core operating with standard IEEE 754 single-precision (FP32) floating-point arithmetic, the catastrophic cancellation of nearly equal numbers during matrix subtraction routinely produces negative eigenvalues. In physical terms, a negative diagonal entry in $\mathbf{P}$ implies a negative variance ($\sigma_x^2 < 0$)—a physical impossibility that causes downstream square-root calculations to fail, throwing hardware exceptions and instantly crashing the state estimation thread.
 
-To reject corrupt sensory outliers—such as optical reflections, sensor dropouts, or mixed-pixel artifacts—the state estimator evaluates the squared **Mahalanobis Distance** of the innovation:
+To prevent numerical filter collapse, production Physical AI systems strictly mandate the **Joseph-form covariance update**:
+
+$$\mathbf{P}_k^+ = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)\mathbf{P}_k^- (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)^T + \mathbf{K}_k \mathbf{R}_k \mathbf{K}_k^T$$
+
+Because the Joseph form is formulated as the sum of two quadratic matrix products, it is mathematically guaranteed to remain symmetric and positive semi-definite regardless of floating-point truncation errors, ensuring bulletproof numerical stability in static SRAM (`malloc = 0`).
+
+Finally, to protect the state estimate from corrupt sensory outliers—such as optical reflections, dynamic lens flares, or transient LiDAR dropouts—the filter evaluates the squared **Mahalanobis Distance** before updating the state:
 
 $$d_M^2 = \mathbf{y}_k^T \mathbf{S}_k^{-1} \mathbf{y}_k \le \chi_{m, 1-\alpha}^2$$
 
-If $d_M^2$ exceeds the Chi-squared threshold (e.g., $d_M > 3.0\sigma$), the innovation gate rejects the measurement entirely, preventing corrupted sensor data from destroying the filter's internal state estimate.
+If $d_M^2$ exceeds the critical Chi-squared distribution threshold (e.g., $d_M > 3.0\sigma$), the innovation gate rejects the measurement as physically implausible, ensuring that corrupted visual artifacts never corrupt the robot's physical kinematic belief.
 
 
 ## Latent World Models: Joint-Embedding Predictive Architectures (JEPA) and Recurrent State-Space Models (RSSM)
