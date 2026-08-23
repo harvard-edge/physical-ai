@@ -23,139 +23,71 @@ By the conclusion of this chapter, you will be able to:
 
 ## The Persistence Imperative: Why Observation Is Not State
 
-In digital computer science, memory is an infinite, addressable grid of bytes. In modern machine learning, memory is often conceptualized as the attention context window of a transformer: a static sequence of tokens cached in GPU high-bandwidth memory. If an object is described in token 42, the model attends to it with mathematical permanence. When the text stream ends or the context window shifts, the digital entity simply ceases to exist.
+As illustrated in our systems pipeline locator (@fig-locator-ch05), the temporal memory stage occupies a critical bottleneck within the physical agent architecture. It sits directly downstream of spatial perception ($O_t$), where massive influxes of instantaneous sensory data are digested, and strictly upstream of semantic reasoning, providing the foundational state representation ($S_t$) that informs the agent's intentional action proposals ($\mathcal{L}_{\text{intent}}$). Without this intermediate state organ, an agent remains a purely reactive automaton, hopelessly tethered to whatever its sensors capture at the current millisecond.
 
-The physical world is neither stateless nor an infinite text buffer. In the physical world, matter possesses mass, momentum, and continuous geometry ($W_t \to W_{t+1}$). When a robotic manipulator reaches toward a component on an assembly bench, the robot's own mechanical wrist inevitably passes between the overhead camera and the target object. For a span of $150\text{ to }300\text{ milliseconds}$, optical photons from the target cannot reach the camera sensor. The target object has vanished from the camera's field of view.
+In digital computer science, memory is an infinite, addressable grid of bytes, and in modern machine learning, memory is often conceptualized as the attention context window of a transformer cache. If an object is described in a token, the model attends to it with mathematical permanence. When the text stream ends or the context window shifts, the digital entity simply ceases to exist. The physical world, however, is neither stateless nor an infinite text buffer. Matter possesses mass, momentum, and continuous geometry, evolving persistently from state $W_t$ to $W_{t+1}$. When a robotic manipulator reaches toward a component on an assembly bench, the robot's own mechanical wrist inevitably passes between the overhead camera and the target object. For a span of several hundred milliseconds, optical photons from the target cannot reach the camera sensor, meaning the target object has vanished from the camera's field of view.
 
-A naive perception system operating in a purely reactive loop suffers an immediate cognitive collapse:
+A naive perception system operating in a purely reactive loop suffers an immediate cognitive collapse in this scenario. Because photons are blocked, zero detections are produced, which leads to an instantaneous loss of spatial pose. The physical object did not dissolve into non-existence simply because a camera lens was occluded. It still occupies space, possesses inertia, and presents a rigid physical boundary. However, because the agent can no longer observe it directly, the agent's internal certainty regarding the object's precise coordinates begins to decay. If the object is resting on a stationary workbench, its coordinates remain fixed, but mechanical vibration and base drift introduce positional doubt over time. 
 
-$$\begin{aligned}
-\text{Reactive Vision: } &\text{Photons Blocked} \implies \text{Zero Detections} \implies \text{Pose Lost} \\
-\text{Physical Reality: } &\text{Matter Persists } (T_{\text{target}}^{\text{world}} \in SE(3)) \implies \text{Uncertainty Expands } (\sigma \propto \Delta t)
-\end{aligned}$$
-
-The physical object did not dissolve into non-existence simply because a camera lens was occluded. It still occupies space, possesses inertia, and presents a rigid physical boundary. However, because the agent can no longer observe it directly, the agent's internal certainty regarding the object's precise coordinates begins to decay. If the object is resting on a stationary workbench, its coordinates remain fixed, but mechanical vibration and base drift introduce positional doubt. If the object is carried on a moving conveyor belt, its position drifts rapidly according to the belt's velocity vector.
-
-To act competently in an un-instrumented physical world, an embodied agent cannot rely on instantaneous pixel reactions alone. It must construct and maintain a continuous, metric latent world model and temporal state belief ($S(t)$). This internal state organ performs three load-bearing systems tasks: temporal synchronization across disparate sensor rates, spatial metric persistence in $SE(3)$, and bounded uncertainty tracking with state expiration leases.
+To act competently in an un-instrumented physical world, an embodied agent cannot rely on instantaneous pixel reactions alone. It must construct and maintain a continuous, metric latent world model and temporal state belief. This internal state organ performs the load-bearing systems tasks of temporal synchronization across disparate sensor rates, spatial metric persistence in three-dimensional space, and bounded uncertainty tracking with state expiration leases.
 
 ## Kinematic Coordinate Frame Trees and Uncertainty Propagation
 
-Parallel to latent neural features, an embodied agent maintains metric spatial coordinate frames across its physical linkages and environmental fixtures. The rigid spatial transform between coordinate frame $A$ and frame $B$ is a member of the Special Euclidean Group $SE(3)$ [@murray2017mathematical; @lynch2017modern]:
+To maintain a coherent internal model of the physical environment, an embodied agent must rigorously track the spatial relationships between its own linkages, mounted sensors, and external objects. This tracking is formalized through dynamic kinematic frame trees ($\mathcal{T}_{\text{frames}}$), where each node represents a spatial coordinate system, and each directed edge encodes the rigid geometric transformation from a parent frame to a child frame. 
 
-$$\mathbf{T}_B^A = \begin{bmatrix} \mathbf{R}_B^A & \mathbf{p}_B^A \\ \mathbf{0}^T & 1 \end{bmatrix} \in SE(3), \quad \mathbf{R} \in SO(3), \; \mathbf{p} \in \mathbb{R}^3$$
+The rigid spatial transform between coordinate frame $A$ and frame $B$ is a member of the Special Euclidean Group $SE(3)$. Mathematically, this is expressed as a homogeneous transformation matrix comprising a rotation matrix $\mathbf{R} \in SO(3)$ and a translation vector $\mathbf{p} \in \mathbb{R}^3$:
 
-Representing rotations with Euler angles induces mathematical singularities (gimbal lock). Physical AI architectures represent spatial transformations using the Lie group $SE(3)$ and perform continuous kinematic integration in the Lie algebra tangent space $\mathfrak{se}(3)$:
+$$\mathbf{T}_B^A = \begin{bmatrix} \mathbf{R}_B^A & \mathbf{p}_B^A \\ \mathbf{0}^T & 1 \end{bmatrix} \in SE(3)$$
+
+Representing rotations with Euler angles induces mathematical singularities known as gimbal lock, paralyzing the state estimator when joints align. Physical AI architectures sidestep this vulnerability by representing spatial transformations using the Lie group $SE(3)$ and performing continuous kinematic integration in the corresponding Lie algebra tangent space $\mathfrak{se}(3)$. A tangent-space twist vector $\boldsymbol{\xi}$ encapsulates both linear velocity $\mathbf{v}$ and angular velocity $\boldsymbol{\omega}$:
 
 $$\boldsymbol{\xi} = \begin{bmatrix} \mathbf{v} \\ \boldsymbol{\omega} \end{bmatrix} \in \mathbb{R}^6, \qquad \boldsymbol{\xi}^\wedge = \begin{bmatrix} \boldsymbol{\omega}^\wedge & \mathbf{v} \\ \mathbf{0}^T & 0 \end{bmatrix} \in \mathfrak{se}(3)$$
 
-The matrix exponential maps tangent-space velocity twists directly onto smooth rigid-body motions:
+The matrix exponential seamlessly maps these tangent-space velocity twists directly onto smooth rigid-body motions, allowing the agent to continuously propagate its coordinate frames forward in time:
 
 $$\mathbf{T}(t + \Delta t) = \mathbf{T}(t) \cdot \exp\left( \boldsymbol{\xi}^\wedge \Delta t \right)$$
 
-These transformations form an $SE(3)$ frame tree ($\mathcal{T}_{\text{frames}}$), managed via lock-free circular ring buffers that store time-stamped transforms $\mathbf{T}_i(t_i)$. When a high-level query requests the pose of the end-effector at historical time $t_{\text{query}}$ (matching a delayed camera exposure midpoint), the transform buffer performs geodesic interpolation on the Lie group $SE(3)$:
+Through parent-child coordinate propagation along the frame tree, forward kinematics effortlessly resolve the exact spatial pose of the agent's tooling in the global world frame. However, during visual occlusions, the physical universe does not freeze. Moving objects coast along inertial trajectories, while static obstacles drift in relative coordinates due to platform motion. Because observation $O_t$ is fundamentally distinct from the true physical state $S_t$, the absence of new sensory measurements means the system must propagate its spatial uncertainty forward. 
 
-$$\mathbf{T}(t_{\text{query}}) = \mathbf{T}_1 \cdot \exp\left( \alpha \cdot \log\left( \mathbf{T}_1^{-1} \mathbf{T}_2 \right) \right), \quad \alpha = \frac{t_{\text{query}} - t_1}{t_2 - t_1}$$
+This propagation of uncertainty is governed by the continuous-time Riccati differential equation, where the state covariance matrix $\mathbf{\Sigma}$ expands according to the system dynamics Jacobian $\mathbf{F}$ and the process noise covariance $\mathbf{Q}$:
 
-During visual occlusions, the physical universe does not freeze. Moving objects coast along inertial trajectories, while static obstacles drift in relative coordinates due to platform motion. When direct sensory contact is lost at time $t_0$, the spatial uncertainty envelope grows monotonically with elapsed time $\Delta t = t - t_0$:
+$$\dot{\mathbf{\Sigma}} = \mathbf{F}\mathbf{\Sigma} + \mathbf{\Sigma}\mathbf{F}^T + \mathbf{Q}$$
 
-$$\sigma_{\text{pos}}(\Delta t) = \sigma_0 + v_{\text{drift}} \cdot \Delta t + \frac{1}{2} a_{\text{max}} \cdot (\Delta t)^2$$
+In practical implementation, when direct sensory contact is lost at time $t_0$, the linear positional uncertainty envelope grows monotonically with elapsed time $\Delta t = t - t_0$. Assuming a known worst-case drift velocity $v_{\text{drift}}$, the maximum positional standard deviation expands simply as:
 
-Where $\sigma_0$ is the initial sensor calibration covariance. Given an allowable obstacle clearance $d_{\text{clearance}}$ and a safety margin $d_{\text{margin}}$, setting $\sigma_{\text{pos}}(t_{\text{max}}) = d_{\text{clearance}} - d_{\text{margin}}$ defines the **Maximum Occlusion Horizon ($t_{\text{max}}$)**:
+$$\sigma_{\text{pos}}(\Delta t) = \sigma_0 + v_{\text{drift}} \cdot \Delta t$$
 
-$$t_{\text{max}} = \frac{d_{\text{clearance}} - d_{\text{margin}} - \sigma_0}{v_{\text{drift}}}$$
+Given an allowable obstacle clearance $d_{\text{clearance}}$ and a safety margin $d_{\text{margin}}$, setting $\sigma_{\text{pos}}(t_{\text{max}}) = d_{\text{clearance}} - d_{\text{margin}}$ defines the geometric Maximum Occlusion Horizon ($t_{\text{max}}$). Beyond this horizon, spatial uncertainty exceeds the available clearance, and any candidate trajectory proposals become active collision hazards.
 
-Beyond $t_{\text{max}}$, spatial uncertainty exceeds available clearance, and candidate proposals become active collision hazards.
-
-### Innovation Residuals and Sensor Fault Gating
-
-When a new measurement $\mathbf{z}_t$ arrives, the state estimator computes the normalized Mahalanobis distance $d_M$ across the innovation covariance $\mathbf{S}_t = \mathbf{H}_t \mathbf{P}_t \mathbf{H}_t^T + \mathbf{R}_t$:
-
-$$d_M = \sqrt{\mathbf{y}_t^T \mathbf{S}_t^{-1} \mathbf{y}_t}, \quad \mathbf{y}_t = \mathbf{z}_t - h(\hat{\mathbf{x}}_t)$$
-
-Physical AI systems enforce a strict $3\sigma$ Innovation Gating Rule: accept if $d_M \le 3.0$; veto if $d_M > 3.0$. A sudden innovation residual spike detects false-positive perception, mechanical tooling jams, or deformed camera mounting brackets.
-
-### Proprioceptive Interoception: 3-Zone Thermal Derating
-
-Motor stator winding temperature rise follows:
-
-$$C_{\text{th}} \frac{d(\Delta T)}{dt} = I^2(t) R(T) - \frac{\Delta T(t)}{R_{\text{th}}}$$
-
-To prevent winding enamel breakdown ($>155^\circ\text{C}$), the state model enforces a continuous 3-Zone Thermal Derating Law (@tbl-thermal-derating):
-
-$$\tau_{\text{max}}(T_{\text{motor}}) = \begin{cases} \tau_{\text{nom}} & \text{if } T_{\text{motor}} < 85^\circ\text{C} \\ \tau_{\text{nom}} \cdot \left(1 - \frac{T_{\text{motor}} - 85^\circ\text{C}}{105^\circ\text{C} - 85^\circ\text{C}}\right) & \text{if } 85^\circ\text{C} \le T_{\text{motor}} \le 105^\circ\text{C} \\ 0\text{ Nm} \quad (\text{Hardware PWM Disconnect}) & \text{if } T_{\text{motor}} > 105^\circ\text{C} \end{cases}$$
-
-| Operating Thermal Zone | Winding Temperature Range ($T_{\text{motor}}$) | Permissible Actuator Torque ($\tau_{\text{max}}$) | Systems Action & Reflex State |
-| :--- | :---: | :---: | :--- |
-| **1. Nominal Operating Zone** | $T_{\text{motor}} < 85^\circ\text{C}$ | $100\%$ Rated Continuous Torque | Full autonomous capability; high-speed trajectory proposals permitted. |
-| **2. Linear Derating Zone** | $85^\circ\text{C} \le T_{\text{motor}} \le 105^\circ\text{C}$ | Linearly derated from $100\%$ down to $0\%$ | MPU motion planner scales down maximum acceleration; fan cooling forced to $100\%$. |
-| **3. Thermal Emergency Cutoff** | $T_{\text{motor}} > 105^\circ\text{C}$ | $0\text{ Nm}$ (Inverter tri-state disconnect) | **Hardware Reflex:** Disables PWM gate drivers to prevent permanent winding demagnetization. |
-
-: Actuator Thermal Derating Ledger. Dynamic torque throttling regimes as motor winding temperatures approach physical insulation limits. {#tbl-thermal-derating}
+The implementation of these frame trees and uncertainty envelopes diverges across the Three Canonical Archetypes of embodied agents. In Mobility architectures, the frame tree emphasizes ego-localization, anchoring the vehicle's base frame to a continuously shifting world map while propagating immense covariance matrices representing global position drift. In Contact Manipulation systems, the frame tree focuses intensely on tool-tip tracking, requiring sub-millimeter precision between the robotic wrist and the workpiece, where even slight temporal latency injects catastrophic spatial skew. Finally, in Cybernetic physical process control, the state memory extends beyond Euclidean geometry to encompass non-spatial states, such as modeling the thermal capacitance state of an actuator as an expanding covariance boundary predicting insulation breakdown.
 
 ## Latent Predictive World Models and Silicon State Memory
 
-When machine learning researchers consider world modeling, the prevailing paradigm is often generative: predicting future video frames pixel-by-pixel using diffusion models or autoregressive video transformers [@ho2020denoising; @singer2022make; @brohan2023rt2].
+When machine learning researchers consider world modeling, the prevailing paradigm is often generative, attempting to predict future video frames pixel-by-pixel using massive diffusion models or autoregressive video transformers. In embodied Physical AI, attempting pixel-level autoregressive generation to forecast a high-resolution camera feed into the future is a crippling architectural trap. 
 
-In embodied Physical AI, predicting future sensory observations at the raw pixel level is an architectural trap governed by three severe physical constraints:
+First, generating uncompressed video frames requires tens of trillions of floating-point operations per second, flooding shared memory crossbars and inflating inference latency far beyond the strict temporal deadlines imposed by physical dynamics. Second, autoregressive pixel decoders frequently hallucinate fine high-frequency visual textures. An autonomous vehicle or high-speed manipulator cannot tolerate a generative model that hallucinated an imaginary texture or subtly erased a rigid obstacle boundary across consecutive generation steps. Finally, video pixels carry no intrinsic metric scale, meaning a downstream trajectory planner cannot extract Euclidean coordinates or surface normals from RGB bitmaps to compute actionable motor torques.
 
-1. **The FLOP and Bandwidth Tax:** Generating uncompressed video frames ($1080\text{p} \times 30\text{ FPS}$) requires tens of trillions of floating-point operations per second (TFLOPS) and floods shared DRAM crossbars, inflating inference latency well past the physical world deadline ($\tau_{\text{world}}$).
-2. **The Visual Hallucination Tax:** Autoregressive pixel decoders hallucinate fine high-frequency visual textures. An autonomous vehicle cannot tolerate a generative model that hallucinates or erases an obstacle boundary across consecutive diffusion steps.
-3. **The Lack of Metric Geometry:** Video pixels carry no intrinsic metric scale. A downstream trajectory planner cannot compute motor torques from RGB bitmaps; it requires Euclidean coordinates and surface normals in meters and radians.
+To achieve real-time predictive world modeling, Physical AI discards pixel generation entirely in favor of Latent World Models. These architectures learn to predict state transitions strictly within compact, information-dense latent representation spaces. Joint-Embedding Predictive Architectures (JEPAs) provide the foundation for this approach by mapping high-dimensional sensory observations $O_t$ into low-dimensional latent embeddings $\mathbf{z}_t \in \mathbb{R}^d$. 
 
-### Latent Representations and JEPAs
+The JEPA architecture consists of two deeply asymmetric neural networks: a Context Encoder and a Target Encoder. The Context Encoder processes the unmasked, visible regions of the current sensory input, while the Target Encoder provides stable representation targets for masked or future regions. Crucially, to prevent the architecture from collapsing into a trivial solution where all inputs map to zero, the Target Encoder's weights $\theta_{\text{target}}$ are never directly optimized by gradient descent. Instead, they are continuously updated via an Exponential Moving Average (EMA) of the Context Encoder's weights $\theta_{\text{context}}$:
 
-To achieve real-time predictive world modeling, Physical AI discards pixel generation in favor of **Latent World Models** that predict state transitions entirely within compact representation spaces ($z_t \in \mathbb{R}^d$):
+$$\theta_{\text{target}} \leftarrow \tau \theta_{\text{target}} + (1-\tau)\theta_{\text{context}}$$
 
-**Joint Embedding Predictive Architecture (JEPA / V-JEPA):** JEPAs [@lecun2022path; @assran2023self] map sensory observations $o_t$ into latent embeddings $\mathbf{z}_t \in \mathcal{Z}$. Instead of reconstructing pixels, the predictor forecasts future latent state $\mathbf{z}_{t+1}$ given proposed action $a_t$:
-$$\hat{\mathbf{z}}_{t+1} = g_\theta(\mathbf{z}_t, a_t)$$
+By employing a regularized non-contrastive information-theoretic loss function $L_{\text{JEPA}} = D(s_{t+1}, \hat{s}_{t+1})$, the latent transition predictor learns to forecast future representations without ever generating raw pixels. JEPAs discard unpredictable visual noise, such as flickering shadows or rippling water, and focus exclusively on the invariant physical and geometric structure of the scene. 
 
-JEPAs utilize a Context encoder to process visible observations, and a Target encoder (updated via exponential moving average, EMA) to produce stable representation targets for masked or future regions. By discarding non-predictable visual noise (such as flickering shadows and grass texture) and focusing exclusively on invariant geometric structure and physics, JEPAs execute forward predictions in under $5\text{ ms}$ on edge NPUs.
+To maintain these beliefs persistently across total visual occlusions, Recurrent State Space Models (RSSMs) maintain a dual latent state. They combine a deterministic recurrent state $h_t$ that captures long-term kinematic history, with a stochastic latent state $s_t$ that captures transition uncertainty. 
 
-### Recurrent State-Space Models (RSSMs)
-
-**Recurrent State-Space Models (RSSM):** RSSMs [@hafner2019dreamer; @hafner2023mastering] maintain a dual latent state combining a deterministic recurrent state $h_t$ (capturing long-term kinematic history) and a stochastic latent state $s_t$ (capturing transition uncertainty), maintaining belief across occlusions:
-$$h_t = f_\theta(h_{t-1}, s_{t-1}, a_{t-1}), \quad s_t \sim p_\theta(s_t \mid h_t)$$
-
-### Memory Domain Isolation
-
-Embodied state estimation spans disparate time scales, demanding strict memory domain isolation across heterogeneous compute silicon.
-
-```c
-// STATIC PROPRIOCEPTIVE STATE BUFFER (MCU SRAM Domain 1)
-// Zero dynamic heap allocation, deterministic compile-time memory layout
-typedef struct {
-    uint64_t timestamp_ptp_ns;
-    float joint_positions[6];          // Radians (from optical encoders)
-    float joint_velocities[6];         // Rad/s (differentiated in hardware)
-    float motor_currents[6];           // Amperes (shunt resistor ADC readings)
-    float winding_temps_c[6];          // Stator thermistor readings
-    float imu_linear_accel[3];         // m/s^2 (SPI DMA transfer)
-    float imu_angular_rates[3];        // rad/s
-    uint32_t sequence_counter;
-} mcu_proprioceptive_state_t;
-```
-
-| Memory Domain | Execution Substrate | State Representations | Update Rate | Memory Allocation | TTL Lease Horizon ($\tau_{\text{TTL}}$) |
-| :--- | :--- | :--- | :---: | :--- | :---: |
-| **Domain 1: Fast Proprioception** | Real-Time MCU (FreeRTOS / Bare Metal) | $q, \dot{q}, I_{\text{phase}}, T_{\text{motor}}, \mathbf{a}_{\text{imu}}, \boldsymbol{\omega}_{\text{imu}}$ | $1000\text{ Hz}$ | Static internal SRAM (Zero heap) | $5\text{ ms}$ |
-| **Domain 2: Kinematic Frames** | Real-Time Linux MPU (`PREEMPT_RT`) | $T_B^A \in SE(3)$, Twist $\boldsymbol{\xi} \in \mathfrak{se}(3)$, `tf2` Tree | $200\text{ Hz}$ | Pinned Shared Memory (`mlockall`) | $20\text{ ms}$ |
-| **Domain 3: Latent Semantic Belief** | Linux MPU + NPU / GPU Accelerator | JEPA $\mathbf{z}_t$, RSSM $h_t$, 3D Bounding Boxes | $10\text{--}30\text{ Hz}$ | DMA-mapped Unified DRAM (UMA) | $100\text{ ms}$ |
-
-: Three-Tiered Memory Domain Isolation Architecture. High-level stochastic semantic representations (Domain 3) are strictly isolated from high-rate deterministic proprioception (Domain 1). {#tbl-memory-domains}
+Integrating these advanced neural representations with high-frequency control loops demands aggressive optimization of silicon memory layouts. Temporal phase lag is the nemesis of physical control. If sensor data is buffered into traditional First-In-First-Out (FIFO) queues, any processing delay inevitably stacks up, forcing the agent to react to increasingly stale snapshots of reality. To guarantee zero-copy, zero-latency access to the freshest possible state, memory is structured using lock-free circular SRAM ring buffers driven by atomic 64-bit sequence counters. This `latest-frame sampling` paradigm ensures that the kinematic transform buffer always accesses the most recently available state without ever waiting on operating system locks, decoupling high-bandwidth non-deterministic latent belief updates from deterministic, high-rate proprioceptive state estimation.
 
 ## Systems Failure Anatomy: The Stale Frame Tree Collision
 
-The consequences of failing to correctly map state over time and coordinate frames manifest rapidly in hardware. 
+The consequences of failing to correctly map state over time and coordinate frames manifest rapidly in hardware. When software architecture ignores the continuous flow of physical time, the resulting spatial desynchronization translates directly into destructive mechanical force.
 
 ![The 6-DoF Precision Articulated Manipulator Platform. Deployed in high-density surface-mount electronics assembly with wrist-mounted depth cameras and vacuum tooling. Fusing stale transform coordinates ($65\text{ ms}$ old) with real-time joint encoders without expanding spatial covariance caused a destructive collision with an aluminum fixture block.](figures/fig05_manipulator_arm_cropped.jpg){#fig-manipulator-arm width=100%}
 
-**Platform:** 6-DoF Precision Articulated Manipulator ($v = 0.9\text{ m/s}$).
+In the autopsy introduced in the prologue, a 6-DoF manipulator descended toward a printed circuit board fixture at a velocity of $0.9\text{ m/s}$. During this high-speed descent, the robot's mechanical forearm physically rotated into the optical path of the wrist camera, occluding the view of the target workpiece for exactly $180\text{ ms}$. 
 
-**Failure Mechanism:** During high-speed descent, the robot's mechanical forearm occluded the wrist camera for $180\text{ ms}$; the kinematics engine multiplied real-time joint encoders ($t_{\text{now}}$) with a stale camera transform ($t_{\text{now}} - 65\text{ ms}$).
-
-**Root Cause:** Asynchronous coordinate frame multiplication across uncompensated sensor transport latency without expanding spatial covariance bounds ($\sigma_{\text{pos}}$).
-
-Because the kinematic engine multiplied real-time joint angles ($t_{\text{now}}$) with an uncompensated stale camera transform from $t_{\text{now}} - 65\text{ ms}$, the computed target pose in the base frame was skewed by $0.9\text{ m/s} \times 0.065\text{ s} = 5.85\text{ cm}$. The arm descended into the solid aluminum fixture block, shattering the precision tooling.
+The fatal flaw resided in the state synchronization architecture. Because the kinematic engine asynchronously multiplied real-time joint angles ($t_{\text{now}}$) with an uncompensated, stale camera transform captured before the occlusion ($t_{\text{now}} - 65\text{ ms}$), it violated the fundamental laws of kinematic coordinate propagation. The frame tree multiplication injected a massive spatial skew into the base coordinate calculation, computed precisely as $0.9\text{ m/s} \times 0.065\text{ s} = 5.85\text{ cm}$. The trajectory planner interpolated a smooth descent toward these corrupted coordinates, driving the fragile vacuum gripper directly into the solid aluminum fixture block and shattering the precision tooling.
 
 | Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
 | :--- | :--- | :--- | :--- |
@@ -169,10 +101,9 @@ Because the kinematic engine multiplied real-time joint angles ($t_{\text{now}}$
 
 : Flight-Recorder Telemetry Ledger: The Stale Frame Tree Collision Incident. Tracing uncompensated coordinate latency to mechanical tooling destruction. {#tbl-telemetry-ch05}
 
+## The World State Belief Interface Specification & Co-Design Checkpoint
 
-## The World State Belief Interface & Co-Design Checkpoint
-
-To establish a deterministic boundary between temporal state estimation and downstream reasoning, the memory subsystem formalizes the **World State Belief Interface** (@tbl-dossier-state-belief):
+To establish a deterministic boundary between temporal state estimation and downstream reasoning, the memory subsystem formalizes the World State Belief Interface (@tbl-dossier-state-belief). This interface provides a hardened structural contract defining exactly how spatial uncertainty and physical coordinate hierarchies are exposed to semantic intent modules, ensuring that no stale or mathematically invalid data permeates into the agent's action generation loops.
 
 | Parameter Category | Specification Key | Engineering Target Value | Verification Boundary |
 | :--- | :--- | :--- | :--- |
@@ -186,11 +117,9 @@ To establish a deterministic boundary between temporal state estimation and down
 | **Thermal Warning Knee** | `thermal_limits.warning_temp_c` | $85.0^\circ\text{C}$ | Initiates linear torque derating |
 | **Thermal Emergency Cutoff** | `thermal_limits.critical_cutoff_c` | $105.0^\circ\text{C}$ | Immediate inverter bridge shutdown ($0\text{ Nm}$) |
 
-: The World State Belief Contract Specification. Coordinate frame hierarchies, transform buffers, TTL validity leases, and uncertainty bounds bridging Memory to Reasoning. {#tbl-dossier-state-belief}
+: The World State Belief Interface Specification. Coordinate frame hierarchies, transform buffers, TTL validity leases, and uncertainty bounds bridging Memory to Reasoning. {#tbl-dossier-state-belief}
 
-### The Memory Co-Design Checkpoint Ledger
-
-We conclude the Memory stage by auditing its resolution across all foundational physical constraints in the 5-Column Matrix Checkpoint (@tbl-memory-matrix-checkpoint):
+We conclude the Memory stage by auditing its resolution across all foundational physical constraints in the 5-Column Matrix Checkpoint (@tbl-memory-matrix-checkpoint). This matrix verifies that the temporal persistence subsystem comprehensively addresses the uncompromising physical realities of embodied deployment.
 
 | Physical Constraint | Memory Systems Tension | Chapter 5 Architectural Resolution |
 | :--- | :--- | :--- |
@@ -198,7 +127,7 @@ We conclude the Memory stage by auditing its resolution across all foundational 
 | **Inertia & Stopping** | Unobserved moving objects drift with kinetic momentum. | Latent dynamics transition models ($s_{t+1} = f(s_t, a_t)$) propagating mass velocity vectors. |
 | **Actuation & Jerk** | Gearbox backlash and link compliance distort frame trees. | Calibrated joint compliance offsets and forward kinematic Lie algebra updates in $SE(3)$. |
 | **Energy & Thermal** | Actuator thermal buildup threatens motor insulation. | Dynamic thermal state tracking ($T_{\text{motor}}$) and linear torque derating envelopes. |
-| **Silicon Determinism** | Unbounded state history thrashes cache and RAM. | **Fixed-size circular transform ring buffers** and compact 128D latent state vectors. |
+| **Silicon Determinism** | Unbounded state history thrashes cache and RAM. | **Fixed-size circular transform ring buffers** and compact latent state vectors. |
 
 : 5-Column Matrix Checkpoint. Systematic architectural accounting of state and memory across the physical constraints. {#tbl-memory-matrix-checkpoint}
 
@@ -216,7 +145,7 @@ We conclude the Memory stage by auditing its resolution across all foundational 
 
 ::: {.callout-fallacy title="Zero Process Noise Guarantees Kalman Filter Convergence"}
 * **The Fallacy:** A Kalman filter will never diverge as long as process noise covariance $\mathbf{Q}$ is set to an arbitrarily small value.
-* **The Physical Reality:** Setting process noise $\mathbf{Q}$ artificially small makes the estimator overconfident in its internal physical model. When real-world disturbances occur (such as wheel slip or external contact), an overconfident filter rejects valid sensory innovation updates ($\mathbf{y}_t$), causing the filter to diverge completely from physical reality [@thrun2005probabilistic].
+* **The Physical Reality:** Setting process noise $\mathbf{Q}$ artificially small makes the estimator overconfident in its internal physical model. When real-world disturbances occur, an overconfident filter rejects valid sensory innovation updates, causing the filter to diverge completely from physical reality [@thrun2005probabilistic].
 :::
 
 ::: {.callout-fallacy title="State Estimation Belongs Entirely in User-Space Software"}
@@ -226,8 +155,6 @@ We conclude the Memory stage by auditing its resolution across all foundational 
 
 ## Chapter Summary and Forward Handoff
 
-This chapter established how embodied physical agents maintain structured spatial belief and temporal continuity across sensory occlusions. Physical state is not a stateless token sequence; it is a metric, dynamic $SE(3)$ coordinate tree integrated in Lie algebra tangent space ($\mathfrak{se}(3)$) and bounded by expanding uncertainty covariances.
+This chapter established how embodied physical agents maintain structured spatial belief and temporal continuity across inevitable sensory occlusions. Physical state is not a stateless text token sequence safely confined to a digital context window; it is a metric, dynamic coordinate tree mathematically integrated in Lie algebra tangent space and strictly bounded by constantly expanding uncertainty covariances. By pairing advanced latent world models on high-performance compute arrays with deterministic hardware ring buffers and real-time proprioceptive state estimators on edge microcontrollers, systems engineers ensure that transient sensory blackouts never result in open-loop physical destruction.
 
-By pairing latent world models (JEPAs, RSSMs) on the MPU with deterministic transform buffers and $1000\text{ Hz}$ proprioceptive state estimators on the MCU, we ensure that missing visual photons never induce open-loop physical destruction.
-
-In the following chapter, **Chapter 6 (Reason: Expiring Intent Leases and Kinematic Affordances)**, we explore how physical agents reason about task goals, translate semantic instructions into bounded kinematic proposals, and enforce expiring intent leases before commanding multi-joint motion.
+Having firmly anchored the agent's perception into a mathematically sound, temporally persistent world model, the architectural pipeline is now primed to generate purposeful action. In the following chapter, **Chapter 6 (Reason: Expiring Intent Leases and Kinematic Affordances)**, we will explore how physical agents reason about task goals over these state beliefs. We will examine how high-level semantic instructions are translated into bounded, physically verified kinematic proposals, and how the system rigorously enforces expiring intent leases before authorizing multi-joint motion in the real world.
