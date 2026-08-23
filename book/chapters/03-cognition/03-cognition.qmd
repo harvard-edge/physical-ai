@@ -69,19 +69,17 @@ $$d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}} = \frac{(19.4\text{ m/s})^2}{2
 
 Because the suppression delay had consumed nearly the entire available clearance, a catastrophic collision was physically inevitable.
 
-::: {.callout-autopsy title="NTSB Incident Docket: Tempe Autonomous Collision"}
-* **Platform:** Level 4 Automated Driving System (Volvo XC90), roof-mounted 64-beam LiDAR, 360° radar array, and forward optical cameras [@ntsb2019uber].
-* **Incident Classification:** Fatal pedestrian impact ($v = 19.4\text{ m/s}$ / $43.5\text{ mph}$); zero automated braking prior to collision.
-* **Flight-Recorder Telemetry Log:**
-  - `T - 5.6 s` ($d = 82\text{ m}$): Ingested as `unknown_vehicle`; $\hat{\mathbf{v}} = \mathbf{0}$.
-  - `T - 4.5 s` ($d = 67\text{ m}$): Flipped to `static_obstacle`; Kalman velocity buffer wiped.
-  - `T - 2.6 s` ($d = 48\text{ m}$): Flipped to `bicycle`; tracking state re-initialized.
-  - `T - 1.2 s` ($d = 23.3\text{ m}$): Invariant breached; $1000\text{ ms}$ software suppression timer asserted.
-  - `T - 0.2 s` ($d = 3.9\text{ m}$): Suppression expired; $d_{\text{remaining}} < d_{\text{brake}}$ ($23.5\text{ m}$).
-* **Root Cause:** Perception classification thrashing prevented velocity vector convergence; $1000\text{ ms}$ software suppression blocked emergency braking during the stopping window.
-* **Architectural Flaw:** Monolithic authority—safety braking was subordinate to stochastic neural classifications and software timers rather than an independent 1 kHz microcontroller evaluating $d_{\text{clearance}} \ge d_{\text{stop}}$.
-* **Provenance:** National Transportation Safety Board (NTSB) Accident Report NTSB/HAR-19/03 [@ntsb2019uber].
-:::
+| Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
+| :--- | :--- | :--- | :--- |
+| **$T - 5.6\text{ s}$** | 64-Beam LiDAR / Radar | Ingested at $82\text{ m}$ range; classified as `unknown_vehicle`; initial velocity $\hat{\mathbf{v}} = \mathbf{0}$. | Tracking initialized. |
+| **$T - 4.5\text{ s}$** | Neural Classifier | Label flipped to `static_obstacle` ($67\text{ m}$ range); tracker wipes history. | Kalman velocity state buffer reset to zero. |
+| **$T - 2.6\text{ s}$** | Vision Backbone | Label flipped to `bicycle` ($48\text{ m}$ range); tracking history re-initialized again. | Motion path projection across lane wiped. |
+| **$T - 1.2\text{ s}$** | Planning / Autonomy Stack | Collision predicted ($d_{\text{clearance}} = 23.3\text{ m}$); software asserts $1000\text{ ms}$ suppression delay. | Braking commands withheld to prevent false alarms. |
+| **$T - 0.2\text{ s}$** | Motion Planner | Suppression timer expires; emergency braking requested ($d_{\text{clearance}} = 3.9\text{ m}$). | Clearance ($3.9\text{ m}$) is far less than required braking distance ($d_{\text{brake}} = 23.5\text{ m}$). |
+| **$T + 0.0\text{ s}$** | Vehicle Chassis / Actuators | Vehicle strikes pedestrian at $19.4\text{ m/s}$ ($43.5\text{ mph}$); impact occurs with zero automated braking. | Fatal collision. |
+| **Root Cause** | *Perception & Cadence* | Classification thrashing repeatedly wiped tracking velocity buffers; $1000\text{ ms}$ suppression delay consumed dynamic stopping clearance. |
+| **Architectural Flaw** | *Privilege & Co-Design* | Monolithic authority—safety braking was subordinate to stochastic neural classifications and software timers rather than an independent 1 kHz microcontroller evaluating $d_{\text{clearance}} \ge d_{\text{stop}}$. |
+: **Flight-Recorder Telemetry Ledger: NTSB Incident Docket (Tempe Autonomous Collision).** Tracing high-level classification thrashing and software suppression delays to unmitigated physical impact. {#tbl-telemetry-ch03}
 
 ### Core Architectural Lessons for Physical AI
 
@@ -91,118 +89,45 @@ The Tempe incident provides three foundational systems lessons that govern every
 2. **Real-Time Supervisors Must Enforce Dynamic Stopping Distance Invariants:** The mathematical invariant $d_{\text{clearance}} \ge d_{\text{stop}}(v_0, \Delta t)$ must be evaluated continuously at $1000\text{ Hz}$ on an independent microcontroller. If clearance falls below stopping distance, the safety enforcer must initiate dynamic braking immediately, completely bypassing high-level software suppression delays.
 3. **Decouple Cadences via Expiring Intent Leases:** High-level models must only emit time-bounded intent leases ($\mathcal{L}_{\text{intent}}$). If the high-level deliberative thread stalls or crashes, the lease expires within tens of milliseconds, causing the real-time runtime to gracefully decelerate rather than driving blindly ahead.
 
-## The Embodied Cognitive Lifecycle: 9 Stations of Dataflow
+## The Five Cognitive Stages: Classical Robotics vs. Modern Physical AI
 
-To implement the lessons of decoupled cadences and privileged execution, Physical AI structures dataflow across nine canonical lifecycle stations operating across three decoupled temporal cadences. Every physical action executed by an embodied intelligent machine—whether a bipedal robot adjusting its center of mass over icy terrain, a dual-arm manipulator threading a flexible wire harness into a chassis, or a thermal management system modulating refrigerant expansion valves across an exascale datacenter—is the culmination of this continuous, 9-station dataflow lifecycle (@fig-agent-workflow). This lifecycle bridges the gap between open-world, high-level semantic intent and deterministic, low-level electro-mechanical actuation.
+To engineer intelligent machines that act upon the physical world, we structure computational agency into five primary horizontal stages (@tbl-five-cognitive-stages). These five stages form the cognitive rows of the Master Co-Design Matrix and define the architectural roadmap for **Part II (Chapters 4 through 8)** of this textbook:
+
+1. **Stage 1: Perceive (Row 1 · Chapter 4):** Resolves the *spatial grounding boundary*. Transforms raw multi-modal sensory emissions (photons, Time-of-Flight distances, IMU accelerations, tactile forces) into metric, coordinate-calibrated 3D bounding hulls and spatial affordance tokens in $SE(3)$.
+2. **Stage 2: Remember (Row 2 · Chapter 5):** Resolves the *temporal persistence boundary*. Maintains kinematic coordinate transform trees ($\mathcal{T}_{\text{frames}}$) and propagates dynamic latent world belief across sensory dropouts and visual occlusions, bounding spatial uncertainty growth over time ($\sigma_{\text{pos}}(t)$).
+3. **Stage 3: Reason (Row 3 · Chapter 6):** Resolves the *semantic deliberation boundary*. Ingests open-world human directives and belief states to plan multi-step strategies, issuing time-bounded *Expiring Intent Leases* ($\mathcal{L}_{\text{intent}}$) that authorize spatial safety corridors without exercising unmitigated electrical authority.
+4. **Stage 4: Plan (Row 4 · Chapter 7):** Resolves the *delay amortization boundary*. Translates high-level intent leases into kinematically feasible multi-step trajectory chunks ($\mathbf{A}_{t:t+H}$), fitting $\mathcal{C}^2$-continuous splines to eliminate derivative jerk spikes while bridging neural forward-pass latencies.
+5. **Stage 5: Execute (Row 5 · Chapter 8):** Resolves the *deterministic physical invariant boundary*. Executing in static SRAM on dedicated real-time silicon (`malloc = 0`), it validates candidate actions against Control Barrier Functions and dynamic stopping distances ($d_{\text{stop}} \le d_{\text{clearance}}$), guaranteeing absolute physical safety before pulsing inverter gate drivers.
 
 ![The Complete End-to-End Physical Agent Lifecycle. Tracing dataflow from open-world goal ingestion through 3D spatial perception, latent world modeling, expiring intent leases, action chunk decoding, real-time safety projection, hardware PWM switching, and endogenous feedback mutation ($W_t \to W_{t+1} \to O_{t+1}$).](figures/fig03_agent_workflow.svg){#fig-agent-workflow width=100%}
 
-As illustrated in @fig-agent-workflow, the cognitive lifecycle forms a closed causal loop spanning the physical and digital domains. Information flows across nine distinct stations, each executing a specialized mathematical transformation upon the data stream while operating under strict temporal and representation contracts.
+### The Paradigm Shift: Classical Robotics vs. Modern Physical AI
 
-### Station 1: Goal Ingestion and Semantic Conditioning
-The cognitive lifecycle initiates with the ingestion of an external goal specification. In modern Physical AI architectures, this goal is rarely presented as a sequence of hardcoded joint trajectories; rather, it arrives as an open-world semantic directive, such as a natural language instruction, a multimodal demonstration prompt, or a declarative mission objective.
+To understand how modern artificial intelligence transforms physical systems, we must contrast classical robotics pipelines with modern foundation-model representations across all five cognitive stages (@tbl-classical-vs-modern-ai).
 
-At Station 1, the system parses the unstructured goal input and tokenizes it into a conditioned semantic goal vector $\mathbf{g} \in \mathbb{R}^d$. This vector projects abstract human intentions into a latent conditioning space accessible to downstream neural foundation models [@brohan2023rt2]. The primary systems responsibility of Station 1 is grounding: it decomposes high-level mission goals into a structured hierarchy of actionable sub-goals, identifying semantic affordances, target objects, environmental constraints, and completion criteria. This semantic conditioning vector $\mathbf{g}$ persists across multiple deliberative cycles, serving as the conditioning key for both spatial perception and high-level reasoning.
+| Cognitive Stage | Classical Robotics Baseline (1990–2020) | Modern Physical AI Systems (2026+) | Key Systems Benefit in Physical AI |
+| :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Handcrafted 2D features (Sobel edges, Canny, Harris corners, manual color thresholding). | Self-supervised **Vision Transformers (ViT) & DINOv2 patch tokens** projected to metric $SE(3)$. | Robust to extreme lighting shifts, dynamic shadows, and visual clutter without manual retuning. |
+| **Row 2: Remember** | Handcrafted state vectors ($[x, y, \theta]$ via EKF) & static CAD mesh collision trees. | **Latent World Models (JEPAs, V-JEPA, RSSM / Dreamer)** & dynamic $SE(3)$ frame trees. | Preserves physical object belief and unobserved momentum during sensory occlusions and dropouts. |
+| **Row 3: Reason** | Rigid Finite State Machines (FSMs), Behavior Trees, and symbolic PDDL planners. | **Multimodal Vision-Language Models (VLMs / System 2)** emitting structured intent leases. | Interprets open-world, unstructured natural language prompts and generalizes to novel objects. |
+| **Row 4: Plan** | Discrete search algorithms (A*, RRT*, CHOMP, TrajOpt) planning single waypoints. | **Generative Action Chunking (ACT, Diffusion, Flow Matching)** with $\mathcal{C}^2$ quintic splines. | Amortizes neural deliberation latency, handles multi-modal trajectories, and eliminates mechanical jerk. |
+| **Row 5: Execute** | Fixed-gain PID loops, open-loop threshold clamps, and physical end-stop switches. | **Real-Time Control Barrier Functions (CBFs)** & Quadratic Program (QP) minimal projections ($\mathbf{u}^*$). | Mathematically provable forward safety invariance evaluated at 1 kHz in static SRAM (`malloc = 0`). |
 
-### Station 2: Physical Transduction and Kernel Ingestion
-Simultaneously, the physical universe expresses its instantaneous state through raw physical emissions, including photons reflected from surfaces, mechanical vibrations transmitted through structural frames, magnetic flux variations across encoder disks, and thermal gradients across heatsinks. Station 2 captures these physical phenomena through sensor transducers, such as CMOS image sensors, piezoresistive micro-electromechanical systems (MEMS) inertial measurement units (IMUs), capacitive tactile arrays, and magnetic rotary encoders.
-
-Transduction converts physical quantities into digital representations: photodiode potential wells integrate photons into analog voltages, which on-chip analog-to-digital converters (ADCs) quantize into raw pixel arrays. Crucially, the systems architecture at Station 2 must enforce microsecond-accurate hardware timestamping ($t_{\text{capture}}$) at the exact physical capture instant, such as the mid-point of CMOS sensor exposure or the latching clock edge of an SPI bus transaction. The raw digitized data is ingested into system memory via zero-copy direct memory access (DMA) engines across high-speed physical interfaces such as MIPI-CSI2, PCIe, or Ethernet. Ingested frames are deposited directly into pinned, cache-coherent ring buffers within kernel space, bypassing user-space copy overheads to minimize transport latency and eliminate memory bus jitter.
-
-### Station 3: 3D Spatial Perception and Geometric Featurization
-Raw sensory arrays, such as two-dimensional RGB pixel matrices $\mathbf{I} \in \mathbb{R}^{H \times W \times 3}$ and sparse LiDAR point clouds $\mathbf{P} \in \mathbb{R}^{N \times 3}$, contain no intrinsic geometric or metric coordinate structure. Station 3 ingests these raw streams to construct a metric representation of the local environment.
-
-Executing on dedicated neural accelerators, spatial perception models (such as Vision Transformers and DINOv2 backbones) extract metric spatial tokens [@dosovitskiy2020image; @oquab2023dinov2]. This stage performs three simultaneous operations in continuous dataflow: it transforms unprojected 2D pixel coordinates into calibrated 3D Euclidean coordinates using camera intrinsic matrices and extrinsic transformations; it segments actionable surfaces, estimates metric object bounding volumes, and predicts continuous surface normal vectors for candidate grasp or contact locations; and it constructs local Truncated Signed Distance Fields (TSDF) or Euclidean Signed Distance Fields (ESDF) that map every coordinate $\mathbf{x} \in \mathbb{R}^3$ to its scalar distance $d(\mathbf{x})$ from the nearest physical obstacle boundary.
-
-The output of Station 3 is a dense, metric spatial representation $\mathbf{S}_t$ that strips away lighting artifacts and sensor noise, preserving only the geometric and semantic topology of the physical workspace.
-
-### Station 4: Latent World Model and State Estimation
-Raw spatial perception provides only a momentary, partially occluded snapshot of the world. If an object passes behind an obstacle or a camera view is momentarily blinded by specular reflection, instantaneous perception collapses. Station 4 maintains temporal continuity by fusing instantaneous spatial perception with historical state memory within a dynamic latent world model and state estimation engine [@ha2018worldmodels; @lecun2022path; @hafner2023mastering].
-
-Station 4 maintains the agent's central kinematic coordinate transform tree ($\mathcal{T}_{\text{frames}}$), continuously updating spatial relationships between the world frame, base frame, camera frames, and end-effector tool frames. Concurrently, a state estimator maintains estimated state $\hat{\mathbf{x}}_t = [\mathbf{p}_t, \mathbf{v}_t, \mathbf{q}_t, \boldsymbol{\omega}_t]^T$. When an object leaves sensor view, the latent world model preserves belief continuity, expanding its spatial uncertainty envelope over occlusion time:
-
-$$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{target}}\| \cdot \Delta t_{\text{occluded}}$$
-
-This continuous belief state ensures that downstream decision-making operates on a coherent representation of reality rather than transient sensor flickers.
-
-### Station 5: Semantic Deliberation and Intent Leases
-Equipped with the conditioned goal vector from Station 1 and the coherent belief state from Station 4, Station 5 executes high-capacity semantic reasoning using large Vision-Language-Action (VLA) foundation models [@driess2023palme; @brohan2023rt2]. Operating at the slowest temporal cadence ($0.5\text{--}2\text{ Hz}$), Station 5 analyzes complex scene interactions, evaluates causal dependencies, and plans multi-step manipulation sequences.
-
-Crucially, in a robust Physical AI systems architecture, Station 5 never directly emits raw motor torques or low-level actuator setpoints. Because high-capacity foundation models exhibit variable inference latency and long-tail computational jitter ($400\text{--}1500\text{ ms}$), binding their direct output to physical actuators introduces catastrophic timing instability.
-
-Instead, Station 5 produces a formal, time-bounded architectural contract known as an *expiring intent lease* ($\mathcal{L}_{\text{intent}}$) [@gray1989leases]:
-
-$$\mathcal{L}_{\text{intent}} = \left\langle \text{GoalID}, \; \mathbf{T}_{\text{target}}, \; \mathcal{B}_{\text{safe}}, \; \|\mathbf{v}\|_{\text{max}}, \; t_{\text{issue}}, \; \Delta t_{\text{TTL}} \right\rangle$$
-
-where $\mathbf{T}_{\text{target}}$ specifies the target spatial pose, $\mathcal{B}_{\text{safe}}$ defines a convex geometric corridor within which motion is guaranteed collision-free, $\|\mathbf{v}\|_{\text{max}}$ is the authorized velocity ceiling, $t_{\text{issue}}$ is the monotonic hardware timestamp of issue, and $\Delta t_{\text{TTL}}$ is the strictly enforced time-to-live ($500\text{--}1500\text{ ms}$). If the downstream runtime does not receive a renewed intent lease before expiration, the lease lapses, triggering a deterministic deceleration to a safe standby state.
-
-### Station 6: Trajectory Decoding and Action Chunking
-Station 6 bridges the gap between high-level semantic intent leases and high-rate physical control. Operating at an intermediate cadence ($20\text{--}50\text{ Hz}$), this station employs continuous control policies, such as Action Chunking Transformers (ACT) or conditional diffusion policies [@zhao2023learning; @chi2023diffusionpolicy].
-
-Rather than predicting a single step action $\mathbf{a}_t$—which would create a brittle dependency where any microsecond inference hiccup stalls the physical robot—Station 6 decodes an entire *action chunk* $\mathbf{A}_{t:t+H}$ across a multi-step rolling time horizon $H$ (typically $16\text{--}64$ steps, spanning $300\text{--}1000\text{ ms}$ of continuous physical motion):
-
-$$\mathbf{A}_{t:t+H} = \left[ \mathbf{a}_t, \; \mathbf{a}_{t+1}, \; \mathbf{a}_{t+2}, \; \dots, \; \mathbf{a}_{t+H-1} \right]$$
-
-where each action vector $\mathbf{a}_{t+k} = [\mathbf{q}_{\text{ref}}, \dot{\mathbf{q}}_{\text{ref}}, \boldsymbol{\tau}_{\text{ff}}]^T$ specifies reference joint positions, velocities, and feedforward torques.
-
-Action chunking provides *delay amortization*: a $35\text{ ms}$ neural forward pass produces hundreds of milliseconds of continuous trajectory data, allowing high-rate motor controllers to execute uninterrupted while the accelerator computes the subsequent chunk in the background.
-
-### Station 7: Real-Time Safety Reflex and Dynamic Shielding
-Before any action vector $\mathbf{a}_t$ from an action chunk reaches physical hardware, it must pass through Station 7: the real-time safety reflex. Operating at $1000\text{ Hz}$ ($1\text{ ms}$ loop budget) on a dedicated bare-metal microcontroller, Station 7 enforces absolute physical invariants [@ames2019control].
-
-Station 7 acts as an un-bypassable dynamic safety shield. It evaluates candidate actions against joint limits, velocity bounds, torque rate limits, and dynamic stopping distances ($d_{\text{stop}} \le d_{\text{clearance}}$). Operating in static SRAM with zero dynamic memory allocation (`malloc = 0`), the microcontroller executes a minimal safety projection:
-
-$$\mathbf{u}_t^* = \arg\min_{\mathbf{u} \in \mathcal{U}_{\text{safe}}} \|\mathbf{u} - \mathbf{a}_t\|^2 \quad \text{subject to } d_{\text{stop}}(\mathbf{v}) \le d_{\text{clearance}}$$
-
-If the nominal action $\mathbf{a}_t$ is safe, it passes unmodified ($\mathbf{u}_t^* = \mathbf{a}_t$). If the action threatens safety boundaries, Station 7 minimally perturbs the command or engages autonomous controlled braking.
-
-### Station 8: Actuation and Physical State Mutation
-At Station 8, verified digital control commands $\mathbf{u}_t^*$ cross the physical threshold into hardware power electronics. Operating at high frequencies ($10\text{--}40\text{ kHz}$), motor drivers execute Field-Oriented Control (FOC) to synthesize pulse-width modulated (PWM) inverter gate voltages. The resulting phase currents generate electromagnetic Lorentz forces in stator windings, producing physical shaft torques that accelerate mechanical linkages against inertia and friction, definitively mutating the physical universe from state $W_t$ to $W_{t+1}$.
-
-### Station 9: Endogenous Sensory Feedback and Causal Loop Closure
-The cognitive lifecycle concludes—and immediately restarts—at Station 9. As the physical agent mutates the external universe ($W_t \to W_{t+1}$), the modified environment produces new physical emissions: optical scenes shift, contact forces generate strain gauge voltages, and motor motion generates back-EMF.
-
-Station 9 captures these emissions as the subsequent observation vector $O_{t+1}$, closing the causal loop. By comparing measured observations against predicted forward dynamics or physics simulations ($r = O_{\text{measured}} - O_{\text{predicted}}$) [@todorov2012mujoco; @makoviychuk2021isaac; @tobin2017domain; @kumar2021rma], the system extracts innovation residuals to update state estimates, correct model drift, detect unexpected physical collisions, and trigger re-deliberation if an obstacle blocks progress.
+: Comparison of Classical Robotics Pipelines versus Modern Physical AI Cognitive Architectures. {#tbl-classical-vs-modern-ai}
 
 ### Grounding Across the Three Canonical Archetypes
-To appreciate the universal applicability of this 9-station dataflow lifecycle, @tbl-lifecycle-archetypes illustrates how its execution manifests across the Three Canonical Archetypes of Physical AI:
 
-| Lifecycle Station | Archetype 1: Mobility (e.g., Quadruped on Scree) | Archetype 2: Contact Manipulation (e.g., Dual-Arm Assembly) | Archetype 3: Cybernetic Processes (e.g., Chemical Batch Reactor) |
-| :--- | :--- | :--- | :--- |
-| **S1: Goal Ingestion** | *"Traverse scree slope to waypoint C"* | *"Seat multi-pin connector plug into chassis"* | *"Maintain 350 K reaction at 5 bar pressure"* |
-| **S2: Transduction** | Stereo depth cameras, IMU, foot contact switches | Wrist-mounted RGB-D, 6-axis F/T load cell, joint encoders | Resistance temperature detectors (RTDs), pressure transducers |
-| **S3: Perception** | Voxel elevation map, terrain friction classification | 6-DoF plug pose, chamfer surface normal vector | Thermal gradient map, reagent concentration estimation |
-| **S4: Latent State** | Quadruped base pose, leg contact state, terrain slip | Gripper pose in fixture frame, contact force history | Reactor thermal mass state, jacket coolant temperature |
-| **S5: Reasoning** | High-level gait selection, foothold re-planning | Grasp re-orientation, insertion retry strategy | Cooling valve ramp schedule, reagent feed rate policy |
-| **S6: Planning** | 16-step leg swing trajectories and ground reaction forces | 32-step Cartesian end-effector compliance trajectory | 60-step coolant valve flow and heater duty cycle chunk |
-| **S7: Safety Reflex** | Leg kinematic reachability, dynamic tipping margin | Maximum contact force clamp ($F \le 20\text{ N}$), zero-velocity barrier | Maximum pressure interlock ($P \le 6\text{ bar}$), thermal runaway clamp |
-| **S8: Actuation** | 12x BLDC quasi-direct drive knee/hip actuators | 14x Brushless frameless motors with harmonic gearheads | Proportional solenoid valves, variable-speed coolant pumps |
-| **S9: Loop Closure** | Foot slip acceleration detected by IMU $\to$ adjust swing | Contact force spike detected by load cell $\to$ engage compliance | Exothermic thermal surge detected by RTD $\to$ increase coolant |
+To appreciate the universal applicability of this 5-stage architecture, @tbl-five-cognitive-stages illustrates how its execution manifests across the Three Canonical Archetypes of Physical AI:
 
-: The 9-station embodied cognitive lifecycle across the Three Canonical Archetypes. {#tbl-lifecycle-archetypes}
+| Cognitive Stage | Archetype 1: Mobility (e.g., Quadruped on Scree) | Archetype 2: Contact Manipulation (e.g., Dual-Arm Assembly) | Archetype 3: Cybernetic Processes (e.g., Chemical Batch Reactor) | Roadmap Chapter |
+| :--- | :--- | :--- | :--- | :--- |
+| **Row 1: Perceive** | Stereo depth, ToF, IMU $\to$ Voxel elevation & terrain friction tokens | Wrist RGB-D, 6-axis F/T load cell $\to$ 6-DoF plug pose & normal vectors | RTDs, pressure transducers $\to$ Thermal gradient map & reagent concentration | Chapter 4 |
+| **Row 2: Remember** | Quadruped base pose, leg contact state, terrain slip history | Gripper pose in fixture frame, contact force history, workpiece mass | Reactor thermal mass state, jacket coolant heat accumulation | Chapter 5 |
+| **Row 3: Reason** | High-level gait selection, foothold re-planning under obstruction | Grasp re-orientation, multi-step insertion retry strategy | Cooling ramp schedule, reagent feed rate optimization policy | Chapter 6 |
+| **Row 4: Plan** | 16-step leg swing trajectories and ground reaction force chunks | 32-step Cartesian end-effector compliance trajectory chunk | 60-step coolant valve flow and heater duty cycle chunk | Chapter 7 |
+| **Row 5: Execute** | 1 kHz leg reachability & tipping margin CBF safety filter | 1 kHz contact force clamp ($F \le 20\text{ N}$), zero-velocity barrier | 1 kHz maximum pressure interlock ($P \le 6\text{ bar}$), thermal clamp | Chapter 8 |
 
-
-## The Five Cognitive Work Dimensions (The 5 Rows)
-
-While the dataflow lifecycle traces the chronological journey of sensory evidence through nine stations, modular systems engineering groups these operations into five primary horizontal work dimensions (@tbl-five-cognitive-rows). These five dimensions form the rows of the Master Physical Agent Co-Design Matrix and define the architectural roadmap for **Part II (Chapters 4 through 8)** of this textbook:
-
-| Cognitive Row | Pipeline Stations | Primary Systems Transformation | Core Output Data Structure | Characteristic Lifetime | Roadmap Chapter |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Row 1: Perceive** | Stations 2, 3 | Photons $\to$ 3D Geometric Affordance Tokens | 3D Spatial Token Set $\mathbf{S}_t$ | Transient ($\approx 33\text{ ms}$) | Chapter 4 |
-| **Row 2: Remember** | Station 4 | History $\to$ Dynamic Latent State & Transform Tree | Belief State $\mathbf{B}_t = \langle \hat{\mathbf{x}}_t, \sigma_{\text{pos}}(t), \mathcal{T}_{\text{frames}} \rangle$ | Persistent ($10^1\text{--}10^3\text{ s}$) | Chapter 5 |
-| **Row 3: Reason** | Stations 1, 5 | Goal + Belief $\to$ Semantic Intent & Safety Corridors | Expiring Intent Lease $\mathcal{L}_{\text{intent}}$ | Macro-cadence ($0.5\text{--}1.5\text{ s}$) | Chapter 6 |
-| **Row 4: Plan** | Station 6 | Lease $\to$ Multi-Step Trajectory Chunks & Splines | Action Chunk $\mathbf{A}_{t:t+H}$ | Rolling horizon ($0.3\text{--}1.0\text{ s}$) | Chapter 7 |
-| **Row 5: Execute** | Stations 7, 8 | Chunks $\to$ Certified Phase Current & Commutation | Verified Control Command $\mathbf{u}_t^*$ | Micro-cadence ($1.0\text{ ms} \pm 5\,\mu\text{s}$) | Chapter 8 |
-
-: The Five Cognitive Work Dimensions. Mapping the five horizontal cognitive rows of the Co-Design Matrix across pipeline stages, primary systems transformations, core data structures, temporal lifetimes, and downstream chapters. {#tbl-five-cognitive-rows}
-
-Each cognitive dimension represents a self-contained systems subsystem with explicit input/output contracts:
-
-* **Row 1 (Perceive · Chapter 4):** Resolves the *spatial grounding boundary*. It transforms raw, high-bandwidth pixel arrays into metric, coordinate-calibrated 3D bounding hulls and surface normal vectors referenced to the physical frame of the machine, isolating upstream sensor transport jitter from downstream logic.
-* **Row 2 (Remember · Chapter 5):** Resolves the *temporal persistence boundary*. It maintains kinematic coordinate transform trees and propagates dynamic state estimates forward across sensor dropouts and visual occlusions, bounding spatial uncertainty growth over time.
-* **Row 3 (Reason · Chapter 6):** Resolves the *semantic deliberation boundary*. It ingests open-world mission objectives and belief states to plan multi-step strategies, issuing time-bounded intent leases that authorize spatial safety corridors without exercising unmitigated electrical authority.
-* **Row 4 (Plan · Chapter 7):** Resolves the *delay amortization boundary*. It translates high-level intent leases into kinematically feasible multi-step trajectory chunks, fitting $\mathcal{C}^2$-continuous splines to eliminate derivative jerk spikes while bridging neural forward-pass latencies.
-* **Row 5 (Execute · Chapter 8):** Resolves the *deterministic physical invariant boundary*. Executing in static SRAM on dedicated real-time silicon, it validates candidate actions against Control Barrier Functions and dynamic stopping distances, ensuring absolute physical safety before pulsing inverter gate drivers.
+: The Five Cognitive Stages across the Three Canonical Archetypes. {#tbl-five-cognitive-stages}
 
 ## The Three Cadences: Decoupling Cognitive Speeds Across Silicon
 
@@ -281,6 +206,15 @@ Every cell in the matrix represents an active systems tension where a cognitive 
 : The Master Physical Agent Co-Design Matrix. Mapping the 25 intersections between the five cognitive rows and five physical columns. {#tbl-codesign-matrix-full}
 
 
+### The Two Directions of Co-Design: Why the Perspective Flips
+
+As we transition from foundational principles into system synthesis, we encounter a fundamental duality in how physical intelligent systems are understood versus how they are engineered:
+
+* **In Part I (Foundations · Left-to-Right / Physics $\to$ Silicon):** We followed the unyielding path of the physical universe. We marched left-to-right across the five columns—from Time constants and Inertial momentum through Actuation limits, Thermal accumulation, and Silicon bus determinism—to establish the physical boundary conditions within which computation must survive.
+* **In Part II (Agent Architecture · Top-Down / Model $\to$ Silicon $\to$ Physics):** We reverse the arrow of design. We adopt the stance of the systems architect: starting top-down from the high-level cognitive objective and foundation model representation, lowering it into silicon memory fabrics and DMA ring buffers, and shockproofing it against the physical safety invariants measured in Part I.
+
+This dual-direction framing guarantees that while we design from computational intent downward, our systems are intrinsically bounded by physical ground truth upward.
+
 ## Systems Fallacies and Pitfalls in Cognitive Architecture
 
 When architecting cognitive pipelines for Physical AI, software engineers frequently carry over paradigms from cloud computing that create catastrophic failures on hardware:
@@ -312,6 +246,7 @@ With the completion of Chapter 3, we conclude **Part I: Foundations**. Across th
 
 1. **Chapter 1 (The Causal Boundary):** We established that software in physical systems moves matter and dissipates non-recoverable heat ($I^2 R$). We formalized the irreversible state transition loop ($W_t \to W_{t+1}$), proved that physical consequences cannot be undone with `try/catch` blocks, categorized physical systems across the Three Canonical Archetypes (Mobility, Contact Manipulation, and Cybernetic Processes), and instituted the foundational Proposal–Permission privilege boundary.
 2. **Chapter 2 (The Physical Constraints):** We proved that the physical universe serves as the unyielding master clock. We deconstructed the 7-stage sense-to-actuation latency waterfall, demonstrated why extreme tail latency distributions ($P_{99.9}$) govern dynamic stopping distance ($d_{\text{stop}}$), formulated information freshness decay and the Freshness Wall ($\Delta t_{\text{wall}}$), derived mechanical stopping kinematics, and established the Iron Law of Zero-Heap Silicon Determinism (`malloc = 0`).
-3. **Chapter 3 (Cognitive Architectures):** We traced the 9-station dataflow lifecycle of embodied intelligence, formalized the Five Cognitive Work Dimensions (Perceive, Remember, Reason, Plan, Execute), established the Three Cadences spanning four orders of temporal magnitude, resolved the compute-versus-physics conflict through the Three Architectural Contracts, and constructed the Master Physical Agent Co-Design Matrix.
+3. **Chapter 3 (Cognitive Architectures):** We structured the Five Cognitive Work Dimensions (Perceive, Remember, Reason, Plan, Execute), contrasted classical robotics heuristics with modern foundation models, established the Three Cadences spanning four orders of temporal magnitude, resolved the compute-versus-physics conflict through the Three Architectural Contracts, and constructed the Master Physical Agent Co-Design Matrix.
 
-Having mastered these foundational principles, we now cross from system constraints into concrete architectural construction. In **Part II (Chapters 4 through 8)**, we examine the Physical Agent Co-Design Matrix row by row, systematically designing, implementing, and validating the **Five Canonical Sensory-Motor Organs** that constitute an embodied agent. We begin in **Chapter 4 (Perceive: Spatial Grounding and 3D Affordance Tokens)**, investigating how physical CMOS image sensors and zero-copy Direct Memory Access engines transform raw, unprojected photons into metric, three-dimensional $SE(3)$ spatial affordances capable of guiding physical action in an uncertain world.
+Having mastered these foundational principles, we now cross from physical boundaries into top-down architectural synthesis. In **Part II (Chapters 4 through 8)**, we conquer the Physical Agent Co-Design Matrix row by row, systematically designing, implementing, and validating the **Five Canonical Sensory-Motor Organs** that constitute an embodied agent. We begin in **Chapter 4 (Perceive: Spatial Grounding and 3D Affordance Tokens)**, investigating how physical multi-modal sensor streams and zero-copy Direct Memory Access engines transform raw analog emissions into metric, three-dimensional $SE(3)$ spatial affordance tokens capable of guiding physical action in an uncertain world.
+

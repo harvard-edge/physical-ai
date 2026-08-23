@@ -16,7 +16,7 @@ By the conclusion of this chapter, you will be able to:
 3. **Mitigate Interconnect Contention:** Architect Quality-of-Service (QoS) bus arbitration schemes that guarantee microsecond preemption for 1 kHz safety packets over high-bandwidth video DMA bursts.
 4. **Enforce Deterministic Shared-Memory IPC:** Implement lock-free, zero-allocation circular ring buffers across non-coherent memory domains using atomic sequence counters and explicit cache maintenance operations.
 5. **Evaluate Re-Placement Ripple Effects:** Quantify how relocating neural models across compute boundaries alters tail latency ($P_{99}$), thermal throttling margins ($T_j$), battery endurance, and physical stopping envelopes ($d_{\text{stop}}$).
-6. **Freeze the Placement Ledger (placement ledger):** Construct the ninth artifact of the engineering notebook establishing whole-system hardware allocations, interconnect priorities, and fallback triggers.
+6. **Freeze the Placement Ledger (PLACE-01):** Construct the ninth artifact of the engineering notebook establishing whole-system hardware allocations, interconnect priorities, and fallback triggers.
 :::
 
 
@@ -34,19 +34,61 @@ Every physical agent is governed by three fundamental silicon constraints:
 2. **The Shared Interconnect Bottleneck:** In embedded SoCs featuring Unified Memory Architectures (UMA), CPU cores, neural accelerators (NPUs), and high-resolution camera Direct Memory Access (DMA) engines contend for a single shared memory bus. Without strict bus arbitration, bulk sensor streaming starves real-time control threads.
 3. **The Thermodynamic Derating Cliff:** High-capacity neural accelerators dissipate thermal energy that must be conducted through silicon substrate, copper ground planes, and chassis heat sinks. When junction temperature breaches thermal limits ($T_j > 85^\circ\text{C}$), dynamic frequency scaling (DVFS) slashes clock rates, tripling inference latency and blowing past physical stopping distances ($d_{\text{stop}}$).
 
-To understand why naive workload placement destroys physical systems on bench hardware, consider what occurs when a production autonomous handling vehicle offloads its real-time policy across an unbudgeted wireless boundary:
 
-::: {.callout-autopsy title="The Insulated Cold-Vault Collision"}
-* **System:** Autonomous Heavy Pallet Mover (48V Electric Drive, 1.2-Ton Payload Capacity)
-* **Incident:** Vehicle collided with a structural building pillar at $1.8\text{ m/s}$; sheared the steering linkage, crushed the front lidar sensor, and ruptured a high-pressure coolant pipe ($42{,}000\text{ USD}$ physical damage).
-* **Telemetry Snapshot:** High-level Vision-Language-Action (VLA) policy was offloaded to an on-premise Multi-Access Edge Computing (MEC) 5G server cluster. At $T+84.210\text{ s}$, the vehicle crossed a threshold into an insulated cold-storage vault; steel insulation panels caused an RF multipath null, dropping 5G communication for $1420\text{ ms}$.
-* **Root Cause:** The on-board Linux application processor (MPU) possessed no local trajectory fallback cache, while the real-time microcontroller (MCU) was not programmed with an independent speed derating envelope. The last commanded forward drive torque remained latched in the inverter's PWM registers throughout the wireless blackout.
-* **Architectural Flaw:** Monolithic remote placement without physical partition guarantees or local fallback leases—delegating time-critical physical authority across an un-budgeted, stochastic wireless network boundary.
-* **Provenance:** Engineered composite. The mechanism and the failure path are drawn from documented incident classes; the system, telemetry, and costs are constructed for teaching and are not a report of a specific event.
+## Anatomy of a Placement Failure: The Insulated Cold-Vault Collision
 
-:::
+To understand why workload placement across physical silicon domains is a life-or-death engineering decision, consider what occurs when a production autonomous handling vehicle offloads its real-time policy across an unbudgeted wireless network boundary.
 
-In this incident, the software engineers treated the wireless cloud connection as an ordinary API call. But in physical reality, electromagnetic propagation is subject to shadow fading, multipath interference, and physical shielding. Placing closed-loop actuator authority on remote servers without autonomous local MCU stopping supervisors is a catastrophic failure of systems placement.
+![The Autonomous Heavy Pallet Mover Platform. Deployed in high-throughput automated cold-chain logistics with 5G MEC cloud policy offloading. As the 1.2-ton electric vehicle crossed into an insulated cold-storage vault, an RF multipath null dropped wireless communication for $1,420\text{ ms}$; lacking local trajectory caches or autonomous MCU stopping supervisors, the latched drive torque propelled the vehicle into a structural building pillar at $1.8\text{ m/s}$.](figures/fig09_agv_mover_cropped.jpg){#fig-agv-mover width=100%}
+
+### The Cloud-Offloaded Policy Trap
+
+In modern logistics warehouses, autonomous pallet movers transport goods weighing up to $1{,}200\text{ kg}$ through narrow facility aisles. To minimize onboard compute costs and maximize fleet battery life, the engineering team offloaded the vehicle's high-level Vision-Language-Action (VLA) neural policy to an on-premise Multi-Access Edge Computing (MEC) server rack communicating over a private 5G wireless network.
+
+At $T + 84.210\text{ s}$, the vehicle was traveling down a warehouse aisle at $v = 1.8\text{ m/s}$, navigating toward a cold-storage transfer doorway.
+
+As the vehicle crossed the threshold into the refrigerated vault, the thick steel-clad polyurethane thermal insulation panels acted as a Faraday cage, creating a severe **RF multipath null and radio shadowing**. 
+
+The private 5G wireless connection dropped completely, resulting in a **$1,420\text{ ms}$ communication blackout**.
+
+### The Physics of Wireless Disconnection and Impact Momentum
+
+In a cloud software architecture, a 1.4-second network drop is a benign transient glitch: TCP packets retransmit, REST APIs timeout and retry, and user interfaces display a loading spinner.
+
+On physical hardware, the vehicle possessed a total mass of $m = 1{,}200\text{ kg}$ traveling at $v = 1.8\text{ m/s}$, carrying massive kinetic momentum and energy:
+
+$$p = m v = 1{,}200\text{ kg} \times 1.8\text{ m/s} = 2{,}160\text{ kg}\cdot\text{m/s}$$
+
+$$E_k = \frac{1}{2} m v^2 = \frac{1}{2} (1{,}200\text{ kg}) (1.8\text{ m/s})^2 = 1{,}944\text{ Joules}$$
+
+Because the onboard Linux host possessed no local fallback trajectory cache and the real-time microcontroller (MCU) was not programmed with an independent speed derating watchdog, the last commanded forward drive torque remained latched in the motor inverter's PWM capture/compare registers.
+
+During the wireless dropout window $\Delta t_{\text{blackout}} = 1{,}420\text{ ms} = 1.42\text{ seconds}$, the unguided vehicle coasted forward:
+
+$$d_{\text{react}} = v \cdot \Delta t_{\text{blackout}} = 1.8\text{ m/s} \times 1.42\text{ s} = 2.556\text{ meters} \approx 2.56\text{ m}$$
+
+A structural steel building pillar was located at $d_{\text{clearance}} = 1.20\text{ m}$.
+
+The blind displacement overrun of $+1.36\text{ meters}$ propelled the 1.2-ton machine directly into the pillar at $1.8\text{ m/s}$. The impact sheared the steering linkage, crushed the front solid-state LiDAR, and ruptured the high-pressure hydraulic lines ($42{,}000\text{ USD}$ physical replacement and facility downtime).
+
+| Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
+| :--- | :--- | :--- | :--- |
+| **$T + 84.000\text{ s}$** | 5G MEC Cloud Server | Server streams nominal trajectory chunk to vehicle approaching cold vault ($v = 1.8\text{ m/s}$). | Waypoint buffer populated on vehicle. |
+| **$T + 84.210\text{ s}$** | Wireless Modem (5G) | Vehicle crosses insulated steel door threshold; RF signal drops to $-118\text{ dBm}$ (blackout). | Wireless connection drops completely for $1,420\text{ ms}$. |
+| **$T + 84.400\text{ s}$** | Onboard Linux Host (MPU) | Onboard trajectory buffer exhausts; motor PWM timer registers remain latched at last drive torque. | Vehicle continues driving forward with no local trajectory cache. |
+| **$T + 85.000\text{ s}$** | Real-Time Motor MCU | Local MCU continues pulsing latched PWM duty cycle (lacks local timeout stopping supervisor). | Unguided vehicle traverses $2.56\text{ m}$ ($1,944\text{ J}$ kinetic energy). |
+| **$T + 85.630\text{ s}$** | Vehicle Chassis / Pillar | Front chassis slams into structural steel pillar at full cruising speed ($1.8\text{ m/s}$). | Steering knuckle sheared; LiDAR crushed ($42,000\text{ USD}$ damage). |
+| **Root Cause** | *Workload Placement* | Closed-loop actuation authority was delegated across an unbudgeted wireless network boundary without local fallback trajectory caches. |
+| **Architectural Flaw** | *Privilege & Co-Design* | Monolithic remote placement—the local real-time microcontroller lacked an autonomous communication timeout lease ($\tau_{\text{lease}} \le 50\text{ ms}$) to engage local controlled stopping upon wireless packet loss. |
+: **Flight-Recorder Telemetry Ledger: The Insulated Cold-Vault Collision Incident.** Tracing unbudgeted wireless offload boundaries and latched actuator registers to destructive kinetic collisions. {#tbl-telemetry-ch09}
+
+### Core Architectural Lessons for Hardware Placement
+
+The cold-vault collision establishes three fundamental placement laws:
+
+1. **Never Place Closed-Loop Motor Authority Across Wireless Boundaries:** High-level cloud servers may propose strategic goals, but real-time trajectory execution and dynamic stopping envelopes ($d_{\text{stop}}$) must reside on local, on-board silicon.
+2. **Enforce Local Hardware Lease Watchdogs:** The real-time microcontroller must monitor inter-processor heartbeat leases ($\tau_{\text{lease}} \le 50\text{ ms}$); if external proposals stop arriving, the MCU must autonomously engage Category 1 controlled deceleration.
+3. **Partition Compute Along Bandwidth and Determinism Tiers:** Place compute-heavy matrix operations on edge NPUs, spatial state graphs on host MPUs, and safety-critical Control Barrier Functions on isolated bare-metal MCUs.
 
 
 ## The Proposal ⟷ Permission Contract for Silicon Placement
@@ -383,97 +425,41 @@ Whenever an engineering team proposes relocating a capability (e.g., quantizing 
 :::
 
 
-::: {.callout-decision}
-### Notebook checkpoint: Placement Map and Resource Ledger (placement ledger)
-Freeze the whole-system heterogeneous silicon placement, memory allocations, power budgets, and interconnect QoS contracts:
+## The Hardware Placement Specification and System Handoff
 
-1. **Stage-to-Silicon Mapping:** Assigns the canonical pipeline organs to specific hardware execution domains.
-2. **Memory Allocation Ledger:** Budgets static SRAM, LPDDR DRAM, and DMA ring buffer allocations.
-3. **Thermal and Power Budget:** Specifies TDP per node, derating thresholds, and battery reserve capacity.
-4. **QoS and Fallback Protocols:** Defines interconnect QoS priorities and escalation triggers upon domain failure.
+To establish a deterministic, whole-system mapping across heterogeneous silicon fabrics, the system architecture formalizes its configuration as the **Hardware Placement & Memory Fabric Specification** (@tbl-placement-ledger). This specification defines the stage-to-silicon mappings, memory allocations, thermal budgets, and interconnect QoS priorities:
 
-```yaml
-# DOSSIER CHECKPOINT: placement ledger
-placement_ledger:
- system_id: "PHYSICAL-AGENT-01"
- version: "1.0.0"
- notebook_checkpoint: "placement ledger"
- stage_placement:
- stage_1_transduction:
- substrate: "MCU_CORTEX_M4"
- execution_rate_hz: 1000.0
- memory_substrate: "STATIC_SRAM"
- sram_allocation_kb: 16.0
- trust_domain: "TRUSTED_SAFETY_CORE"
- stage_2_perception:
- substrate: "EDGE_NPU_SYSTOLIC"
- execution_rate_hz: 30.0
- memory_substrate: "UNIFIED_LPDDR5"
- dram_allocation_mb: 180.0
- trust_domain: "UNTRUSTED_PROPOSAL"
- stage_3_memory_belief:
- substrate: "LINUX_MPU_ARM64"
- execution_rate_hz: 50.0
- memory_substrate: "UNIFIED_LPDDR5"
- dram_allocation_mb: 120.0
- trust_domain: "UNTRUSTED_PROPOSAL"
- stage_4_deliberation:
- substrate: "CLOUD_MEC_OR_EDGE_VLM"
- execution_rate_hz: 1.0
- memory_substrate: "HOST_DRAM_HIGH_BW"
- dram_allocation_mb: 4096.0
- trust_domain: "UNTRUSTED_PROPOSAL"
- stage_5_planning_action:
- substrate: "EDGE_NPU_SYSTOLIC"
- execution_rate_hz: 20.0
- memory_substrate: "UNIFIED_LPDDR5"
- dram_allocation_mb: 350.0
- trust_domain: "UNTRUSTED_PROPOSAL"
- stage_6_reflex_enforcer:
- substrate: "MCU_CORTEX_M4"
- execution_rate_hz: 1000.0
- memory_substrate: "STATIC_SRAM"
- sram_allocation_kb: 48.0
- trust_domain: "TRUSTED_SAFETY_CORE"
- stage_7_governance_lineage:
- substrate: "LINUX_MPU_SECURE_STORAGE"
- execution_rate_hz: 10.0
- memory_substrate: "NVRAM_FLASH"
- dram_allocation_mb: 500.0
- trust_domain: "UNTRUSTED_PROPOSAL"
- resource_budgets:
- mcu_sram_total_kb: 256.0
- mcu_sram_allocated_kb: 64.0
- mcu_heap_dynamic_bytes: 0
- mpu_dram_total_mb: 4096.0
- mpu_dram_allocated_mb: 1150.0
- soc_tdp_nominal_watts: 8.5
- soc_tdp_max_watts: 15.0
- thermal_derating_knee_celsius: 85.0
- thermal_warning_threshold_celsius: 80.0
- chassis_battery_capacity_wh: 360.0
- nominal_operating_hours: 3.5
- interconnect_qos:
- shared_mailbox_substrate: "ZERO_WAIT_ONCHIP_SRAM"
- shared_mailbox_base_address: "0x38000000"
- qos_tier_0_emergency_estop: 0xF # Highest AXI Priority
- qos_tier_1_mcu_safety_mailbox: 0xE
- qos_tier_2_imu_encoder_dma: 0xC
- qos_tier_3_npu_weight_streaming: 0x8
- qos_tier_4_camera_video_dma: 0x2 # Throttled / Paced
- fallback_escalation:
- wireless_drop_timeout_ms: 100.0 # Engage local MPU action chunk
- mpu_heartbeat_timeout_ms: 50.0 # MCU asserts Category 1 Deceleration
- thermal_knee_breach_action: "CLAMP_MAX_VELOCITY_DERATE_50_PCT"
- bus_saturation_action: "DROP_CAMERA_DMA_FRAME_PRESERVE_SAFETY"
-```
-:::
+| Stage / Subsystem | Silicon Substrate | Execution Cadence | Memory Substrate & Footprint | Trust & Authority Level |
+| :--- | :--- | :---: | :--- | :--- |
+| **1. Transduction** | Bare-Metal MCU | $1000\text{ Hz}$ | Static SRAM ($16\text{ KB}$, `malloc = 0`) | Trusted Sensor Transduction |
+| **2. Perception** | Edge NPU Systolic | $30\text{ Hz}$ | Unified LPDDR5 ($180\text{ MB}$, zero-copy DMA) | Untrusted Spatial Affordance Tokens |
+| **3. Memory Belief** | Linux Host MPU | $50\text{ Hz}$ | Unified LPDDR5 ($120\text{ MB}$) | Untrusted World Model & Frame Tree |
+| **4. Deliberation** | Cloud MEC / NPU | $1.0\text{ Hz}$ | Host DRAM ($4\text{ GB}$) | Untrusted Expiring Intent Leases |
+| **5. Planning** | Edge NPU Systolic | $20\text{ Hz}$ | Unified LPDDR5 ($350\text{ MB}$) | Untrusted Trajectory Action Chunks |
+| **6. Reflex Enforcer** | Bare-Metal MCU | $1000\text{ Hz}$ | Static SRAM ($48\text{ KB}$, `malloc = 0`) | **Trusted Sole Inverter & Gate Driver Privilege** |
+| **7. Lineage Logging** | Linux Secure NVRAM | $10\text{ Hz}$ | Pinned NVRAM Flash ($500\text{ MB}$) | Cryptographic Telemetry Lineage |
 
-::: {.callout-lab}
-### Hands-on Realization: Lab 9 — Heterogeneous Workload Placement
-Deploy and profile the 7-stage Physical AI pipeline across the **Arduino UNO Q Dual-Brain Platform** (ARM Cortex-M4 Microcontroller + Quad-Core Linux Application Processor). 
+: Whole-System Hardware Workload Placement Ledger. Partitioning the cognitive stages across heterogeneous silicon fabrics, cadences, memory domains, and privilege tiers. {#tbl-placement-ledger}
 
-1. **Benchmark Shared Memory Mailbox Throughput:** Implement the lock-free SPSC circular ring buffer in on-chip SRAM (`0x38000000`). Measure round-trip message latency and verify that hardware cache invalidation (`DC IVAC`) prevents stale memory reads across non-coherent cores.
-2. **Inject Synthetic Memory Bus Contention:** Stream uncompressed high-bandwidth video test patterns over the DMA controller while running high-rate safety loops. Measure the resulting $P_{99}$ latency tail inflation on the MPU and verify that assigning strict QoS priority to MCU packets eliminates jitter.
-3. **Simulate Wireless Link Dropout:** Sever the high-level intent stream while the robotic platform executes an active trajectory. Demonstrate on an oscilloscope that the local MCU detects the missing heartbeat lease within $50\text{ ms}$ and executes a bumpless Category 1 controlled stop before violating workspace boundaries.
-:::
+### The Placement Matrix Checkpoint Ledger
+
+We conclude Chapter 9 by auditing whole-system placement across all five physical columns of the Co-Design Matrix (@tbl-placement-matrix-checkpoint):
+
+| Physical Column | Placement Systems Tension | Chapter 9 Architectural Resolution |
+| :--- | :--- | :--- |
+| **Column 1: Time** | Wireless network dropouts inject second-scale blackout delays. | **Local on-board execution** of real-time trajectory generation and safety reflexes. |
+| **Column 2: Inertia** | Latched drive registers propel unguided mass during MPU stalls. | Microcontroller **heartbeat timeout watchdogs ($\tau \le 50\text{ ms}$)** triggering Category 1 stops. |
+| **Column 3: Actuation** | High-level software crashes leave motor inverters in unknown states. | Hardware bus firewalls locking PWM compare registers exclusively to the MCU. |
+| **Column 4: Energy** | NPU thermal dissipation triggers dynamic frequency downclocking. | TDP thermal budgeting, aluminum chassis heat sinks, and thermal derating knees. |
+| **Column 5: Silicon** | Video DMA bursts collide with neural weight streaming on UMA buses. | **Hardware AXI QoS bus priority arbitration** and lock-free shared SRAM mailboxes. |
+
+: Whole-System Hardware Placement Co-Design Matrix Checkpoint Ledger. Systematic architectural accounting of workload placement across the five physical columns. {#tbl-placement-matrix-checkpoint}
+
+## Chapter Summary and Handoff to Chapter 10
+
+This chapter established the hardware placement and partitioning laws that map multi-rate cognitive pipelines onto physical heterogeneous silicon. In Physical AI, compute placement is not an abstract compiler choice; it directly determines memory bus contention, thermal throttling envelopes, and dynamic stopping guarantees.
+
+By partitioning the agent across three silicon tiers—placing high-throughput foundation models on edge NPUs, spatial state graphs on host MPUs, and deterministic safety enforcers on bare-metal MCUs—we eliminate crossbar contention via hardware AXI Quality-of-Service (QoS) priorities and lock-free on-chip SRAM mailboxes.
+
+With the placement architecture established, we now move to **Chapter 10 (Governance: Human-Machine Authority, Telemetry Lineage, and Policy Shift)**. In Chapter 10, we explore how to manage human intervention handoffs via $\mathcal{C}^2$ bumpless transfer filters and prevent data flywheels from collapsing due to policy endogeneity.
+

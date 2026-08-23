@@ -136,14 +136,16 @@ On a clear night in March 2018, an autonomous test vehicle traveling at forty-th
 
 In classical computer science education and cloud software engineering, an unhandled exception or an uncertain classification is benign: the application logs a warning, falls back to a default value, or catches the error in an exception block while the user waits. Sixty years of computing abstractions—from virtual memory paging to containerized microservices—have reinforced the implicit belief that software execution is decoupled from the physical universe. But when algorithmic predictions command physical actuators, this mental model collapses. The physical world possesses neither an exception handler nor an undo operation. The kinetic energy stored in a moving vehicle, the magnetic flux circulating through an electric motor, and the thermal energy accumulating in a power inverter do not pause when an application thread stalls or a neural model misclassifies an observation. The following autopsy examines the anatomy of that collision, deconstructing why standard software abstractions fail when crossing the Causal Boundary.
 
-::: {.callout-autopsy title="The Tempe Autonomous Collision"}
-* **Incident:** An autonomous test vehicle struck a pedestrian pushing a bicycle across a multi-lane roadway at $43\text{ mph}$ ($19.2\text{ m/s}$), resulting in a fatal collision.
-* **System:** SAE Level 4 autonomous test vehicle operating with a multi-sensor deep neural network perception pipeline and motion planner on an onboard Linux computing trunk with drive-by-wire steering and braking actuation.
-* **Telemetry Snapshot:** At $T-5.6\text{ s}$ ($82\text{ m}$ range), the perception system first detected an unclassified object. Over the next $4.4\text{ s}$, the neural classifier toggled its label between an unknown object, a motor vehicle, and a bicycle. Each reclassification reset the tracking history and velocity vector. At $T-1.2\text{ s}$, the autonomy software engaged a 1.2-second suppression delay to prevent false-positive braking. At $T-0.2\text{ s}$, emergency braking was finally requested, but the vehicle lacked an independent low-level safety supervisor to assert the electronic brake booster directly.
-* **Root Cause:** Deep learning classification instability under out-of-distribution observations, coupled with software suppression delays and the absence of a deterministic, low-level dynamic safety enforcer.
-* **Architectural Flaw:** Monolithic authority and untrusted safety arbitration—the architecture relied on high-level stochastic neural perception for obstacle detection without an independent, deterministic physical safety supervisor (evaluating $d_{\text{stop}} \le d_{\text{clearance}}$) on dedicated real-time silicon.
-* **Provenance:** NTSB Highway Accident Report HAR-19/03 [@ntsb2019uber].
-:::
+| Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
+| :--- | :--- | :--- | :--- |
+| **$T - 5.6\text{ s}$** | Perception (64-beam LiDAR) | Ingests unclassified object at $82\text{ m}$ range ($43\text{ mph}$ / $19.2\text{ m/s}$). | Object initialized in tracking buffer. |
+| **$T - 4.4\text{ s}$ to $T - 1.2\text{ s}$** | Stochastic Neural Classifier | Classifier toggles label between vehicle, bicycle, and unknown obstacle. | Every reclassification resets tracking history and velocity vector to zero. |
+| **$T - 1.2\text{ s}$** | Autonomy Stack / Policy | Software engages 1.2-second suppression delay to prevent false alarms. | Vehicle travels $23.0\text{ m}$ blind; consumes dynamic stopping clearance. |
+| **$T - 0.2\text{ s}$** | Planning Thread | Emergency braking requested ($d_{\text{clearance}} = 3.8\text{ m} < d_{\text{brake}} = 23.0\text{ m}$). | Autonomous software lacks direct low-level brake booster authority. |
+| **$T + 0.0\text{ s}$** | Chassis / Actuators | Vehicle strikes pedestrian at $19.2\text{ m/s}$ with zero automated braking. | Fatal collision. |
+| **Root Cause** | *Perception & Timing* | Deep learning classification instability under out-of-distribution observations, coupled with software suppression delays. |
+| **Architectural Flaw** | *Privilege & Co-Design* | Monolithic authority and untrusted safety arbitration—reliance on high-level stochastic neural perception without an independent, deterministic physical safety supervisor ($d_{\text{stop}} \le d_{\text{clearance}}$) on dedicated real-time silicon. |
+: **Flight-Recorder Telemetry Ledger: NTSB Incident Docket (Tempe Autonomous Collision).** Deconstructing how stochastic classification instability and software suppression delays lead to unmitigated kinetic impact. {#tbl-telemetry-ch01}
 
 Deconstructing the Tempe collision illuminates why deploying learned models into physical environments demands fundamentally different architectural foundations than developing cloud software. 
 
