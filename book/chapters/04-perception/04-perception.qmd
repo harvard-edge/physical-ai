@@ -17,25 +17,18 @@ By the conclusion of this chapter, you will be able to:
 4. **Extract 3D Spatial Affordance Tokens:** Deploy Vision Transformer (ViT) and self-supervised encoders (DINOv2) to extract metric $SE(3)$ grasp targets, surface normals, and collision boundaries rather than passive semantic labels.
 5. **Implement Hardware PTP Synchronization:** Eliminate the software timestamp illusion by capturing microsecond-accurate IEEE 1588 hardware exposure midpoints across heterogeneous sensor streams.
 6. **Navigate the Multi-Objective Perception Frontier:** Build Pareto frontiers balancing spatial resolution, frame rate, ingestion latency, and memory bus bandwidth against physical world deadlines ($\tau_{\text{world}}$).
-7. **Freeze the Observation Contract (OBS-01):** Construct the formal specification of the engineering dossier establishing sensor ingestion QoS, DMA channel mappings, and affordance token schemas.
+7. **Freeze the Observation Contract:** Construct the formal specification of the engineering dossier establishing sensor ingestion QoS, DMA channel mappings, and affordance token schemas.
+
+**Core Chapter Takeaway:** Perception in Physical AI is an active physical tax on memory buses and thermal headroom; embodied systems must distill continuous sensory fluxes into compact 3D Spatial Affordance Tokens before observation freshness decays into spatial hazard.
 :::
 
+## Perception in the Physical Loop: Spatial Grounding and the Ingestion Tax
 
-## The Sensory Ingestion Gateway: From Photons to Spatial Tokens
+In digital computer vision, software engineers operate in an idealized universe "behind glass." Images are treated as static, noise-free numerical tensors that materialize instantaneously in server DRAM upon request. Benchmark datasets like ImageNet and COCO evaluate models on frozen, pre-cropped JPEG images where computation time carries zero causal consequence. The cloud server can deliberate for 50 milliseconds or 5 seconds; the static image in memory never shifts, degrades, or collides with a physical barrier.
 
-In digital computer vision, software engineers operate in an idealized universe "behind glass." Images are treated as static, noise-free numerical tensors ($\mathbf{I} \in \mathbb{R}^{H \times W \times C}$) that materialize instantaneously in server DRAM upon request. Benchmark datasets like ImageNet, COCO, and ImageNet-21k evaluate models on frozen, pre-cropped JPEG images where computation time carries zero causal consequence. The cloud server can deliberate for 50 milliseconds or 5 seconds; the static image in memory never shifts, degrades, or collides with a physical barrier.
+In Physical AI, this digital illusion collapses completely. Perception is not a passive mathematical classification task—it is an active physical gateway that transduces continuous, analog environmental energy fluxes into structured digital representations under unyielding real-time deadlines. The moment an AI agent is embodied in steel and silicon, its perception subsystem must satisfy three fundamental physical realities: the sensor moves continuously with the accelerating chassis; observations age instantly from the moment of exposure ($d_{\text{react}} = v \cdot \Delta t$); and downstream control organs require metric 3D Euclidean geometry in $SE(3)$ rather than passive categorical labels.
 
-In Physical AI, this digital illusion collapses completely. Perception is not a passive mathematical classification task—it is an **active physical gateway** that transduces continuous, analog environmental energy fluxes into structured digital representations under unyielding real-time deadlines. 
-
-The moment an AI agent is embodied in steel and silicon, its perception subsystem must satisfy three fundamental physical realities:
-
-1. **The Sensor Moves with the World:** The camera or sensor is physically mounted to an accelerating, vibrating chassis or robotic linkage. Motion induces optical blur, rolling shutter geometric shear, and mechanical vibration noise across inertial measurement units.
-2. **Observations Age Instantly:** Photons take finite time to integrate in silicon photodiode wells ($t_{\text{exp}} \approx 2\text{--}20\text{ ms}$), serialize across hardware buses, and traverse Direct Memory Access (DMA) channels. Every microsecond spent ingesting and processing pixels displaces moving mass through physical space ($d_{\text{react}} = v \cdot \Delta t$).
-3. **Downstream Organs Require Metric Geometry, Not Pixel Classifications:** A downstream trajectory planner or dynamic safety enforcer cannot act on a floating-point semantic label such as `"mug: 0.94"`. It requires precise, metric 3D affordance coordinates in Euclidean space ($SE(3)$)—grasp normals, contact friction boundaries, obstacle distance fields, and clearance margins expressed in meters and radians.
-
-### The Multi-Modal Sensory Landscape of Physical AI
-
-Embodied perception extends far beyond RGB cameras. Depending on the physical embodiment and operational realm, Physical AI systems ingest multi-modal physical signals across four primary sensory domains:
+Embodied perception extends far beyond RGB cameras, ingesting multi-modal physical signals across four primary sensory domains (@tbl-sensor-physics): exteroception (CMOS photodiodes, LiDAR, event sensors), tactile and contact sensation (piezoresistive arrays, GelSight elastomeric cameras), proprioception and interoception (optical shaft encoders, 6-DoF MEMS IMUs, phase current shunts), and cybernetic process sensation (RTDs, Rogowski coils).
 
 | Sensory Domain | Physical Transduction Mechanism | Primary Physical Variables | Dominant Physical Failure Modes | Example Embodiments |
 | :--- | :--- | :--- | :--- | :--- |
@@ -46,30 +39,19 @@ Embodied perception extends far beyond RGB cameras. Depending on the physical em
 
 : Sensor Modalities and Transduction Physics across Physical AI Embodiments. Physical mechanisms, fundamental measurement variables, and dominant environmental failure modes. {#tbl-sensor-physics}
 
-### The Dual ML vs. Systems Co-Design Focus
+Building an embodied perception pipeline requires balancing two competing engineering disciplines: the machine learning challenge of synthesizing self-supervised patch representations that map unprojected 2D sensory streams into compact 3D affordance tokens, and the embedded systems challenge of transporting gigabytes of raw pixel data across hardware buses without starving neural accelerators or inflating $P_{99}$ latency tails. We now examine how modern foundation representations extract actionable 3D affordance tokens from sensory streams.
 
-Building an embodied perception pipeline requires balancing two competing engineering disciplines:
+## Transduction Physics: Photons, Exposure Time, and Motion Blur
 
-* **The Machine Learning Challenge:** Designing neural architectures that transform unprojected 2D sensory streams into compact, metric 3D representations. Modern Physical AI leverages self-supervised patch tokenizers (such as Vision Transformers and DINOv2 backbones) paired with camera intrinsic unprojection ($K^{-1}$) to extract 3D bounding hulls, continuous surface normal vectors $\mathbf{n} \in S^2$, and Signed Distance Fields (SDF) that downscale gigabytes of raw pixels into concise spatial tokens.
-* **The Embedded Systems Challenge:** Transporting millions of sensory bytes across hardware buses without starving the rest of the System-on-Chip (SoC). High-resolution multi-camera payloads stream gigabytes of raw data per second across MIPI CSI-2 or GMSL2 serializer links. If these streams are not managed via zero-copy DMA ring buffers (`dma_alloc_coherent`) and hardware Quality-of-Service (QoS) bus arbitration, sensory ingestion saturates the shared memory crossbar, causing neural accelerator weight fetches to stall and blowing out tail latency ($P_{99.9}$).
-
-### Sensor Transduction Physics and Environmental Failure Modes
-
-Every physical sensor converts continuous physical emissions into microvolt electrical potentials across a finite physical integration window:
-
-#### CMOS Photodiode Exposure and Optical Degradation
-
-A CMOS image sensor integrates incoming photon flux over an exposure duration ($t_{\text{exp}} \approx 2\text{--}20\text{ ms}$). The accumulated charge in each photodiode well follows the physical integral:
+Every physical sensor converts continuous physical emissions into microvolt electrical potentials across a finite physical integration window. A CMOS image sensor integrates incoming photon flux over an exposure duration $t_{\text{exp}} \approx 2\text{--}20\text{ ms}$:
 
 $$Q_{\text{pixel}} = \int_{t_{\text{start}}}^{t_{\text{start}} + t_{\text{exp}}} \eta(\lambda) \cdot \Phi(t) \, dt + Q_{\text{dark}}$$
 
-where $\eta(\lambda)$ is the silicon quantum efficiency at wavelength $\lambda$, $\Phi(t)$ is the incident photon flux, and $Q_{\text{dark}}$ is thermal leakage current.^[In silicon photodiode arrays, thermal leakage current $Q_{\text{dark}}$ doubles approximately every $6^\circ\text{C}$ to $8^\circ\text{C}$ of junction temperature rise. In sealed robot chassis without active thermal management, rising sensor die temperatures degrade image signal-to-noise ratio (SNR) long before thermal shutdown trips.]
-
-When the robot or the environment moves at velocity $\mathbf{v}$ during this integration window, optical features smear across the sensor plane. The resulting **motion blur displacement** ($\Delta x_{\text{blur}}$) is directly proportional to velocity and exposure time:
+When the robot or the environment moves at velocity $\mathbf{v}$ during this integration window, optical features smear across the sensor plane, resulting in a physical motion blur displacement:
 
 $$\Delta x_{\text{blur}} = \|\mathbf{v}\| \cdot t_{\text{exp}}$$
 
-If a robotic manipulator sweeps its camera at $1.5\text{ m/s}$ under dim warehouse lighting requiring $t_{\text{exp}} = 15\text{ ms}$, fine edges smear across **$22.5\text{ mm}$ of physical space**. A spatial encoder attempting to locate a $5\text{ mm}$ bolt head on a vibrating conveyor receives a smeared optical gradient, causing grasp localization errors that exceed the physical mechanical clearance of the gripper fingers (@tbl-motion-blur).
+If a robotic manipulator sweeps its camera at $1.5\text{ m/s}$ under dim lighting requiring $t_{\text{exp}} = 15\text{ ms}$, fine edges smear across **$22.5\text{ mm}$ of physical space**, exceeding the physical mechanical clearance of typical gripper fingers (@tbl-motion-blur).
 
 | Workpiece Motion State | Optical Profile | Edge Gradient | Grasp Localization Accuracy | Physical Outcome |
 | :--- | :--- | :--- | :---: | :--- |
@@ -78,125 +60,22 @@ If a robotic manipulator sweeps its camera at $1.5\text{ m/s}$ under dim warehou
 
 : Optical Exposure vs. Motion Blur Smear. Impact of sensor exposure integration time on spatial edge gradients and grasp localization accuracy. {#tbl-motion-blur}
 
-Furthermore, most consumer and mobile CMOS sensors use a **rolling shutter**, where pixel rows are reset and read out sequentially from top to bottom at line intervals ($\Delta t_{\text{row}} \approx 10\text{--}30\,\mu\text{s}$). If the camera rotates at angular velocity $\boldsymbol{\omega}$ during frame readout, the scene undergoes geometric shear: straight vertical fixtures appear tilted, and circles deform into ellipses. For precision physical manipulation, perception architectures must enforce **global shutter** image sensors or apply hardware-synchronized IMU gyro integration to unwarp rolling shutter shear before neural tokenization.
+Furthermore, consumer rolling-shutter sensors read out pixel rows sequentially ($\Delta t_{\text{row}} \approx 10\text{--}30\,\mu\text{s}$), inducing geometric shear during camera rotation. Precision physical manipulation requires global shutter sensors or hardware-synchronized gyro unwarping.
 
-#### LiDAR Speckle and Multipath Reflection
+Properly interpreting these signals requires rigid camera calibration. The intrinsic geometry must be modeled to avoid distortion, accounting for focal lengths $(f_x, f_y)$ and the optical center $(c_x, c_y)$. Moreover, when multiple sensors observe the same physical event, their measurements must be aligned with microsecond temporal accuracy. Measuring a sensor timestamp in software records the time of data arrival in user space ($t_{\text{software}}$), not the true physical exposure midpoint. To eliminate the software timestamp illusion, Physical AI systems implement hardware-level clock synchronization using the Precision Time Protocol (IEEE 1588). The MCU emits a periodic hardware pulse on a dedicated GPIO trigger line connected to the camera's `FSYNC` pin, latching the master PTP timestamp at exposure start:
 
-Time-of-Flight (ToF) cameras and pulsed LiDAR sensors calculate distance by timing the round-trip flight of laser pulses:
+$$t_{\text{obs\_midpoint}} = t_{\text{start}} + \frac{1}{2} t_{\text{exp\_programmed}}$$
 
-$$d = \frac{c \cdot \Delta t_{\text{flight}}}{2}$$
+When fusing visual tokens with high-rate IMU states, the state estimator propagates the IMU state vector across the temporal skew $\Delta t_{\text{skew}} = t_{\text{imu}} - t_{\text{obs\_midpoint}}$ using Lie algebra integration. For Time-of-Flight (ToF) cameras and pulsed LiDAR sensors, calculating distance via round-trip laser flight ($d = \frac{c \cdot \Delta t_{\text{flight}}}{2}$) can suffer from specular multi-path reflections and near-infrared absorption. Concurrently, MEMS IMUs measuring acceleration and angular rate require careful calibration, as double integrating an uncalibrated accelerometer thermal bias $b_a = 0.05\text{ m/s}^2$ creates spatial drift that explodes quadratically over time.
 
-While optical ToF operates independently of ambient scene texture, it is vulnerable to three physical failure modes:
+## Silicon Ingestion & Modern Spatial Representations
 
-1. **Specular Multi-Path Reflection:** Smooth metallic surfaces (such as polished aluminum fixture plates or stainless steel machinery) act as optical mirrors. Laser pulses bounce off the metallic plate, reflect off a distant wall, and return to the receiver, creating "phantom geometry" meters behind the actual surface.
-2. **Mixed Pixels and Edge Bleed:** When a laser beam footprint spans the boundary between a foreground object and the background, the sensor receives two return pulses, computing an erroneous depth reading hovering in empty air halfway between both surfaces.
-3. **Atmospheric Absorption and Dark Surfaces:** Carbon-fiber composites, black rubber seals, and dark anodized parts absorb near-infrared wavelengths ($850\text{--}940\text{ nm}$), dropping return signal amplitude below the avalanche photodiode detection threshold and producing missing depth holes.
+In academic machine learning benchmarks, data loading is treated as a trivial background utility. In embedded Physical AI systems, however, sensory data ingestion is a heavy, continuous tax on shared silicon resources. Modern edge computing platforms almost universally adopt heterogeneous System-on-Chip (SoC) architectures based on a Unified Memory Architecture (UMA). 
 
-#### MEMS IMU Deflection and Thermal Bias Drift
-
-Inertial Measurement Units (IMUs) measure linear acceleration ($\mathbf{a}$) and angular rate ($\boldsymbol{\omega}$) using micromachined silicon cantilevers. Under external acceleration, proof masses deflect against capacitive sensing fingers:
-
-$$m \ddot{x} + c \dot{x} + k x = m a_{\text{ext}}$$
-
-While IMUs operate at blazingly fast cadences ($1000\text{--}4000\text{ Hz}$) with zero optical occlusion risk, raw MEMS signals suffer from **thermal zero-rate bias drift** ($\mathbf{b}_a(t), \mathbf{b}_g(t)$) and white noise:
-
-$$\mathbf{a}_{\text{meas}}(t) = \mathbf{R}(t)^T (\mathbf{a}_{\text{true}}(t) - \mathbf{g}) + \mathbf{b}_a(t) + \mathbf{n}_a(t)$$
-
-Because position is obtained by double integrating linear acceleration, a constant uncalibrated accelerometer bias $b_a = 0.05\text{ m/s}^2$ creates a spatial position drift that **explodes quadratically over time**:
-
-$$\delta \mathbf{p}(t) = \frac{1}{2} \mathbf{b}_a t^2 \implies \text{At } t = 10\text{ s}, \quad \delta p = 2.5\text{ meters}$$
-
-No physical AI agent can navigate open-loop on IMU dead-reckoning alone. A dependable perception system pairs high-rate, low-latency IMUs with absolute metric spatial observations (cameras, LiDAR, wheel encoders) inside tightly coupled state estimators (detailed in Chapter 5).
-
-
-## Anatomy of a Sensing Failure: The 4K Ingestion Blackout
-
-To understand how sensory ingestion creates physical vulnerability, consider what happens when digital software assumptions about high-resolution video collide with shared silicon memory architectures.
-
-![The Autonomous Quadruped Inspection Platform. Equipped with wide-angle stereo optical perception modules, real-time depth processors, and high-torque joint actuators. Upgrading the vision pipeline to uncompressed 4K streaming saturated the shared LPDDR5 memory crossbar, stalling NPU model weight fetches and causing a $135\text{ ms}$ tail blowout that resulted in a fatal footfall collision with a concrete curb.](figures/fig04_quadruped_perception_platform_cropped.jpg){#fig-quadruped-platform width=100%}
-
-### The High-Resolution Trap and Memory Bus Saturation
-
-In industrial automated inspection, engineering teams face continuous pressure to increase optical resolution. Consider a 45 kg autonomous quadruped inspection robot deployed to inspect railway tracks and concrete infrastructure. To detect hairline cracks ($< 0.5\text{ mm}$) at a 2-meter standoff distance while traversing uneven terrain at $v = 2.5\text{ m/s}$ ($9\text{ km/h}$), the software team upgraded the dual front stereo camera pipeline from $720\text{p}$ to uncompressed $4\text{K}$ ($3840 \times 2160$) at $60\text{ FPS}$.
-
-In desktop computer vision benchmarks, this upgrade delivered outstanding results: crack detection precision improved by $18\%$. But on physical edge silicon, the upgrade had catastrophic kinetic consequences.
-
-The robot's System-on-Chip (SoC) utilized a **Unified Memory Architecture (UMA)**, where CPU cores, the deep neural network accelerator (NPU), and image signal processors (ISP) shared a single pool of LPDDR5 DRAM across a common crossbar interconnect. When the dual 4K cameras were initialized at $60\text{ FPS}$, the continuous Direct Memory Access (DMA) write traffic into shared memory surged:
-
-$$B_{\text{dma}} = 2 \times (3840 \times 2160 \times 3\text{ bytes}) \times 60\text{ Hz} \approx 2.98\text{ GB/s}$$
-
-### The Physics of Bus Contention and Footfall Displacement
-
-Under nominal $720\text{p}$ operation, the Vision-Language-Action policy running on the NPU completed each gait step inference in $t_{\text{inference}} = 22\text{ ms}$ ($P_{50}$). At $v = 2.5\text{ m/s}$, the linear reaction travel consumed during inference was well within physical clearance margins:
-
-$$d_{\text{react}} = v \cdot t_{\text{inference}} = 2.5\text{ m/s} \times 0.022\text{ s} = 0.055\text{ meters} = 5.5\text{ cm}$$
-
-When the uncompressed 4K streaming commenced, continuous multi-gigabyte DMA write bursts saturated the memory crossbar. Because the memory controller was configured with default round-robin arbitration, camera DMA write packets repeatedly stalled the NPU's burst model weight fetches ($20\text{ GB/s}$ bursts). Inference time suffered a catastrophic **$P_{99.9}$ tail blowout**, inflating from $22\text{ ms}$ to **$135\text{ ms}$**.
-
-During this $135\text{ ms}$ processing blackout, the robot coasted forward completely open-loop:
-
-$$d_{\text{react}} = v \cdot \Delta t = 2.5\text{ m/s} \times 0.135\text{ s} = 0.338\text{ meters} = 33.8\text{ cm}$$
-
-As the quadruped approached a $15\text{ cm}$ concrete curb, the obstacle clearance was $d_{\text{clearance}} = 15.0\text{ cm}$. Because the reaction displacement ($33.8\text{ cm}$) far exceeded the available physical clearance, the robot's front right foot caught the leading edge of the curb before the NPU could emit the next step adjustment. The resulting $1.2\text{ kN}$ dynamic impact fractured the titanium femur linkage and sheared the knee joint cycloidal drive teeth ($4,800\text{ USD}$ overhaul).
-
-| Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
-| :--- | :--- | :--- | :--- |
-| **$T - 0.135\text{ s}$** | Dual 4K CMOS Sensors | Hardware exposure completes; dual 4K frames enter MIPI CSI-2 receivers. | $49.7\text{ MB}$ raw payload buffered in ISP. |
-| **$T - 0.120\text{ s}$** | DMA Engine / LPDDR5 Bus | Direct Memory Access bursts write $2.98\text{ GB/s}$ across the shared UMA bus. | Memory crossbar arbiters grant priority to video streams. |
-| **$T - 0.090\text{ s}$** | Neural Processing Unit (NPU) | ViT weight streaming stalls on memory bus wait states; thread execution suspended. | Obstacle feature token extraction delayed by $113\text{ ms}$. |
-| **$T - 0.020\text{ s}$** | Trajectory Planner (MPU) | Delayed affordance token arrives; planner attempts to emit emergency lateral spline. | Quadruped has already traversed $28.7\text{ cm}$ blind. |
-| **$T + 0.000\text{ s}$** | Chassis / Front Right Leg | Titanium femur strikes concrete curb at $2.5\text{ m/s}$ ($1.2\text{ kN}$ dynamic impact). | Femur fractures; knee cycloidal reducer shears ($4,800\text{ USD}$ damage). |
-| **Root Cause** | *Systems Bottleneck* | Unthrottled 4K camera DMA crossbar saturation starved neural weight fetches, blowing out perception tail latency ($P_{99.9} = 135\text{ ms}$). |
-| **Architectural Flaw** | *Privilege & Co-Design* | Monolithic memory architecture without interconnect AXI QoS prioritization (`ARQOS`/`AWQOS`) or zero-copy DMA ring buffer bandwidth throttling. |
-: **Flight-Recorder Telemetry Ledger: The 4K Perception Ingestion Starvation Incident.** Tracing microsecond memory bus contention to physical mechanical fracture. {#tbl-telemetry-ch04}
-
-### Core Architectural Lessons for Physical Perception
-
-The 4K ingestion blackout provides three foundational systems rules:
-
-1. **Budget Silicon Memory Interconnects as Strictly as Compute FLOPS:** In Unified Memory Architecture SoCs, memory crossbar bandwidth is a finite, shared physical resource; unthrottled sensor ingestion starves neural inference engines.
-2. **Enforce Hardware Bus QoS and Zero-Copy Ring Buffers:** Allocate physically contiguous, pinned memory (`dma_alloc_coherent`), pass memory handles rather than copying pixels, and assign real-time MCU and NPU traffic higher AXI QoS priorities over raw sensor DMA writes.
-3. **Scale Spatial Representations, Not Raw Pixels:** Downsample raw sensor pixels at the hardware ISP, extracting compact 3D spatial affordance tokens rather than flooding neural pipelines with redundant 4K bitmaps.
-
-
-## The Pre-Inference Ingestion Tax and UMA Bus Contention
-
-In academic machine learning benchmarks, data loading is treated as a trivial background utility. In embedded Physical AI systems, however, **sensory data ingestion is a heavy, continuous tax on shared silicon resources**.
-
-![**UMA Memory Bus Contention & The Pre-Inference Ingestion Tax.** On embedded System-on-Chips sharing a single LPDDR5 memory bus, unthrottled camera DMA pixel writes collide with NPU tensor weight streaming bursts and CPU real-time control threads. Naive memory copying inflates the inference tail from $P_{50} = 22\text{ ms}$ to $P_{99} = 135\text{ ms}$. Implementing zero-copy DMA ring buffers with hardware QoS prioritization guarantees deterministic sub-$8\text{ ms}$ ingestion.](figures/fig04_uma_bus_contention.svg){#fig-uma-contention width=100%}
-
-### The Unified Memory Architecture (UMA) Traffic Jam
-
-Modern edge robotics platforms—such as the NVIDIA Jetson AGX Orin, Qualcomm RB5, Apple Silicon, and the NXP i.MX8M on our dual-brain kit—employ a **Unified Memory Architecture (UMA)** [@hennessy2019computer]. Instead of discrete GPU VRAM and CPU RAM connected over a high-power PCIe bus, the CPU cores, GPU/NPU neural accelerators, and image signal processors (ISP) share a single physical pool of LPDDR5 DRAM connected across a wide on-chip crossbar interconnect.
-
-Consider a physical handling agent streaming dual $1080\text{p}$ stereo cameras alongside a high-resolution wrist RGB-D sensor at $60\text{ FPS}$:
-
-| Data Stream | Resolution & Format | Raw Bandwidth Formula | Continuous Ingestion Traffic |
-| :--- | :--- | :--- | :---: |
-| **Stereo Base Cameras** | Dual $1920 \times 1080 \times 3$ (RGB24) | $2 \times (1920 \times 1080 \times 3) \times 60\text{ Hz}$ | **$746.5\text{ MB/s}$** |
-| **Wrist RGB-D Camera** | $1280 \times 720 \times 4$ (RGBA + Depth16) | $(1280 \times 720 \times 6) \times 60\text{ Hz}$ | **$331.8\text{ MB/s}$** |
-| **LiDAR Pointcloud Stream** | $300\text{k points/s} \times 32\text{ bytes}$ | $300{,}000 \times 32\text{ bytes/s}$ | **$9.6\text{ MB/s}$** |
-| **Total Ingestion Load** | **Multi-Modal Sensor Suite** | $\sum \text{Bandwidth}$ | **$1{,}087.9\text{ MB/s} \approx \mathbf{1.1\text{ GB/s}}$** |
-
-: Multi-Modal Sensor Ingestion Bandwidth Ledger. Quantifying raw DMA streaming throughput across shared LPDDR5 DRAM memory channels. {#tbl-ingestion-tax}
-
-
-Every second, hardware Direct Memory Access (DMA) engines dump over **$1.1\text{ GB}$ of raw pixel payloads directly into shared LPDDR5 DRAM**.
-
-### The Three Costs of Unmanaged Ingestion
-
-When video ingestion traffic is unmanaged, it creates severe systems interference across three architectural layers [@williams2009roofline]:
-
-1. **Interconnect Channel Contention:** While modern LPDDR5 buses boast peak theoretical bandwidths of $34\text{--}68\text{ GB/s}$, memory access is not uniform. The neural processing unit (NPU) executes deep Vision Transformers by streaming millions of model weights in aggressive, high-priority bursts ($15\text{--}30\text{ GB/s}$). When continuous camera DMA write packets flood the memory controller simultaneously, DRAM bank conflicts stall the NPU systolic array, causing neural inference time to inflate from $22\text{ ms}$ to over $130\text{ ms}$ ($P_{99}$ tail event).
-2. **CPU L2/L3 Cache Pollution:** In naive software architectures, camera frames received by the operating system kernel are copied into user space using standard POSIX read calls or `memcpy()`. These memory copies push hundreds of megabytes of transient pixel data through the CPU's L2 and L3 caches, evicting the hot stack frames and lookup tables used by real-time $1000\text{ Hz}$ motion control threads.
-3. **OS Scheduling Jitter:** Dynamic memory allocation (`malloc()`) inside image callback loops forces the Linux kernel into page allocation routines, TLB invalidation, and garbage collection pauses, introducing non-deterministic latency spikes into the perception pipeline.
-
-### The Zero-Copy DMA Ring Buffer Architecture
-
-To eliminate this pre-inference ingestion tax, dependable physical AI systems implement **hardware-aligned, zero-copy DMA ring buffers**[^dmabuf]:
+This unified topology introduces an intense architectural tax during real-time perception workloads. A dual-camera $1080\text{p}$ RGB streaming pipeline at $60\text{ FPS}$ ingests approximately $746\text{ MB/s}$ of raw pixel data. The camera interface receivers and DMA engines autonomously blast these massive byte streams across the system crossbar directly into DRAM circular buffers. To mitigate bus contention, systems employ zero-copy lock-free DMA ring buffers mapped via MIPI-CSI2 interfaces:
 
 ```c
-// ARCHITECTURAL IMPLEMENTATION: Zero-Copy DMA Buffer Allocation
+// ZERO-COPY LOCK-FREE DMA RING BUFFER (Linux Kernel / DMA-BUF Interface)
 // Pre-allocates physically contiguous, uncached memory mapped across MPU and NPU domains
 struct dma_ring_buffer {
     void* vaddr[BUFFER_DEPTH];         // Virtual addresses in user space
@@ -208,55 +87,54 @@ struct dma_ring_buffer {
 };
 ```
 
-This architecture enforces four strict systems invariants:
+This architecture enforces contiguous physical DRAM allocation via `dma_alloc_coherent()`, zero-copy virtual pointer passing, cache-bypass mapping (`pgprot_writecombine`), and hardware AXI bus QoS prioritization to ensure neural accelerator weight fetches are not starved by sensor DMA writes.
 
-* **Contiguous Physical DRAM Allocation:** Buffer memory is allocated once at system boot using `dma_alloc_coherent()`. Memory pages remain permanently pinned, eliminating virtual page table lookups and runtime memory allocations.
-* **Zero-Copy Virtual Pointer Passing:** When a frame arrives from the MIPI-CSI deserializer, the camera DMA controller writes raw Bayer/RGB pixels directly into the physical memory pointer. The Linux kernel simply passes a 64-bit memory descriptor handle to the NPU runtime. Not a single pixel is copied across the bus.
-* **Cache-Bypass Mapping:** Ingestion buffers are mapped as *uncached, write-combining* (`pgprot_writecombine`), preventing incoming video streams from polluting CPU L2/L3 caches.
-* **Hardware AXI Bus QoS Prioritization:** On ARM and heterogeneous SoCs, interconnect masters emit Quality-of-Service priority signals (`ARQOS` for reads, `AWQOS` for writes)[^axi_qos]. The memory controller is configured to assign highest priority to real-time MCU safety reads, second priority to NPU weight streaming reads, and lower priority to sensor DMA writes. If bus saturation threatens, the camera DMA engine throttles gracefully into FIFO buffers rather than stalling neural execution.
-
-[^dmabuf]: The Linux kernel \texttt{dma-buf} subsystem enables zero-copy buffer sharing between disparate hardware drivers (e.g., V4L2 camera capture drivers and hardware neural accelerators) by passing file descriptors representing physically contiguous, pinned memory pages without invoking CPU memory copies.
-
-[^axi_qos]: In the ARM AMBA AXI4 interconnect protocol, bus masters assert 4-bit Quality of Service signals (\texttt{ARQOS} for read channels, \texttt{AWQOS} for write channels) on every transaction. The memory crossbar arbiter prioritizes urgent real-time traffic ($QoS=15$) over background DMA streaming ($QoS=4$), preventing lower-tier sensor writes from starving neural accelerator weight fetches [@hennessy2019computer].
-
-
-## Spatial Affordance Tokenization vs. Passive Classification
-
-In classical computer vision, models are trained for **passive semantic classification**: an image of a tabletop is ingested by a convolutional backbone or Vision Transformer, emitting a discrete probability distribution over text labels (*"ceramic mug, $p=0.94$"*).
-
-In Physical AI, a semantic text label is **useless for motor actuation**.
-
-Knowing that an object is a "mug" does not tell an electric actuator where to position its fingers, how wide to open the gripper jaws, which direction to align the wrist vector, or how much normal force to apply to prevent slipping without crushing the ceramic walls.
-
-![**Spatial Affordance Tokenization vs. Passive Classification.** Passive digital classification reduces rich scenes to abstract text labels with zero spatial utility. Physical AI perception deploys Vision Transformers (ViT) and self-supervised models (DINOv2) to unproject 2D patches into 3D space, outputting metric $SE(3)$ grasp targets, surface normals, friction coefficients, and obstacle clearance envelopes.](figures/fig04_spatial_tokenization.svg){#fig-spatial-tokenization width=100%}
-
-### The 3D Metric Unprojection Transform
-
-To make sensory data actionable, the perception engine must lift 2D pixel coordinates $(u, v)$ into 3D metric Euclidean space ($\mathbf{P}_W \in \mathbb{R}^3$) using the calibrated camera intrinsic matrix $\mathbf{K}$ and the camera-to-world extrinsic transform $\mathbf{T}_{C}^{W} \in SE(3)$ [@hartley2003multiple]:
+Once the raw pixels are cleanly ingested, they must be transformed into actionable geometry. To make sensory data actionable, the perception engine lifts 2D pixel coordinates $(u, v)$ into 3D metric Euclidean space ($\mathbf{P}_W \in \mathbb{R}^3$) using the calibrated camera intrinsic matrix $\mathbf{K}$ and the camera-to-world extrinsic transform $\mathbf{T}_{C}^{W} \in SE(3)$:
 
 $$\mathbf{K} = \begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix}, \qquad \mathbf{T}_{C}^{W} = \begin{bmatrix} \mathbf{R}_{C}^{W} & \mathbf{p}_{C}^{W} \\ \mathbf{0}^T & 1 \end{bmatrix}$$
 
-Given a pixel coordinate $(u, v)$ with registered optical depth $d(u, v)$, the 3D metric coordinate in the camera reference frame $\mathbf{P}_C = [X_C, Y_C, Z_C]^T$ is:
+Given a pixel coordinate $(u, v)$ with registered optical depth $d(u, v)$, the 3D metric coordinate in the camera reference frame is computed. Transforming this point into the robot's world coordinate frame yields:
 
-$$X_C = \frac{u - c_x}{f_x} \cdot d(u, v), \quad Y_C = \frac{v - c_y}{f_y} \cdot d(u, v), \quad Z_C = d(u, v)$$
+$$\begin{bmatrix} \mathbf{P}_W \\ 1 \end{bmatrix} = \mathbf{T}_{C}^{W} \begin{bmatrix} \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} d(u,v) \\ 1 \end{bmatrix}$$
 
-Transforming this point into the robot's world coordinate frame yields:
+To extract powerful semantic features, modern physical agents use patch-based Vision Transformers (ViTs) and self-supervised visual representations like DINOv2. The visual encoder operates by slicing the input image $I \in \mathbb{R}^{H \times W \times C}$ into a grid of non-overlapping $16 \times 16$ pixel patches. Each patch undergoes a linear projection into a high-dimensional embedding space, is augmented with learnable spatial positional encodings, and passed through multi-head self-attention layers computing query ($Q$), key ($K$), and value ($V$) projections:
 
-$$\begin{bmatrix} \mathbf{P}_W \\ 1 \end{bmatrix} = \mathbf{T}_{C}^{W} \begin{bmatrix} \mathbf{P}_C \\ 1 \end{bmatrix} = \begin{bmatrix} \mathbf{R}_{C}^{W} \mathbf{P}_C + \mathbf{p}_{C}^{W} \\ 1 \end{bmatrix}$$
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
 
-### Self-Supervised Visual Encoders: From Patches to Affordances
+DINOv2 representations exhibit a remarkable physical property: without any human task supervision, the self-supervised attention maps automatically extract dense spatial features, segment distinct physical parts, and establish consistent spatial correspondences across varied lighting and texture variations—all without the latency overhead of autoregressive generation.
 
-Modern physical agents use patch-based Vision Transformers (ViTs) [@dosovitskiy2020image; @vaswani2017attention] and self-supervised visual representations—most notably **DINOv2** [@oquab2023dinov2] and **Masked Autoencoders**—to process visual scenes. 
+## Systems Failure Anatomy: The 4K Ingestion Blackout
 
-Instead of processing an image monolithically, the input $I \in \mathbb{R}^{H \times W \times C}$ is sliced into a grid of non-overlapping $P \times P$ pixel patches (typically $14 \times 14$ or $16 \times 16$). Each patch is linearly projected into a high-dimensional embedding space ($D_{\text{model}} = 384\text{--}1024$), augmented with learnable spatial positional encodings, and passed through multi-head self-attention layers:
+::: {.callout-autopsy title="The 4K Ingestion Blackout"}
+**Platform:** 45 kg Autonomous Quadruped Inspection Rover ($v = 2.5\text{ m/s}$).
+**Failure Mechanism:** To detect hairline infrastructure cracks, engineers upgraded dual stereo cameras to uncompressed 4K at 60 FPS ($2.98\text{ GB/s}$ DMA write stream).
+**Root Cause:** Continuous camera DMA crossbar saturation starved neural accelerator weight fetches on the shared UMA LPDDR5 bus, inflating inference tail latency from $22\text{ ms}$ ($P_{50}$) to $135\text{ ms}$ ($P_{99.9}$).
+**Physical Consequence:** The quadruped coasted blind for $33.8\text{ cm}$ during the blackout, striking a $15\text{ cm}$ concrete curb and fracturing the titanium femur linkage ($1.2\text{ kN}$ dynamic impact).
+:::
 
-$$\mathbf{z}_0 = \left[ \mathbf{x}_{\text{cls}}; \, \mathbf{x}_p^1 \mathbf{E}; \, \mathbf{x}_p^2 \mathbf{E}; \, \dots; \, \mathbf{x}_p^N \mathbf{E} \right] + \mathbf{E}_{\text{pos}}, \quad N = \frac{H \cdot W}{P^2}$$
+![The Autonomous Quadruped Inspection Platform. Upgrading the vision pipeline to uncompressed 4K streaming saturated the shared LPDDR5 memory crossbar, stalling NPU model weight fetches and causing a $135\text{ ms}$ tail blowout that resulted in a fatal footfall collision with a concrete curb.](figures/fig04_quadruped_perception_platform_cropped.jpg){#fig-quadruped-platform width=100%}
 
-DINOv2 representations exhibit a remarkable physical property: without any human task supervision, the self-supervised attention maps automatically segment distinct physical parts, identify geometric boundaries, and establish consistent spatial correspondences across varied lighting, scale, and texture variations [@oquab2023dinov2].
+In this incident, an autonomous 45 kg quadruped traveling at $v = 2.5\text{ m/s}$ upgraded its dual front stereo cameras from $720\text{p}$ to uncompressed $4\text{K}$ at $60\text{ FPS}$. Under nominal $720\text{p}$ operation, inference executed in $22\text{ ms}$, consuming only $d_{\text{react}} = 2.5 \times 0.022 = 5.5\text{ cm}$ of reaction travel. Under 4K streaming, crossbar contention inflated tail latency to $135\text{ ms}$ ($P_{99.9}$), causing reaction travel to expand to:
 
-### The 3D Spatial Affordance Token Schema
+$$d_{\text{react}} = 2.5\text{ m/s} \times 0.135\text{ s} = 33.8\text{ cm}$$
 
-Rather than passing raw high-dimensional image tensors ($1080\text{p} \times 3 \approx 6.2\text{ MB}$) downstream to slow deliberative models, the perception organ tokenizes the scene into a compact array of **3D Spatial Affordance Tokens** [@newcombe2011kinectfusion]:
+Because obstacle clearance was $d_{\text{clearance}} = 15.0\text{ cm}$, the robot struck the curb before the NPU could emit an adjusted footstep, fracturing the titanium femur linkage ($1.2\text{ kN}$ dynamic impact).
+
+| Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
+| :--- | :--- | :--- | :--- |
+| **$T - 0.135\text{ s}$** | Dual 4K CMOS Sensors | Hardware exposure completes; dual 4K frames enter MIPI CSI-2 receivers. | $49.7\text{ MB}$ raw payload buffered in ISP. |
+| **$T - 0.120\text{ s}$** | DMA Engine / LPDDR5 Bus | Direct Memory Access bursts write $2.98\text{ GB/s}$ across the shared UMA bus. | Memory crossbar arbiters grant priority to video streams. |
+| **$T - 0.090\text{ s}$** | Neural Processing Unit (NPU) | ViT weight streaming stalls on memory bus wait states; thread execution suspended. | Obstacle feature token extraction delayed by $113\text{ ms}$. |
+| **$T - 0.020\text{ s}$** | Trajectory Planner (MPU) | Delayed affordance token arrives; planner attempts to emit emergency lateral spline. | Quadruped has already traversed $28.7\text{ cm}$ blind. |
+| **$T + 0.000\text{ s}$** | Chassis / Front Right Leg | Titanium femur strikes concrete curb at $2.5\text{ m/s}$ ($1.2\text{ kN}$ dynamic impact). | Femur fractures; knee cycloidal reducer shears ($4,800\text{ USD}$ damage). |
+| **Root Cause** | *Systems Bottleneck* | Unthrottled 4K camera DMA crossbar saturation starved neural weight fetches, blowing out perception tail latency ($P_{99.9} = 135\text{ ms}$). |
+| **Architectural Flaw** | *Privilege & Co-Design* | Monolithic memory architecture without interconnect AXI QoS prioritization (`ARQOS`/`AWQOS`) or zero-copy DMA ring buffer bandwidth throttling. |
+
+: Flight-Recorder Telemetry Ledger: The 4K Perception Ingestion Starvation Incident. Tracing microsecond memory bus contention to physical mechanical fracture. {#tbl-telemetry-ch04}
+
+## The Spatial Affordance Interface & Co-Design Checkpoint
+
+In classical computer vision, models are trained for passive semantic classification. In Physical AI, knowing that an object is a "mug" does not tell an electric actuator where to position its fingers or how much normal force to apply. Rather than passing raw high-dimensional image tensors ($1080\text{p} \times 3 \approx 6.2\text{ MB}$) downstream to slow deliberative models, the perception organ tokenizes the scene into a compact array of **3D Spatial Affordance Tokens**:
 
 $$o_t = \left\{ \mathbf{tok}_1, \mathbf{tok}_2, \dots, \mathbf{tok}_K \right\}, \quad \mathbf{tok}_k \in \mathbb{R}^{D_{\text{token}}}$$
 
@@ -264,132 +142,15 @@ Every affordance token encapsulates five essential physical properties:
 
 $$\mathbf{tok}_k = \left\langle \mathbf{z}_{\text{feat}} \in \mathbb{R}^{128}, \quad \mathbf{T}_{\text{grasp}} \in SE(3), \quad \hat{\mathbf{n}} \in \mathbb{S}^2, \quad \hat{\mu} \in \mathbb{R}^+, \quad r_{\text{safe}} \in \mathbb{R}^+ \right\rangle$$
 
-1. **Semantic Feature Vector ($\mathbf{z}_{\text{feat}}$):** A compressed latent embedding carrying semantic identity (*"cooling valve handle"*).
-2. **Metric Grasp Frame ($\mathbf{T}_{\text{grasp}}$):** A 6-DoF target pose in $SE(3)$ specifying the approach position $\mathbf{p} = [x, y, z]^T$ and quaternion orientation $\mathbf{q} = [q_w, q_x, q_y, q_z]^T$.
-3. **Surface Normal Vector ($\hat{\mathbf{n}}$):** A unit vector in $\mathbb{S}^2$ defining the physical contact plane normal, ensuring gripper fingers close perpendicular to the contact surface.
-4. **Estimated Friction Coefficient ($\hat{\mu}$):** An inferred contact friction metric ($\hat{\mu} \approx 0.45$), allowing the safety controller to compute minimum required squeeze force without slipping.
+1. **Semantic Feature Vector ($\mathbf{z}_{\text{feat}}$):** A compressed latent embedding carrying semantic identity.
+2. **Metric Grasp Frame ($\mathbf{T}_{\text{grasp}}$):** A 6-DoF target pose in $SE(3)$ specifying the approach position and quaternion orientation.
+3. **Surface Normal Vector ($\hat{\mathbf{n}}$):** A unit vector in $\mathbb{S}^2$ defining the physical contact plane normal.
+4. **Estimated Friction Coefficient ($\hat{\mu}$):** An inferred contact friction metric ($\hat{\mu} \approx 0.45$).
 5. **Obstacle Clearance Radius ($r_{\text{safe}}$):** A geometric bounding radius used by the 1 kHz MCU Control Barrier Function to enforce collision avoidance invariants.
 
-### Action Decoders: Discrete Bins vs. Continuous Diffusion
+![**Spatial Affordance Tokenization vs. Passive Classification.** Passive digital classification reduces rich scenes to abstract text labels with zero spatial utility. Physical AI perception deploys Vision Transformers (ViT) and self-supervised models (DINOv2) to unproject 2D patches into 3D space, outputting metric $SE(3)$ grasp targets, surface normals, friction coefficients, and obstacle clearance envelopes.](figures/fig04_spatial_tokenization.svg){#fig-spatial-tokenization width=100%}
 
-How downstream policies consume these spatial tokens marks a major architectural divide in embodied AI:
-
-| Decoder Paradigm | Exemplar Architectures | Token Representation | Strengths and Trade-Offs |
-| :--- | :--- | :--- | :--- |
-| **Discrete Action Bins** | RT-1, RT-2, PaLM-E [@brohan2023rt2; @driess2023palme] | Coordinates discretized into 256 uniform bins per DoF | Leverages standard autoregressive LLM heads; exhibits spatial discretization error and high token count. |
-| **Continuous Diffusion Decoders** | Diffusion Policy, ACT [@chi2023diffusionpolicy; @zhao2023learning] | Continuous trajectories decoded via denoising score matching | High geometric precision ($\pm 1\text{ mm}$), captures multi-modal distributions, smooth trajectory chunking. |
-
-: Spatial Action Decoders Comparison. Contrasting discrete token classification heads against continuous diffusion and flow matching decoders. {#tbl-decoder-comparison}
-
-By translating raw pixels into metric $SE(3)$ affordance tokens, the perception organ provides a clean, standardized abstraction layer that shields downstream planning and reasoning organs from raw sensor noise and camera calibration shifts.
-
-
-## Multi-Sensor Synchronization and Hardware PTP Metrology
-
-When multiple sensors observe the same physical event, their measurements must be aligned with microsecond temporal accuracy. In naive software architectures, developers record timestamps by calling user-space OS utilities (such as Python's `time.time()` or C++'s `std::chrono::steady_clock::now()`) when sensor data arrives in an application callback.
-
-This pattern creates **The Software Timestamp Illusion**.
-
-![**Multi-Sensor Hardware Synchronization & Timestamp Metrology.** Software timestamps taken upon application arrival introduce $11\text{--}30\text{ ms}$ of unmanaged OS jitter and DMA transport delay. Integrating IEEE 1588 PTP hardware timestamps captures the true physical exposure midpoint ($t_{\text{mid}}$), eliminating cross-modal phase skew and preventing filter divergence.](figures/fig04_sensor_synchronization.svg){#fig-sensor-sync width=100%}
-
-### The Anatomy of Timestamp Jitter
-
-As illustrated in @fig-sensor-sync, measuring a sensor timestamp in software records the time of *data arrival in user space*, not the time the *photons struck the photodiode array*.
-
-The arrival timestamp ($t_{\text{software}}$) incorporates four distinct, stochastic delays:
-
-$$t_{\text{software}} = t_{\text{physical\_event}} + \frac{1}{2}t_{\text{exp}} + t_{\text{readout}} + t_{\text{dma\_transfer}} + t_{\text{os\_scheduler}}$$
-
-* **Exposure Midpoint Delay ($\frac{1}{2}t_{\text{exp}}$):** An image represents the integrated photon average across the entire exposure duration. For a $10\text{ ms}$ exposure, the true optical midpoint is $5\text{ ms}$ after exposure start.
-* **Sensor Readout Serialization ($t_{\text{readout}}$):** Transmitting raw pixel lines across the MIPI-CSI bus takes $5\text{--}10\text{ ms}$.
-* **DMA Transport & Driver Latency ($t_{\text{dma\_transfer}}$):** Kernel interrupt service routines (ISRs) and video-for-Linux (V4L2) buffer queues add $2\text{--}5\text{ ms}$.
-* **OS Scheduler Jitter ($t_{\text{os\_scheduler}}$):** Non-real-time Linux process preemption introduces $1\text{--}25\text{ ms}$ of unpredictable tail latency.
-
-If an IMU sample (transduced in $0.1\text{ ms}$ via SPI) is fused with a camera frame using software timestamps, the state estimator assumes both measurements occurred simultaneously. In reality, the camera image captured the world **$15\text{--}30\text{ ms}$ in the past**.
-
-For a robot moving at $1.0\text{ m/s}$, this $20\text{ ms}$ temporal skew creates a **$20\text{ mm}$ spatial inconsistency** between visual depth and inertial acceleration, causing Extended Kalman Filters (EKF) to diverge and producing phantom accelerations.
-
-### Hardware PTP (IEEE 1588) Synchronization
-
-To eliminate the software timestamp illusion, Physical AI systems implement hardware-level clock synchronization using the **Precision Time Protocol (PTP / IEEE 1588)**[^ptp]:
-
-1. **Hardware Timer Base:** The real-time microcontroller (MCU) and Linux application processor (MPU) synchronize their internal counter registers to a shared hardware clock distributed over Ethernet or dedicated interconnect lines, achieving sub-microsecond phase coherence ($\Delta t_{\text{clock}} < 1\,\mu\text{s}$).
-2. **Hardware Strobe Triggering:** Rather than letting camera sensors free-run on internal crystal oscillators, the MCU emits a periodic hardware pulse ($30.0\text{ Hz}$) on a dedicated GPIO trigger line connected to the camera's `FSYNC` pin.
-3. **Hardware Timestamp Capture:** At the precise clock cycle the exposure begins, a hardware input-capture register latches the master PTP timestamp ($t_{\text{start}}$). The true observation midpoint timestamp is computed deterministically in silicon:
-   $$t_{\text{obs\_midpoint}} = t_{\text{start}} + \frac{1}{2} t_{\text{exp\_programmed}}$$
-
-4. **Cross-Modal Kinematic Unwarping:** When fusing visual tokens with high-rate IMU states, the state estimator propagates the IMU state vector across the known temporal skew $\Delta t_{\text{skew}} = t_{\text{imu}} - t_{\text{obs\_midpoint}}$ using Lie algebra integration:
-   $$\mathbf{T}_{W}^{B}(t_{\text{obs\_midpoint}}) = \mathbf{T}_{W}^{B}(t_{\text{imu}}) \cdot \exp\left( -\boldsymbol{\xi}^{\wedge} \cdot \Delta t_{\text{skew}} \right)$$
-
-[^ptp]: Precision Time Protocol (IEEE 1588-2008 / PTPv2) provides sub-microsecond clock synchronization across distributed nodes via dedicated Time Stamping Units (TSU) integrated directly into Ethernet PHY silicon and hardware capture timer registers, bypassing operating system software stack delays.
-
-By locking every observation to a hardware PTP timestamp, the agent achieves mathematically rigorous multi-modal coherence across vision, depth, tactile, and inertial streams.
-
-
-## The Multi-Objective Perception Operating Frontier
-
-Selecting a perception pipeline is not a simple matter of choosing the highest resolution camera on the market. In an embodied agent, perception operates under unyielding physical constraints: energy comes from a finite battery pack, heat must dissipate through passive aluminum heatsinks, and decisions must beat the physical world deadline ($\tau_{\text{world}}$).
-
-Every physical perception architecture exists along a multi-dimensional **Pareto Operating Frontier**:
-
-$$\mathbf{p}^* = \arg\max_{\theta} Q(\theta) \quad \text{subject to} \quad \begin{cases} L(\theta) \le \tau_{\text{world}} - t_{\text{compute}} \\ M(\theta) \le M_{\text{DRAM\_budget}} \\ B(\theta) \le B_{\text{bus\_max}} \\ E(\theta) \le P_{\text{thermal\_max}} \end{cases}$$
-
-![**The Multi-Objective Perception Operating Frontier.** Navigating the five-variable Pareto trade-off: Observation Quality ($Q$), Latency ($L$), Memory ($M$), Energy ($E$), and Bus Bandwidth ($B$). Operating at 4K @ 60 Hz breaches the UMA memory bandwidth wall and violates the Freshness Wall ($\Delta t_{\text{wall}} = 60\text{ ms}$). The optimal embedded operating point (1080p @ 30 Hz / 720p @ 60 Hz) maximizes 3D spatial grasp accuracy while preserving real-time stability.](figures/fig04_perception_pareto.svg){#fig-perception-pareto width=100%}
-
-### The 5-Variable Perception Trade-Off
-
-As formulated in @fig-perception-pareto, every engineering choice balances five interdependent variables:
-
-1. **Quality ($Q$):** Spatial resolution and patch density required to resolve small physical features ($1\text{ mm}$ bolt threads vs. $20\text{ cm}$ pallet boundaries).
-2. **Latency ($L$):** Total sense-to-token duration ($t_{\text{transduce}} + t_{\text{dma}} + t_{\text{perceive}}$) contributing directly to the closed-loop reaction budget.
-3. **Memory Footprint ($M$):** DRAM ring buffer allocation and NPU on-chip SRAM tiling requirements.
-4. **Energy & Thermal Dissipation ($E$):** Electrical power drawn by image sensors, deserializers, and NPU systolic arrays (must remain within the mobile platform's $10\text{--}25\text{ W}$ thermal dissipation envelope).
-5. **Bus Bandwidth ($B$):** Interconnect traffic competing against CPU control threads and neural weight fetches.
-
-### Concrete Operating Regimes on Bench Hardware
-
-The following ledger compares four candidate perception configurations evaluated on real physical handling hardware:
-
-| Configuration | Resolution & Rate | Memory Traffic | Ingestion Latency ($t_{\text{ingest}}$) | NPU ViT Runtime ($t_{\text{perceive}}$) | Total Sense-to-Token Delay | Systems Assessment & Operational Viability |
-| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Low-Power / Sleep** | $480\text{p} @ 15\text{ Hz}$ | $1.8\text{ MB/s}$ | $2.1\text{ ms}$ | $5.8\text{ ms}$ | **$7.9\text{ ms}$** | Insufficient spatial resolution for fine grasping; ideal for idle standby and coarse human presence detection. |
-| **High-Rate Embedded** | $720\text{p} @ 60\text{ Hz}$ | $11.0\text{ MB/s}$ | $3.8\text{ ms}$ | $10.2\text{ ms}$ | **$14.0\text{ ms}$** | Excellent temporal freshness; low motion blur; ideal for dynamic mobile manipulation and high-speed obstacle avoidance. |
-| **Optimal Benchmark** | $1080\text{p} @ 30\text{ Hz}$ | $24.8\text{ MB/s}$ | $7.2\text{ ms}$ | $14.8\text{ ms}$ | **$22.0\text{ ms}$** | **Optimal Physical AI Design Target:** Sub-millimeter grasp accuracy with bounded bus contention and healthy closed-loop margin. |
-| **High-Resolution 4K** | $4\text{K} @ 60\text{ Hz}$ | $199.0\text{ MB/s}$ | $28.5\text{ ms}$ | $112.0\text{ ms}$ | **$140.5\text{ ms}$** | **UNSTABLE / REJECTED:** Saturates UMA memory bus, breaches the Freshness Wall ($\Delta t_{\text{wall}}$), and induces motor chatter. |
-
-: Perception Operating Regimes and Performance Ledger. Evaluating spatial resolution, memory traffic, latency, and closed-loop viability across embedded operating points. {#tbl-perception-pareto}
-
-The fundamental lesson of physical perception engineering is clear: **more pixels do not make a safer robot**. Uncontrolled visual resolution inflates information age $\Delta t$, forcing dynamic stopping distance $d_{\text{stop}}$ to expand and destabilizing the closed-loop physical plant.
-
-
-## Systems Fallacies and Pitfalls in Physical Perception
-
-When architecting sensory pipelines for embodied machines, software engineers frequently carry over assumptions from cloud computer vision that cause physical instability on hardware:
-
-::: {.callout-fallacy title="Higher Resolution Guarantees Better Manipulation"}
-* **The Fallacy:** Upgrading camera resolution from $1080\text{p}$ to $4\text{K}$ improves manipulation precision by providing higher pixel density for vision models.
-* **The Physical Reality:** Quadrupling pixel count increases DMA memory bus contention tenfold and inflates neural token extraction from $15\text{ ms}$ to $112\text{ ms}$. This additional $97\text{ ms}$ of latency expands information age $\Delta t$, forcing dynamic stopping distance $d_{\text{stop}}$ to expand and causing dynamic collisions during fast arm maneuvers.
-:::
-
-::: {.callout-fallacy title="Monocular Depth Is Sufficient Without Calibration"}
-* **The Fallacy:** Deep monocular depth networks can reliably estimate 3D geometry from a single RGB camera without explicit geometric intrinsic calibration.
-* **The Physical Reality:** Monocular depth estimation suffers from inherent scale ambiguity [@hartley2003multiple]; small changes in ambient illumination, focal distance, or object surface textures induce multi-centimeter depth errors. In contact manipulation, a $10\text{ mm}$ depth error drives gripper fingers directly into rigid fixture plates. Dependable physical perception requires metric stereo, structured light, ToF depth, or calibrated intrinsic unprojection matrices ($\mathbf{K}$).
-:::
-
-::: {.callout-fallacy title="Application Software Timers Measure Information Freshness"}
-* **The Fallacy:** Recording timestamps in user-space Python (`time.time()`) upon frame arrival provides an accurate timestamp for multi-sensor state estimation.
-* **The Physical Reality:** Software arrival timestamps incorporate photodiode charge integration, MIPI serialization, DMA transport, and non-deterministic Linux scheduler preemption ($10\text{--}30\text{ ms}$ of variable jitter). Fusing delayed images with high-rate IMU samples using software timestamps injects severe cross-modal phase skew, causing Kalman filters and factor graphs to diverge.
-:::
-
-::: {.callout-fallacy title="UMA Bus Bandwidth Is Practically Infinite"}
-* **The Fallacy:** Shared memory interconnects boasting $34\text{ GB/s}$ of theoretical LPDDR5 bandwidth can easily handle multi-camera streaming without impacting neural inference.
-* **The Physical Reality:** Memory controllers arbitrate traffic in discrete burst transactions. Unmanaged camera DMA write streams collide with NPU tensor weight streaming bursts, causing memory crossbar bank conflicts that inflate $P_{99}$ neural tail latency by over $300\%$ [@williams2009roofline; @hennessy2019computer].
-:::
-
-
-## The Observation Contract and System Handoff
-
-To establish a deterministic boundary between sensory ingestion and downstream cognition, the perception subsystem formalizes its output as the **Observation Contract ($O_t$)** (@tbl-obs-contract). This contract specifies the memory layout, hardware timestamping guarantees, and spatial affordance token schema handed off to downstream world models and trajectory planners:
+To establish a deterministic boundary between sensory ingestion and downstream cognition, the perception subsystem formalizes its output as the **Observation Contract** (@tbl-obs-contract):
 
 | Specification Domain | Architectural Parameter | Guaranteed Invariant & Validation Target |
 | :--- | :--- | :--- |
@@ -400,27 +161,59 @@ To establish a deterministic boundary between sensory ingestion and downstream c
 | **Spatial Token Schema** | 3D Affordance Tokens ($SE(3)$ grasp target + normal + friction) | $N=64$ tokens, $D_{\text{token}}=128$, sense-to-token budget $\le 20\text{ ms}$ |
 | **Dropout & Glare Fallback** | Deterministic state machine upon optical corruption | Safe hold after 2 dropped frames; switch to blind proprioception |
 
-: The Observation Contract Specification ($O_t$). Formal interface parameters, DMA allocations, and timing invariants bridging Perception to Memory. {#tbl-obs-contract}
+: The Observation Contract Specification. Formal interface parameters, DMA allocations, and timing invariants bridging Perception to Memory. {#tbl-obs-contract}
 
-### The Perception Matrix Checkpoint Ledger
+Selecting a perception pipeline requires navigating a 5-variable Pareto frontier (@fig-perception-pareto and @tbl-perception-pareto) balancing Quality ($Q$), Latency ($L$), Memory ($M$), Energy ($E$), and Bus Bandwidth ($B$):
 
-We conclude Row 1 (Perceive) by auditing its resolution across all five physical columns of the Co-Design Matrix (@tbl-perception-matrix-checkpoint):
+$$\mathbf{p}^* = \arg\max_{\theta} Q(\theta) \quad \text{subject to} \quad \begin{cases} L(\theta) \le \tau_{\text{world}} - t_{\text{compute}} \\ M(\theta) \le M_{\text{DRAM\_budget}} \\ B(\theta) \le B_{\text{bus\_max}} \\ E(\theta) \le P_{\text{thermal\_max}} \end{cases}$$
 
-| Physical Column | Perception Systems Tension | Chapter 4 Architectural Resolution |
+![**The Multi-Objective Perception Operating Frontier.** Navigating the five-variable Pareto trade-off: Observation Quality ($Q$), Latency ($L$), Memory ($M$), Energy ($E$), and Bus Bandwidth ($B$). Operating at 4K @ 60 Hz breaches the UMA memory bandwidth wall and violates the Freshness Wall ($\Delta t_{\text{wall}} = 60\text{ ms}$). The optimal embedded operating point (1080p @ 30 Hz / 720p @ 60 Hz) maximizes 3D spatial grasp accuracy while preserving real-time stability.](figures/fig04_perception_pareto.svg){#fig-perception-pareto width=100%}
+
+| Configuration | Resolution & Rate | Memory Traffic | Ingestion Latency ($t_{\text{ingest}}$) | NPU ViT Runtime ($t_{\text{perceive}}$) | Total Sense-to-Token Delay | Systems Assessment & Operational Viability |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Low-Power / Sleep** | $480\text{p} @ 15\text{ Hz}$ | $1.8\text{ MB/s}$ | $2.1\text{ ms}$ | $5.8\text{ ms}$ | **$7.9\text{ ms}$** | Insufficient spatial resolution for fine grasping; ideal for idle standby and coarse human presence detection. |
+| **High-Rate Embedded** | $720\text{p} @ 60\text{ Hz}$ | $11.0\text{ MB/s}$ | $3.8\text{ ms}$ | $10.2\text{ ms}$ | **$14.0\text{ ms}$** | Excellent temporal freshness; low motion blur; ideal for dynamic mobile manipulation and high-speed obstacle avoidance. |
+| **Optimal Benchmark** | $1080\text{p} @ 30\text{ Hz}$ | $24.8\text{ MB/s}$ | $7.2\text{ ms}$ | $14.8\text{ ms}$ | **$22.0\text{ ms}$** | **Optimal Physical AI Design Target:** Sub-millimeter grasp accuracy with bounded bus contention and healthy closed-loop margin. |
+| **High-Resolution 4K** | $4\text{K} @ 60\text{ Hz}$ | $199.0\text{ MB/s}$ | $28.5\text{ ms}$ | $112.0\text{ ms}$ | **$140.5\text{ ms}$** | **UNSTABLE / REJECTED:** Saturates UMA memory bus, breaches the Freshness Wall ($\Delta t_{\text{wall}}$), and induces motor chatter. |
+
+: Perception Operating Regimes and Performance Ledger. Evaluating spatial resolution, memory traffic, latency, and closed-loop viability across embedded operating points. {#tbl-perception-pareto}
+
+We conclude the Perception stage by auditing its resolution across all foundational physical constraints in the 5-Column Matrix Checkpoint (@tbl-perception-matrix-checkpoint):
+
+| Physical Constraint | Perception Systems Tension | Chapter 4 Architectural Resolution |
 | :--- | :--- | :--- |
-| **Column 1: Time** | Sensor charge integration ($8\text{--}15\text{ ms}$) renders frames instantly stale. | Hardware PTP (IEEE 1588) exposure strobes locking timestamps to microsecond clocks. |
-| **Column 2: Inertia** | Platform motion ($v$) warps rolling-shutter geometry. | Global-shutter sensors and motion-compensated spatial unprojection. |
-| **Column 3: Actuation** | Motor torque ripple shakes camera mounts. | Anti-aliasing low-pass analog filters and damped physical isolators. |
-| **Column 4: Energy** | Continuous ViT tokenization overheats edge NPUs. | Thermal wattage budgeting and dynamic tokenization duty cycling. |
-| **Column 5: Silicon** | $1.1\text{ GB/s}$ raw camera streams saturate UMA memory bus. | **Zero-Copy Lock-Free DMA Ring Buffers** with bus QoS priority arbitration. |
+| **Time & Freshness** | Sensor charge integration ($8\text{--}15\text{ ms}$) renders frames instantly stale. | Hardware PTP (IEEE 1588) exposure strobes locking timestamps to microsecond clocks. |
+| **Inertia & Stopping** | Platform motion ($v$) warps rolling-shutter geometry. | Global-shutter sensors and motion-compensated spatial unprojection. |
+| **Actuation & Jerk** | Motor torque ripple shakes camera mounts. | Anti-aliasing low-pass analog filters and damped physical isolators. |
+| **Energy & Thermal** | Continuous ViT tokenization overheats edge NPUs. | Thermal wattage budgeting and dynamic tokenization duty cycling. |
+| **Silicon Determinism** | $1.1\text{ GB/s}$ raw camera streams saturate UMA memory bus. | **Zero-Copy Lock-Free DMA Ring Buffers** with bus QoS priority arbitration. |
 
-: Row 1 (Perceive) Co-Design Matrix Checkpoint Ledger. Systematic architectural accounting of perception across the five physical columns. {#tbl-perception-matrix-checkpoint}
+: Perception Co-Design Checkpoint Ledger. Systematic architectural accounting of perception across the physical constraints. {#tbl-perception-matrix-checkpoint}
 
-## Chapter Summary and Handoff to Chapter 5
+::: {.callout-fallacy title="Higher Resolution Guarantees Better Manipulation"}
+* **The Fallacy:** Upgrading camera resolution from $1080\text{p}$ to $4\text{K}$ improves manipulation precision by providing higher pixel density for vision models.
+* **The Physical Reality:** Quadrupling pixel count increases DMA memory bus contention tenfold and inflates neural token extraction from $15\text{ ms}$ to $112\text{ ms}$. This additional $97\text{ ms}$ of latency expands information age $\Delta t$, forcing dynamic stopping distance $d_{\text{stop}}$ to expand and causing dynamic collisions during fast arm maneuvers.
+:::
+
+::: {.callout-fallacy title="Monocular Depth Is Sufficient Without Calibration"}
+* **The Fallacy:** Deep monocular depth networks can reliably estimate 3D geometry from a single RGB camera without explicit geometric intrinsic calibration.
+* **The Physical Reality:** Monocular depth estimation suffers from inherent scale ambiguity; small changes in ambient illumination, focal distance, or object surface textures induce multi-centimeter depth errors. In contact manipulation, a $10\text{ mm}$ depth error drives gripper fingers directly into rigid fixture plates. Dependable physical perception requires metric stereo, structured light, ToF depth, or calibrated intrinsic unprojection matrices ($\mathbf{K}$).
+:::
+
+::: {.callout-fallacy title="Application Software Timers Measure Information Freshness"}
+* **The Fallacy:** Recording timestamps in user-space Python (`time.time()`) upon frame arrival provides an accurate timestamp for multi-sensor state estimation.
+* **The Physical Reality:** Software arrival timestamps incorporate photodiode charge integration, MIPI serialization, DMA transport, and non-deterministic Linux scheduler preemption ($10\text{--}30\text{ ms}$ of variable jitter). Fusing delayed images with high-rate IMU samples using software timestamps injects severe cross-modal phase skew, causing Kalman filters and factor graphs to diverge.
+:::
+
+::: {.callout-fallacy title="UMA Bus Bandwidth Is Practically Infinite"}
+* **The Fallacy:** Shared memory interconnects boasting $34\text{ GB/s}$ of theoretical LPDDR5 bandwidth can easily handle multi-camera streaming without impacting neural inference.
+* **The Physical Reality:** Memory controllers arbitrate traffic in discrete burst transactions. Unmanaged camera DMA write streams collide with NPU tensor weight streaming bursts, causing memory crossbar bank conflicts that inflate $P_{99}$ neural tail latency by over $300\%$.
+:::
+
+## Chapter Summary and Forward Handoff
 
 This chapter established the foundational sensory organ of Physical AI: the transformation of analog photon fluxes into 3D metric affordance tokens in $SE(3)$. In physical systems, perception is not disembodied classification; it is an active physical dataflow governed by physical transduction limits, DMA bus contention across shared silicon, and microsecond timestamp synchronization.
 
 By structuring perception around zero-copy DMA ring buffers, hardware AXI QoS arbitration, self-supervised spatial patch encoders, and IEEE 1588 PTP hardware exposure midpoints, we eliminate the pre-inference ingestion tax and guarantee that sensory observations remain fresh ($\Delta t \ll \Delta t_{\text{wall}}$).
 
-In the following chapter, **Chapter 5 (Remember: Temporal World Modeling & $SE(3)$ Transform Trees)**, we investigate what happens when the physical world is temporarily occluded. We explore how an embodied agent maintains spatial permanence, models physical dynamics across time, and tracks kinematic transform trees across moving linkages when sensory photons vanish.
-
+In the following chapter, **Chapter 5 (Memory: Temporal World Modeling & $SE(3)$ Transform Trees)**, we investigate what happens when the physical world is temporarily occluded. We explore how an embodied agent maintains spatial permanence, models physical dynamics across time, and tracks kinematic transform trees across moving linkages when sensory photons vanish.
