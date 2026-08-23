@@ -4,7 +4,7 @@
 
 *Why does an intelligent foundation model that correctly understands a human voice command command a robot arm to break its own joints against a wall?*
 
-Large language and vision-language models possess extraordinary semantic competence: they can interpret complex natural language instructions, identify novel objects, and propose strategic task decompositions. In the physical world, however, pure semantic fluency is dangerously ungrounded. A foundation model has no intrinsic awareness of joint torque limits, Jacobian singularities, or physical reach boundaries. If raw model tokens are mapped directly to actuator setpoints, the result is mechanical destruction. In Physical AI, high-level models act exclusively as untrusted proposal engines—emitting time-bounded intent leases ($\mathcal{L}_{\text{intent}}$) that must be filtered through morphological reachability checks and dynamic scene freshness gates before physical execution is permitted.
+Large language and vision-language models possess extraordinary semantic competence. They can interpret complex natural language instructions, identify novel objects, and propose strategic task decompositions. In the physical world, however, pure semantic fluency is dangerously ungrounded. A foundation model has no intrinsic awareness of joint torque limits, Jacobian singularities, or physical reach boundaries. If raw model tokens are mapped directly to actuator setpoints, the result is mechanical destruction. In Physical AI, high-level models act exclusively as untrusted proposal engines—emitting time-bounded intent leases ($\mathcal{L}_{\text{intent}}$) that must be filtered through morphological reachability checks and dynamic scene freshness gates before physical execution is permitted.
 
 {{< pagebreak >}}
 
@@ -22,60 +22,41 @@ By the conclusion of this chapter, you will be able to:
 
 ## Semantic Agency: Open-World Deliberation and Physical Grounding
 
-In digital artificial intelligence, multimodal Vision-Language Models (VLMs) demonstrate astonishing capabilities. You can present a model with an image of a cluttered workbench, type the open-vocabulary prompt *"locate the rusted M8 bolt behind the heat sink,"* and watch the model generate accurate 2D bounding boxes, segmentation masks, and descriptive natural language responses.
+To understand the function of System 2 semantic deliberation, we must first locate it within the broader Physical AI cognitive architecture, as depicted in @fig-locator-ch06. Semantic Reasoning sits strictly downstream of Temporal Memory ($S_t$), ingesting consolidated representations of the environment, and acts exclusively as an upstream provider to Trajectory Planning, emitting structured intent leases ($\mathcal{L}_{\text{intent}} \to p_t$). This architectural positioning highlights a fundamental truth: high-level semantic deliberation is decoupled from real-time physical execution. 
 
-In the digital world, software operates behind glass. If the model hallucinates an object that does not exist, misidentifies a reflection, or takes two seconds to generate its output, the error remains safely contained in memory: a bounding box is drawn in the wrong pixel location on a monitor, or an API returns an incorrect JSON string. You can adjust the prompt, lower the temperature, or re-run the query.
+In digital artificial intelligence, multimodal Vision-Language Models (VLMs) operate behind glass. You can present a model with an image of a cluttered workbench, type the open-vocabulary prompt *"locate the rusted M8 bolt behind the heat sink,"* and watch the model generate accurate bounding boxes and descriptive text. If the model hallucinates an object that does not exist or takes two seconds to generate its output, the error remains safely contained in memory. A bounding box is drawn in the wrong pixel location on a monitor, or an API returns an incorrect JSON string, allowing the user to simply adjust the prompt or lower the generation temperature.
 
-In Physical AI Systems, software moves physical mass and dissipates electrical energy. The moment you connect an autoregressive vision-language model to a physical robot arm, mobile rover, or automated assembly workcell, the model's outputs cease to be advisory text tokens. If a VLM hallucinates a 3D coordinate located ten centimeters beyond an arm's physical reach, the inverse kinematics solver will invert an ill-conditioned Jacobian matrix, joint velocities will spike toward infinity, and the arm will slam violently into its mechanical hardstops or a nearby glass fixture. If the model takes $800\text{ ms}$ to generate a grasp target while a human operator reaches into the workcell, the robot will execute an obsolete action based on a world state that no longer exists.
+In Physical AI Systems, software moves physical mass and dissipates electrical energy. The moment you connect an autoregressive vision-language model to a physical robot arm, mobile rover, or automated assembly workcell, the model's outputs cease to be advisory text tokens. If a VLM hallucinates a 3D coordinate located ten centimeters beyond an arm's physical reach, the inverse kinematics solver will attempt to reach it, joint velocities will spike toward infinity, and the arm will slam violently into its mechanical hardstops or a nearby glass fixture. If the model takes $800\text{ ms}$ to generate a grasp target while a human operator reaches into the workcell, the robot will execute an obsolete action based on a world state that no longer exists.
 
-High-capacity multimodal models are indispensable for System 2 Semantic Deliberation—they provide the open-world semantic reasoning required to understand unstructured human instructions and complex visual scenes. However, they are untrusted proposal generators operating at human deliberation speeds ($0.5\text{--}2\text{ Hz}$). They possess zero intrinsic knowledge of motor dynamics, gear ratios, kinematic singularities, or physical momentum.
-
-To harness the semantic power of foundation models without risking mechanical destruction, Physical AI architectures isolate the VLM behind a formal systems contract: the Expiring Intent Lease. Before any semantic proposal reaches downstream motion planners or actuator inverters, it must pass through rigorous geometric de-projection, morphological reachability filters, and real-time freshness validation.
+High-capacity multimodal models are indispensable for System 2 Semantic Deliberation because they provide the open-world reasoning required to understand unstructured human instructions and complex visual scenes. However, they are untrusted proposal generators operating at human deliberation speeds ($0.5\text{--}2\text{ Hz}$). They possess zero intrinsic knowledge of motor dynamics, gear ratios, kinematic singularities, or physical momentum. To harness the semantic power of foundation models without risking mechanical destruction, Physical AI architectures isolate the VLM behind a formal systems contract. Before any semantic proposal reaches downstream motion planners or actuator inverters, it must pass through rigorous geometric de-projection, morphological reachability filters, and real-time freshness validation.
 
 ## Affordance Grounding and Kinematic Reachability Corridors
 
-When a reasoning engine identifies an interaction target, the semantic understanding must be grounded into a metric coordinate frame within the physical workspace.
+When a reasoning engine identifies an interaction target, the semantic understanding must be grounded into a metric coordinate frame within the physical workspace. This process translates open-vocabulary tokens into the precise geometric task spaces required by physical machines.
 
-### Lifting 2D Semantic Tokens into 3D Metric Affordance Frames
-When a vision-language model predicts a spatial interaction point $(u, v)$ on an image plane, the reasoning engine lifts the 2D point into a metric 6-DoF target coordinate frame $\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$:
+Lifting 2D semantic tokens into 3D metric affordance frames begins when a vision-language model predicts a spatial interaction point $(u, v)$ on an image plane. The reasoning engine lifts this 2D point into a metric 6-DoF target coordinate frame $\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$. The 3D position $\mathbf{p}_{\text{target}}^{\text{world}}$ is computed by multiplying the inverse intrinsic camera matrix $\mathbf{K}^{-1}$ by the estimated depth $d(u, v)$, and transforming the result by the camera extrinsic pose $\mathbf{T}_{\text{camera}}^{\text{world}}$. The approach orientation is then aligned by directing the gripper approach vector antiparallel to the estimated surface normal.
 
-$$\mathbf{T}_{\text{target}}^{\text{world}} = \begin{bmatrix} \mathbf{R}_{\text{target}}^{\text{world}} & \mathbf{p}_{\text{target}}^{\text{world}} \\ \mathbf{0}^T & 1 \end{bmatrix}$$
+A proposed target must reside strictly inside the robot's reachable workspace envelope $\mathcal{W}_{\text{reach}}$, effectively a 3D bounding hull representing the outer limits of kinematic feasibility. Furthermore, the planner constructs keep-out corridors ($\mathcal{B}_{\text{safe}}$) bounding the motion. Any target coordinate generated outside this 3D bounding hull or colliding with $\mathcal{B}_{\text{safe}}$ is immediately rejected before passing to any downstream trajectory generator.
 
-The 3D position $\mathbf{p}_{\text{target}}^{\text{world}}$ is computed by multiplying the inverse intrinsic camera matrix $\mathbf{K}^{-1}$ by depth $d(u, v)$ and transforming by the camera extrinsic pose $\mathbf{T}_{\text{camera}}^{\text{world}}$.
-
-### 3D Bounding Hulls and Morphological Reachability
-
-A proposed target $\mathbf{p}_{\text{target}}$ must reside strictly inside the robot's reachable workspace envelope $\mathcal{W}_{\text{reach}}$, effectively a 3D bounding hull representing the outer limits of kinematic feasibility:
-
-$$\|\mathbf{p}_{\text{target}} - \mathbf{p}_{\text{base}}\| \le R_{\text{max}} - d_{\text{margin}}$$
-
-Targets generated outside this 3D bounding hull are immediately rejected before passing to any downstream planner. 
-
-### Jacobian Condition Number and Yoshikawa Manipulability Ellipses
-
-Furthermore, approaching singular configurations near the workspace boundary causes joint velocities to explode, as the inverse kinematics solve involves inverting the Jacobian matrix ($\dot{\mathbf{q}} = \mathbf{J}^\dagger \dot{\mathbf{x}}$). The reasoning engine screens proposals using the **Yoshikawa Manipulability Index** ($w$) and the **Jacobian Condition Number** ($\kappa(\mathbf{J})$):
+Approaching singular configurations near the workspace boundary causes joint velocities to explode, as the inverse kinematics solve involves inverting the Jacobian matrix. If an end-effector is commanded to move with spatial velocity $\mathbf{v}$, the required joint velocities are given by $\dot{\mathbf{q}} = \mathbf{J}^{-1}\mathbf{v}$. At a kinematic singularity, the determinant of the Jacobian approaches zero, causing the required joint velocities to approach infinity. To prevent this, the reasoning engine screens proposals using the Yoshikawa Manipulability Index ($w$) and the Jacobian Condition Number ($\kappa(\mathbf{J})$):
 
 $$w(\mathbf{q}) = \sqrt{\det\left( \mathbf{J}(\mathbf{q}) \mathbf{J}^T(\mathbf{q}) \right)}, \qquad \kappa(\mathbf{J}) = \frac{\sigma_{\max}(\mathbf{J})}{\sigma_{\min}(\mathbf{J})}$$
 
-The Yoshikawa manipulability index represents the volume of the manipulability ellipsoid; values approaching zero indicate the loss of a degree of freedom. The condition number $\kappa(\mathbf{J})$ indicates the error amplification when inverting the Jacobian. Proposals producing $w(\mathbf{q}) < w_{\text{min}}$ or $\kappa(\mathbf{J}) > \kappa_{\text{max}}$ (e.g., $\kappa > 50$) are rejected, restricting motion to safe kinematic reachability corridors.
+The Yoshikawa manipulability index represents the volume of the manipulability ellipsoid, where values approaching zero indicate the loss of a degree of freedom. The condition number $\kappa(\mathbf{J})$ evaluates the ratio of the largest to smallest singular values of the Jacobian, indicating the error amplification when inverting the matrix. Proposals producing low manipulability ($w(\mathbf{q}) < w_{\text{min}}$) or excessive condition numbers (e.g., $\kappa(\mathbf{J}) > 50$) are rejected, restricting motion to safe kinematic reachability corridors.
+
+These reachability requirements manifest uniquely across the three canonical physical archetypes. In mobility route planning, spatial grounding involves projecting semantic goals onto a 2.5D elevation map, verifying that the proposed coordinate does not lie within untraversable terrain or exceed the rover's static rollover angle. In contact manipulation, the requirement centers on grasping near workspace boundaries, where ill-conditioned Jacobians threaten to snap harmonic drives when attempting to reach targets situated behind obstacles. In cybernetic process control, the operational envelope is defined not by 3D metric coordinates, but by state-space bounds such as pressure vessel limits and thermal saturation thresholds, requiring the semantic reasoning engine to verify that its proposed setpoints do not exceed safe thermodynamic envelopes.
 
 ## Vision-Language Models & Causal Intent Decoders
 
-To understand why large models fail physically, we must examine their computational anatomy from first principles.
+To understand why large models fail physically, we must examine their computational anatomy from first principles, tracing how unstructured visual and text data is ingested, projected, and decoded in silicon.
 
-### Text Tokenization and Multimodal Projection
+Modern VLMs process inputs not as physical dimensions, but as abstract discrete tokens. Text is processed using Byte-Pair Encoding (BPE), a compression algorithm that maps common string sequences to integer identifiers, embedding them into a high-dimensional vocabulary latent space. Visual information from camera sensors is divided into non-overlapping patches and processed by a vision encoder, typically a Vision Transformer (ViT). These raw visual embeddings are then projected into the exact same latent dimension as the text tokens via a multimodal projection layer, often constructed from a Multi-Layer Perceptron (MLP). This architectural adapter aligns the 2D visual embedding space with the linguistic embedding space, enabling the model to perform joint semantic reasoning over both text and imagery.
 
-Modern VLMs process inputs not as physical dimensions, but as abstract discrete tokens. Text is processed using Byte-Pair Encoding (BPE), mapping strings to integers. Visual information from camera sensors is divided into patches, processed by a vision encoder (like ViT), and projected into the same latent dimension as the text tokens via a multimodal projection adapter (typically a Multi-Layer Perceptron, or MLP). This aligns the visual embedding space with the linguistic embedding space, enabling joint reasoning.
+At the core of the VLM lies the causal transformer decoder. In a causal, or autoregressive, architecture, the model predicts the next token $x_{t+1}$ conditioned strictly on the preceding tokens $x_1, \dots, x_t$. The transformer achieves this using scaled dot-product attention paired with a triangular causal mask. The mask sets all future attention weights to negative infinity ($M_{ij} = -\infty$ for $j > i$), ensuring that token generation cannot look ahead into the future. Through query-key-value cross-attention, tokens contextually integrate information from earlier in the sequence. However, this decoding process is purely statistical. The model learns token co-occurrence probabilities from internet-scale datasets, operating entirely decoupled from the laws of physics. It does not integrate ordinary differential equations, measure gear backlash, or understand mechanical impedance.
 
-### The Causal Transformer Decoder
+Autoregressive token generation faces a severe hardware bottleneck: it is fundamentally memory-bandwidth bound during decoding. To avoid recomputing the dense attention matrix for the entire sequence at every discrete generation step, inference engines maintain a Key-Value (KV) cache. The KV-cache stores the Key and Value tensors for all previously computed tokens. The generation process thus splits into two phases: a compute-bound prefill phase that rapidly ingests the initial prompt, followed by a memory-bandwidth-bound decode phase where the KV-cache expands linearly with each new token.
 
-At the core of the VLM lies the causal transformer decoder. In a causal (autoregressive) architecture, the model predicts the next token $x_{t+1}$ conditioned strictly on the preceding tokens $x_1, \dots, x_t$. The transformer uses scaled dot-product attention, allowing tokens to contextually integrate information from earlier in the sequence. However, this process is purely semantic—the model learns co-occurrence probabilities from internet-scale datasets, completely decoupled from the laws of physics. It does not integrate ordinary differential equations or understand mechanical impedance.
-
-### KV-Cache Dynamics and Tail Latency Spikes ($P_{99}$)
-
-Autoregressive token generation is memory-bandwidth bound. To avoid recomputing the attention matrix for the entire sequence at every step, inference engines maintain a Key-Value (KV) cache. As the generation sequence grows, the KV-cache expands linearly, leading to erratic memory access patterns. On edge silicon with constrained memory buses, this manifests as severe tail latency spikes ($P_{99}$ latency). A token generation that typically takes $100\text{ ms}$ might occasionally stall for $800\text{ ms}$ during memory paging or thermal throttling.
-
-Because of this computational architecture—probabilistic autoregressive decoding subject to high $P_{99}$ latency—high-capacity VLMs must act strictly as untrusted proposal engines. They provide vital semantic direction but cannot guarantee temporal determinism or physical safety.
+As the KV-cache grows, fetching it from memory saturates the memory bus. On edge silicon with constrained bandwidth, this dynamic memory pressure manifests as severe tail latency spikes, often measured as $P_{99}$ latency. A token generation sequence that typically completes in $400\text{ ms}$ might suddenly stall for $1800\text{ ms}$ due to dynamic prompt lengths, cache evictions, or thermal throttling. Because autoregressive decoding exhibits unpredictable tail latency ($400\text{--}1800\text{ ms}$), high-capacity VLMs must act strictly as untrusted proposal engines. They provide vital semantic direction but, owing to their non-deterministic silicon execution, prove exactly why System 2 must never directly command time-critical motor hardware.
 
 ## Systems Failure Anatomy: The Unbounded Semantic Reach
 
@@ -106,20 +87,21 @@ Passing this un-screened target directly to the inverse kinematics solver caused
 
 ## The Expiring Intent Lease Interface & Co-Design Checkpoint
 
-To harness the VLM without granting it unvetted authority, the reasoning subsystem formalizes the **Time-Bounded Intent Lease** ($\mathcal{L}_{\text{intent}}$). A high-level foundation model does not emit raw PWM voltages; it emits this structured contract:
+To harness the VLM without granting it unvetted authority, the reasoning subsystem formalizes the Time-Bounded Intent Lease ($\mathcal{L}_{\text{intent}}$). A high-level foundation model does not emit raw PWM voltages; rather, it emits this rigorously structured interface contract, encapsulating the goal while defining the spatial and temporal boundaries of its validity.
 
-$$\mathcal{L}_{\text{intent}} = \left\langle \text{TaskID}, \; \mathbf{T}_{\text{target}}^{\text{world}}, \; \mathcal{W}_{\text{corridor}}, \; v_{\text{max}}, \; t_{\text{issued}}, \; t_{\text{expire}}, \; \gamma_{\text{confidence}} \right\rangle$$
+| Parameter | Specification Definition | Example Target Value | Verification Boundary |
+| :--- | :--- | :--- | :--- |
+| **$\mathbf{T}_{\text{target}}^{\text{world}}$** | Metric $SE(3)$ goal coordinate defining the physical interaction point. | $[0.45, 0.20, 0.35, \mathbf{R}]$ | Must reside within $\mathcal{W}_{\text{reach}}$. |
+| **$\mathcal{W}_{\text{corridor}}$** | Geometric volume (convex polyhedral prism) authorizing downstream movement. | $10\text{ cm}$ radius tube | Prevents traversal through keep-out zones. |
+| **$v_{\text{max}}$** | Hard velocity ceiling derived from dynamic stopping limits. | $0.5\text{ m/s}$ | Constrains kinetic energy accumulation. |
+| **$t_{\text{expire}}$** | Strict timestamp deadline ($t_{\text{issued}} + \tau_{\text{lease}}$) revoking physical authority. | $t_{\text{issued}} + 300\text{ ms}$ | Ensures execution on fresh scene states. |
+| **$\gamma_{\text{confidence}}$** | Conformal model confidence score triggering abstention if uncertain. | $\ge 0.85$ | Triggers safe position hold upon ambiguity. |
 
-* **Target Pose ($\mathbf{T}_{\text{target}}^{\text{world}} \in SE(3)$):** The metric 3D goal coordinate.
-* **Bounding Spatial Corridor ($\mathcal{W}_{\text{corridor}} \subset \mathbb{R}^3$):** A geometric volume (convex polyhedral prism) within which downstream trajectory planners are authorized to move.
-* **Maximum Permissible Velocity ($v_{\text{max}}$):** A hard velocity ceiling derived from dynamic stopping limits.
-* **Expiration Timestamp ($t_{\text{expire}} = t_{\text{issued}} + \tau_{\text{lease}}$):** A strict deadline (typically $200\text{--}500\text{ ms}$). If the downstream planner fails to complete the motion or renew the lease before $t_{\text{expire}}$, physical authority is revoked automatically.
+: The Expiring Intent Lease Interface. Formal parameters, reachability bounds, and lease timing invariants bridging Reasoning to Planning. {#tbl-intent-lease}
 
-### The 5-Column Matrix Checkpoint Audit
+We conclude the Reasoning stage by auditing its resolution across all foundational physical constraints in a unified 5-column ledger (@tbl-intent-matrix-checkpoint). This matrix ensures that the high-level semantic capability remains strictly subordinated to mechanical safety limits.
 
-We conclude the Reasoning stage by auditing its resolution across all foundational physical constraints in a unified 5-column ledger (@tbl-intent-matrix-checkpoint):
-
-| Physical Constraint | Systems Tension | Architectural Resolution | Parameter | Verification Boundary |
+| Physical Constraint | Systems Tension | Architectural Resolution | Interface Parameter | Verification Boundary |
 | :--- | :--- | :--- | :--- | :--- |
 | **Time & Freshness** | Slow VLM deliberation risks commanding obsolete actions against moving targets. | **Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$)** with hard Time-To-Live deadlines. | `lease.validity_duration_ms` | Timestamp expiry ($t > t_{\text{expire}}$) |
 | **Inertia & Stopping** | High-level goals ignore moving mass and momentum requirements. | Bounded velocity corridors conditioned on dynamic stopping margins. | `trajectory.max_velocity` | Deceleration limit envelope |
@@ -127,12 +109,12 @@ We conclude the Reasoning stage by auditing its resolution across all foundation
 | **Reach & Boundaries** | VLM hallucinates targets outside physical manipulator limits. | **Morphological reachability filters** via 3D bounding hulls. | `reachability.max_radius` | $R_{\text{max}} - d_{\text{margin}}$ |
 | **Silicon Determinism** | KV-cache tail latency ($P_{99}$) stalls physical execution loops. | **Asynchronous Dual-Brain Decoupling:** Slow leases feed fast planners. | `confidence.min_threshold` | Fallback trigger on latency/ambiguity |
 
-: Reasoning Co-Design Checkpoint Ledger. Systematic 5-column architectural accounting of reasoning and deliberation across physical constraints. {#tbl-intent-matrix-checkpoint}
+: Reasoning Co-Design Checkpoint Ledger. Systematic architectural accounting of reasoning and deliberation across physical constraints. {#tbl-intent-matrix-checkpoint}
 
 ## Chapter Summary and Forward Handoff
 
-This chapter established how high-level semantic reasoning is grounded into metric physical action without risking mechanical destruction. High-capacity foundation models provide extraordinary open-world semantic comprehension, but their autoregressive architecture and variable latency mean they must act strictly as untrusted proposal generators.
+This chapter established how high-level semantic reasoning is grounded into metric physical action without risking mechanical destruction. High-capacity foundation models provide extraordinary open-world semantic comprehension by fusing visual patches and text tokens into shared latent spaces. However, their autoregressive architecture, memory-bandwidth limitations, and variable latency dictate that they must act strictly as untrusted proposal generators.
 
-By packaging high-level intent into Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) bounded by morphological 3D bounding hulls and restricted by Jacobian condition numbers ($\kappa(\mathbf{J}) \le 50$), we eliminate kinematic whiplash and ensure that semantic hallucinations never cause physical collisions.
+By packaging high-level intent into Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) bounded by morphological 3D bounding hulls and restricted by Jacobian condition numbers ($\kappa(\mathbf{J}) \le 50$), we eliminate kinematic whiplash and ensure that semantic hallucinations never cause physical collisions. We secure the temporal validity of these plans by enforcing strict timestamp expirations, guaranteeing that a robot never moves based on stale perceptions.
 
-In the following chapter, **Chapter 7 (Plan: Action Chunking, Diffusion Decoders, and Polynomial Splines)**, we explore how physical agents translate these time-bounded intent leases into smooth, dynamically feasible motor trajectories that bridge multi-millisecond computational delays and feed real-time torque controllers.
+In the following chapter, **Chapter 7 (Plan: Action Chunking, Diffusion Decoders, and Polynomial Splines)**, we explore how physical agents translate these time-bounded intent leases into smooth, dynamically feasible motor trajectories. We will examine the fast planning architectures that operate downstream of the VLM, bridging multi-millisecond computational delays to feed real-time torque controllers and bring the semantic intention to physical life.
