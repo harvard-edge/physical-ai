@@ -62,13 +62,13 @@ where $\mathbf{M}_{\text{causal}}$ is an upper-triangular matrix with $-\infty$ 
 
 To emit continuous robot actions from an autoregressive architecture designed for discrete vocabulary tokens, VLA models (such as RT-2 and OpenVLA) discretize continuous control actions into **Action Bins** [@brohan2023rt2; @kim2024openvla]. A continuous 7-DoF robot action vector $\mathbf{a} = [\Delta x, \Delta y, \Delta z, \Delta \phi_x, \Delta \phi_y, \Delta \phi_z, \text{gripper}]^T \in \mathbb{R}^7$ (representing Cartesian end-effector translation deltas, rotation deltas, and normalized gripper aperture) is normalized to $[a_{\text{min}}, a_{\text{max}}] = [-1, 1]$ and mapped into $B = 256$ uniform discrete bins:
 
-$$\text{bin}(a_i) = \text{clip}\left( \left\lfloor \frac{a_i - a_{\text{min}}}{a_{\text{max}} - a_{\text{min}}} \times (B - 1) \right\rfloor, 0, B - 1 \right)$$
+$$\text{bin}(a_i) = \text{clip}\left( \left\lfloor \frac{a_i - a_{\text{min}}}{a_{\text{max}} - a_{\text{min}}} \cdot B \right\rfloor, 0, B - 1 \right)$$
 
-During inference, the predicted discrete action token index $k \in [0, B - 1]$ is un-binned back into continuous metric space via linear de-quantization:
+During inference, the predicted discrete action token index $k \in [0, B - 1]$ is un-binned back into continuous metric space via linear de-quantization to the bin center:
 
-$$\hat{a}_i = a_{\text{min}} + \frac{k + 0.5}{B - 1}(a_{\text{max}} - a_{\text{min}})$$
+$$\hat{a}_i = a_{\text{min}} + \frac{k + 0.5}{B}(a_{\text{max}} - a_{\text{min}})$$
 
-For an end-effector velocity bound of $[-0.5, +0.5]\text{ m/s}$ with $B=256$, the discretization resolution is $\Delta v = \frac{1.0}{255} \approx 3.92\text{ mm/s}$. The language model's vocabulary is extended with special action tokens ($\langle\text{act\_0}\rangle, \dots, \langle\text{act\_255}\rangle$), allowing the transformer to emit physical action trajectories using standard cross-entropy loss.
+For an end-effector velocity bound of $[-0.5, +0.5]\text{ m/s}$ with $B=256$, the discretization resolution is $\Delta v = \frac{1.0}{256} \approx 3.91\text{ mm/s}$. The language model's vocabulary is extended with special action tokens ($\langle\text{act\_0}\rangle, \dots, \langle\text{act\_255}\rangle$), allowing the transformer to emit physical action trajectories using standard cross-entropy loss.
 
 While action binning enables foundation models to express multimodal behaviors, autoregressive token generation suffers from severe micro-architectural bottlenecks on edge silicon. Emitting a single 7-DoF action vector requires the model to execute $7$ sequential forward passes, generating tokens $\langle\text{act\_0}\rangle$ through $\langle\text{act\_6}\rangle$ one by one. Because single-batch token generation has an arithmetic intensity of less than $1\text{ FLOP/byte}$, execution is fundamentally memory-bandwidth bound. To avoid recomputing Key-Value activations across multi-frame observation histories, the runtime maintains a **Key-Value (KV) Cache**. As the sequence expands in Unified Memory Architecture (UMA) LPDDR5 DRAM, sequential cache fetches saturate the shared memory bus, competing with real-time camera DMA transfers and inflating $P_{99}$ tail latency from nominal $P_{50} = 450\text{ ms}$ to an unmanageable $P_{99} = 1800\text{ ms}$. This severe latency jitter confirms why slow autoregressive VLAs must never be placed inside real-time motor control loops.
 
@@ -93,7 +93,7 @@ Crucially, physical reachability extends beyond positional coordinates: the robo
 
 $$\dot{\mathbf{x}} = \mathbf{J}(\mathbf{q})\dot{\mathbf{q}} \implies \dot{\mathbf{q}} = \mathbf{J}^\dagger(\mathbf{q})\dot{\mathbf{x}}$$
 
-where $\mathbf{J}^\dagger = \mathbf{J}^T(\mathbf{J}\mathbf{J}^T)^{-1}$ is the right Moore-Penrose pseudo-inverse for redundant manipulators ($n \ge 6$). Full multi-link kinematic derivations and damped least-squares formulations are provided in Section 9 of the Mathematical Foundations reference appendix.
+where $\mathbf{J}^\dagger = \mathbf{J}^T(\mathbf{J}\mathbf{J}^T)^{-1}$ is the right Moore-Penrose pseudo-inverse for redundant manipulators ($n \ge 6$). Full multi-link kinematic derivations and damped least-squares formulations are provided in Appendix C.9 (Section 9: Differential Kinematics, Manipulator Jacobians, and Singularity Metrics).
 
 As an articulated arm approaches a kinematic singularity (such as full arm extension or wrist gimbal alignment), the Jacobian loses rank, its minimum singular value collapses ($\sigma_{\text{min}}(\mathbf{J}) \to 0$), and the inversion of $\mathbf{J}\mathbf{J}^T$ becomes severely ill-conditioned. Under these conditions, attempting to execute even an infinitesimal Cartesian displacement requires infinite joint velocities ($\|\dot{\mathbf{q}}\| \to \infty$).
 

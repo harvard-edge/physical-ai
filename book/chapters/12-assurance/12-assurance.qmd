@@ -28,7 +28,23 @@ After studying this chapter, you will be able to:
 
 In modern artificial intelligence research, the standard methodology for evaluating learned policies relies heavily on physics simulation. Engineering teams train reinforcement learning agents or conditional diffusion models across millions of parallel simulated episodes, celebrating benchmark success rates exceeding $99\%$ in synthetic environments. When these high-scoring policies are deployed onto physical machines, however, they frequently fail within minutes of field operation. This persistent divergence between synthetic benchmark performance and real-world dependability constitutes the Sim-to-Real Verification Crisis (@fig-locator-ch12).
 
-Simulators are fundamentally idealized numerical approximations of physical processes. By their computational construction, physics engines execute forward policy passes in virtual lockstep time, rendering pristine pinhole camera images with instantaneous global exposures. They omit the non-deterministic memory crossbar contention of target silicon, the thermal downclocking of enclosed compute packaging, the optical distortion of rain spray across camera lenses, and the catastrophic collapse of surface friction when tires contact wet asphalt. A policy that learns to exploit the deterministic timing and frictionless contact models of a simulator develops brittle control strategies that become hazardous when subjected to real-world physics.
+Simulators are fundamentally idealized numerical approximations of physical processes. By their computational construction, physics engines execute forward policy passes in virtual lockstep time, rendering pristine pinhole camera images with instantaneous global exposures. They omit the non-deterministic memory crossbar contention of target silicon, the thermal downclocking of enclosed compute packaging, the optical distortion of rain spray across camera lenses, and the catastrophic collapse of surface friction when tires contact wet asphalt.
+
+Mathematically, let $\dot{\mathbf{x}}_{\text{sim}}(t) = f_{\text{sim}}(\mathbf{x}_{\text{sim}}(t), \mathbf{u}(t))$ represent the simulated closed-loop dynamics. The true continuous physical dynamics on physical hardware evolve according to:
+
+$$\dot{\mathbf{x}}_{\text{real}}(t) = f_{\text{sim}}(\mathbf{x}_{\text{real}}(t), \mathbf{u}(t)) + \boldsymbol{\Delta}(\mathbf{x}_{\text{real}}(t), \mathbf{u}(t), t)$$
+
+where $\boldsymbol{\Delta}(\mathbf{x}, \mathbf{u}, t) = \Delta f_{\text{friction}}(\mathbf{x}) + \Delta g_{\text{act}}(\mathbf{u}) + \mathbf{w}_{\text{delay}}(t)$ encapsulates unmodeled friction collapse, actuator bandwidth limits, and sensor transport latency.
+
+Under Lipschitz continuity with constant $L$, the real-world tracking divergence compounds exponentially over planning horizon $t$ according to Gronwall's inequality:
+
+$$\|\mathbf{x}_{\text{real}}(t) - \mathbf{x}_{\text{sim}}(t)\| \le \int_0^t e^{L(t-\tau)} \|\boldsymbol{\Delta}(\mathbf{x}_{\text{real}}(\tau), \mathbf{u}(\tau), \tau)\| \, d\tau$$
+
+Because simulation benchmarks evaluate policies over an idealized disturbance distribution $\mathcal{D}_{\text{sim}}$, achieving a $99.4\%$ simulation success rate:
+
+$$S_{\text{sim}} = \frac{1}{N_{\text{sim}}} \sum_{i=1}^{N_{\text{sim}}} \mathbb{I}\left( \mathbf{x}_{\text{sim}}^{(i)} \in \mathcal{C}_{\text{safe}} \right) \ge 0.994$$
+
+provides zero mathematical bound on the real-world physical failure probability $P_{\text{real}}(\text{Loss}) = \mathbb{E}_{\text{real}}[\mathbb{I}(\mathbf{x}_{\text{real}} \notin \mathcal{C}_{\text{safe}})]$ whenever real disturbances fall outside the simulation support ($\text{supp}(\mathcal{D}_{\text{real}}) \not\subseteq \text{supp}(\mathcal{D}_{\text{sim}})$).
 
 Treating simulation metrics as sufficient proof of physical safety violates the fundamental laws of embodied systems. Software bits can be rolled back upon an unhandled exception, but kinetic energy cannot be rewound. When an autonomous machine misinterprets an optical reflection or stalls during an operating system memory compaction cycle, physical momentum carries the mass into obstacles, damaging mechanical linkages and endangering human collaborators. Demonstrating that an embodied agent is safe for physical deployment requires moving beyond open-loop benchmark scores to construct a defensible engineering assurance case.
 
@@ -39,9 +55,19 @@ This chapter establishes the rigorous qualification and assurance methodology re
 
 An embodied physical agent cannot be certified as universally safe across all operating environments. A navigation policy trained and qualified for dry indoor warehouse floors under constant diffuse LED lighting will fail catastrophically when exposed to outdoor solar glare, standing water, or loose gravel. Safety in physical systems is strictly contingent upon operating within a mathematically bounded and empirically verified **Operational Design Domain (ODD)** [@leveson2011engineering].
 
-We define the Operational Design Domain $\mathcal{X}_{\text{ODD}}$ as a compact subset of the multi-dimensional environmental, kinematic, and sensor state space:
+We define the Operational Design Domain $\mathcal{X}_{\text{ODD}}$ as the Cartesian product of environmental, kinematic, and sensor state spaces:
 
-$$\mathcal{X}_{\text{ODD}} = \left\{ \mathbf{x} \in \mathbb{R}^k \;\middle|\; x_{i,\text{min}} \le x_i \le x_{i,\text{max}}, \quad \forall i \in \{1, \dots, k\} \right\} \subset \mathbb{R}^k$$
+$$\mathcal{X}_{\text{ODD}} = \mathcal{E}_{\text{env}} \times \mathcal{K}_{\text{kin}} \times \mathcal{S}_{\text{sens}} \subset \mathbb{R}^{d_e + d_k + d_s}$$
+
+$$\begin{aligned}
+\mathcal{E}_{\text{env}} &= \left\{ \mathbf{e} \in \mathbb{R}^{d_e} \;\middle|\; \mathbf{e}_{\text{min}} \le \mathbf{e} \le \mathbf{e}_{\text{max}} \right\} \quad &&(E_{\text{amb}}, T_{\text{amb}}, R_{\text{rain}}, \mu) \\
+\mathcal{K}_{\text{kin}} &= \left\{ \mathbf{x}_{\text{kin}} \in \mathbb{R}^{d_k} \;\middle|\; v \le v_{\text{safe}}(\mu, d_{\text{clear}}), m_{\text{load}} \le m_{\text{max}}, \|\theta_{\text{slope}}\| \le \theta_{\text{max}} \right\} \quad &&(\text{Kinematics}) \\
+\mathcal{S}_{\text{sens}} &= \left\{ \mathbf{s} \in \mathbb{R}^{d_s} \;\middle|\; \text{SNR} \ge \text{SNR}_{\text{min}}, \Delta t_{\text{cam}} \le \tau_{\text{fresh}}, \|\dot{\mathbf{b}}_g\| \le b_{\text{max}} \right\} \quad &&(\text{Sensors})
+\end{aligned}$$
+
+where the dynamic friction-aware velocity ceiling is strictly governed by physical stopping traction:
+
+$$v_{\text{safe}}(\mu, d_{\text{clear}}) = \sqrt{2 \mu g d_{\text{clear}}}$$
 
 The ODD specification establishes three non-negotiable parameter categories (@tbl-odd-boundaries):
 
@@ -53,7 +79,14 @@ The ODD specification establishes three non-negotiable parameter categories (@tb
 
 : Operational Design Domain ($\mathcal{X}_{\text{ODD}}$) Boundary Specifications. Quantifying environmental, kinematic, and sensor envelopes governing autonomous physical deployment. {#tbl-odd-boundaries}
 
-When external environmental conditions, sensor dropouts, or actuator thermal limits breach the certified boundaries of $\mathcal{X}_{\text{ODD}}$, the autonomous policy's operational authorization is revoked. The dedicated bare-metal microcontroller immediately transitions the machine into a deterministic Category 1 controlled deceleration stop or Category 2 position hold, preventing open-loop execution outside qualified safety envelopes.
+The runtime ODD indicator contract is evaluated by the microcontroller at $1000\text{ Hz}$:
+
+$$\mathbb{I}_{\text{ODD}}(\mathbf{e}, \mathbf{x}_{\text{kin}}, \mathbf{s}) = \begin{cases}
+1 & \text{if } (\mathbf{e} \in \mathcal{E}_{\text{env}}) \land (\mathbf{x}_{\text{kin}} \in \mathcal{K}_{\text{kin}}) \land (\mathbf{s} \in \mathcal{S}_{\text{sens}}) \\
+0 & \text{otherwise}
+\end{cases}$$
+
+When external environmental conditions, sensor dropouts, or actuator thermal limits breach the certified boundaries of $\mathcal{X}_{\text{ODD}}$ ($\mathbb{I}_{\text{ODD}} = 0$), the autonomous policy's operational authorization is revoked ($\tau_{\text{lease}} \leftarrow 0$). The dedicated bare-metal microcontroller immediately transitions the machine into a deterministic Category 1 controlled deceleration stop or Category 2 position hold, preventing open-loop execution outside qualified safety envelopes.
 
 
 ## The 4-Rung Qualification Ladder: Historical Replay to Shadow Fleet Deployment
@@ -74,16 +107,30 @@ Each rung of the ladder targets a distinct class of failure mechanisms (@tbl-qua
 : The 4-Rung Physical AI Qualification Ladder. Progressive empirical validation from offline telemetry logs to live physical shadow deployment. {#tbl-qualification-ladder}
 
 ### Rung 1: Historical Replay Testing
-The candidate policy is evaluated against millions of frames of historical fleet telemetry recorded across previous real-world operations. This open-loop evaluation verifies regression accuracy, confirming that model updates maintain behavioral parity on known edge cases, obstacle maneuvers, and emergency takeover scenarios.
+The candidate policy is evaluated against millions of frames of historical fleet telemetry recorded across previous real-world operations $\mathcal{D}_{\text{hist}} = \{(\mathbf{o}_k, \mathbf{a}_k^*)\}_{k=1}^{N}$. This open-loop evaluation verifies regression accuracy:
+
+$$\mathcal{L}_{\text{replay}}(\theta) = \frac{1}{N} \sum_{k=1}^N \|\pi_\theta(\mathbf{o}_k) - \mathbf{a}_k^*\|_2^2 \le \epsilon_{\text{replay}} = 0.015\text{ rad}^2$$
+
+confirming that model updates maintain behavioral parity on known edge cases, obstacle maneuvers, and emergency takeover scenarios.
 
 ### Rung 2: Physics-Based Domain Randomization
-The candidate policy is placed in closed-loop control within high-fidelity physics simulators. Physical parameters are randomized across broad distributions: link mass ($\pm 20\%$), surface friction ($\mu \in [0.20, 1.20]$), ambient lighting ($10\text{--}50{,}000\text{ lux}$), and sensor noise. This stage verifies that the policy's control manifold is robust against parametric variation in dynamic models.
+The candidate policy is placed in closed-loop control within high-fidelity physics simulators. Physical parameters $\boldsymbol{\xi} \sim \mathcal{D}_{\boldsymbol{\xi}}$ are randomized across broad distributions: link mass ($\pm 20\%$), surface friction ($\mu \in [0.20, 1.20]$), ambient lighting ($10\text{--}50{,}000\text{ lux}$), and sensor noise. This stage verifies that the policy preserves forward set invariance across parametric perturbations:
+
+$$P_{\boldsymbol{\xi} \sim \mathcal{D}_{\boldsymbol{\xi}}} \left( \min_{t \in [0, T]} h(\mathbf{x}(t; \pi_\theta, \boldsymbol{\xi})) \ge 0 \right) \ge 1 - \delta_{\text{sim}} = 0.999$$
 
 ### Rung 3: Hardware-in-the-Loop (HIL) Silicon Emulation
-The policy is flashed onto the exact target System-on-Chip (SoC) and microcontroller hardware mounted on a dynamometer test bench. Hardware timers, memory crossbars, DMA channels, and motor gate drivers execute in physical real time against real-time mathematical plant emulators. This stage exposes memory bus contention, cache thrashing, interrupt jitter, and thermal downclocking that cannot exist in pure software simulation.
+The policy is flashed onto the exact target System-on-Chip (SoC) and microcontroller hardware mounted on a dynamometer test bench. Hardware timers, memory crossbars, DMA channels, and motor gate drivers execute in physical real time against real-time mathematical plant emulators:
+
+$$\text{WCET}_{\text{MCU}}(\text{CBF-QP}) \le 175\,\mu\text{s}, \quad P_{99.9}(\tau_{\text{e2e}}) \le 50.0\text{ ms}, \quad \text{Heartbeat Loss} = 0$$
+
+This stage exposes memory bus contention, cache thrashing, interrupt jitter, and thermal downclocking that cannot exist in pure software simulation.
 
 ### Rung 4: Shadow Fleet Deployment
-The candidate build is deployed to physical machines operating in real-world environments in passive shadow mode. The policy ingests live sensor feeds and decodes trajectory chunks, but its outputs are routed to logging buffers rather than motor gate drivers. The candidate policy's proposals are continuously compared against the actions of human expert drivers or certified baseline controllers, identifying out-of-distribution disagreements before physical actuation authority is granted.
+The candidate build is deployed to physical machines operating in real-world environments in passive shadow mode. The policy ingests live sensor feeds and decodes trajectory chunks, but its outputs are routed to logging buffers rather than motor gate drivers. The candidate policy's proposals are continuously compared against the actions of human expert drivers $\mathbf{u}_{\text{human}}$:
+
+$$D_{\text{shadow}}(\pi_\theta, \pi_{\text{human}}) = \mathbb{E}_{t \sim \text{fleet}} \left[ \|\pi_\theta(\mathbf{o}_t) - \mathbf{u}_{\text{human}}(t)\| \right] \le \Delta_{\text{thresh}}$$
+
+identifying out-of-distribution disagreements and potential barrier breaches ($\min_t h(\mathbf{x}_{\text{shadow}}(t)) < 0$) before physical actuation authority is granted.
 
 
 ## Automated Cross-Layer Seeded Fault Injection on Target Silicon
@@ -92,7 +139,7 @@ Passing nominal benchmark tests is necessary but insufficient for release. Physi
 
 ![**Automated Cross-Layer Seeded Fault Injection Architecture.** Stress-testing the physical AI stack across five layers: (1) Sensor Ingestion corruption, (2) PTP Clock jitter, (3) UMA Memory crossbar flooding, (4) Linux OS kernel panics, and (5) Actuator torque step disturbances. The bare-metal MCU contains $100\%$ of faults within certified safety boundaries.](figures/fig11_cross_layer_faults.svg){#fig-cross-layer-faults width=100%}
 
-An automated test harness programs and injects faults across five distinct hardware and software layers (@tbl-fault-injection-layers):
+An automated test harness programs and injects faults across five distinct hardware and software layers, defined by the fault vector $\mathbf{f}(t) = [f_{\text{sens}}, f_{\text{clk}}, f_{\text{mem}}, f_{\text{os}}, f_{\text{act}}]^T$ (@tbl-fault-injection-layers):
 
 | Fault Injection Layer | Seeded Fault Mechanism | Physical Stress Scenario | Target Verification Boundary |
 | :--- | :--- | :--- | :--- |
@@ -104,7 +151,22 @@ An automated test harness programs and injects faults across five distinct hardw
 
 : Cross-Layer Seeded Fault Injection Test Matrix. Systematic evaluation of fault containment across sensor, clock, memory, operating system, and actuator substrates. {#tbl-fault-injection-layers}
 
-During automated qualification campaigns, thousands of randomized fault vectors are injected across the testbed. The qualification harness verifies that the bare-metal microcontroller contains $100\%$ of injected anomalies, maintaining forward set invariance and executing safe fallbacks without human intervention.
+### STPA Hierarchical Control Structures and Unsafe Control Actions
+
+System-Theoretic Process Analysis (STPA) models safety as a dynamic hierarchical control problem [@leveson2011engineering]. In the Physical AI multi-rate control architecture, every control action $\mathbf{u}_j$ issued by the software pipeline is evaluated against the four canonical classes of **Unsafe Control Actions (UCAs)**:
+
+$$\begin{aligned}
+\text{UCA}_{j,1}(\mathbf{x}, t) &= (\mathbf{u}_j(t) = \emptyset) \land \mathcal{P}_{\text{req}}(\mathbf{x}(t)) \quad &&(\text{Control Action Not Provided when Required}) \\
+\text{UCA}_{j,2}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) = \mathbf{u}_{\text{unsafe}}) \land \mathcal{P}_{\text{hazard}}(\mathbf{x}(t), \mathbf{u}_j) \quad &&(\text{Unsafe Action Provided}) \\
+\text{UCA}_{j,3}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) \neq \emptyset) \land (t < t_{\text{early}} \lor t > t_{\text{late}}) \quad &&(\text{Action Too Early or Too Late}) \\
+\text{UCA}_{j,4}(\mathbf{x}, \mathbf{u}, \Delta t) &= (\Delta t < \Delta t_{\text{min}} \lor \Delta t > \Delta t_{\text{max}}) \quad &&(\text{Action Stopped Too Soon or Applied Too Long})
+\end{aligned}$$
+
+The STPA verification contract dictates that for every identified UCA, the system incorporates an isolated hardware interlock:
+
+$$\forall \text{UCA}_{j,k}, \quad \text{Condition}(\text{UCA}_{j,k}) \implies \text{Trigger}(\text{Safe Fallback Stop}) \quad \text{within } \tau_{\text{contain}} \le 15.0\text{ ms}$$
+
+During automated qualification campaigns, thousands of randomized fault vectors $\mathbf{f}(t)$ are injected across the testbed. The qualification harness verifies that the bare-metal microcontroller contains $100\%$ of injected anomalies, maintaining forward set invariance and executing safe fallbacks without human intervention.
 
 
 ## Claims-Arguments-Evidence Framework and the Safety Case Architecture
@@ -122,7 +184,28 @@ The safety case is structured hierarchically into four logical tiers:
    * $\mathcal{C}_{1.3}$: Trajectory chunks enforce $\mathcal{C}^2$ quintic spline continuity, bounding joint jerk to $\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$.
    * $\mathcal{C}_{1.4}$: System 1 bare-metal MCU enforcers guarantee forward invariance of safe sets $\mathcal{C}$ at $1000\text{ Hz}$ in zero-allocation static SRAM (`malloc=0`).
    * $\mathcal{C}_{1.5}$: Hardware watchdogs execute autonomous Category 0 or Category 1 stops within $15.0\text{ ms}$ upon host MPU freeze or network dropout.
-3. **Deterministic Arguments ($\mathcal{A}$):** Mathematical derivations of Control Barrier Functions, Nagumo forward invariance proofs, Lyapunov stability bounds, and worst-case execution time analysis ($\text{WCET} \le 175.0\,\mu\text{s}$). Full derivations of the control-theoretic hazard networks and Generalized Pareto extreme-value reliability proofs supporting these arguments are cataloged in Appendix Section 13.
+3. **Deterministic Arguments ($\mathcal{A}$):** Mathematical derivations of Control Barrier Functions, Nagumo forward invariance proofs, Lyapunov stability bounds, and worst-case execution time analysis ($\text{WCET} \le 175.0\,\mu\text{s}$).
+
+### Extreme Value Theory and Tail Risk Quantiles for Safety Assurance
+
+To rigorously bridge empirical HIL fault injection test ledgers to the top-level hazard claim ($P(\text{Hazard}) < 10^{-6}/\text{hr}$), the assurance case applies **Extreme Value Theory (EVT)** using the **Peak-Over-Threshold (POT)** methodology [@coles2001introduction].
+
+For a system executing its primary safety loop at cadence $f_s = 1000\text{ Hz}$, one operating hour contains $N_{\text{hour}} = 3.6 \times 10^6$ discrete execution cycles. Under independent cycle trials, bounding the per-hour hazard rate to $\lambda = 10^{-6}\text{ / hr}$ requires bounding the per-cycle failure probability to:
+
+$$p_{\text{cycle}} = \frac{10^{-6}\text{ failures / hr}}{3.6 \times 10^6\text{ cycles / hr}} = 2.78 \times 10^{-13}$$
+
+Let $X$ represent the measured safety variable (such as end-to-end sense-to-actuation latency $\tau_{\text{delay}}$ or stopping margin error). For a high empirical threshold $u$, the conditional tail distribution of exceedances $Y = X - u > 0$ follows the Generalized Pareto Distribution (GPD):
+
+$$P(X > x \mid X > u) = \left( 1 + \frac{\xi (x - u)}{\sigma} \right)^{-1/\xi}$$
+
+where $\sigma > 0$ is the scale parameter and $\xi \in \mathbb{R}$ is the shape parameter (tail index).
+
+Inverting this distribution for sample size $N$ with $N_u$ observed threshold exceedances yields the **High-Quantile Safety Return Level** $x_p$:
+
+$$x_p = u + \frac{\sigma}{\xi} \left[ \left( \frac{N}{N_u} p \right)^{-\xi} - 1 \right]$$
+
+Evaluating $x_{p_{\text{cycle}}}$ for $p = 2.78 \times 10^{-13}$ provides the exact, provable upper bound on worst-case latency or stopping distance. The full formal asymptotic proof of the Pickands-Balkema-de Haan theorem and the zero-heap embedded C implementation are documented in Appendix Section 13.
+
 4. **Empirical Evidence ($\mathcal{E}$):** Telemetry ledgers from $100{,}000$ HIL seeded fault injection cycles, IEEE 1588 PTP cryptographic hash chains, dynamometer thermal logs, and shadow fleet disagreement distributions.
 
 
@@ -179,6 +262,14 @@ Because the required stopping distance ($5.78\text{ m}$) vastly exceeded the ava
 ## Engineering Contract and the Release Dossier: Deploy, Condition, or Refuse
 
 Release qualification culminates in an explicit, accountable **Release Verdict Matrix (QUAL-01)** (@tbl-release-verdicts).
+
+The definitive release decision function maps the empirical qualification dossier $\mathcal{D}_{\text{qual}} = \{\mathcal{E}_{\text{replay}}, \mathcal{E}_{\text{sim}}, \mathcal{E}_{\text{HIL}}, \mathcal{E}_{\text{shadow}}\}$ to an immutable release verdict:
+
+$$\text{Verdict}(\mathcal{D}_{\text{qual}}) = \begin{cases}
+\textbf{DEPLOY} & \text{if } (\mathcal{X} \subseteq \mathcal{X}_{\text{ODD}}) \land (x_{p_{\text{cycle}}} \le x_{\text{crit}}) \land (\text{UCA Containment} = 100\%) \land (\mathcal{E}_{\text{HIL}} \models \text{Pass}) \\
+\textbf{CONDITION} & \text{if } (x_{p_{\text{cycle}}} \le x_{\text{crit}} \mid \mathcal{X}_{\text{restricted}}) \land (v \le v_{\text{safe}}(\hat{\mu})) \land (\tau_{\text{lease}} \le 150\text{ ms}) \\
+\textbf{REFUSE} & \text{if } (\exists \text{ Uncontained UCA}) \lor (x_{p_{\text{cycle}}} > x_{\text{crit}}) \lor (\text{HIL Timing Violation})
+\end{cases}$$
 
 | Release Verdict | Permissible Operational Domain | Hardware & Supervisory Constraints | Telemetry & Audit Requirements |
 | :--- | :--- | :--- | :--- |

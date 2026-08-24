@@ -67,27 +67,11 @@ In classical software systems, engineers frequently represent 3D orientations us
 
 ### Matrix Exponential Integration in Lie Algebra Tangent Space
 
-Physical AI architectures resolve rotational singularities by executing continuous temporal integration directly in the Lie Algebra Tangent Space $\mathfrak{se}(3)$ [@murray2017mathematical; @barfoot2017state]. A tangent-space velocity twist vector $\boldsymbol{\xi} \in \mathbb{R}^6$ packages both translational velocity $\mathbf{v} \in \mathbb{R}^3$ and angular velocity $\boldsymbol{\omega} \in \mathbb{R}^3$:
-
-$$\boldsymbol{\xi} = \begin{bmatrix} \mathbf{v} \\ \boldsymbol{\omega} \end{bmatrix} \in \mathbb{R}^6, \qquad \boldsymbol{\xi}^\wedge = \begin{bmatrix} \boldsymbol{\omega}^\wedge & \mathbf{v} \\ \mathbf{0}^T & 0 \end{bmatrix} \in \mathfrak{se}(3)$$
-
-The skew-symmetric matrix $\boldsymbol{\omega}^\wedge \in \mathfrak{so}(3)$ represents the cross-product operator for angular velocity:
-
-$$\boldsymbol{\omega}^\wedge = \begin{bmatrix} 0 & -\omega_z & \omega_y \\ \omega_z & 0 & -\omega_x \\ -\omega_y & \omega_x & 0 \end{bmatrix} \in \mathfrak{so}(3)$$
-
-The matrix exponential $\exp(\boldsymbol{\xi}^\wedge \Delta t): \mathfrak{se}(3) \to SE(3)$ maps continuous velocity twists onto smooth, singularity-free rigid-body transformations:
+Physical AI architectures resolve rotational singularities by executing continuous temporal integration directly in the Lie Algebra Tangent Space $\mathfrak{se}(3)$ [@murray2017mathematical; @barfoot2017state]. A tangent-space velocity twist vector $\boldsymbol{\xi} = [\mathbf{v}^T, \boldsymbol{\omega}^T]^T \in \mathbb{R}^6$ packages both translational velocity $\mathbf{v} \in \mathbb{R}^3$ and angular velocity $\boldsymbol{\omega} \in \mathbb{R}^3$. The matrix exponential $\exp(\boldsymbol{\xi}^\wedge \Delta t)$ maps this continuous twist onto a smooth, singularity-free rigid-body transformation:
 
 $$\mathbf{T}(t + \Delta t) = \mathbf{T}(t) \cdot \exp\left( \boldsymbol{\xi}^\wedge \Delta t \right)$$
 
-Evaluating the matrix exponential in closed form yields:
-
-$$\exp\left( \boldsymbol{\xi}^\wedge \Delta t \right) = \begin{bmatrix} \exp(\boldsymbol{\omega}^\wedge \Delta t) & \mathbf{V}\mathbf{v}\Delta t \\ \mathbf{0}^T & 1 \end{bmatrix}$$
-
-where the left-Jacobian matrix $\mathbf{V}$ and rotation matrix $\exp(\boldsymbol{\omega}^\wedge \Delta t)$ are computed via Rodrigues formula with $\theta = \|\boldsymbol{\omega}\|\Delta t$:
-
-$$\exp(\boldsymbol{\omega}^\wedge \Delta t) = \mathbf{I} + \frac{\sin\theta}{\theta}\boldsymbol{\omega}^\wedge + \frac{1 - \cos\theta}{\theta^2}(\boldsymbol{\omega}^\wedge)^2$$
-
-$$\mathbf{V} = \mathbf{I} + \frac{1 - \cos\theta}{\theta^2}\boldsymbol{\omega}^\wedge + \frac{\theta - \sin\theta}{\theta^3}(\boldsymbol{\omega}^\wedge)^2$$
+Integrating velocity twists via the matrix exponential preserves the orthonormal geometry of the rotation group ($\mathbf{R}^T \mathbf{R} = \mathbf{I}$, $\det(\mathbf{R}) = +1$) without the numerical drift or normalization overhead inherent in Euler angles or quaternion re-normalization^[For the complete closed-form trigonometric derivation of the matrix exponential and the left Jacobian $\mathbf{V}$ via Rodrigues' formula, see Appendix C.1.].
 
 ### Kinematic Serial Chains and Metric Grounding
 
@@ -104,31 +88,17 @@ If any transformation along this kinematic chain is queried using an asynchronou
 
 ## Classical State Estimation: The Extended Kalman Filter and Real-Time Silicon Execution
 
-Embodied systems constantly manage a temporal mismatch between sensory channels. Proprioceptive joint encoders and IMU gyroscopes stream at $1000\text{ Hz}$ with sub-millisecond latencies, whereas exteroceptive cameras and depth sensors deliver frames at $30\text{ Hz}$ with $30\text{--}60\text{ ms}$ of transport and processing delay. During the $33.3\text{ ms}$ blind window between camera frames, a manipulator moving at $1.0\text{ m/s}$ travels $33.3\text{ mm}$, a displacement large enough to crush tooling or miss a grasping target.
+Embodied systems constantly manage an asynchronous rate mismatch between sensory channels. Proprioceptive joint encoders and IMU gyroscopes stream at $1000\text{ Hz}$ with sub-millisecond latencies, whereas exteroceptive cameras and depth sensors deliver frames at $30\text{ Hz}$ with $30\text{--}60\text{ ms}$ of transport delay. During the $33.3\text{ ms}$ blind window between camera frames, a manipulator moving at $1.0\text{ m/s}$ travels $33.3\text{ mm}$, a displacement large enough to crush tooling or miss a grasping target.
 
-To maintain a continuous state belief at $1000\text{ Hz}$, Physical AI systems employ continuous-discrete Extended Kalman Filters (EKF) [@kalman1960new; @thrun2005probabilistic]. The filter propagates high-rate state estimates forward between measurement arrivals and incorporates delayed, asynchronous exteroceptive observations whenever they become available.
+To maintain a continuous state belief at $1000\text{ Hz}$, Physical AI systems deploy continuous-discrete Extended Kalman Filters (EKF) [@kalman1960new; @thrun2005probabilistic]. The filter executes a dual-speed protocol: high-rate proprioception propagates state beliefs forward between frames, while delayed exteroceptive observations correct accumulated drift whenever they arrive.
 
-### Continuous-Discrete Formulation and Propagation Dynamics
+### The Fast-Proprioception / Slow-Vision Split
 
-The system state vector $\mathbf{x} \in \mathbb{R}^n$ evolves according to non-linear physical dynamics driven by control input $\mathbf{u}(t)$ and continuous process noise $\mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}(t))$:
-
-$$\dot{\mathbf{x}}(t) = f(\mathbf{x}(t), \mathbf{u}(t)) + \mathbf{w}(t)$$
-
-Between discrete measurement arrivals, the continuous state estimate $\hat{\mathbf{x}}$ and error covariance matrix $\mathbf{P} \in \mathbb{R}^{n \times n}$ propagate forward in time:
-
-$$\dot{\hat{\mathbf{x}}}(t) = f(\hat{\mathbf{x}}(t), \mathbf{u}(t)), \qquad \dot{\mathbf{P}}(t) = \mathbf{F}(t)\mathbf{P}(t) + \mathbf{P}(t)\mathbf{F}(t)^T + \mathbf{Q}(t)$$
-
-where $\mathbf{F}(t) = \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}(t), \mathbf{u}(t)}$ is the continuous-time state transition Jacobian. Full derivations of the error dynamics and continuous Riccati differential equations are provided in Appendix C.2.
-
-When a discrete sensory observation $\mathbf{z}_k \in \mathbb{R}^m$ arrives at time $t_k$ with measurement noise $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{R}_k)$, the estimator computes the measurement innovation $\mathbf{y}_k$ and innovation covariance $\mathbf{S}_k$:
-
-$$\mathbf{y}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_k^-), \qquad \mathbf{S}_k = \mathbf{H}_k \mathbf{P}_k^- \mathbf{H}_k^T + \mathbf{R}_k$$
-
-where $\mathbf{H}_k = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_k^-}$ is the measurement Jacobian. The optimal Kalman gain $\mathbf{K}_k$ balances model confidence against sensor precision:
-
-$$\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^T \mathbf{S}_k^{-1}$$
+Between discrete camera frames, continuous high-rate proprioception (IMU and joint encoders at $1000\text{ Hz}$) propagates the continuous state estimate $\hat{\mathbf{x}}(t)$ and uncertainty covariance $\mathbf{P}(t)$ forward in time. When an asynchronous exteroceptive observation $\mathbf{z}_k$ arrives with capture delay $\tau_{\text{delay}}$, the estimator computes the measurement innovation $\mathbf{y}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_k^-)$ and updates the state belief:
 
 $$\hat{\mathbf{x}}_k^+ = \hat{\mathbf{x}}_k^- + \mathbf{K}_k \mathbf{y}_k$$
+
+where the Kalman gain $\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^T \mathbf{S}_k^{-1}$ dynamically balances internal model confidence against sensor noise covariance $\mathbf{R}_k$^[For complete continuous-time error dynamics, Jacobian linearizations, and matrix Riccati differential equation derivations, see Appendix C.2.].
 
 ### The Joseph-Form Stability Contract on Embedded Silicon
 
@@ -252,7 +222,7 @@ The consequences of uncompensated coordinate transform latency are illustrated b
 * **Provenance:** Engineered composite drawn from documented industrial manipulator incidents; telemetry constructed for teaching.
 :::
 
-![The 6-DoF Precision Articulated Manipulator Platform. Deployed in high-density surface-mount electronics assembly with wrist-mounted depth cameras and vacuum tooling. Fusing stale transform coordinates ($65\text{ ms}$ old) with real-time joint encoders without expanding spatial covariance caused a destructive collision with an aluminum fixture block.](figures/fig05_manipulator_arm_cropped.jpg){#fig-manipulator-arm width=100%}
+![**The Anatomy of a Stale Frame Tree Collision.** When an optical fiducial is briefly occluded ($180\text{ ms}$), querying an un-interpolated stale coordinate transform ($65\text{ ms}$ old) and multiplying it with real-time joint encoders injects a $5.85\text{ cm}$ vertical coordinate skew, driving the vacuum gripper into the aluminum assembly fixture at $0.9\text{ m/s}$ with $1.8\text{ kN}$ of dynamic impact force.](figures/fig05_pcb_assembly_collision.svg){#fig-manipulator-arm width=100%}
 
 ### Forensic Breakdown of the Stale Transform Skew
 
