@@ -24,7 +24,7 @@ After studying this chapter, you will be able to:
 :::
 
 
-## The Verification Crisis in Physical AI: Why Sim-to-Real Benchmarks Hide Failure Modes
+## Introduction: The Verification Crisis in Physical AI
 
 In modern artificial intelligence research, the standard methodology for evaluating learned policies relies heavily on physics simulation. Engineering teams train reinforcement learning agents or conditional diffusion models across millions of parallel simulated episodes, celebrating benchmark success rates exceeding $99\%$ in synthetic environments. When these high-scoring policies are deployed onto physical machines, however, they frequently fail within minutes of field operation. This persistent divergence between synthetic benchmark performance and real-world dependability constitutes the Sim-to-Real Verification Crisis (@fig-locator-ch12).
 
@@ -48,7 +48,7 @@ provides zero mathematical bound on the real-world physical failure probability 
 
 Treating simulation metrics as sufficient proof of physical safety violates the fundamental laws of embodied systems. Software bits can be rolled back upon an unhandled exception, but kinetic energy cannot be rewound. When an autonomous machine misinterprets an optical reflection or stalls during an operating system memory compaction cycle, physical momentum carries the mass into obstacles, damaging mechanical linkages and endangering human collaborators. Demonstrating that an embodied agent is safe for physical deployment requires moving beyond open-loop benchmark scores to construct a defensible engineering assurance case.
 
-This chapter establishes the rigorous qualification and assurance methodology required to release Physical AI systems safely. We begin by formalizing the Operational Design Domain (Section 12.2), defining the explicit environmental, kinematic, and sensor boundaries within which autonomous operation is verified. We then construct the 4-Rung Qualification Ladder (Section 12.3), establishing a progressive verification protocol that advances candidate policies from offline replay logs to hardware-in-the-loop silicon emulation and real-world shadow fleets. To expose latent vulnerabilities before field deployment, we introduce Automated Cross-Layer Seeded Fault Injection (Section 12.4), subjecting the integrated compute stack and motor dynamometers to adversarial hardware and software faults. We organize these verification artifacts into the Claims-Arguments-Evidence framework (Section 12.5), linking high-level safety claims to mathematical barrier proofs and empirical test ledgers. Through a forensic failure autopsy (Section 12.6), we analyze the mechanics of unmodeled friction collapse in an autonomous delivery rover. Finally, we freeze the Defensible Release Dossier (Section 12.7), defining the formal criteria governing the accountable Deploy, Condition, or Refuse release verdict.
+This chapter establishes the rigorous qualification and assurance methodology required to release Physical AI systems safely. We begin by formalizing the Operational Design Domain (Section 12.2), defining the explicit environmental, kinematic, and sensor boundaries within which autonomous operation is verified. We then construct the 4-Rung Qualification Ladder (Section 12.3), establishing a progressive verification protocol that advances candidate policies from offline replay logs to hardware-in-the-loop silicon emulation and real-world shadow fleets. To expose latent vulnerabilities before field deployment, we introduce Automated Cross-Layer Seeded Fault Injection (Section 12.4), subjecting the integrated compute stack and motor dynamometers to adversarial hardware and software faults. We organize these verification artifacts into the Claims-Arguments-Evidence framework (Section 12.5), linking high-level safety claims to mathematical barrier proofs and empirical test ledgers. Through a forensic failure autopsy (Section 12.6), we analyze the mechanics of unmodeled friction collapse in an autonomous delivery rover. We freeze the Defensible Release Dossier (Section 12.7) and examine pervasive verification fallacies (Section 12.8) before delivering the forward handoff to the Physical AI frontier in Chapter 13 (Section 12.9).
 
 
 ## Operational Design Domains: Bounding Environmental, Kinematic, and Sensor Envelopes
@@ -222,7 +222,7 @@ The destructive consequences of releasing an embodied machine based purely on sy
 * **Provenance:** Engineered composite drawn from documented autonomous delivery rover incidents; telemetry constructed for teaching.
 :::
 
-![The Autonomous Urban Delivery Rover Platform. Achieving $99.4\%$ success across 10,000 hours of domain-randomized physics simulation, the policy was released without wet-weather HIL fault injection; road spray occluded stereo cameras while tire friction collapsed from $\mu = 0.82$ to $\mu = 0.24$, expanding stopping distance from $1.5\text{ m}$ to $5.8\text{ m}$ and causing a severe collision with an oncoming cyclist.](figures/fig11_rover_platform_cropped.jpg){#fig-assurance-platform width=100%}
+![**The Autonomous Urban Delivery Rover Platform.** Achieving $99.4\%$ success across 10,000 hours of domain-randomized physics simulation, the policy was released without wet-weather HIL fault injection; road spray occluded stereo cameras while tire friction collapsed from $\mu = 0.82$ to $\mu = 0.24$, expanding stopping distance from $1.5\text{ m}$ to $5.8\text{ m}$ and causing a severe collision with an oncoming cyclist.](figures/fig11_rover_platform_cropped.jpg){#fig-assurance-platform width=100%}
 
 In this municipal incident, an autonomous delivery rover operating at $v = 4.8\text{ m/s}$ ($17.3\text{ km/h}$) was deployed on urban sidewalks (@fig-assurance-platform). The neural navigation policy had achieved a $99.4\%$ task success score across 10,000 hours of domain-randomized simulation. However, the simulation benchmark assumed constant dry tire friction ($\mu = 0.82$) and idealized camera visibility.
 
@@ -296,25 +296,14 @@ We audit the Release Assurance stage across the Five Physical Columns in the Co-
 
 Deploying learned physical agents safely requires dismantling software assumptions regarding synthetic benchmarks, binary deployment, and idealized testing.
 
-::: {.callout-fallacy title="High Simulation Benchmark Accuracy Proves Real-World Safety"}
-**The Fallacy:** Achieving a $99.9\%$ task success rate across $100{,}000$ hours of domain-randomized physics simulation provides sufficient evidence to release an autonomous physical agent.
+#### Fallacy: High Simulation Benchmark Accuracy Proves Real-World Safety {.unnumbered}
+Believing that achieving a $99.9\%$ task success rate across $100{,}000$ hours of domain-randomized physics simulation provides sufficient evidence to release an autonomous physical agent. Physics simulators do not model rolling shutter shear, memory crossbar contention, PTP clock skew, or thermal demagnetization. High simulation accuracy demonstrates algorithmic convergence in virtual time, not physical safety on target silicon. Hardware-in-the-Loop fault injection on physical silicon is indispensable.
 
-**The Physical Reality:** Physics simulators do not model rolling shutter shear, memory crossbar contention, PTP clock skew, or thermal demagnetization. High simulation accuracy demonstrates algorithmic convergence in virtual time, not physical safety on target silicon. Hardware-in-the-Loop fault injection on physical silicon is indispensable [@leveson2011engineering].
-:::
+#### Fallacy: Software Release Is a Binary Ship-or-Hold Decision {.unnumbered}
+Assuming that software release qualification is strictly binary: a candidate build either ships to the entire fleet or remains in development. In embodied systems, release is conditioned upon operational design domains. A policy may receive a **CONDITIONED** release restricted to dry daylight environments at derated operational speeds ($v \le 1.0\text{ m/s}$) while wet-weather autonomy remains under active development.
 
-::: {.callout-fallacy title="Software Release Is a Binary Ship-or-Hold Decision"}
-**The Fallacy:** Software release qualification is strictly binary: a candidate build either ships to the entire fleet or remains in development.
-
-**The Physical Reality:** In embodied systems, release is conditioned upon operational design domains. A policy may receive a **CONDITIONED** release restricted to dry daylight environments at derated operational speeds ($v \le 1.0\text{ m/s}$) while wet-weather autonomy remains under active development.
-:::
-
-::: {.callout-caution title="Unseeded Hardware-in-the-Loop Testing Creates False Confidence"}
-**The Hazard:** Qualifying target silicon exclusively under nominal bench workloads without active, automated cross-layer fault injection.
-
-**The Physical Failure:** Under nominal bench testing, memory buses rarely saturate, operating system schedulers encounter minimal contention, and sensor exposures remain uncorrupted. Latent timing bugs, priority inversions in shared memory, and unhandled watchdog timeouts remain hidden until triggered by real-world physical disturbances.
-
-**The Defensive Practice:** Enforce automated, cross-layer seeded fault injection campaigns during Rung 3 qualification, injecting synthetic DMA bus saturation, PTP clock skews ($>50\text{ ms}$), camera frame drops, and Linux kernel panics to verify that the bare-metal microcontroller maintains $100\%$ safety containment in static SRAM (`malloc=0`).
-:::
+#### Pitfall: Unseeded Hardware-in-the-Loop Testing Creating False Confidence {.unnumbered}
+Qualifying target silicon exclusively under nominal bench workloads without active, automated cross-layer fault injection. Under nominal bench testing, memory buses rarely saturate, operating system schedulers encounter minimal contention, and sensor exposures remain uncorrupted. Latent timing bugs, priority inversions in shared memory, and unhandled watchdog timeouts remain hidden until triggered by real-world physical disturbances. Systems teams must enforce automated cross-layer seeded fault injection campaigns during Rung 3 qualification, injecting synthetic DMA bus saturation, PTP clock skews ($>50\text{ ms}$), camera frame drops, and Linux kernel panics to verify that the bare-metal microcontroller maintains $100\%$ safety containment in static SRAM (`malloc=0`).
 
 
 ## Chapter Summary and Forward Handoff to Chapter 13
