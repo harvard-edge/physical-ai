@@ -18,7 +18,7 @@ After studying this chapter, you will be able to:
 5. **Quantify Epistemic vs. Aleatoric Uncertainty:** Model physical stochasticity versus model ignorance using deep ensembles and latent variance heads to trigger safe operational fallbacks.
 6. **Calculate the Maximum Occlusion Horizon:** Formulate non-linear Lyapunov divergence ($\lambda$) and linear covariance expansion ($\sigma_{\text{pos}}(t)$) to derive hard Time-To-Live (TTL) state expiration boundaries.
 7. **Dissect Coordinate Synchronization Failures:** Analyze the Stale Frame Tree Collision autopsy where a $65\text{ ms}$ transform latency skew injected $5.85\text{ cm}$ of spatial error and shattered precision tooling.
-8. **Freeze the State-and-Timing Interface:** Author the formal engineering specification (**STATE-01**) establishing coordinate hierarchies, TTL validity leases, and zero-allocation (`malloc=0`) SRAM ring buffers.
+8. **Freeze the State-and-Timing Interface:** Author the formal engineering specification establishing coordinate hierarchies, TTL validity leases, and zero-allocation (`malloc=0`) SRAM ring buffers.
 
 **Core Chapter Takeaway:** Observation is never true physical state ($o_t \neq x_t$); robust physical agency requires maintaining explicit spatiotemporal coordinate transforms alongside generative latent world models that predict multi-step physical transitions while bounding epistemic uncertainty under partial observability.
 :::
@@ -54,7 +54,7 @@ To act competently under partial observability, an embodied agent cannot rely on
 2. **Section 6.3 & 6.4 (World Models, JEPAs & RSSMs):** We compare state estimation paradigms and deploy Joint-Embedding Predictive Architectures (JEPAs) and Recurrent State-Space Models (RSSMs) to forecast physical transitions in compact latent spaces without rendering raw pixels.
 3. **Section 6.5 (Epistemic Uncertainty Quantification):** We separate physical noise (aleatoric) from model ignorance (epistemic) using deep ensembles and latent variance heads to govern decision certainty.
 4. **Section 6.6 (Bounding Memory Horizon & TTL Leases):** We formulate Lyapunov divergence ($\lambda$) and covariance expansion to derive mathematical Time-To-Live (TTL) expiration limits for unobserved states.
-5. **Section 6.7 to 6.10 (Incident Autopsy, STATE-01 Contract & Handoff):** We dissect a tooling fracture caused by a $65\text{ ms}$ frame tree synchronization lag, freeze the formal `STATE-01` state ledger, expose memory fallacies, and provide the forward handoff to semantic reasoning in Chapter 7.
+5. **Section 6.7 to 6.10 (Incident Autopsy, The State Model Interface & Handoff):** We dissect a tooling fracture caused by a $65\text{ ms}$ frame tree synchronization lag, freeze the formal state model ledger, expose memory fallacies, and provide the forward handoff to semantic reasoning in Chapter 7.
 
 
 ## Coordinate Metrology: Dynamic $SE(3)$ Frame Trees, Kinematic Chains, and Lie Algebra ($\mathfrak{se}(3)$)
@@ -351,9 +351,9 @@ If the query timestamp exceeds the freshest recorded frame by more than the conf
 
 ## Engineering Contract & The State-and-Timing Model: Bounding Epistemic Drift
 
-To establish a deterministic, verifiable boundary between temporal memory and downstream reasoning, the state subsystem standardizes its output through the **State-and-Timing Model (STATE-01)**. 
+To establish a deterministic, verifiable boundary between temporal memory and downstream reasoning, the state subsystem standardizes its output through the **World State Belief Specification**. 
 
-The formal interface specification is frozen in @tbl-dossier-state-belief:
+The formal interface specification is summarized in @tbl-dossier-state-belief:
 
 | Parameter Category | Specification Key | Engineering Target Value | Verification Boundary |
 | :--- | :--- | :--- | :--- |
@@ -367,9 +367,9 @@ The formal interface specification is frozen in @tbl-dossier-state-belief:
 | **Thermal Warning** | `warning_temp_c` | $85.0^\circ\text{C}$ | Initiates linear torque derating |
 | **Thermal Cutoff** | `cutoff_temp_c` | $105.0^\circ\text{C}$ | Immediate inverter bridge shutdown |
 
-: The World State Belief Interface Specification (**STATE-01**). Coordinate frame hierarchies, transform buffers, TTL validity leases, and uncertainty bounds bridging Memory to Reasoning. {#tbl-dossier-state-belief}
+: The World State Belief Interface Specification. Coordinate frame hierarchies, transform buffers, TTL validity leases, and uncertainty bounds bridging Memory to Reasoning. {#tbl-dossier-state-belief}
 
-The **STATE-01** contract serves as the non-negotiable API gateway bridging Stage 2 (Temporal Memory) to Stage 3 (Intent and Reasoning in Chapter 7). Rather than allowing high-level foundation models to operate on ungrounded token abstractions or raw pixel streams, the temporal memory organ emits a certified state belief packet $b_t(s) = \langle \hat{\mathbf{x}}_t, \mathbf{P}_t, \mathcal{T}_{\text{frames}}(t), \tau_{\text{ttl}} \rangle$. Downstream Multimodal Vision-Language-Action (VLA) models and trajectory optimizers consume these metric $SE(3)$ affordance poses, conditioned directly upon the active covariance uncertainty matrix $\mathbf{P}_t$ and bounded by the strict validity lease $\tau_{\text{ttl}}$.
+The **World State Belief Interface** serves as the non-negotiable API gateway bridging Stage 2 (Temporal Memory) to Stage 3 (Intent and Reasoning in Chapter 7). Rather than allowing high-level foundation models to operate on ungrounded token abstractions or raw pixel streams, the temporal memory organ emits a certified state belief packet $b_t(s) = \langle \hat{\mathbf{x}}_t, \mathbf{P}_t, \mathcal{T}_{\text{frames}}(t), \tau_{\text{ttl}} \rangle$. Downstream Multimodal Vision-Language-Action (VLA) models and trajectory optimizers consume these metric $SE(3)$ affordance poses, conditioned directly upon the active covariance uncertainty matrix $\mathbf{P}_t$ and bounded by the strict validity lease $\tau_{\text{ttl}}$.
 
 We audit the Memory stage across the Five Physical Columns in @tbl-memory-matrix-checkpoint:
 
@@ -409,7 +409,7 @@ The architectural discipline of Physical AI temporal memory rests on three found
 
 1. **Continuous Geometric Metrology & Lie Algebra Tangent Spaces:** Articulated physical systems track dynamic spatial relationships via time-indexed $SE(3)$ kinematic frame trees ($\mathcal{T}_{\text{frames}}$). Integrating continuous velocities in Lie algebra tangent space $\mathfrak{se}(3)$ via matrix exponentials avoids gimbal lock singularities and guarantees exact, smooth rigid-body transformations across moving linkages.
 2. **Dual-Tier State Estimation & Latent World Models:** High-rate ($1000\text{ Hz}$) continuous-discrete Extended Kalman Filters on dedicated microcontrollers bridge sensory transport latencies using fast proprioception, stabilized by Joseph-form FP32 updates. Concurrently, non-generative Joint-Embedding Predictive Architectures (JEPAs) and Recurrent State-Space Models (RSSMs) on host NPUs forecast multi-step physical transitions strictly within compact latent spaces ($\mathbf{z} \in \mathbb{R}^d$), evaluating thousands of candidate trajectories without generating a single pixel.
-3. **Uncertainty Propagation & Bounded State Leases:** Epistemic and aleatoric uncertainties expand monotonically during sensory dropouts. By modeling Lyapunov divergence and linear covariance expansion ($\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{max}}\Delta t$), systems engineers calculate the hard geometric Occlusion Horizon ($t_{\text{max}}$). Freezing these bounds into the **STATE-01** interface contract guarantees that when uncertainty breaches clearance margins, the state lease deterministically lapses, triggering safe, graceful deceleration.
+3. **Uncertainty Propagation & Bounded State Leases:** Epistemic and aleatoric uncertainties expand monotonically during sensory dropouts. By modeling Lyapunov divergence and linear covariance expansion ($\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{max}}\Delta t$), systems engineers calculate the hard geometric Occlusion Horizon ($t_{\text{max}}$). Freezing these bounds into the state interface contract guarantees that when uncertainty breaches clearance margins, the state lease deterministically lapses, triggering safe, graceful deceleration.
 
 Having firmly anchored the agent's perception into a mathematically sound, temporally persistent world model, the architectural pipeline is now primed to generate purposeful, goal-directed action.
 

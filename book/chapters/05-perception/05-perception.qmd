@@ -18,7 +18,7 @@ After studying this chapter, you will be able to:
 5. **Extract 3D Spatial Affordance Tokens:** Deploy Vision Transformer (ViT) and self-supervised encoders (DINOv2) to extract metric $SE(3)$ grasp targets, surface normals, and collision boundaries rather than passive semantic labels.
 6. **Fuse Multi-Modal Sensor Streams:** Formulate temporal propagation of high-rate IMU dynamics in Lie algebra tangent space $\mathfrak{so}(3)$, compensate for extrinsic calibration drift, and enforce epipolar geometric constraints.
 7. **Analyze Perception Starvation Failures:** Dissect the 4K Ingestion Blackout autopsy where unthrottled camera DMA writes starved neural accelerator weights and fractured a titanium quadruped linkage under expanding Age of Information (AoI).
-8. **Freeze the Spatial Affordance Interface:** Author the formal engineering specification (**OBS-01**) establishing sensor ingestion QoS, DMA channel mappings, affordance token schemas, and fallback safety regimes.
+8. **Freeze the Spatial Affordance Interface:** Author the formal engineering specification establishing sensor ingestion QoS, DMA channel mappings, affordance token schemas, and fallback safety regimes.
 
 **Core Chapter Takeaway:** Physical perception is an energy- and latency-taxed translation from continuous physical fields to discrete spatial tokens in $SE(3)$, where sensor exposure physics, DMA ingestion bottlenecks, and spatial calibration drift govern perception fidelity.
 :::
@@ -37,7 +37,7 @@ Physical perception requires navigating the fundamental trade-off between sensor
 3. **Section 5.4 (3D Spatial Representation Paradigms):** We evaluate the computational and memory trade-offs across 3D voxels, point clouds, Signed Distance Fields (SDFs), and 3D Gaussian Splats.
 4. **Section 5.5 (Vision Foundation Models & Affordance Tokens):** We deploy Vision Transformers (ViTs) and self-supervised models (DINOv2) to extract metric $SE(3)$ grasp targets and surface normals rather than passive 2D bounding boxes.
 5. **Section 5.6 (Multi-Modal Sensor Fusion):** We formulate continuous temporal fusion of high-rate IMU dynamics in Lie algebra tangent space $\mathfrak{so}(3)$ and compensate for extrinsic calibration drift.
-6. **Section 5.7 to 5.10 (The 4K Blackout, OBS-01 Contract & Handoff):** We dissect a quadruped linkage fracture caused by unthrottled DMA writes, freeze the formal `OBS-01` sensor ledger, expose perception fallacies, and provide the forward handoff to temporal memory in Chapter 6.
+6. **Section 5.7 to 5.10 (The 4K Blackout, The Observation Interface & Handoff):** We dissect a quadruped linkage fracture caused by unthrottled DMA writes, establish the formal observation interface, expose perception fallacies, and provide the forward handoff to temporal memory in Chapter 6.
 
 
 ## The Physics of Transduction: Rolling Shutter Artifacts, IMU Allan Variance, and Photon Ingestion
@@ -316,7 +316,7 @@ As time elapses during DMA transport and neural inference, $\Delta_{\text{AoI}}(
 
 ## Engineering Contract & The Observation Schema: Emitting Grounded Affordance Tokens
 
-To establish a deterministic, verifiable boundary between sensory ingestion and downstream cognition, the perception subsystem formally standardizes its output through the **Observation Schema (OBS-01)**. Rather than forwarding raw multi-megabyte image arrays across the system bus, the perception organ distills the scene into an array of $K=64$ structured 3D Spatial Affordance Tokens:
+To establish a deterministic, verifiable boundary between sensory ingestion and downstream cognition, the perception subsystem formally standardizes its output through the **Spatial Observation Interface**. Rather than forwarding raw multi-megabyte image arrays across the system bus, the perception organ distills the scene into an array of $K=64$ structured 3D Spatial Affordance Tokens:
 
 $$o_t = \left\{ \mathbf{tok}_1, \mathbf{tok}_2, \dots, \mathbf{tok}_K \right\}, \quad \mathbf{tok}_k \in \mathbb{R}^{D_{\text{token}}}$$
 
@@ -334,7 +334,7 @@ $$\mathbf{tok}_k = \left\langle \mathbf{z}_{\text{feat}} \in \mathbb{R}^{128}, \
 
 Distilling images into 64 affordance tokens compresses sensory payload from $>10\text{ MB}$ to $\sim 10.24\text{ KB}$ ($>99.9\%$ bandwidth reduction). This compact payload fits directly into on-chip SRAM cache, enabling downstream trajectory planners and safety barrier functions to execute in sub-millisecond real time without dynamic heap allocations (`malloc = 0`).
 
-The formal interface specification is frozen in @tbl-obs-contract:
+The formal interface specification is summarized in @tbl-obs-contract:
 
 | Specification Domain | Architectural Parameter | Guaranteed Invariant & Validation Target |
 | :--- | :--- | :--- |
@@ -345,7 +345,7 @@ The formal interface specification is frozen in @tbl-obs-contract:
 | **Spatial Token Schema** | 3D Affordance Tokens ($SE(3)$ grasp target + normal + friction) | $N=64$ tokens, $D_{\text{token}}=128$, sense-to-token budget $\le 20\text{ ms}$ |
 | **Dropout & Glare Fallback** | Deterministic state machine upon optical corruption | Safe hold after 2 dropped frames; switch to blind proprioception |
 
-: The Spatial Affordance Interface Specification (**OBS-01**). Formal interface parameters, DMA allocations, and timing invariants bridging Perception to Memory. {#tbl-obs-contract}
+: The Spatial Affordance Interface Specification. Formal interface parameters, DMA allocations, and timing invariants bridging Perception to Memory. {#tbl-obs-contract}
 
 Selecting the optimal perception architecture demands navigating a 5-variable multi-objective Pareto frontier (@fig-perception-pareto), balancing observation Quality ($Q$), Latency ($L$), Memory Footprint ($M$), Energy Thermal Budget ($E$), and Bus Bandwidth ($B$) against the physical world deadline ($\tau_{\text{world}}$):
 
