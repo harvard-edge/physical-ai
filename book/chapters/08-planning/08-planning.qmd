@@ -31,7 +31,7 @@ After studying this chapter, you will be able to:
 :::
 
 
-## The Cadence Chasm and Trajectory Synthesis
+## Introduction: The Cadence Chasm and Trajectory Synthesis
 
 Physical action takes place across incompatible time scales. When an autonomous agent operates in an unstructured environment, high-level semantic reasoning operates at macroscopic intervals ($0.5\text{--}2.0\text{ Hz}$), constrained by the arithmetic burden of multi-billion-parameter vision-language models. Conversely, stabilizing physical contact, damping structural vibrations, and regulating magnetic flux in brushless motor windings demands microsecond determinism ($1000\text{--}20{,}000\text{ Hz}$). Between these boundaries sits the trajectory planning organ, designated in this textbook as System 1.5.
 
@@ -41,7 +41,7 @@ A Zero-Order Hold (ZOH) on commanded position or velocity introduces an uncompen
 
 System 1.5 resolves this cadence mismatch by replacing single-step outputs with multi-step trajectory chunks ($H \in [16, 32]$). By predicting a continuous temporal horizon of future waypoints in a single parallel inference pass, the planner amortizes the computational cost of neural inference across physical time. The resulting stream of future setpoints is buffered into shared memory, evaluated through kinodynamic boundary constraints, and interpolated to supply the $1000\text{ Hz}$ real-time execution tier with unbroken, jerk-continuous reference commands.
 
-The architecture of this planning pipeline unfolds systematically across this chapter. We first examine generative trajectory decoders and the mechanics of receding-horizon temporal ensembling (Section 8.2). We then lower these mathematical horizons into deterministic silicon memory layouts and lock-free static queues (Section 8.3). Next, we derive the physics of $\mathcal{C}^2$ quintic polynomial splines, establishing how boundary acceleration matching protects precision transmissions from destructive mechanical jerk (Section 8.4). Finally, we formalize the candidate trajectory engineering contract and audit the planning organ across the physical constraints of the co-design ledger (Section 8.5) before establishing the runtime handoff to bare-metal safety enforcement (Section 8.6).
+The architecture of this planning pipeline unfolds systematically across this chapter. We first examine generative trajectory decoders and the mechanics of receding-horizon temporal ensembling (Section 8.2). We then lower these mathematical horizons into deterministic silicon memory layouts and lock-free static queues (Section 8.3). Next, we derive the physics of $\mathcal{C}^2$ quintic polynomial splines, establishing how boundary acceleration matching protects precision transmissions from destructive mechanical jerk (Section 8.4). We formalize the candidate trajectory engineering contract and audit the planning organ across the physical constraints of the co-design ledger (Section 8.5). Finally, we expose critical trajectory planning fallacies (Section 8.6) and establish the runtime handoff to bare-metal safety enforcement (Section 8.7).
 
 
 ## Generative Action Decoders and Temporal Ensembling
@@ -318,18 +318,24 @@ In research settings, emerging end-to-end foundation models attempt to absorb tr
 
 However, absorbing the planning module does not eliminate the physical constraint. A neural network outputting direct torques at $50\text{ Hz}$ still commands discrete step changes across physical time. The physical plant still possesses mass, the motor windings still possess inductive time constants ($\tau_e = L/R$), and the gearbox still shears under unbounded torque derivatives. When the trajectory planner is absorbed, the verification checks (jerk bounding, torque rate limiting, and state re-anchoring) do not disappear; they simply relocate to the deterministic bare-metal safety filter (Chapter 9) at the boundary to physical hardware.
 
-::: {.callout-fallacy title="Simulation Smoothing Guarantees Physical Smoothness"}
-* **The Fallacy:** A policy that outputs visually smooth motions in a physics simulator (such as Isaac Gym or MuJoCo) will run smoothly on physical hardware without spline interpolation.
-* **The Physical Reality:** Simulators clamp joint accelerations numerically and abstract away motor inductive time constants ($\tau_e = L/R$), gearbox backlash, and discrete communication quantization. On real hardware, un-interpolated discrete waypoints command infinite acceleration derivatives, inducing violent mechanical jerk and shearing gear teeth.
-:::
+## Fallacies and Pitfalls in Trajectory Planning
 
-::: {.callout-fallacy title="Single-Step Markovian Policies Minimize Latency"}
-* **The Fallacy:** Predicting only a single action step ($H=1$) minimizes computational delay by avoiding the generation of unused future waypoints.
-* **The Physical Reality:** Evaluating a single-step policy forces the neural network to execute at the full control loop frequency ($1000\text{ Hz}$), which is physically impossible for deep models. The resulting $50.0\text{ ms}$ inference delay starves actuators, injecting a massive $25.0\text{ ms}$ phase lag that destabilizes closed-loop feedback. Action chunking amortizes compute across time.
-:::
+Trajectory generation in physical systems demands rejecting simulation abstractions that fail when applied to real mechanical plants.
+
+#### Fallacy: Simulation Smoothing Guarantees Physical Smoothness {.unnumbered}
+Believing that a policy that outputs visually smooth motions in a physics simulator (such as Isaac Gym or MuJoCo) will run smoothly on physical hardware without spline interpolation. Simulators clamp joint accelerations numerically and abstract away motor inductive time constants ($\tau_e = L/R$), gearbox backlash, and discrete communication quantization. On real hardware, un-interpolated discrete waypoints command infinite acceleration derivatives, inducing violent mechanical jerk ($\dddot{\mathbf{q}} \to \infty$) that excites structural resonances and shears gear teeth.
+
+#### Fallacy: Single-Step Markovian Policies Minimize Latency {.unnumbered}
+Assuming that predicting only a single action step ($H=1$) minimizes computational delay by avoiding the generation of unused future waypoints. In reality, evaluating a single-step policy forces the neural network to execute at the full control loop frequency ($1000\text{ Hz}$), which is computationally impossible for deep models. The resulting $50.0\text{ ms}$ inference delay starves actuators, injecting a massive $25.0\text{ ms}$ phase lag that destabilizes closed-loop feedback. Action chunking amortizes compute across time.
+
+#### Pitfall: Un-Interpolated Chunk Seams Injecting Resonance {.unnumbered}
+Concatenating action chunks end-to-end without receding-horizon temporal blending or quintic boundary matching. If Chunk $k+1$ begins at a different velocity than Chunk $k$ ends ($\Delta \dot{\mathbf{q}} \neq \mathbf{0}$), the single-tick step change commands an acceleration impulse that injects high-frequency energy directly into structural resonant modes ($20\text{--}80\text{ Hz}$). Trajectory runtimes must enforce continuous $\mathcal{C}^2$ boundary matching.
+
+#### Pitfall: Skipping State Re-Anchoring Handshakes After Safety Vetoes {.unnumbered}
+Allowing the upstream neural planner to continue generating trajectory chunks after an MCU safety veto without re-anchoring from physical encoder state. When the veto clears, dispatching the un-anchored chunk commands a dangerous snap-back motion that damages tooling. Controllers must execute atomic state re-anchoring handshakes.
 
 
-## Chapter Summary and Forward Handoff
+## Chapter Summary and Forward Handoff to Chapter 9
 
 This chapter established the necessity and mechanics of trajectory action chunking as the architectural bridge between cognitive inference and mechanical reality. We diagnosed the dynamical instability caused by single-step Markovian latency and demonstrated how generative decoders (including ACT and Diffusion Policies) amortize this latency by producing multi-step prediction horizons ($H=16$). Through receding-horizon temporal ensembling and $\mathcal{C}^2$ quintic polynomial splines, discrete neural predictions are mathematically transformed into continuous, jerk-bounded trajectories that safely drive high-frequency motor inverters without triggering mechanical resonances or shearing gearbox pins.
 
