@@ -261,11 +261,11 @@ Because photons accumulate symmetrically across the integration window $[t_{\tex
 
 ### High-Rate IMU Temporal Propagation
 
-Between $30\text{ Hz}$ camera frames ($\Delta T \approx 33.3\text{ ms}$), the robot receives dozens of high-rate IMU samples at $1000\text{ Hz}$ ($\Delta t = 1.0\text{ ms}$). To bridge the temporal gap without violating 3D rotational geometry, the state estimator forward-projects the robot 3D orientation across the inter-sensor interval $\Delta t = t_{\text{imu}} - t_{\text{obs\_midpoint}}$. Assuming constant angular velocity over the short step $\Delta t$, the estimator updates the rotation matrix using gyroscope measurements $\boldsymbol{\omega} \in \mathbb{R}^3$:
+Between $30\text{ Hz}$ camera frames ($\Delta T \approx 33.3\text{ ms}$), the robot receives dozens of high-rate IMU samples at $1000\text{ Hz}$ ($\Delta t = 1.0\text{ ms}$). To bridge the temporal gap without violating 3D rotational geometry or suffering from Euler-angle gimbal lock, the state estimator forward-projects the robot 3D orientation across the inter-sensor interval $\Delta t = t_{\text{imu}} - t_{\text{obs\_midpoint}}$. Assuming constant angular velocity over the short step $\Delta t$, the estimator updates the rotation matrix using gyroscope measurements $\boldsymbol{\omega} \in \mathbb{R}^3$ via the matrix exponential on the Lie group $SO(3)$:
 
-$$\mathbf{R}(t + \Delta t) = \mathbf{R}(t) \cdot \text{Rot}(\boldsymbol{\omega}\Delta t)$$
+$$\mathbf{R}(t + \Delta t) = \mathbf{R}(t) \exp(\boldsymbol{\omega}^\wedge \Delta t)$$
 
-^[For the complete Lie group formulation and Rodrigues matrix exponential, see Appendix C.2.]
+where $\boldsymbol{\omega}^\wedge \in \mathfrak{so}(3)$ is the skew-symmetric matrix of angular velocities.^[For the complete Lie group formulation, closed-form Rodrigues formula, and Jacobians, see Appendix C.2.]
 
 ### Epipolar Invariants and Thermal Calibration Drift
 
@@ -303,11 +303,11 @@ The quadruped forward reaction distance expanded by more than $500\%$:
 
 $$d_{\text{react}} = v \cdot \Delta t_{\text{compute}} = 2.5\text{ m/s} \times 0.135\text{ s} = 33.8\text{ cm}$$
 
-With only $d_{\text{clearance}} = 15.0\text{ cm}$ of remaining clearance to an approaching concrete curb, the robot overshot the obstacle boundary by $\Delta d = 33.8\text{ cm} - 15.0\text{ cm} = 18.8\text{ cm}$. Assuming a leg compliance deceleration displacement of $\delta = 10\text{ mm}$ upon impacting the curb, the instantaneous dynamic impact force reached:
+With only $d_{\text{clearance}} = 15.0\text{ cm}$ of remaining clearance to an approaching concrete curb, the robot overshot the obstacle boundary by $\Delta d = 33.8\text{ cm} - 15.0\text{ cm} = 18.8\text{ cm}$. By the classical Work-Energy Theorem ($W = \bar{F}_{\text{impact}} \cdot \delta = \Delta E_k = \frac{1}{2}mv^2$), arresting the entire kinetic energy of the robot over a structural compliance deformation distance of $\delta = 10\text{ mm}$ upon impacting the rigid curb generated an average dynamic impact force of:
 
 $$F_{\text{impact}} = \frac{m v^2}{2 \delta} = \frac{45\text{ kg} \times (2.5\text{ m/s})^2}{2 \times 0.01\text{ m}} = 14,062.5\text{ N} \approx 14.1\text{ kN}$$
 
-This dynamic impact shattered the front-right titanium femur linkage and stripped the precision cycloidal speed reducer, requiring $4,800\text{ USD}$ in replacement hardware and 12 days of facility downtime. The microsecond flight recorder ledger is documented in @tbl-telemetry-ch05.
+This peak shock load shattered the front-right titanium femur linkage and stripped the precision cycloidal speed reducer, requiring $4,800\text{ USD}$ in replacement hardware and 12 days of facility downtime. The microsecond flight recorder ledger is documented in @tbl-telemetry-ch05.
 
 | Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
 | :--- | :--- | :--- | :--- |
