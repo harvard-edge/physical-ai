@@ -130,9 +130,38 @@ Crucially, because an exact Euclidean Signed Distance Field satisfies the Eikona
 
 ## Spatial Encoders: Vision Transformers, Patch Embeddings, and $SE(3)$-Equivariant Features
 
-To extract actionable physical representations from visual inputs, modern Physical AI pipelines replace localized Convolutional Neural Networks (CNNs) with **Vision Transformers (ViTs)** and self-supervised geometric foundation encoders like **DINOv2**. 
+### From Classical Handcrafted Features (SIFT/ORB) to Foundation Transformers (DINOv2)
 
-In classical robotics, computer vision pipelines relied on CNNs with small $3 \times 3$ convolutional kernels. While CNNs are computationally efficient, their receptive field expands slowly layer by layer ($\text{RF} \approx L \cdot (K-1)$), requiring dozens of cascaded layers before a pixel at the gripper can interact with a pixel at the target object. An autonomous robot manipulating a tool on a table needs to evaluate the global multi-body spatial relationship between the tool, the tabletop, obstacle boundaries, and the robot's own kinematic base simultaneously. Vision Transformers solve this by tokenizing the image globally from the very first layer:
+To appreciate why modern Physical AI pipelines have transitioned from classical computer vision to self-supervised foundation backbones, we must examine the fundamental divide between **handcrafted geometric descriptors** and **learned spatial affordance representations**.
+
+In classical robotics and visual SLAM, feature extraction relied on mathematical heuristics designed to identify isolated, scale-invariant 2D keypoints across images. The canonical exemplar is the **Scale-Invariant Feature Transform (SIFT)** [@lowe2004distinctive], which constructs a continuous scale space by convolving the image with Difference-of-Gaussian (DoG) kernels at increasing octave levels:
+
+$$D(x, y, \sigma) = (G(x, y, k\sigma) - G(x, y, \sigma)) * I(x, y)$$
+
+Local extrema in $D(x, y, \sigma)$ identify candidate keypoints. For each keypoint, SIFT computes local gradient orientation histograms across a $16 \times 16$ sample grid, generating a 128-dimensional floating-point feature vector invariant to 2D image translation, uniform scaling, and in-plane rotation. Binary variants like **ORB** (Oriented FAST and Rotated BRIEF) replace floating-point histograms with 256-bit intensity comparison tests that execute in microseconds using Hamming distance hardware instructions (`POPCNT`).
+
+While SIFT and ORB provide deterministic, mathematically proven 2D geometric invariance and require minimal compute ($<5\text{ ms}$ on low-power CPUs without an accelerator), they suffer from four catastrophic failure modes when deployed on physical robots:
+
+1. **Semantic Blindness:** Handcrafted descriptors match local pixel gradients, not functional objects. A SIFT matcher cannot distinguish between the structural rim of a fragile ceramic cup and a transient shadow cast across a countertop.
+2. **Textureless Surface Collapse:** Industrial parts, painted robot chassis, white drywall, and polished metal sheets possess near-zero high-frequency gradient variation. Under textureless conditions, DoG extrema detectors fail to extract stable keypoints, leaving classical visual odometry and feature-based grasp planners completely blind.
+3. **Illumination and Specular Fragility:** Direct sunlight, moving overhead factory lights, and specular reflections on metallic or oily surfaces warp gradient histograms, destroying feature matching across consecutive frames.
+4. **Lack of 3D Spatial Affordances:** SIFT points are isolated 2D pixel coordinates with zero awareness of 3D surface normals, contact friction, or kinematic grasp envelopes.
+
+Modern Physical AI bridges this divide through self-supervised foundation encoders such as **DINOv2** [@oquab2023dinov2] and learned keypoint extractors like **SuperPoint** [@detone2018superpoint]. Rather than engineering manual gradient rules, DINOv2 trains Vision Transformers across hundreds of millions of diverse images using student-teacher self-distillation without human labels. In doing so, the transformer naturally discovers dense 3D geometric correspondences, object part segmentations, and surface normal contours directly within its high-dimensional attention embeddings.
+
+| Architectural Dimension | Classical Descriptors (SIFT / ORB) | Learned Foundation Encoders (DINOv2 / ViT) |
+| :--- | :--- | :--- |
+| **Feature Mechanism** | Handcrafted Difference-of-Gaussians & gradient orientation histograms | Self-supervised scaled dot-product attention over patch token grids ($P=14$) |
+| **Descriptor Format** | 128-D FP32 vector (SIFT) or 256-bit binary string (ORB) | 384-D to 1024-D continuous latent embedding per spatial patch ($\mathbf{z}_p \in \mathbb{R}^d$) |
+| **Invariance Scope** | 2D scale, 2D rotation, affine illumination shift | 3D viewpoint, non-rigid deformation, severe lighting shift, cross-instance semantics |
+| **Semantic & Affordance Scope** | Zero semantic awareness (matches raw gradient corners) | Dense semantic understanding, part affordances, surface normals, zero-shot correspondence |
+| **Failure Modes** | Textureless surfaces, specular glare, transparent glassware, shadows | Memory bus contention, $\mathcal{O}(N^2)$ compute cost, non-deterministic latency spikes |
+| **Silicon Footprint** | Low CPU / FPGA footprint ($<5\text{ ms}$, zero DRAM bandwidth pressure) | Dedicated NPU / GPU accelerator required ($15\text{--}45\text{ ms}$, $15\text{--}30\text{ GB/s}$ DRAM streaming) |
+| **Optimal Use in Physical AI** | High-rate, low-power visual odometry ($>60\text{ Hz}$) on textured terrain | 3D manipulation, open-world grasping, semantic goal grounding, metric scene synthesis |
+
+: **Architectural Comparison: Handcrafted Classical Descriptors (SIFT/ORB) vs. Learned Foundation Encoders (DINOv2/ViT).** Mapping computational complexity, invariance properties, and failure modes across physical robotics workloads. {#tbl-sift-vs-dinov2}
+
+### Vision Transformer Mechanics: Patch Embeddings and Self-Attention
 
 1. **Patch Tokenization & Hardware Complexity:** The input image tensor $I \in \mathbb{R}^{H \times W \times C}$ is partitioned into a non-overlapping grid of $P \times P$ pixel patches (typically $16 \times 16$ or $14 \times 14$). Each patch is flattened into a vector $\mathbf{x}_p \in \mathbb{R}^{P^2 C}$ and linearly projected through a learned embedding matrix $\mathbf{E} \in \mathbb{R}^{(P^2 C) \times d}$ into a continuous latent space of dimension $d$. Sinusoidal or learned positional embeddings $\mathbf{E}_{\text{pos}} \in \mathbb{R}^{N \times d}$ are added to preserve 2D spatial topology:
 

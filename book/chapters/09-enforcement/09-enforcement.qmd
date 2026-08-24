@@ -264,58 +264,29 @@ We audit the Execution stage across the Five Physical Columns in the Co-Design C
 
 Deploying real-time safety enforcement systems on physical hardware requires confronting the stark divide between abstract mathematical formulations and the realities of digital silicon, power electronics, and kinematic momentum.
 
-::: {.callout-fallacy title="Software Safety Checks in Application Code (Python/ROS 2) Provide Sufficient Real-Time Safety Guarantees"}
-**The Fallacy:** *“Implementing safety checks as validation assertions or wrapper nodes in Python or ROS 2 application software provides an adequate safety boundary before commanding robot actuators.”*
+### Systems Fallacies
 
-**The Reality:** User-space software running on a general-purpose operating system (such as standard Linux) shares the exact same execution threads, memory buses, and kernel scheduling queues as the generative neural models it is meant to supervise. When the host OS initiates background memory compaction, dirty page writeback flushes, or Completely Fair Scheduler (CFS) thread preemption, the user-space safety check is suspended simultaneously with the planning thread.
+#### Fallacy 1: Software Safety Checks in Application Code (Python/ROS 2) Provide Sufficient Real-Time Safety Guarantees
+*The Fallacy:* Believing that implementing safety checks as validation assertions or wrapper nodes in Python or ROS 2 application software provides an adequate safety boundary before commanding robot actuators.
 
-During this scheduling blackout, unserviced motor command registers remain latched at their previous setpoints, and physical inertia drives the machine forward unmonitored:
+*The Systems Reality:* User-space software running on a general-purpose operating system (such as standard Linux) shares the exact same execution threads, memory buses, and kernel scheduling queues as the generative neural models it is meant to supervise. When the host OS initiates background memory compaction, dirty page writeback flushes, or Completely Fair Scheduler (CFS) thread preemption, the user-space safety check is suspended simultaneously with the planning thread. During this scheduling blackout, unserviced motor command registers remain latched at their previous setpoints, and physical inertia drives the machine forward unmonitored ($d_{\text{coast}} = v \cdot \Delta t_{\text{pause}}$). For a robot traveling at $v = 1.8\text{ m/s}$, a $140\text{ ms}$ kernel compaction stall results in $25.2\text{ cm}$ of unguided displacement—instantly converting software scheduling jitter into a destructive physical collision. Real-time safety guarantees require the **Proposal–Permission Privilege Split**: high-level planners propose candidate actions from untrusted user space, while an autonomous bare-metal microcontroller evaluates safety invariants at $1000\text{ Hz}$ in zero-allocation static SRAM with microsecond determinism.
 
-$$d_{\text{coast}} = v \cdot \Delta t_{\text{pause}}$$
+#### Fallacy 2: Control Barrier Functions Eliminate the Need for Certified Hardware-Level Emergency Stops (STO)
+*The Fallacy:* Assuming that because Control Barrier Functions (CBFs) mathematically guarantee forward invariance of the safe set ($\dot{h} \ge -\gamma h$), physical emergency stop circuits and hardware Safe Torque Off (STO) lines are redundant.
 
-For a robot traveling at $v = 1.8\text{ m/s}$, a $140\text{ ms}$ kernel compaction stall results in $d_{\text{coast}} = 25.2\text{ cm}$ of unguided displacement—instantly converting software scheduling jitter into a destructive physical collision. Real-time safety guarantees require the **Proposal–Permission Privilege Split**: high-level planners propose candidate actions from untrusted user space, while an autonomous bare-metal microcontroller evaluates safety invariants at $1000\text{ Hz}$ in zero-allocation static SRAM with microsecond determinism.
-:::
+*The Systems Reality:* CBF-QPs are digital control-theoretic filters running on microcontrollers under the mathematical assumption that the plant obeys nominal dynamics $\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$ and actuators execute the commanded control input $\mathbf{u}^*$. They cannot prevent or mitigate physical hardware or electrical faults: inverter bridge shoot-through short circuits, DC-link bus collapse, broken encoder wires, or microcontroller brownouts. In these failure modes, digital software commands are completely ignored by the damaged power stage. Functional safety standards (IEC 61508, ISO 13849-1, IEC 60204-1) mandate a tiered emergency fallback hierarchy terminating in **Category 0 Safe Torque Off (STO)**: dedicated optocoupler interlocks that physically de-energize gate driver power rails in $<5\,\mu\text{s}$, electrically disconnecting the stator windings regardless of microcontroller firmware state.
 
-::: {.callout-fallacy title="Control Barrier Functions Eliminate the Need for Certified Hardware-Level Emergency Stops (STO)"}
-**The Fallacy:** *“Because Control Barrier Functions (CBFs) mathematically guarantee forward invariance of the safe set ($\dot{h} \ge -\gamma h$), physical emergency stop circuits and hardware Safe Torque Off (STO) lines are redundant.”*
+### Systems Pitfalls
 
-**The Reality:** CBF-QPs are digital control-theoretic filters running on microcontrollers. They operate under the explicit mathematical assumption that the plant obeys the nominal control-affine dynamics $\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$ and that actuators execute the commanded control input $\mathbf{u}^*$. They cannot prevent or mitigate physical hardware, electrical, or silicon faults:
+#### Pitfall 1: Solving CBF-QPs with Dynamic Heap Memory Allocation on Embedded Silicon (malloc > 0)
+*The Pitfall:* Calling dynamic memory allocators (`malloc`, `free`, `new`, `std::vector::resize`, or dynamically sized matrix factorization routines) inside $1000\text{ Hz}$ interrupt service routines (ISRs) on embedded microcontrollers.
 
-1. **Inverter Bridge Shoot-Through:** Short circuits caused by MOSFET/IGBT thermal breakdown or gate driver latchup.
-2. **Power Rail Collapse:** DC-link bus undervoltage, overvoltage, or transient power supply faults.
-3. **Sensor Transduction Loss:** Broken optical encoder wires, phase detachment, or resolver signal loss.
-4. **Silicon Hard Faults:** Microcontroller crystal oscillator failure, brownout resets, or firmware watchdog lockups.
+*The Systems Reality:* Dynamic heap allocators maintain linked-list pool descriptors. The time required to find an available memory block depends on heap fragmentation state, introducing non-deterministic execution times. Over millions of real-time control ticks, memory fragmentation causes worst-case execution time (WCET) tail spikes that blow past the millisecond timer deadline ($\text{WCET} > 175\,\mu\text{s}$). Worse, an unhandled out-of-memory heap exhaustion condition returns a null pointer, causing a silent HardFault exception that halts the MCU and leaves motor phases floating or latched. Real-time firmware must strictly enforce the **Iron Law of Embedded Determinism (`malloc = 0`)**, pre-allocating all QP workspace vectors, barrier gradient buffers, KKT active-set factorizations, and Cholesky matrices statically in DTCM SRAM at compile time with provable, bounded execution times.
 
-In any of these failure modes, digital software commands are completely ignored by the damaged power stage. Consequently, functional safety standards (IEC 61508, ISO 13849-1, IEC 60204-1) mandate a tiered emergency fallback hierarchy terminating in **Category 0 Safe Torque Off (STO)**: dedicated optocoupler interlocks that physically de-energize gate driver power rails in $<5\,\mu\text{s}$, electrically disconnecting the stator windings regardless of microcontroller firmware state.
-:::
+#### Pitfall 2: Ignoring Sensorimotor Transport Latency in Real-Time Clearance Monitoring
+*The Pitfall:* Formulating dynamic clearance thresholds using solely the ideal kinematic braking distance $d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}}$, assuming braking takes effect immediately upon obstacle detection.
 
-::: {.callout-caution title="Solving CBF-QPs with Dynamic Heap Memory Allocation on Embedded Silicon (malloc > 0)"}
-**The Hazard:** Calling dynamic memory allocators (`malloc`, `free`, `new`, `std::vector::resize`, or dynamically sized matrix factorization routines) inside $1000\text{ Hz}$ interrupt service routines (ISRs) on embedded microcontrollers.
-
-**The Physical Failure:** Dynamic heap allocators maintain linked-list pool descriptors. The time required to find an available memory block depends on heap fragmentation state, introducing non-deterministic execution times. Over millions of real-time control ticks, memory fragmentation causes worst-case execution time (WCET) tail spikes that blow past the millisecond timer deadline ($\text{WCET} > 175\,\mu\text{s}$).
-
-Worse, an unhandled out-of-memory heap exhaustion condition returns a null pointer, causing a silent HardFault exception that halts the MCU and leaves motor phases floating or latched.
-
-**The Defensive Practice:** Strict enforcement of the **Iron Law of Embedded Determinism (`malloc = 0`)**. Pre-allocate all QP workspace vectors, barrier gradient buffers, KKT active-set factorizations, and Cholesky matrices statically in DTCM (Data Tightly-Coupled Memory) SRAM at compile time. All algorithms must have provable, bounded, deterministic execution bounds verified through static timing analysis.
-:::
-
-::: {.callout-caution title="Ignoring Sensorimotor Transport Latency in Real-Time Clearance Monitoring"}
-**The Hazard:** Formulating dynamic clearance thresholds using solely the ideal kinematic braking distance $d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}}$, assuming braking takes effect immediately upon obstacle detection.
-
-**The Physical Failure:** In physical systems, sensorimotor transport latency $\tau_{\text{latency}}$ is non-zero. From the instant an obstacle appears in the physical world to the instant the motor stator coil actually develops counter-torque, the system incurs a cascading chain of delays: camera sensor exposure and readout ($5\text{--}10\text{ ms}$), bus transmission serialization over CAN-FD / SPI ($1\text{--}2\text{ ms}$), microcontroller discrete filter phase lag ($1\text{ ms}$), and inverter current rise time ($1\text{--}2\text{ ms}$), totaling $\tau_{\text{latency}} \approx 12\text{--}25\text{ ms}$.
-
-During this latency window, the robot coasts forward at full operational velocity, consuming reaction drift:
-
-$$d_{\text{drift}} = v \cdot \tau_{\text{latency}}$$
-
-For a robot traveling at $v = 1.8\text{ m/s}$ with $\tau_{\text{latency}} = 20\text{ ms}$, the drift is $36\text{ mm}$—which alone can exceed the entire safety buffer.
-
-**The Defensive Practice:** Total dynamic stopping envelope evaluation at every 1 kHz tick:
-
-$$d_{\text{stop}}(v) = \underbrace{v \cdot \tau_{\text{latency}}}_{\text{Reaction Drift}} + \underbrace{\frac{v^2}{2 a_{\text{max}}}}_{\text{Kinematic Braking}}$$
-
-and enforcing $d_{\text{clearance}} \ge d_{\text{stop}}(v) + d_{\text{margin}}$ with closed-form parabolic velocity clamping ($v_{\text{safe}}$) that explicitly accounts for transport latency dead time.
-:::
+*The Systems Reality:* In physical systems, sensorimotor transport latency $\tau_{\text{latency}}$ is non-zero. From the instant an obstacle appears in the physical world to the instant the motor stator coil actually develops counter-torque, the system incurs a cascading chain of delays (camera exposure, bus serialization, discrete filter phase lag, inverter current rise time, totaling $\tau_{\text{latency}} \approx 12\text{--}25\text{ ms}$). During this latency window, the robot coasts forward at full operational velocity, consuming reaction drift: $d_{\text{drift}} = v \cdot \tau_{\text{latency}}$. For a robot traveling at $v = 1.8\text{ m/s}$ with $\tau_{\text{latency}} = 20\text{ ms}$, the drift is $36\text{ mm}$—which alone can exceed the entire safety buffer. Safety monitors must evaluate the total dynamic stopping envelope $d_{\text{stop}}(v) = v \cdot \tau_{\text{latency}} + \frac{v^2}{2 a_{\text{max}}}$ at every 1 kHz tick and enforce $d_{\text{clearance}} \ge d_{\text{stop}}(v) + d_{\text{margin}}$ with closed-form parabolic velocity clamping ($v_{\text{safe}}$).
 
 
 ## Master Capstone Synthesis of Part II

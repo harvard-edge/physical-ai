@@ -1,54 +1,334 @@
-# Mathematical and Physical Reference {.unnumbered}
+# Mathematical and Physical Foundations for Systems Engineers {.unnumbered}
 
-This appendix compiles the core physical equations, timing bounds, and coordinate transformation laws used throughout the manual.
+This appendix provides a self-contained, systems-oriented reference for the mathematical and control-theoretic formulations used across this book. 
 
+For systems, embedded, and software engineers, mathematical formulas in Physical AI are not abstract analytical exercises; they are the **specifications for real-time silicon execution**. Every equation maps directly into memory access patterns, execution cycle budgets ($\text{WCET}$), numerical precision requirements, and physical safety bounds.
 
-## Dynamic Stopping Bounds
+---
 
-The dynamic stopping distance $d_{\text{stop}}$ represents the minimum clearance required to bring a moving physical actuator to rest before colliding with an obstacle:
+## 1. Kinematics, Stopping Envelopes, and Reaction Debt
 
-$$d_{\text{stop}}(t) = v(t) \cdot t_{\text{delay}}(t) + \frac{v(t)^2}{2 \cdot a_{\text{max}}}$$
+### The Physical Derivation of Stopping Distance
+When an embodied robot maneuvers at linear velocity $v(t)$, the distance required to bring its physical mass to a complete, controlled stop consists of two decoupled components:
 
-Where total delay $t_{\text{delay}}$ includes all latency tails and transport latencies:
+1. **Reaction Drift ($d_{\text{drift}}$):** The distance traversed while sensory signals propagate through transduction, bus serialization, neural inference, and communication queues before the actuators can apply braking torque.
+2. **Kinematic Braking ($d_{\text{brake}}$):** The distance traversed while physical friction or counter-electromotive braking forces decelerate the moving mass at maximum safe deceleration $a_{\text{max}}$.
 
-$$t_{\text{delay}}(t) = t_{\text{transduce}} + \Delta t_{\text{age}}(t) + t_{\text{comm}} + t_{\text{enforce}} + t_{\text{actuator\_response}}$$
+```
+|<----------------------- Total Stopping Distance d_stop ------------------------>|
+|                                                |                                 |
+|  Reaction Drift (d_drift = v * tau_latency)    |  Kinematic Braking (v^2 / 2a)   |
+|===============================================>|================================>|
+t = 0 (Hazard Appears)                     t = tau (Brakes Engage)          t = t_stop (V=0)
+```
 
-* **Current Velocity ($v(t)$):** Instantaneous physical velocity ($\text{m/s}$).
-* **Maximum Safe Deceleration ($a_{\text{max}}$):** Maximum available braking deceleration ($\text{m/s}^2$).
-* **Sensory Age ($\Delta t_{\text{age}}$):** Age of the sensory observation used to compute the decision ($\text{s}$).
+Integrating Newtonian dynamics under constant deceleration $a(t) = -a_{\text{max}}$:
 
+$$v(t) = v_0 - a_{\text{max}} t \implies t_{\text{brake}} = \frac{v_0}{a_{\text{max}}}$$
 
-## Spatial Frame Transformations
+$$d_{\text{brake}} = \int_0^{t_{\text{brake}}} (v_0 - a_{\text{max}} t) \, dt = v_0 t_{\text{brake}} - \frac{1}{2} a_{\text{max}} t_{\text{brake}}^2 = \frac{v_0^2}{2 a_{\text{max}}}$$
 
-A rigid body transformation from source frame $A$ to target frame $B$ is represented by a homogeneous transformation matrix $T_B^A \in SE(3)$:
+Accounting for total sensorimotor transport latency $\tau_{\text{latency}}$, the **Total Dynamic Stopping Envelope** is:
 
-$$T_B^A = \begin{bmatrix} R_B^A & p_B^A \\ 0_{1\times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
+$$d_{\text{stop}}(v) = \underbrace{v \cdot \tau_{\text{latency}}}_{\text{Reaction Drift}} + \underbrace{\frac{v^2}{2 a_{\text{max}}}}_{\text{Kinematic Braking}}$$
 
-Where $R_B^A \in SO(3)$ is the $3 \times 3$ rotation matrix and $p_B^A \in \mathbb{R}^3$ is the translation vector.
+where:
+* $v$: Current operational velocity ($\text{m/s}$).
+* $\tau_{\text{latency}}$: Total end-to-end transport delay ($\text{s}$), encompassing camera exposure, bus serialization (CAN-FD/PCIe), operating system scheduling tail latency, and inverter current rise time.
+* $a_{\text{max}}$: Maximum permissible physical braking deceleration ($\text{m/s}^2$), constrained by tire friction coefficient ($\mu g$), payload tipping limits, or motor peak torque.
 
-### Tangent Space Integration
-To integrate velocities smoothly without gimbal lock singularities:
+### Parabolic Safe Velocity Clamping
+Given a measured physical clearance $d_{\text{clearance}}$ to an obstacle and a safety margin $d_{\text{margin}}$, the maximum safe operational velocity $v_{\text{safe}}$ is derived by solving the quadratic inequality $d_{\text{stop}}(v) \le d_{\text{clearance}} - d_{\text{margin}}$:
 
-$$T(t + \Delta t) = T(t) \cdot \exp(\xi^\wedge \cdot \Delta t)$$
+$$\frac{1}{2 a_{\text{max}}} v^2 + \tau_{\text{latency}} v - (d_{\text{clearance}} - d_{\text{margin}}) \le 0$$
 
-Where $\xi = [v, \omega]^T \in \mathbb{R}^6$ represents the linear and angular twist vector.
+Applying the quadratic formula and selecting the positive root:
 
+$$v_{\text{safe}} = \sqrt{a_{\text{max}}^2 \tau_{\text{latency}}^2 + 2 a_{\text{max}} (d_{\text{clearance}} - d_{\text{margin}})} - a_{\text{max}} \tau_{\text{latency}}$$
 
-## Information Freshness Decay
+### Embedded C Implementation
+In real-time firmware, this check executes at $1000\text{ Hz}$ in static SRAM with zero dynamic memory allocation:
 
-Information freshness $\Delta t$ measures the time elapsed between physical event occurrence and actuation response:
+```c
+#include <math.h>
+#include <stdbool.h>
 
-$$\Delta t_{\text{total}} = (t_{\text{actuation}} - t_{\text{transduction}})$$
+typedef struct {
+    float tau_latency_s;  // Total sensorimotor delay (e.g., 0.025 s)
+    float a_max_mps2;     // Max braking deceleration (e.g., 2.5 m/s^2)
+    float d_margin_m;     // Safety margin buffer (e.g., 0.15 m)
+} stopping_params_t;
 
-If target state changes at characteristic velocity $v_{\text{target}}$, spatial uncertainty expands as:
+// Compute stopping distance in meters (WCET <= 1.2 microseconds on Cortex-M7)
+float compute_stopping_distance(float v_mps, const stopping_params_t* params) {
+    if (v_mps <= 0.0f) return 0.0f;
+    float d_drift = v_mps * params->tau_latency_s;
+    float d_brake = (v_mps * v_mps) / (2.0f * params->a_max_mps2);
+    return d_drift + d_brake;
+}
 
-$$\sigma_{\text{pos}}(t) = \sigma_0 + v_{\text{target}} \cdot \Delta t_{\text{total}}$$
+// Compute safe velocity clamp in m/s
+float compute_safe_velocity_clamp(float d_clearance_m, const stopping_params_t* params) {
+    float effective_clearance = d_clearance_m - params->d_margin_m;
+    if (effective_clearance <= 0.0f) return 0.0f;
+    
+    float a = params->a_max_mps2;
+    float tau = params->tau_latency_s;
+    float discriminant = (a * a * tau * tau) + (2.0f * a * effective_clearance);
+    
+    return sqrtf(discriminant) - (a * tau);
+}
+```
 
+---
 
-## Control Barrier Invariants
+## 2. Spatial Transformations: $SE(3)$, Quaternions, and Tangent Space $\mathfrak{se}(3)$
 
-A safety envelope is defined by a continuously differentiable barrier function $h(x) \ge 0$:
+Physical AI agents operate in three-dimensional Euclidean space $\mathbb{R}^3$. To transform sensor observations, object affordances, and robot kinematics across coordinate frames, systems rely on the Special Euclidean Group $SE(3)$.
 
-$$\dot{h}(x, u) \ge -\gamma(h(x))$$
+### Homogeneous Transformation Matrices
+A rigid-body transformation from coordinate frame $A$ to coordinate frame $B$ consists of a 3D rotation $\mathbf{R}_A^B \in SO(3)$ and a 3D translation $\mathbf{p}_A^B \in \mathbb{R}^3$, unified into a $4 \times 4$ homogeneous matrix $\mathbf{T}_A^B \in SE(3)$:
 
-If $h(x) \ge 0$ defines the safe operational set, any proposed control vector $u$ is permitted only if it guarantees that $h(x)$ remains non-negative for all future time.
+$$\mathbf{T}_A^B = \begin{bmatrix} \mathbf{R}_A^B & \mathbf{p}_A^B \\ \mathbf{0}_{1 \times 3} & 1 \end{bmatrix} \in \mathbb{R}^{4 \times 4}$$
+
+Points in 3D space are transformed using homogeneous coordinates $\tilde{\mathbf{x}} = [\mathbf{x}^T, 1]^T$:
+
+$$\tilde{\mathbf{x}}_B = \mathbf{T}_A^B \tilde{\mathbf{x}}_A \implies \begin{bmatrix} \mathbf{x}_B \\ 1 \end{bmatrix} = \begin{bmatrix} \mathbf{R}_A^B \mathbf{x}_A + \mathbf{p}_A^B \\ 1 \end{bmatrix}$$
+
+Matrix inversion in $SE(3)$ has a closed-form structure that avoids general $4 \times 4$ Gaussian elimination:
+
+$$(\mathbf{T}_A^B)^{-1} = \mathbf{T}_B^A = \begin{bmatrix} (\mathbf{R}_A^B)^T & -(\mathbf{R}_A^B)^T \mathbf{p}_A^B \\ \mathbf{0}_{1 \times 3} & 1 \end{bmatrix}$$
+
+### Quaternions for Singularity-Free Rotations
+While Euler angles (Roll, Pitch, Yaw) suffer from kinematic singularities (**Gimbal Lock** when pitch approaches $\pm 90^\circ$, causing division by zero in coordinate transformations), unit quaternions provide a continuous, computationally robust 4-parameter representation:
+
+$$\mathbf{q} = \begin{bmatrix} w \\ x \\ y \\ z \end{bmatrix} = \begin{bmatrix} \cos(\theta / 2) \\ \mathbf{u} \sin(\theta / 2) \end{bmatrix}, \quad \|\mathbf{q}\|_2 = w^2 + x^2 + y^2 + z^2 = 1$$
+
+where $\mathbf{u} \in \mathbb{R}^3$ is the unit rotation axis and $\theta$ is the rotation angle.
+
+The **Hamilton Quaternion Product** ($\mathbf{q}_c = \mathbf{q}_a \otimes \mathbf{q}_b$) compounds successive 3D rotations:
+
+$$\mathbf{q}_a \otimes \mathbf{q}_b = \begin{bmatrix}
+w_a w_b - x_a x_b - y_a y_b - z_a z_b \\
+w_a x_b + x_a w_b + y_a z_b - z_a y_b \\
+w_a y_b - x_a z_b + y_a w_b + z_a x_b \\
+w_a z_b + x_a y_b - y_a x_b + z_a w_b
+\end{bmatrix}$$
+
+### Lie Algebra $\mathfrak{se}(3)$ and Tangent Space Integration
+In high-frequency control loops ($1000\text{ Hz}$), velocities are expressed as continuous **spatial twists** $\boldsymbol{\xi} \in \mathbb{R}^6$ combining linear velocity $\mathbf{v} \in \mathbb{R}^3$ and angular velocity $\boldsymbol{\omega} \in \mathbb{R}^3$:
+
+$$\boldsymbol{\xi} = \begin{bmatrix} \mathbf{v} \\ \boldsymbol{\omega} \end{bmatrix} \in \mathbb{R}^6$$
+
+The wedge operator $(\cdot)^\wedge$ maps $\boldsymbol{\xi} \in \mathbb{R}^6$ to the matrix Lie algebra $\mathfrak{se}(3)$:
+
+$$\boldsymbol{\xi}^\wedge = \begin{bmatrix} [\boldsymbol{\omega}]_\times & \mathbf{v} \\ \mathbf{0}_{1 \times 3} & 0 \end{bmatrix} \in \mathbb{R}^{4 \times 4}, \quad \text{where } [\boldsymbol{\omega}]_\times = \begin{bmatrix} 0 & -\omega_z & \omega_y \\ \omega_z & 0 & -\omega_x \\ -\omega_y & \omega_x & 0 \end{bmatrix}$$
+
+Integrating a constant twist $\boldsymbol{\xi}$ over a discrete time step $\Delta t$ updates the robot pose without numerical distortion using the **Exponential Map**:
+
+$$\mathbf{T}(t + \Delta t) = \mathbf{T}(t) \cdot \exp\left( \boldsymbol{\xi}^\wedge \Delta t \right)$$
+
+where $\exp(\boldsymbol{\xi}^\wedge \Delta t)$ is computed via Rodrigues' rotation formula:
+
+$$\exp([\boldsymbol{\omega}]_\times \Delta t) = \mathbf{I}_{3 \times 3} + \frac{\sin(\theta)}{\theta}[\boldsymbol{\omega}]_\times + \frac{1 - \cos(\theta)}{\theta^2}[\boldsymbol{\omega}]_\times^2, \quad \theta = \|\boldsymbol{\omega}\| \Delta t$$
+
+```c
+// Normalizing quaternion to prevent floating-point drift in 1 kHz ISR
+void quaternion_normalize(float q[4]) {
+    float norm_sq = q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3];
+    if (norm_sq > 1e-12f) {
+        float inv_norm = 1.0f / sqrtf(norm_sq);
+        q[0] *= inv_norm; q[1] *= inv_norm; q[2] *= inv_norm; q[3] *= inv_norm;
+    } else {
+        q[0] = 1.0f; q[1] = 0.0f; q[2] = 0.0f; q[3] = 0.0f; // Identity fallback
+    }
+}
+```
+
+---
+
+## 3. Control Barrier Functions (CBFs) & Minimal-Intervention Quadratic Programs
+
+### Forward Invariance and Nagumo's Theorem
+Consider a control-affine physical dynamical system:
+
+$$\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$$
+
+where $\mathbf{x} \in \mathbb{R}^n$ is the physical state (positions, velocities), $\mathbf{u} \in \mathbb{R}^m$ is the control input (motor torques, voltages), and $f, g$ describe the unforced drift physics and control input dynamics.
+
+A physical safety envelope is defined as the 0-superlevel set of a continuously differentiable scalar function $h(\mathbf{x}): \mathbb{R}^n \to \mathbb{R}$:
+
+$$\mathcal{C} = \{ \mathbf{x} \in \mathbb{R}^n \mid h(\mathbf{x}) \ge 0 \}$$
+
+$$\partial \mathcal{C} = \{ \mathbf{x} \in \mathbb{R}^n \mid h(\mathbf{x}) = 0 \} \quad (\text{Safety Boundary})$$
+
+$$\text{Int}(\mathcal{C}) = \{ \mathbf{x} \in \mathbb{R}^n \mid h(\mathbf{x}) > 0 \} \quad (\text{Safe Interior})$$
+
+The set $\mathcal{C}$ is **forward invariant** if for every initial state $\mathbf{x}(0) \in \mathcal{C}$, the trajectory remains safe for all future time: $\mathbf{x}(t) \in \mathcal{C}, \forall t \ge 0$.
+
+By Nagumo's theorem, forward invariance holds if and only if the time derivative of $h(\mathbf{x})$ satisfies:
+
+$$\dot{h}(\mathbf{x}, \mathbf{u}) \ge -\alpha(h(\mathbf{x}))$$
+
+where $\alpha(\cdot)$ is an **extended class-$\mathcal{K}$ function** (strictly increasing, $\alpha(0) = 0$, typically chosen as linear $\alpha(h) = \gamma h$ with $\gamma > 0$).
+
+### Lie Derivatives and Affine Control Invariants
+Expanding $\dot{h}(\mathbf{x}, \mathbf{u})$ via the chain rule:
+
+$$\dot{h}(\mathbf{x}, \mathbf{u}) = \nabla h(\mathbf{x}) \cdot \dot{\mathbf{x}} = \nabla h(\mathbf{x}) \cdot [f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}] = \underbrace{\nabla h(\mathbf{x}) f(\mathbf{x})}_{L_f h(\mathbf{x})} + \underbrace{\nabla h(\mathbf{x}) g(\mathbf{x})}_{L_g h(\mathbf{x})} \mathbf{u}$$
+
+* **$L_f h(\mathbf{x}) \in \mathbb{R}$:** The *Lie derivative along $f$*, representing the natural physical rate of change of safety clearance under zero actuator power (momentum drift).
+* **$L_g h(\mathbf{x}) \in \mathbb{R}^{1 \times m}$:** The *Lie derivative along $g$*, representing the control authority over safety clearance.
+
+The barrier condition becomes an **affine linear inequality** in the control input $\mathbf{u}$:
+
+$$L_f h(\mathbf{x}) + L_g h(\mathbf{x})\mathbf{u} + \gamma h(\mathbf{x}) \ge 0$$
+
+* **Intuition:** When far inside the safe set ($h(\mathbf{x}) \gg 0$), $-\gamma h(\mathbf{x})$ is a large negative number, imposing zero restriction on performance. As the state approaches the boundary ($h(\mathbf{x}) \to 0$), $-\gamma h(\mathbf{x}) \to 0$, forcing $\dot{h} \ge 0$ and repelling the state back into the safe interior.
+
+```
+       h(x) >> 0 (Safe Interior)                 h(x) -> 0 (Boundary)
+  ---------------------------------       ---------------------------------
+  dh/dt >= -gamma * h (Permissive)        dh/dt >= 0 (Zero Approach Speed)
+  Actuator full authority                Braking / Repulsion enforced
+```
+
+### The Minimal-Intervention Quadratic Program (CBF-QP)
+In the Proposal–Permission architecture, upstream neural policies (System 2 / System 1.5) emit candidate torque proposals $\mathbf{u}_{\text{cand}}$. The bare-metal microcontroller (System 1) solves the following convex Quadratic Program at $1000\text{ Hz}$:
+
+$$\mathbf{u}^* = \arg\min_{\mathbf{u}} \frac{1}{2} \| \mathbf{u} - \mathbf{u}_{\text{cand}} \|_{\mathbf{W}}^2$$
+
+$$\text{subject to:} \quad L_f h_i(\mathbf{x}) + L_g h_i(\mathbf{x})\mathbf{u} + \gamma_i h_i(\mathbf{x}) \ge 0, \quad \forall i = 1, \dots, M$$
+
+$$\mathbf{u}_{\text{min}} \le \mathbf{u} \le \mathbf{u}_{\text{max}}$$
+
+* **Minimal Intervention Principle:** If $\mathbf{u}_{\text{cand}}$ satisfies all barrier inequalities, the objective is minimized at $\mathbf{u}^* = \mathbf{u}_{\text{cand}}$, passing the neural policy's action with zero modification. If $\mathbf{u}_{\text{cand}}$ violates a barrier, the QP executes an orthogonal projection onto the safe half-space boundary $\partial \mathcal{U}_{\text{safe}}$, modifying the command by the minimum mathematical perturbation required to preserve invariance.
+
+---
+
+## 4. Discrete State Estimation & Covariance Mechanics (Continuous-Discrete EKF)
+
+Physical AI pipelines fuse high-rate ($1000\text{ Hz}$) noisy proprioceptive inertial measurements with delayed, multi-modal exteroceptive observations ($10\text{--}30\text{ Hz}$) using the **Continuous-Discrete Extended Kalman Filter (EKF)**.
+
+### Continuous Physics Propagation (IMU Prediction)
+Between measurement arrivals, state dynamics evolve continuously:
+
+$$\dot{\mathbf{x}}(t) = f(\mathbf{x}(t), \mathbf{u}(t)) + \mathbf{w}(t), \quad \mathbf{w}(t) \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_c)$$
+
+Discretizing over integration step $\Delta t = 1.0\text{ ms}$:
+
+$$\hat{\mathbf{x}}_{k|k-1} = \hat{\mathbf{x}}_{k-1|k-1} + f(\hat{\mathbf{x}}_{k-1|k-1}, \mathbf{u}_{k-1}) \Delta t$$
+
+$$\mathbf{P}_{k|k-1} = \mathbf{F}_k \mathbf{P}_{k-1|k-1} \mathbf{F}_k^T + \mathbf{Q}_d$$
+
+where:
+* $\mathbf{F}_k \approx \mathbf{I} + \left. \frac{\partial f}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_{k-1}} \Delta t$ is the state transition Jacobian.
+* $\mathbf{Q}_d \approx \mathbf{Q}_c \Delta t$ is the discrete process noise covariance.
+
+### Discrete Measurement Update & Outlier Rejection
+When an exteroceptive measurement $\mathbf{z}_k \in \mathbb{R}^m$ arrives from vision or LiDAR:
+
+$$\mathbf{z}_k = h(\mathbf{x}_k) + \mathbf{v}_k, \quad \mathbf{v}_k \sim \mathcal{N}(\mathbf{0}, \mathbf{R}_k)$$
+
+1. **Innovation Residual:** $\tilde{\mathbf{y}}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_{k|k-1})$
+2. **Innovation Covariance:** $\mathbf{S}_k = \mathbf{H}_k \mathbf{P}_{k|k-1} \mathbf{H}_k^T + \mathbf{R}_k$, where $\mathbf{H}_k = \left. \frac{\partial h}{\partial \mathbf{x}} \right|_{\hat{\mathbf{x}}_{k|k-1}}$
+3. **Mahalanobis Innovation Gating:** To reject optical reflections and sensor glitches, test the squared Mahalanobis distance against the Chi-Square distribution $\chi_{m, 1-\alpha}^2$:
+
+$$d_M^2 = \tilde{\mathbf{y}}_k^T \mathbf{S}_k^{-1} \tilde{\mathbf{y}}_k \le \chi_{m, 1-\alpha}^2$$
+
+If $d_M^2 > \chi_{\text{threshold}}^2$, the measurement is discarded as an un-modeled artifact.
+
+4. **Kalman Gain Computation:** $\mathbf{K}_k = \mathbf{P}_{k|k-1} \mathbf{H}_k^T \mathbf{S}_k^{-1}$
+5. **State Update:** $\hat{\mathbf{x}}_{k|k} = \hat{\mathbf{x}}_{k|k-1} + \mathbf{K}_k \tilde{\mathbf{y}}_k$
+6. **Joseph-Form Covariance Update (Numerical Stability):** On fixed-point and single-precision embedded silicon, the standard covariance update $\mathbf{P} = (\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}$ suffers from round-off errors that destroy symmetry and positive semi-definiteness. Embedded firmware must enforce the **Joseph stabilized form**:
+
+$$\mathbf{P}_{k|k} = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k) \mathbf{P}_{k|k-1} (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k)^T + \mathbf{K}_k \mathbf{R}_k \mathbf{K}_k^T$$
+
+Because both terms are quadratic forms $\mathbf{A} \mathbf{P} \mathbf{A}^T$, positive semi-definiteness ($\mathbf{P} \succeq 0$) is mathematically guaranteed regardless of numerical precision.
+
+---
+
+## 5. Field-Oriented Control (FOC) and Space-Vector Modulation
+
+To translate high-level torque commands into physical electromagnetic forces, brushless permanent-magnet synchronous motors (PMSM) rely on **Field-Oriented Control (FOC)** executing in dedicated hardware timer peripherals at $20\text{ kHz}$ ($\Delta t = 50\,\mu\text{s}$).
+
+### Clarke Transformation ($abc \to \alpha\beta$)
+Transforms balanced three-phase stator currents $(i_a, i_b, i_c)$ into a stationary two-phase orthogonal coordinate system:
+
+$$\begin{bmatrix} i_\alpha \\ i_\beta \end{bmatrix} = \frac{2}{3} \begin{bmatrix} 1 & -\frac{1}{2} & -\frac{1}{2} \\ 0 & \frac{\sqrt{3}}{2} & -\frac{\sqrt{3}}{2} \end{bmatrix} \begin{bmatrix} i_a \\ i_b \\ i_c \end{bmatrix}$$
+
+Using the zero-sum property $i_a + i_b + i_c = 0$, this simplifies to:
+
+$$i_\alpha = i_a, \quad i_\beta = \frac{1}{\sqrt{3}} (i_a + 2 i_b)$$
+
+### Park Transformation ($\alpha\beta \to dq$)
+Rotates the stationary $(\alpha, \beta)$ currents into the rotor's rotating reference frame using the electrical rotor angle $\theta_e = P \cdot \theta_{\text{mech}}$ (where $P$ is the motor pole-pair count):
+
+$$\begin{bmatrix} i_d \\ i_q \end{bmatrix} = \begin{bmatrix} \cos\theta_e & \sin\theta_e \\ -\sin\theta_e & \cos\theta_e \end{bmatrix} \begin{bmatrix} i_\alpha \\ i_\beta \end{bmatrix}$$
+
+* **Direct-Axis Current ($i_d$):** Aligns parallel with the rotor permanent magnet flux. Setting $i_d^* = 0$ eliminates wasteful radial forces and maximizes electrical efficiency.
+* **Quadrature-Axis Current ($i_q$):** Aligns $90^\circ$ electrical ahead of rotor flux, producing pure orthogonal electromagnetic torque:
+
+$$\tau_{\text{motor}} = \frac{3}{2} P \lambda_{\text{pm}} i_q = K_t \cdot i_q$$
+
+where $\lambda_{\text{pm}}$ is the permanent magnet flux linkage ($\text{Wb}$) and $K_t$ is the motor torque constant ($\text{N}\cdot\text{m/A}$).
+
+### $I^2t$ Thermal Accumulator
+To prevent motor stator insulation breakdown ($T > 155^\circ\text{C}$), the motor driver integrates Joulean thermal dissipation in real time:
+
+$$E_{\text{thermal}}(t) = \int_0^t I_{\text{phase}}^2(\tau) R_{\text{stator}} \, d\tau$$
+
+When $E_{\text{thermal}}$ exceeds the continuous thermal rating $E_{\text{continuous}}$, the controller linearly derates peak torque current $i_q^{\text{limit}} \leftarrow i_q^{\text{nominal}} \cdot \left(1 - \frac{T_j - 85^\circ\text{C}}{155^\circ\text{C} - 85^\circ\text{C}}\right)$.
+
+---
+
+## 6. Frequency-Domain Stability and Sampled-Data Phase Margin
+
+In classical digital control, converting continuous commands to discrete hardware outputs introduces uncompensated phase lag that erodes the system's stability margin.
+
+### Zero-Order Hold (ZOH) Phase Lag
+A digital-to-analog converter holding a commanded setpoint constant over sample period $T$ is modeled by the Zero-Order Hold transfer function:
+
+$$G_{\text{ZOH}}(s) = \frac{1 - e^{-sT}}{s}$$
+
+Evaluating its frequency response $s = j\omega$:
+
+$$G_{\text{ZOH}}(j\omega) = T \cdot \text{sinc}\left(\frac{\omega T}{2}\right) e^{-j \frac{\omega T}{2}}$$
+
+The magnitude attenuation is $\left| \text{sinc}\left(\frac{\omega T}{2}\right) \right|$, while the **exact phase lag** is:
+
+$$\Delta \phi_{\text{ZOH}} = -\frac{\omega T}{2} \quad (\text{radians}) = -\omega \cdot \frac{T}{2} \cdot \frac{180^\circ}{\pi} \quad (\text{degrees})$$
+
+### The Phase Margin Stability Criterion
+Let $\omega_c$ be the open-loop gain crossover frequency ($\|G(j\omega_c)\| = 1$) of the physical mechanism, and $\text{PM}_{\text{nominal}}$ be the nominal phase margin. Total sensorimotor transport delay $\tau_{\text{delay}} = \tau_{\text{compute}} + \frac{1}{2} T_{\text{sample}}$ introduces phase lag:
+
+$$\Delta \phi = -\omega_c \cdot \tau_{\text{delay}} \cdot \frac{180^\circ}{\pi}$$
+
+The effective closed-loop phase margin is:
+
+$$\text{PM}_{\text{effective}} = \text{PM}_{\text{nominal}} - \omega_c \tau_{\text{delay}} \cdot \frac{180^\circ}{\pi}$$
+
+* **Stability Limit:** If $\tau_{\text{delay}} \ge \frac{\text{PM}_{\text{nominal}}}{\omega_c} \cdot \frac{\pi}{180^\circ}$, then $\text{PM}_{\text{effective}} \le 0^\circ$. Stabilizing negative feedback flips into positive feedback, triggering explosive limit-cycle oscillations.
+
+| Sample Frequency ($f_s$) | Sample Period ($T$) | ZOH Delay ($\tau_d = T/2$) | Phase Lag at $\omega_c = 25\text{ rad/s}$ ($4\text{ Hz}$) | Impact on $35^\circ$ Phase Margin |
+| :--- | :--- | :--- | :--- | :--- |
+| **$10\text{ Hz}$** (Slow VLM) | $100\text{ ms}$ | $50\text{ ms}$ | **$-71.6^\circ$** | **$-36.6^\circ$ (Destructive Instability / Crash)** |
+| **$50\text{ Hz}$** (Action Chunk) | $20\text{ ms}$ | $10\text{ ms}$ | **$-14.3^\circ$** | **$+20.7^\circ$ (Reduced Damping, Mild Overshoot)** |
+| **$1000\text{ Hz}$** (MCU Reflex) | $1.0\text{ ms}$ | $0.5\text{ ms}$ | **$-0.72^\circ$** | **$+34.3^\circ$ (Robust Closed-Loop Stability)** |
+
+: **Frequency-Domain Phase Lag Impact across Physical AI Cadences.** Demonstrating why high-frequency execution is mathematically mandatory for physical stability. {#tbl-math-phase-lag}
+
+---
+
+## 7. Systems Translation Reference Cheat Sheet
+
+| Mathematical Concept | Core Equation / Invariant | Systems Meaning | Implementation Standard | Target Silicon |
+| :--- | :--- | :--- | :--- | :--- |
+| **Dynamic Stopping** | $d_{\text{stop}} = v \tau + \frac{v^2}{2a_{\text{max}}}$ | Minimum clearance to prevent impact | Closed-form velocity clamp ($v_{\text{safe}}$) | Real-Time MCU ($1000\text{ Hz}$) |
+| **Spatial Pose** | $\mathbf{T} \in SE(3), \, \mathbf{q} \in \mathbb{S}^3$ | 6-DoF position and rotation | Quaternion Hamilton product + Normalization | All Silicon Tiers |
+| **Twist Integration** | $\mathbf{T}_{k+1} = \mathbf{T}_k \exp(\boldsymbol{\xi}^\wedge \Delta t)$ | Singularity-free motion update | Rodrigues formula in C (`float[4][4]`) | MCU / Host MPU |
+| **Control Barrier** | $\dot{h} + \gamma h \ge 0$ | Forward invariant safe operating set | Affine constraint in microsecond QP | Real-Time MCU (`malloc = 0`) |
+| **CBF-QP Solver** | $\min \frac{1}{2} \|\mathbf{u} - \mathbf{u}_{\text{cand}}\|^2$ | Safety projection of neural proposals | Closed-form Active Set (`qpOASES`/`OSQP`) | Static DTCM SRAM ($<175\,\mu\text{s}$) |
+| **State Estimation** | $\mathbf{P} = (\mathbf{I}-\mathbf{K}\mathbf{H})\mathbf{P}(\mathbf{I}-\mathbf{K}\mathbf{H})^T + \mathbf{K}\mathbf{R}\mathbf{K}^T$ | Fusing noisy IMUs and delayed cameras | Joseph-form continuous-discrete EKF | Real-Time MCU / Edge NPU |
+| **Motor Commutation** | $i_d = 0, \, \tau = K_t i_q$ | Decoupled electromagnetic torque | Clarke/Park + Space Vector PWM | Inverter Timer ($20\text{ kHz}$) |
+| **Phase Margin** | $\Delta \phi = -\omega_c \tau_{\text{delay}}$ | Transport delay eroding control stability | $1000\text{ Hz}$ control loops to bound $\Delta \phi \le 1.5^\circ$ | Bare-Metal MCU |

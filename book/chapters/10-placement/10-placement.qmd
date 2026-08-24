@@ -280,80 +280,29 @@ We audit the Workload Placement stage across the Five Physical Columns in the Co
 
 Deploying neural policies onto embodied hardware requires dismantling digital software abstractions that treat computation as fungible, memory transfers as free, and wireless connectivity as deterministic.
 
-::: {.callout-fallacy title="High-Speed Wireless Networks (5G URLLC / Wi-Fi 7) Provide Sufficient Determinism for Direct Real-Time Actuator Control"}
-**The Fallacy:** *“Because 5G Ultra-Reliable Low-Latency Communication (URLLC) and Wi-Fi 7 offer nominal latencies of $1\text{--}5\text{ ms}$ and multi-gigabit throughput, high-level policies running on edge servers can directly stream real-time motor torque setpoints or close actuator loops over the air without onboard local safety supervision.”*
+### Systems Fallacies
 
-**The Reality:** Radio frequency (RF) propagation in real-world industrial and unstructured environments is fundamentally stochastic. Wireless channels are subject to Rayleigh/Rician multipath fading, destructive interference nulls, shadow fading from moving metal equipment or steel-clad insulated walls (Faraday cages), antenna polarization mismatch, and base station handoff stalls.
+#### Fallacy 1: High-Speed Wireless Networks (5G URLLC / Wi-Fi 7) Provide Sufficient Determinism for Direct Real-Time Actuator Control
+*The Fallacy:* Assuming that because 5G Ultra-Reliable Low-Latency Communication (URLLC) and Wi-Fi 7 offer nominal latencies of $1\text{--}5\text{ ms}$ and multi-gigabit throughput, high-level policies running on edge servers can directly stream real-time motor torque setpoints or close actuator loops over the air without onboard local safety supervision.
 
-While the median ($P_{50}$) round-trip time of a private 5G network may be $3\text{ ms}$, the tail latency distribution ($P_{99.999}$) exhibits severe heavy-tailed blowouts exceeding $1{,}000\text{--}2{,}000\text{ ms}$ during physical obstructions:
+*The Systems Reality:* Radio frequency (RF) propagation in real-world industrial and unstructured environments is fundamentally stochastic, subject to multipath fading, destructive interference nulls, shadow fading from moving metal equipment or steel-clad insulated walls (Faraday cages), and base station handoff stalls. While the median ($P_{50}$) round-trip time may be $3\text{ ms}$, the tail latency distribution ($P_{99.999}$) exhibits severe blowouts exceeding $1{,}000\text{--}2{,}000\text{ ms}$ during physical obstructions ($P(\text{Blackout} > 1.0\text{ s}) > 0$). In physical systems, unmonitored latency translates directly into unguided kinetic displacement ($d_{\text{coast}} = v \cdot \Delta t_{\text{blackout}}$). For a 1.2-ton machine traveling at $v = 1.8\text{ m/s}$, a $1.42\text{ s}$ network drop results in $2.556\text{ m}$ of unguided travel—instantly exhausting local clearance envelopes ($1.20\text{ m}$) and causing catastrophic mechanical impact ($E_k = 1{,}944\text{ J}$). Closed-loop actuator authority requires provable, bounded, deterministic execution ($\le 1.0\text{ ms} \pm 50\,\mu\text{s}$) on local, physically connected bare-metal microcontrollers.
 
-$$P(\text{Blackout} > 1.0\text{ s}) > 0$$
+#### Fallacy 2: Shared Unified Memory (UMA) Eliminates All Data Movement Overhead Between CPU and Accelerator Silicon
+*The Fallacy:* Believing that because modern embedded SoCs integrate CPU, GPU, and NPU into a Unified Memory Architecture (UMA) sharing a single physical LPDDR5 DRAM pool, zero-copy pointer passing eliminates all data movement latency, interconnect contention, and energy overhead between host software and neural accelerators.
 
-In physical systems, unmonitored latency translates directly into unguided kinetic displacement:
+*The Systems Reality:* While UMA eliminates explicit PCIe bus DMA copies between disjoint memory pools, all compute engines must share the *same* physical DRAM memory controller and internal AXI interconnect crossbars. When high-bandwidth sensor DMAs (such as four 4K MIPI CSI-2 camera streams at $2.5\text{ GB/s}$) and neural weight fetches ($20\text{ GB/s}$) saturate the memory crossbar, DRAM access latency for CPU and MCU threads spikes by $300\text{--}800\%$. Furthermore, non-coherent caches require explicit cache clean (`clean_dcache_range`) and invalidate (`invalidate_dcache_range`) operations that stall execution pipelines. Finally, accessing off-chip LPDDR5 DRAM consumes $\approx 150\text{ pJ/access}$ vs $<2\text{ pJ/access}$ for on-chip static SRAM ($75\times$ energy disparity), demonstrating that UMA is a shared contention domain requiring strict hardware AXI QoS arbitration and on-chip SRAM weight tiling.
 
-$$d_{\text{coast}} = v \cdot \Delta t_{\text{blackout}}$$
+### Systems Pitfalls
 
-For a 1.2-ton machine traveling at $v = 1.8\text{ m/s}$, a $1.42\text{ s}$ network drop results in $2.556\text{ m}$ of unguided travel—instantly exhausting local clearance envelopes ($1.20\text{ m}$) and causing catastrophic mechanical impact ($E_k = 1{,}944\text{ J}$).
+#### Pitfall 1: Dynamic Voltage and Frequency Scaling (DVFS) Downclocking Induced by Model Memory Bandwidth Thrashing
+*The Pitfall:* Deploying neural network policies with low arithmetic intensity ($I_{\text{arith}} \approx 1\text{--}2\text{ FLOPs/Byte}$) that continuously stream multi-gigabyte weight tensors across off-chip DRAM buses in passively cooled or IP67-sealed robotic enclosures.
 
-Industrial safety standards (ISO 3691-4, IEC 62443, IEC 60204-1) mandate that closed-loop actuator authority requires provable, bounded, deterministic execution ($\le 1.0\text{ ms} \pm 50\,\mu\text{s}$). Wireless networks can only be used to transmit semantic deliberation and candidate plans governed by time-bounded **Expiring Intent Leases** ($\tau_{\text{lease}} \le 100\text{ ms}$), while local, physically connected bare-metal microcontrollers maintain autonomous stopping distance supervision ($d_{\text{stop}}$) and hardware watchdog fail-safes.
-:::
+*The Systems Reality:* In low-arithmetic-intensity models, memory PHY I/O pads and DRAM controllers dissipate substantial Joulean power ($P_{\text{DRAM}} + P_{\text{PHY}}$) alongside active silicon switching power ($P_{\text{dynamic}} = \alpha C V^2 f$). When sustained memory thrashing drives junction temperature past the hardware threshold ($T_j > 85^\circ\text{C}$), on-chip thermal supervisory circuits abruptly trigger Dynamic Voltage and Frequency Scaling (DVFS), downclocking accelerator core frequencies by up to $60\%$ ($f_{\text{clock}} \leftarrow 0.40 \times f_{\text{nominal}}$). This doubles forward inference latency ($T_{\text{infer}}: 25\text{ ms} \to 70\text{ ms}$), blowing past the $50\text{ ms}$ action chunking deadline and tripping uncommanded emergency stops. Systems must maximize arithmetic intensity via INT8/FP8 quantization within on-chip SRAM ($<8.0\text{ MB}$, $I_{\text{arith}} > 120\text{ FLOPs/Byte}$) and deploy **Proactive Thermal Cadence Scaling** ($H=16 \to 32$, $50\text{ Hz} \to 20\text{ Hz}$ at $T_j \ge 75^\circ\text{C}$) to stabilize thermals below the DVFS cliff.
 
-::: {.callout-fallacy title="Shared Unified Memory (UMA) Eliminates All Data Movement Overhead Between CPU and Accelerator Silicon"}
-**The Fallacy:** *“Because modern embedded SoCs integrate CPU, GPU, and NPU into a Unified Memory Architecture (UMA) sharing a single physical LPDDR5 DRAM pool, zero-copy pointer passing eliminates all data movement latency, interconnect contention, and energy overhead between host software and neural accelerators.”*
+#### Pitfall 2: False Sharing and Cache Line Ping-Pong in Inter-Processor Lock-Free Ring Buffers
+*The Pitfall:* Allocating producer sequence counters (`head_sequence`) and consumer sequence counters (`tail_sequence`) on adjacent memory addresses within the same 64-byte hardware cache line in shared SRAM mailboxes bridging asymmetric processor cores.
 
-**The Reality:** While UMA eliminates explicit PCIe bus DMA copies between physically disjoint memory pools, all compute engines must share the *same* physical DRAM memory controller and internal AXI interconnect crossbars.
-
-When high-bandwidth sensor DMAs (such as four 4K MIPI CSI-2 camera streams at $2.5\text{ GB/s}$) and neural weight fetches ($20\text{ GB/s}$) saturate the memory crossbar, DRAM access latency for CPU and MCU threads spikes by $300\text{--}800\%$. A deterministic $1000\text{ Hz}$ real-time control loop attempting to read shared waypoints from DRAM is stalled by memory bus contention, causing hard deadline misses.
-
-Furthermore, CPU L1/L2 caches and NPU tensor accelerators are frequently non-coherent across execution domains. Passing buffers across these boundaries requires explicit cache maintenance operations:
-
-$$\text{Host Clean:} \quad \text{clean\_dcache\_range}(\text{addr}, \text{size})$$
-
-$$\text{Coprocessor Invalidate:} \quad \text{invalidate\_dcache\_range}(\text{addr}, \text{size})$$
-
-These operations stall processor execution pipelines, pollute cache hierarchies, and consume hundreds of clock cycles per transaction.
-
-Finally, accessing off-chip LPDDR5 DRAM consumes approximately $150\text{ pJ/access}$, whereas fetching operands from on-chip static SRAM consumes $<2\text{ pJ/access}$—a $75\times$ energy disparity. Continuous DRAM streaming rapidly exhausts battery capacity and elevates package junction temperature ($T_j$), demonstrating that UMA is a shared contention domain requiring strict hardware AXI QoS arbitration and on-chip SRAM weight tiling.
-:::
-
-::: {.callout-caution title="Dynamic Voltage and Frequency Scaling (DVFS) Downclocking Induced by Model Memory Bandwidth Thrashing"}
-**The Hazard:** Deploying neural network policies with low arithmetic intensity ($I_{\text{arith}} \approx 1\text{--}2\text{ FLOPs/Byte}$) that continuously stream multi-gigabyte weight tensors across off-chip DRAM buses in passively cooled or IP67-sealed robotic enclosures.
-
-**The Physical Failure:** In low-arithmetic-intensity models (such as unquantized autoregressive transformers), memory PHY I/O pads and DRAM controllers dissipate substantial Joulean power ($P_{\text{DRAM}} + P_{\text{PHY}}$) alongside active silicon switching power ($P_{\text{dynamic}} = \alpha C V^2 f$). 
-
-In an enclosed robot chassis, the silicon junction temperature is governed by first-order thermal dynamics:
-
-$$C_{\text{die}} \frac{d T_j(t)}{dt} = P_{\text{dynamic}}(t) + P_{\text{PHY}}(t) + P_{\text{leakage}}(T_j) - \frac{T_j(t) - T_{\text{ambient}}}{R_\theta}$$
-
-When sustained memory thrashing drives junction temperature past the hardware threshold ($T_j > 85^\circ\text{C}$), on-chip thermal supervisory circuits abruptly trigger Dynamic Voltage and Frequency Scaling (DVFS), downclocking accelerator core frequencies by up to $60\%$:
-
-$$f_{\text{clock}} \leftarrow 0.40 \times f_{\text{nominal}}$$
-
-This sudden frequency collapse doubles or triples forward inference latency ($T_{\text{infer}}: 25\text{ ms} \to 70\text{ ms}$), blowing past the $50\text{ ms}$ action chunking deadline. The low-level controller is starved of fresh waypoints, intent leases expire, and the vehicle trips an uncommanded emergency stop mid-operation.
-
-**The Defensive Practice:** Maximize arithmetic intensity by quantizing trajectory decoders into INT8 or FP8 formats that reside permanently within on-chip dedicated SRAM ($<8.0\text{ MB}$, $I_{\text{arith}} > 120\text{ FLOPs/Byte}$), reducing off-chip DRAM traffic to near zero. Pair this with **Proactive Thermal Cadence Scaling**: monitor on-die thermal diodes in real-time, dynamically expanding chunk horizon ($H=16 \to 32$) and reducing inference cadence ($50\text{ Hz} \to 20\text{ Hz}$) when $T_j \ge 75^\circ\text{C}$, stabilizing junction temperature below the DVFS downclocking cliff without dropping control deadlines.
-:::
-
-::: {.callout-caution title="False Sharing and Cache Line Ping-Pong in Inter-Processor Lock-Free Ring Buffers"}
-**The Hazard:** Allocating producer sequence counters (`head_sequence`) and consumer sequence counters (`tail_sequence`) on adjacent memory addresses within the same 64-byte hardware cache line in shared SRAM mailboxes bridging asymmetric processor cores (e.g., Linux Host CPU and Real-Time Coprocessor).
-
-**The Physical Failure:** Modern processors and cache controllers manage memory in discrete 64-byte cache lines. When the producer on Core 0 writes an updated `head_sequence`, the hardware cache coherency protocol (such as MESI or MOESI) invalidates the entire 64-byte cache line in Core 1's local cache.
-
-When the consumer on Core 1 subsequently reads or updates `tail_sequence`, it incurs an immediate cache miss. Core 1 must stall its execution pipeline, issue an interconnect snooping transaction or DRAM read, and reload the line into the *Shared* ($S$) or *Modified* ($M$) state.
-
-Over high-frequency IPC streams ($1000\text{ Hz}$), this continuous **cache line ping-pong** creates severe interconnect bus contention, inflates synchronization latency from $<50\text{ ns}$ to hundreds of microseconds, and introduces non-deterministic timing jitter that destroys real-time control guarantees.
-
-**The Defensive Practice:** Enforce strict cache line isolation using C11/C++11 alignment specifiers (`alignas(64)` or `alignas(CACHE_LINE_SIZE)`) on all independently modified shared variables, verified via compile-time static assertions:
-
-```c
-// STATIC ASSERTION FOR CACHE LINE ISOLATION
-static_assert(offsetof(lockless_sram_mailbox_t, tail_sequence) - 
-              offsetof(lockless_sram_mailbox_t, head_sequence) >= CACHE_LINE_SIZE,
-              "CRITICAL ERROR: False sharing detected between head and tail sequence!");
-```
-
-On non-coherent multi-core architectures (e.g., Cortex-A to Cortex-M), pair alignment with explicit cache clean (`clean_dcache_range`) and cache invalidation (`invalidate_dcache_range`) operations to guarantee deterministic, microsecond data exchange without bus ping-pong.
-:::
+*The Systems Reality:* When the producer on Core 0 writes an updated `head_sequence`, the hardware cache coherency protocol invalidates the entire 64-byte cache line in Core 1's local cache. When the consumer on Core 1 subsequently reads `tail_sequence`, it incurs a cache miss and stalls its pipeline. Over high-frequency IPC streams ($1000\text{ Hz}$), this continuous **cache line ping-pong** creates severe interconnect bus contention, inflates synchronization latency from $<50\text{ ns}$ to hundreds of microseconds, and introduces non-deterministic timing jitter that destroys real-time control guarantees. Firmware must enforce strict cache line isolation using alignment specifiers (`alignas(64)`) on all independently modified shared variables, verified via compile-time static assertions (`static_assert`).
 
 
 ## Chapter Summary and Forward Handoff to Chapter 11

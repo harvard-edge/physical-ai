@@ -143,31 +143,31 @@ Conditioned on this state belief, the semantic reasoner emits a bounded Expiring
 
 ## Fallacies and Pitfalls in Cognitive Agency
 
-::: {.callout-fallacy title="A Single End-to-End VLA Model Obsoletes Cognitive Stage Decomposition"}
+Designing embodied cognitive architectures requires avoiding common misconceptions that conflate digital machine learning capabilities with real-time physical control.
+
+### Systems Fallacies
+
+#### Fallacy 1: A Single End-to-End VLA Model Obsoletes Cognitive Stage Decomposition
 *The Fallacy:* Believing that scaling a single monolithic vision-language-action foundation model directly from camera pixels to motor PWM currents eliminates the need for separate perception, memory, reasoning, planning, and execution stages.
 
 *The Systems Reality:* A multi-billion parameter autoregressive model requires $200\text{ to }1000\text{ ms}$ per forward evaluation pass. Driving an actuator directly from this deliberative model introduces massive reaction debt ($d_{\text{coast}} = v \cdot \Delta t$) and phase lag ($\Delta \phi = -\omega t_{\text{delay}}$) that destabilizes high-speed control loops. Furthermore, stochastic neural activations lack deterministic forward-invariance proofs. Physical survival demands decomposing the lifecycle into layered temporal cadences, restricting large models to untrusted intent proposals while delegating deterministic physical protection to kilohertz safety barriers.
-:::
 
-::: {.callout-fallacy title="Learned Latent World Models Eliminate the Need for Metric Kinematic Frame Trees"}
+#### Fallacy 2: Learned Latent World Models Eliminate the Need for Metric Kinematic Frame Trees
 *The Fallacy:* Assuming that predicting in a continuous learned latent space $\mathcal{Z}$ (such as a JEPA or recurrent state-space model) makes explicit metric coordinates ($SE(3)$ kinematic frame trees, pinhole camera intrinsics, and robot Denavit–Hartenberg parameters) unnecessary.
 
 *The Systems Reality:* Latent embeddings capture topological relations, semantic affordances, and non-rigid physical deformations, but physical actuators operate in millimeter-scale metric space. Inserting a surgical tool, grasping a delicate workpiece, or mating a mechanical connector requires exact metric frame transformations ($T_{A \to B} \in SE(3)$). Neglecting metric grounding causes high-precision physical interaction to fail despite high latent similarity scores. Learned world models must wrap around and continuously ground into verifiable kinematic frame trees.
-:::
 
-{{< pagebreak >}}
+### Systems Pitfalls
 
-::: {.callout-caution title="Single-Rate While Loops Coupling Deliberation with Reflexes (The While-Loop Catastrophe)"}
+#### Pitfall 1: Single-Rate While Loops Coupling Deliberation with Reflexes (The While-Loop Catastrophe)
 *The Pitfall:* Placing image acquisition, VLM intent inference, trajectory spline generation, and motor torque dispatch inside a single synchronous `while True:` loop in software (e.g., standard Python scripts or un-isolated ROS nodes).
 
 *The Systems Reality:* Any transient latency spike in upstream deliberation—such as language runtime garbage collection pauses, GPU kernel launch delays, or operating system memory compaction preemption—directly delays the motor control tick. A $50\text{ ms}$ stall in a $1000\text{ Hz}$ control loop causes 50 consecutive dropped ticks, starving actuators of reference updates, causing power inverters to latch current, and driving the plant into mechanical resonance or violent physical impact. Deliberation and reflex execution must run on decoupled, asynchronous threads across isolated silicon domains.
-:::
 
-::: {.callout-caution title="Issuing Unbounded Semantic Intent Without Hardware-Enforced Expiration Leases"}
+#### Pitfall 2: Issuing Unbounded Semantic Intent Without Hardware-Enforced Expiration Leases
 *The Pitfall:* Dispatching open-ended high-level semantic commands (such as "drive forward to loading dock" or "rotate joint toward target") from a deliberative VLM to the low-level controller without a strictly enforced hardware expiration lease ($\Delta t_{\text{lease}}$).
 
 *The Systems Reality:* If the upstream application processor crashes, hangs on a network socket, or encounters memory bus starvation, the low-level controller continues executing the last received command indefinitely. High-level intent must always be packaged as an *Expiring Intent Lease* ($I_t = \mathcal{L}_{\text{intent}}$); if the cognitive tier fails to renew the lease before it expires, the real-time microcontroller autonomously executes a controlled deceleration to rest. Intent without an expiring lease is an uncontained runaway hazard.
-:::
 
 
 ## Summary
