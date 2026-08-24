@@ -354,43 +354,17 @@ We audit the perception organ across the Five Physical Columns in @tbl-perceptio
 
 Designing perception for physical machines requires rejecting digital vision intuitions that fail on real hardware.
 
-### Fallacy: Higher Camera Resolution Always Improves Real-World Robot Perception
+#### Fallacy: Higher Camera Resolution Unconditionally Improves Real-World Perception {.unnumbered}
+Believing that upgrading sensors to 4K resolution unconditionally improves real-world robot perception. Uncompressed dual 4K video generates $2.98\text{ GB/s}$ of continuous DMA writes, saturating the shared UMA memory bus and causing row-buffer conflicts that starve NPU transformer weight fetches. Furthermore, self-attention memory scales quadratically ($\mathcal{O}(N^2)$), expanding patch token activations from $131\text{ KB}$ to $33.5\text{ MB}$ per head and forcing continuous DRAM spilling. At $v = 2.5\text{ m/s}$, 4K ingestion inflates tail latency from $22\text{ ms}$ ($d_{\text{react}} = 5.5\text{ cm}$) to $135\text{ ms}$ ($d_{\text{react}} = 33.8\text{ cm}$), expanding the forward blind reaction zone by $28.3\text{ cm}$.
 
-In server-side computer vision, upgrading an image stream from $720\text{p}$ ($1280 \times 720$, $0.92\text{ MP}$) to $4\text{K}$ ($3840 \times 2160$, $8.29\text{ MP}$) increases pixel density by a factor of nine, resolving finer scene details. In physical robotics, however, sensory ingestion is constrained by shared silicon memory bandwidth and neural accelerator SRAM capacity.
+#### Fallacy: Software Timestamping Provides Sufficient Multi-Sensor Accuracy {.unnumbered}
+Assuming that user-space software timestamps (`time.time()`) provide sufficient timing accuracy for multi-sensor state estimation. User-space timestamps record OS process scheduling rather than physical photon exposure, concealing integration midpoints ($8\text{ ms}$), MIPI serial transfers ($6\text{ ms}$), and ISP debayering ($4\text{ ms}$). An uncalibrated temporal skew of $\Delta t_{\text{skew}} = 25\text{ ms}$ under an angular velocity of $\omega = 100^\circ/\text{s}$ injects $2.5^\circ$ of rotational phase error into Lie algebra tangent space $\mathfrak{so}(3)$, corrupting Kalman filter covariance and destabilizing high-speed locomotion. Multi-sensor fusion demands hardware PTP (IEEE 1588) exposure midpoint strobes.
 
-Uncompressed dual 4K video at 60 FPS generates a continuous DMA write stream of $2.98\text{ GB/s}$ directly across the shared UMA crossbar. Because DMA controllers stream data across broad memory strides, they constantly open and close dynamic RAM banks, causing row-buffer conflicts that stall the $25\text{ GB/s}$ memory read bursts required to stream $350\text{ MB}$ of Vision Transformer weights into the NPU. Furthermore, transformer patch tokenization scales quadratically in self-attention memory ($\mathcal{O}(N^2)$). Increasing image resolution from $224 \times 224$ ($N=256$ patches for $P=14$) to $896 \times 896$ ($N=4096$) expands the attention matrix from $131\text{ KB}$ (fitting within on-chip SRAM) to $33.5\text{ MB}$ per head, forcing continuous DRAM spilling.
+#### Pitfall: Unthrottled DMA Ingestion Starving Accelerator Memory Buses {.unnumbered}
+Allowing camera DMA engines to arbitrate shared memory crossbars with default round-robin bus priority. Under heavy camera streaming, DMA write requests continually preempt NPU read bursts, stalling the neural compute pipeline during parameter loads. Mitigating this requires configuring ARM AMBA AXI Quality-of-Service registers (`AWQOS`/`ARQOS`) at boot time: assigning maximum priority (`QoS = 15`) to microcontroller real-time loops, high priority (`QoS = 10`) to NPU model weight reads, and throttled priority (`QoS = 4`) to camera DMA engines.
 
-On a physical robot moving at $v = 2.5\text{ m/s}$, a $720\text{p}$ stream processed with sub-patch bilinear feature interpolation achieves millimeter-grade grasp accuracy in $22\text{ ms}$ ($d_{\text{react}} = 5.5\text{ cm}$). In contrast, unthrottled 4K ingestion inflates tail latency to $135\text{ ms}$ ($d_{\text{react}} = 33.8\text{ cm}$), expanding the forward blind reaction displacement by $28.3\text{ cm}$. High resolution without memory bandwidth determinism produces a blind robot.
-
-### Fallacy: Software Timestamping Is Sufficient for Multi-Sensor State Estimation
-
-Logging timestamps in user-space software (such as calling `time.time()` in Python or `std::chrono::system_clock::now()` in C++) records the moment the operating system kernel scheduler dispatches the receiving process. It does not record when photons struck the sensor silicon.
-
-User-space timestamps conceal the physical exposure integration midpoint ($t_{\text{exp}} / 2 \approx 8\text{ ms}$), MIPI CSI-2 serial packet transmission ($6\text{ ms}$), hardware ISP debayering ($4\text{ ms}$), Direct Memory Access completion interrupts, and Linux kernel context-switch delays. This creates an unmodeled temporal skew of $\Delta t_{\text{skew}} = 10\text{--}35\text{ ms}$.
-
-When fusing $30\text{ Hz}$ camera frames with a $1000\text{ Hz}$ IMU, the state estimator forward-projects body orientation across the inter-sensor gap in the Lie algebra tangent space $\mathfrak{so}(3)$:
-
-$$\mathbf{R}(t + \Delta t) = \mathbf{R}(t) \cdot \exp\left(\boldsymbol{\omega}^\wedge \Delta t\right)$$
-
-An uncalibrated temporal skew of $\Delta t_{\text{skew}} = 25\text{ ms}$ under an angular velocity of $\omega = 100^\circ/\text{s}$ injects $2.5^\circ$ of unmodeled rotational phase error. This phase error violates the orthogonal group constraint ($\mathbf{R}^T \mathbf{R} = \mathbf{I}$) in downstream fusion, corrupting the extended Kalman filter covariance bounds and destabilizing high-speed locomotion. Eliminating this error requires hardware PTP (IEEE 1588) exposure midpoint strobes that latch hardware clocks at the physical center of the optical integration window.
-
-### Pitfall: Unthrottled DMA Video Ingestion Starving NPU Memory Buses
-
-When video pipelines are designed with default bus master priorities, on-chip AXI crossbars arbitrate memory transactions in simple round-robin or first-come, first-served order. Under heavy multi-camera streaming, DMA write requests continually preempt NPU read bursts, stalling the neural compute pipeline during parameter weight loads.
-
-This failure stems from a lack of hardware privilege separation. Mitigating it requires configuring ARM AMBA AXI Quality-of-Service registers (`AWQOS` and `ARQOS`) at boot time: assigning maximum priority (`QoS = 15`) to microcontroller real-time safety loops, high priority (`QoS = 10`) to NPU model weight reads, and throttled priority (`QoS = 4`) to camera DMA write engines. Pairing AXI QoS with pinned zero-copy ring buffers (`dma_alloc_coherent`) ensures that sensor ingestion can never preempt neural deliberation or motor safety reflexes.
-
-### Pitfall: Neglecting Extrinsic Calibration Thermal and Vibration Drift
-
-Systems engineers often treat the extrinsic transformation matrix $\mathbf{T}_{C1}^{C2} = [\mathbf{R} \mid \mathbf{t}] \in SE(3)$ between stereo cameras or between a camera and the robot kinematic base as a static constant measured once in a factory calibration jig.
-
-During field operation, structural aluminum chassis components expand under operational heat (thermal expansion coefficient $\alpha \approx 23 \times 10^{-6}\text{ K}^{-1}$), while motor torque transients and terrain impacts induce chassis flexure. Across a $20\text{ cm}$ stereo camera baseline, an angular structural deflection of just $0.5^\circ$ expands triangulation depth error from $\pm 2\text{ cm}$ to over $18\text{ cm}$ at a $5\text{ m}$ working distance.
-
-In a legged or wheeled robot, this geometric distortion injects phantom elevation steps into the terrain elevation map, triggering false obstacle avoidance maneuvers or unstable foot placements. Robust perception pipelines must execute online epipolar calibration filters that continuously monitor the Sampson residual error:
-
-$$\epsilon_{\text{epi}} = \frac{(\mathbf{x}_2^T \mathbf{F} \mathbf{x}_1)^2}{(\mathbf{F}\mathbf{x}_1)_1^2 + (\mathbf{F}\mathbf{x}_1)_2^2 + (\mathbf{F}^T\mathbf{x}_2)_1^2 + (\mathbf{F}^T\mathbf{x}_2)_2^2}$$
-
-When $\epsilon_{\text{epi}}$ exceeds predefined tolerance bounds, the filter dynamically re-estimates $\mathbf{T}_{C1}^{C2}$ in real time before geometric distortion corrupts downstream metric affordance tokens.
+#### Pitfall: Static Extrinsic Calibration Under Operational Thermal and Shock Drift {.unnumbered}
+Treating camera-to-chassis extrinsic transformation matrices ($\mathbf{T}_{C1}^{C2} \in SE(3)$) as static constants. Chassis aluminum expands under operational heat ($\alpha \approx 23 \times 10^{-6}\text{ K}^{-1}$), while motor torque transients induce structural flexure. Across a $20\text{ cm}$ stereo baseline, an angular deflection of just $0.5^\circ$ expands depth error from $\pm 2\text{ cm}$ to over $18\text{ cm}$ at a $5\text{ m}$ working distance, injecting phantom elevation steps into terrain maps. Robust pipelines must execute online epipolar calibration filters monitoring Sampson residuals ($\epsilon_{\text{epi}}$).
 
 
 ## Chapter Summary and Forward Handoff to Chapter 6
