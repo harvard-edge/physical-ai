@@ -26,7 +26,7 @@ After studying this chapter, you will be able to:
 
 ## The World Sets the Clock: Sense-to-Actuation Metrology and the Five Physical Constraints
 
-Why does a neural policy that comfortably achieves 30 frames per second during simulated validation inevitably cause a catastrophic collision upon its first deployment to a physical test bench? The answer lies in the fundamental disparity between how digital platforms and embodied machines experience the passage of time. In the cloud, compute operates within an elastic, turn-based reality where a delayed inference merely prolongs a user's wait. Time is patient behind the glass. In the physical realm, however, time is an unyielding, continuous dynamical state variable. The physical world sets the clock, and it waits for no processor. When an embodied agent is late, the world continues to evolve, rendering the computed action dangerously stale by the time it manifests as physical force.
+When software leaves the cloud and takes physical form, the relationship between computation and time undergoes a fundamental inversion. In the cloud, compute operates within an elastic, turn-based reality where a delayed inference merely prolongs a user's wait behind glass. In the physical realm, however, time is an unyielding, continuous dynamical state variable. The physical world sets the clock, and it waits for no processor. When an embodied agent is late, the physical universe continues to evolve, rendering computed action commands dangerously stale before they ever manifest as physical torque.
 
 In Chapter 1, we defined the Causal Boundary—the critical interface where algorithmic intent translates into the transition of the world from state $W_t$ to $W_{t+1}$. We explored how this boundary governs the three canonical archetypes of Physical AI: mobility, contact manipulation, and cybernetic processes. While Chapter 1 established the conceptual boundary where bits transform into physical work, this chapter instrumentally inspects that exact perimeter. Here, we attach precise measuring instruments—a discipline we term *sense-to-actuation metrology*—to every microsecond, millimeter, and milliamp of the pipeline that connects a sensor photon to an actuator's torque.
 
@@ -46,7 +46,7 @@ Together, these five columns form the immutable bedrock upon which all embodied 
 
 1. **Section 2.2 (Time & Information Freshness):** We deconstruct the 7-stage sense-to-actuation latency waterfall and calculate the geometric Freshness Wall ($\Delta t_{\text{wall}}$) where internal model belief diverges from physical reality.
 2. **Section 2.3 (Inertia & Dynamic Stopping Envelopes):** We derive two-phase dynamic stopping kinematics ($d_{\text{stop}} = d_{\text{react}} + d_{\text{brake}}$) under worst-case tail latency spikes ($P_{99}$).
-3. **Section 2.4 (Actuation Dynamics, Inductance & Jerk):** We analyze motor electrical time constants ($\tau_e = L/R$) and enforce $\mathcal{C}^2$ quintic jerk bounding ($\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$) to protect precision gearboxes from stress fracture.
+3. **Section 2.4 (Actuation Dynamics, Inductance & Jerk):** We analyze motor electrical time constants ($\tau_e = L/R$) and enforce $\mathcal{C}^2$ quintic jerk bounding ($\|\dddot{\mathbf{q}}\| \le \dddot{q}_{\text{max}}$) to protect precision gearboxes from stress fracture.
 4. **Section 2.5 (Energy & Thermals):** We model stator winding Joule heating ($I^2Rt$) and silicon Dynamic Voltage and Frequency Scaling (DVFS) thermal cliffs in sealed robotic enclosures.
 5. **Section 2.6 (Silicon Determinism & The Iron Law):** We resolve Unified Memory Architecture (UMA) crossbar contention via hardware AXI QoS registers and enforce compile-time static SRAM execution (`malloc = 0`).
 6. **Section 2.7 & 2.8 (The Requirements Ledger & Handoff):** We compile the empirical requirements ledger to freeze physical invariants, establishing the quantitative baseline for Part I before introducing cognitive agency in Chapter 3.
@@ -76,7 +76,9 @@ Listing 2.1 illustrates this practice, which we term the *software timestamp del
 
 [^ptp]: Sub-microsecond hardware timestamping across multi-board or distributed architectures requires dedicated hardware time synchronization protocols such as IEEE 1588 Precision Time Protocol (PTP) or hardware timer capture triggers [@ieee1588].
 
-To measure true physical latency, engineers must measure physical electrical transitions directly: from the hardware strobe line when light strikes the camera sensor, across memory buses and processor mailboxes, all the way to the analog current probe measuring stator phase current rise on the motor inverter.
+![**Hardware-Triggered Metrology Topology.** Escaping software timestamp delusions via logic analyzer GPIO toggles and shunt current probes. Physical ground-truth instrumentation bypasses operating system abstractions to measure true end-to-end latency directly on electrical traces.](figures/fig02_metrology_setup.svg){#fig-metrology-setup width=100%}
+
+To measure true physical latency, engineers must measure physical electrical transitions directly (@fig-metrology-setup): from the hardware strobe line when light strikes the camera sensor, across memory buses and processor mailboxes, all the way to the analog current probe measuring stator phase current rise on the motor inverter.
 
 ### The 7-Stage Latency Waterfall
 
@@ -105,7 +107,13 @@ When instrumented at the hardware level, the complete sense-to-actuation pathway
 
 : The 7-stage sense-to-actuation latency breakdown. Deconstructing end-to-end delay across physical transduction, memory bus transfers, neural processing, inter-core communication, real-time safety evaluation, and electromagnetic actuator rise time. {#tbl-latency-breakdown}
 
-The sum of these seven stages forms the total sense-to-actuation latency ($t_{\text{total}}$). Under nominal operating conditions ($P_{50}$), the pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus contention and scheduling jitter inflate the delay to $126.0\text{ ms}$—a catastrophic breach of the physical timing budget. In frequency-domain control theory, pure transport delay $t_{\text{delay}}$ rotates the open-loop transfer function phase angle by $\Delta \phi = -\omega_c t_{\text{delay}} \cdot \frac{180^\circ}{\pi}$; at a typical closed-loop system bandwidth (control crossover frequency) of $\omega_c = 20\text{ rad/s}$ ($\approx 3.2\text{ Hz}$), a $126\text{ ms}$ delay injects a massive $144.4^\circ$ phase lag, completely wiping out typical $45^\circ\text{--}60^\circ$ phase margins and triggering violent control instability [@astrom2021feedback].
+The sum of these seven stages forms the total sense-to-actuation latency ($t_{\text{total}}$). Under nominal operating conditions ($P_{50}$), the pipeline executes in $52.2\text{ ms}$, comfortably beneath the system's physical deadline of $\tau_{\text{world}} = 80.0\text{ ms}$. Under worst-case tail conditions ($P_{99}$), however, memory bus contention and scheduling jitter inflate the delay to $126.0\text{ ms}$—a catastrophic breach of the physical timing budget. 
+
+In frequency-domain control theory, pure transport delay $t_{\text{delay}}$ rotates the open-loop transfer function phase angle by:
+
+$$\Delta \phi = -\omega_c t_{\text{delay}} \cdot \frac{180^\circ}{\pi}$$
+
+At a typical closed-loop system bandwidth (control crossover frequency) of $\omega_c = 20\text{ rad/s}$ ($\approx 3.2\text{ Hz}$), a $126\text{ ms}$ delay injects a massive $144.4^\circ$ phase lag. In physical terms, phase lag means the actuator applies corrective torque based on where the system was in the past rather than where it is now; when phase lag approaches $180^\circ$, negative feedback turns into positive feedback—the controller pushes in the direction of disturbance rather than opposing it, triggering violent, self-reinforcing oscillations that destroy stability [@astrom2021feedback].
 
 ### The Freshness Wall
 
@@ -167,15 +175,19 @@ Because motor torque is proportional to current ($\tau = K_t I$), torque cannot 
 
 $$\tau_e = \frac{L}{R}$$
 
-When applying a step voltage (assuming rotor speed $\omega$ remains roughly constant over this rapid electrical transient), phase current rises exponentially: $I(t) = \frac{V_{\text{bus}} - K_e\omega}{R}\left(1 - e^{-t/\tau_e}\right)$. Achieving 95% commanded torque consumes approximately three electrical time constants ($3\tau_e \approx 6\text{ to } 15\text{ ms}$). Furthermore, as rotor speed $\omega$ increases, the motor acts as an electrical generator; this opposing *back-EMF* ($K_e\omega$) fights the incoming bus voltage, reducing available torque responsiveness at high operating velocities.
+When applying a step voltage (assuming rotor speed $\omega$ remains roughly constant over this rapid electrical transient), phase current rises exponentially: 
+
+$$I(t) = \frac{V_{\text{bus}} - K_e\omega}{R}\left(1 - e^{-t/\tau_e}\right)$$
+
+Achieving 95% commanded torque consumes approximately three electrical time constants ($3\tau_e \approx 6\text{ to } 15\text{ ms}$). Furthermore, as rotor speed $\omega$ increases, the motor acts as an electrical generator; this opposing *back-EMF* ($K_e\omega$) fights the incoming bus voltage, reducing available torque responsiveness at high operating velocities.
 
 ### Transmissions and Jerk Continuity
 
-Transmissions (such as harmonic drives, planetary reducers, and cycloidal drives) transfer torque through gear teeth subject to shear stress limits ($\sigma_{\text{shear}} \le \sigma_{\text{yield}}$). If a discrete neural policy emits step changes in trajectory waypoints (joint position targets $\mathbf{q}$), commanded acceleration jumps discontinuously, implying unbounded mechanical jerk:
+Transmissions (such as harmonic drives, planetary reducers, and cycloidal drives) transfer torque through gear teeth subject to shear stress limits ($\sigma_{\text{shear}} \le \sigma_{\text{yield}}$). If a discrete neural policy emits step changes in trajectory waypoints (joint position targets $\mathbf{q}$), commanded acceleration jumps discontinuously ($\Delta \mathbf{a} \ne 0$), implying unbounded mechanical jerk:
 
-$$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} \longrightarrow \infty$$
+$$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} = \frac{d\mathbf{a}}{dt} \longrightarrow \infty$$
 
-Unbounded jerk triggers three severe physical failure modes:
+Mathematically, a step change in acceleration creates an impulsive delta-function jerk spike ($j(t) = \Delta a \cdot \delta(t)$). Unbounded jerk triggers three severe physical failure modes:
 
 1. *Structural Resonance:* High-frequency vibration modes in robotic linkages are excited, leading to violent oscillations.
 2. *Gear Tooth Shear:* Thin-walled flexsplines and precision gear teeth suffer shock loading, causing tooth pitting, micro-fractures, and tooth shear.
@@ -214,7 +226,7 @@ Commanding double the continuous current reduces the safe burst window to one-qu
 
 ### Firmware $I^2t$ Thermal Clamping
 
-Because physical thermistors mounted on motor casings exhibit a $5\text{--}30\text{ s}$ spatial conduction lag, the real-time microcontroller cannot wait for thermistor readings during sudden stall events. Instead, the firmware maintains an $I^2 t$ thermal energy accumulator in static SRAM on every 1 kHz tick—operating as a digital leaky integrator with a zero-bound ambient baseline:
+Because physical thermistors mounted on motor casings exhibit a $5\text{--}30\text{ s}$ spatial conduction lag (the time required for heat to diffuse from inner copper windings through iron laminations to the exterior chassis), the real-time microcontroller cannot wait for thermistor readings during sudden stall events. Instead, the firmware maintains an $I^2 t$ thermal energy accumulator in static SRAM on every 1 kHz tick—operating as a digital leaky integrator with a zero-bound ambient baseline:
 
 $$E_{\text{thermal}}[k] = \max\left( 0, \; E_{\text{thermal}}[k-1] + \left( I^2[k] - I_{\text{cont}}^2 \right) \Delta t \right)$$
 
@@ -266,7 +278,7 @@ Concurrently, the neural accelerator executes vision-language-action backbones o
 
 To prevent memory bus contention from inducing catastrophic latency tails, physical AI architectures enforce hardware-level traffic shaping and zero-copy memory pipelines across the SoC fabric:
 
-1. **Hardware Quality-of-Service (QoS) Arbitration:** Embedded architectures configure the memory controller's hardware QoS priority registers (such as ARM CoreLink AXI QoS engines). Read requests originating from the neural processing unit and high-frequency real-time control packets are assigned the highest hardware priority classes, while bulk sensor DMA ingestion streams are assigned lower, bandwidth-throttled priority tiers. When crossbar congestion occurs, the memory controller autonomously pauses lower-priority DMA write bursts, servicing time-critical neural weight reads with bounded, deterministic memory access latency.
+1. **Hardware Quality-of-Service (QoS) Arbitration:** Embedded architectures configure the memory controller's hardware QoS priority registers (such as ARM CoreLink AXI QoS engines with dedicated `ARQOS` and `AWQOS` signals). Read requests originating from the neural processing unit and high-frequency real-time control packets are assigned the highest hardware priority classes, while bulk sensor DMA ingestion streams are assigned lower, bandwidth-throttled priority tiers. When crossbar congestion occurs, the memory controller autonomously pauses lower-priority DMA write bursts, servicing time-critical neural weight reads with bounded, deterministic memory access latency.
 2. **Non-Cacheable Zero-Copy DMA Buffers:** In naive software implementations, incoming camera frames stream through the CPU/NPU cache hierarchy (L2 and L3 caches), evicting hot neural network weights and activation scratchpads. Physical AI architectures eliminate this cache thrashing by allocating physically contiguous memory regions using contiguous memory allocators (such as Linux DMA-BUF)[^dmabuf] configured with non-cacheable memory attributes. The camera DMA engine writes digitized pixel packets directly into DRAM without routing data through cache lines, preserving cache residency for critical model weights.
 
 [^dmabuf]: Allocating DMA buffers via the Linux kernel's `dma_alloc_coherent` interface configures the memory management unit (MMU) page table entries as non-cacheable (`pgprot_noncached`), ensuring that camera DMA writes bypass CPU cache lines entirely and avoid cache line eviction thrashing.
@@ -332,6 +344,7 @@ The *Requirements Ledger* records the eight foundational physical constants and 
 : The Requirements Ledger. The eight foundational physical and silicon parameters that bound real-time safety enforcement on the hardware platform. {#tbl-requirements-ledger}
 
 Once measured and certified, the values in @tbl-requirements-ledger are compiled directly into the real-time microcontroller's immutable firmware constants (flashed to read-only memory alongside MISRA C / ISO 26262 compliant safety monitors). These values form the mathematical boundary conditions evaluated by the Control Barrier Function safety enforcer on every 1 kHz tick.
+
 
 ## Summary
 
