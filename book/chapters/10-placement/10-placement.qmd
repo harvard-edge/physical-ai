@@ -32,18 +32,18 @@ In Physical AI Systems, compute is fundamentally **non-fungible** (@fig-heteroge
 
 1. **The Physicality of Latency:** Running a 70-billion-parameter Vision-Language Model in a remote cloud datacenter provides immense semantic capacity. However, routing sensor video over a cellular 5G network introduces stochastic Round-Trip Time (RTT) variance ($50\text{--}1500\text{ ms}$) and unannounced RF signal dropouts. If a 1.2-ton mobile machine traveling at $v = 2.0\text{ m/s}$ loses wireless connectivity for one second, the vehicle coasts unguided for two meters ($d_{\text{coast}} = v \cdot \Delta t = 2.0\text{ m}$), turning a wireless packet drop into an unavoidable collision.
 2. **The Physics of Memory Energy:** Moving bits across printed circuit board traces consumes orders of magnitude more electrical energy than performing arithmetic operations on those bits. In modern $7\text{ nm}$ silicon, executing an 8-bit integer multiply-accumulate (MAC) operation consumes approximately $0.2\text{ pJ}$, whereas fetching the operand bytes from off-chip LPDDR5 DRAM consumes $150\text{ pJ}$—a $750\times$ energy disparity.
-3. **The Thermodynamic Real-Time Cliff:** Compute chips generate thermal energy ($P = I^2 R + C V^2 f$). In a sealed robotic chassis lacking heavy active cooling, sustained neural inference drives silicon junction temperatures past critical thresholds ($T_j > 85^\circ\text{C}$). Dynamic Voltage and Frequency Scaling (DVFS) circuits automatically cut clock frequencies by up to $60\%$, doubling inference latency and causing the robot to miss its hard real-time stopping deadlines.
+3. **The Thermodynamic Real-Time Cliff:** Compute chips generate thermal energy ($P = I^2 R + C_{\text{gate}} V^2 f$). In a sealed robotic chassis lacking heavy active cooling, sustained neural inference drives silicon junction temperatures past critical thresholds ($T_j > 85^\circ\text{C}$). Dynamic Voltage and Frequency Scaling (DVFS) circuits automatically cut clock frequencies by up to $60\%$, doubling inference latency and causing the robot to miss its hard real-time stopping deadlines.
 
 ![**The Four-Tier Heterogeneous Compute Topology in Physical AI.** System 2 semantic deliberation maps to Tier 3 Linux MPUs or Tier 4 Cloud clusters; System 1.5 trajectory chunking maps to Tier 2 NPUs; System 1 reflex enforcers map to Tier 1 bare-metal MCUs with direct physical routing to motor inverters.](figures/fig09_heterogeneous_placement.svg){#fig-heterogeneous-placement width=100%}
 
 To satisfy these physical constraints, Physical AI partitions cognitive workloads across a **Four-Tier Heterogeneous Silicon Hierarchy** (@tbl-compute-tiers):
 
-| Compute Fabric Tier | Hardware Substrate | Primary Architectural Role | Typical Execution Cadence | Memory Architecture | Physical Trust Level |
+| Compute Fabric Tier | Hardware Substrate | Primary Architectural Role & Cognitive Organ | Typical Execution Cadence | Memory Architecture | Physical Trust Level |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **Tier 4: Cloud / Fleet** | Multi-GPU Datacenter Cluster | Fleet learning, large foundational pre-training, global route planning | $0.001\text{--}0.1\text{ Hz}$ | Terabytes HBM3 / Non-Volatile Storage | **Untrusted:** Non-deterministic WAN latency |
-| **Tier 3: Host Processor (MPU)** | 64-bit Multi-Core ARM Cortex-A | Semantic reasoning (VLMs), dynamic frame trees (`tf2`), Linux daemons | $0.5\text{--}10\text{ Hz}$ | 4–16 GB LPDDR5 Unified Memory (UMA) | **Untrusted:** Non-real-time OS jitter ($P_{99} > 100\text{ ms}$) |
-| **Tier 2: Neural Accelerator (NPU)** | Systolic Array / Edge Tensor Cores | Spatial affordance tokens (DINOv2), multi-step Action Chunking (ACT, Diffusion) | $20\text{--}50\text{ Hz}$ | On-Chip SRAM Tiling + DRAM DMA | **Untrusted Proposal Service:** High-throughput tensor compute |
-| **Tier 1: Real-Time Controller (MCU)** | 32-bit Bare-Metal Cortex-M7 / RISC-V | 1 kHz Control Barrier Functions, dynamic stopping enforcement, PWM motor inverters | **$1000\text{ Hz} \pm 5\,\mu\text{s}$** | 256 KB Zero-Wait-State Internal SRAM | **Fully Trusted Authority:** Sole hardware access to gate drivers |
+| **Tier 4: Cloud / Fleet** | Multi-GPU Datacenter Cluster | Fleet learning, large foundational pre-training, global routing *(Deliberation Archive)* | $0.001\text{--}0.1\text{ Hz}$ | Terabytes HBM3 / NVMe Storage | **Untrusted:** Non-deterministic WAN latency |
+| **Tier 3: Host Processor (MPU)** | 64-bit Multi-Core ARM Cortex-A | Semantic reasoning (VLMs), dynamic frame trees (`tf2`) *(Organ 3: Deliberation & Memory)* | $0.5\text{--}10\text{ Hz}$ | 4–16 GB LPDDR5 Unified Memory (UMA) | **Untrusted:** Non-real-time OS jitter ($P_{99} > 100\text{ ms}$) |
+| **Tier 2: Neural Accelerator (NPU)** | Systolic Array / Edge Tensor Cores | Spatial affordances (DINOv2), Action Chunking (ACT, Diffusion) *(Organ 2: Policy & Action)* | $20\text{--}50\text{ Hz}$ | On-Chip SRAM Tiling + DRAM DMA | **Untrusted Proposal Service:** High-throughput tensor compute |
+| **Tier 1: Real-Time Controller (MCU)** | 32-bit Bare-Metal Cortex-M7 / RISC-V | 1 kHz Control Barrier Functions, stopping enforcers *(Organ 4: Reflex & Organ 5: Actuation)* | **$1000\text{ Hz} \pm 5\,\mu\text{s}$** | 256–512 KB Zero-Wait-State DTCM SRAM | **Fully Trusted Authority:** Sole hardware access to gate drivers |
 
 : Four-Tier Heterogeneous Silicon Placement Hierarchy. Systematic allocation of cognitive organs across compute fabrics based on cadence, memory, and safety privilege. {#tbl-compute-tiers}
 
@@ -62,71 +62,98 @@ While UMA eliminates the physical PCIe copying overhead found in desktop compute
 
 When an unthrottled camera DMA burst saturates the memory crossbar, DRAM access latency for CPU and NPU cores spikes by $300\text{--}800\%$. A deterministic $1000\text{ Hz}$ microcontroller thread attempting to read a trajectory waypoint from shared memory is stalled, causing the real-time loop to miss its $1.0\text{ ms}$ control deadline.
 
-To prevent memory starvation, Physical AI architectures configure hardware **AXI Quality-of-Service (QoS)** arbitration registers (`ARQOS` and `AWQOS` signals) at the silicon interconnect fabric:
+To prevent memory starvation, Physical AI architectures configure hardware **AXI Quality-of-Service (QoS)** arbitration registers (the 4-bit `ARQOS` read and `AWQOS` write priority signals, ranging from 0 to 15) at the silicon interconnect fabric:
 
-$$\text{AXI QoS Priority Invariant:} \quad \text{QoS}(\text{MCU Real-Time Reads}) > \text{QoS}(\text{NPU Weight Fetches}) > \text{QoS}(\text{Camera DMA Writes})$$
+$$\begin{aligned}
+\text{AXI QoS Invariant:} \quad &\text{QoS}(\text{MCU Real-Time Reads}) \\
+&> \text{QoS}(\text{NPU Weight Fetches}) \\
+&> \text{QoS}(\text{Camera DMA Writes})
+\end{aligned}$$
 
-1. **Real-Time MCU SRAM Reads (`QoS = 15`):** Absolute highest interconnect priority. AXI crossbar arbiters immediately preempt lower-priority transactions to service MCU memory requests within $<50\text{ ns}$.
+1. **Real-Time MCU Mailbox Reads (`QoS = 15`):** Absolute highest interconnect priority. When the MCU reads shared trajectory waypoints across the system crossbar, arbiters immediately grant next-cycle bus access ahead of queued DMA bursts, guaranteeing service within $<50\text{ ns}$.
 2. **NPU Tensor Weight Fetches (`QoS = 10`):** High priority, guaranteeing sustained memory throughput to meet $20\text{--}50\text{ Hz}$ action chunking deadlines.
-3. **Camera Sensor DMA Writes (`QoS = 4`):** Background priority. Camera DMA streams are buffered in dedicated on-chip FIFO FIFOs and paced onto the crossbar only during memory bus idle cycles, eliminating latency tail blowouts.
+3. **Camera Sensor DMA Writes (`QoS = 4`):** Background priority. Camera DMA streams are buffered in dedicated on-chip FIFO buffers and paced onto the crossbar only during memory bus idle cycles, eliminating latency tail blowouts.
 
 
 ## Deterministic Inter-Processor Communication: Zero-Copy Shared SRAM Mailboxes and Lock-Free Ring Buffers
 
-To pass high-rate trajectory chunks ($50\text{ Hz}$) and low-latency safety telemetry ($1000\text{ Hz}$) between the Linux host MPU and the bare-metal MCU without thread blocking, Physical AI rejects traditional operating system IPC primitives (such as sockets, named pipes, or POSIX mutexes). Under Linux, acquiring a contested mutex involves kernel context switches that introduce up to $50\text{ ms}$ of scheduling jitter.
+To pass high-rate trajectory chunks ($50\text{ Hz}$) and low-latency safety telemetry ($1000\text{ Hz}$) between the Linux host processor (MPU) and the bare-metal microcontroller (MCU) without thread blocking, Physical AI rejects traditional operating system inter-process communication primitives. Standard POSIX mutexes, Unix domain sockets, and named pipes rely on Linux kernel scheduler intervention. When a real-time thread encounters a contested mutex or waits on a pipe under standard kernel scheduling, the resulting context switch introduces up to $50\text{ ms}$ of scheduling jitter—a delay fifty times longer than the entire $1.0\text{ ms}$ control budget of a $1000\text{ Hz}$ reflex loop.
 
-Instead, inter-processor communication is implemented using **Zero-Copy Lock-Free Single-Producer Single-Consumer (SPSC) Ring Buffers** residing in physical internal static SRAM (Tightly Coupled Memory - TCM):
+To achieve deterministic sub-microsecond transfers, inter-processor communication relies on zero-copy, lock-free Single-Producer Single-Consumer (SPSC) ring buffers mapped into physical, internal static SRAM (Tightly Coupled Memory or TCM). Each slot in the circular mailbox is aligned to a 64-byte hardware cache line boundary (`alignas(64)`) to eliminate false sharing between cores. False sharing occurs when logically distinct variables share a single physical cache line: whenever one core updates its variable, the hardware cache coherency protocol invalidates the entire 64-byte line across all other cores, triggering expensive interconnect snooping cycles and stalling execution pipelines.
 
 ```c
 // LOCK-FREE INTER-PROCESSOR COMMUNICATION BUFFER (Shared Static SRAM)
 #define SRAM_BUFFER_SLOTS 3
 #define CACHE_LINE_SIZE   64
+#define MAILBOX_MAGIC     0x50485953  // "PHYS"
 
 typedef struct {
-    // Producer Cache Line (Written by Linux MPU, Read by MCU)
-    alignas(CACHE_LINE_SIZE) volatile uint64_t head_sequence;
-    
-    // Consumer Cache Line (Written by MCU, Read by Linux MPU)
-    alignas(CACHE_LINE_SIZE) volatile uint64_t tail_sequence;
-    
-    // Static Payload Buffer Arena (Zero Heap Allocation)
-    alignas(CACHE_LINE_SIZE) trajectory_chunk_t slots[SRAM_BUFFER_SLOTS];
-    
-    // Cryptographic Lineage and Integrity Check
     uint32_t magic_header;
     uint32_t payload_crc32;
-} lockless_sram_mailbox_t;
+    uint64_t sequence_id;
+    trajectory_chunk_t trajectory;
+} alignas(CACHE_LINE_SIZE) mailbox_slot_t;
+
+typedef struct {
+    // Producer sequence cache line (written by Linux MPU, polled by MCU)
+    alignas(CACHE_LINE_SIZE) volatile uint64_t head_sequence;
+    
+    // Consumer sequence cache line (written by MCU, polled by Linux MPU)
+    alignas(CACHE_LINE_SIZE) volatile uint64_t tail_sequence;
+    
+    // Triple-buffered payload arena (zero dynamic memory allocation)
+    mailbox_slot_t slots[SRAM_BUFFER_SLOTS];
+} alignas(CACHE_LINE_SIZE) lockless_sram_mailbox_t;
 ```
 
-The lock-free mailbox operates under strict memory ordering rules:
+The triple-buffered mailbox operates under strict memory ordering and cache maintenance invariants across heterogeneous hardware domains:
 
-1. **Atomic Monotonic Sequence Counters:** The producer increments `head_sequence` using 64-bit atomic operations with release memory barriers (`__atomic_store_n(&head, seq, __ATOMIC_RELEASE)`). The consumer reads the sequence using acquire memory barriers (`__atomic_load_n(&head, __ATOMIC_ACQUIRE)`), guaranteeing that payload data writes are fully visible before the sequence number updates.
-2. **Cache Coherency Line Invalidation:** When bridging non-coherent hardware domains (e.g., an ARM Cortex-A application processor with L1/L2 caches and an ARM Cortex-M7 with tightly coupled memory), software must explicitly execute cache maintenance operations:
+First, monotonic 64-bit sequence counters coordinate data visibility without locks. The producer writes trajectory data into slot $k = \text{head\_sequence} \pmod 3$, computes the payload CRC32, and publishes the update by incrementing `head_sequence` using a 64-bit atomic store with release memory semantics (`__atomic_store_n(&head, seq, __ATOMIC_RELEASE)`). The consumer samples `head_sequence` using an acquire memory load (`__atomic_load_n(&head, __ATOMIC_ACQUIRE)`). The release-acquire barrier pair guarantees that all payload writes are committed to physical memory before the updated sequence counter becomes visible to the consumer.
 
-$$\text{Producer Write:} \quad \text{write\_payload}() \implies \text{clean\_dcache\_range}(\text{addr}, \text{size})$$
+Second, when bridging non-coherent memory domains—such as an ARM Cortex-A application processor operating through cached L1/L2 hierarchies and an ARM Cortex-M7 executing out of tightly coupled memory—software must explicitly execute cache maintenance routines:
 
-$$\text{Consumer Read:} \quad \text{invalidate\_dcache\_range}(\text{addr}, \text{size}) \implies \text{read\_payload}()$$
+$$\begin{aligned}
+\text{Producer Write Sequence:} \quad &\text{write\_payload}(\text{slot}_k) \\
+&\implies \text{clean\_dcache\_range}(\&\text{slot}_k, \text{sizeof}) \\
+&\implies \text{atomic\_store}(\text{head})
+\end{aligned}$$
 
-3. **Latest-Frame Sampling Semantics:** If the producer publishes action chunks faster than the consumer consumes them, the consumer drops intermediate frames and immediately samples the freshest available sequence, guaranteeing zero latency accumulation.
+$$\begin{aligned}
+\text{Consumer Read Sequence:} \quad &\text{atomic\_load}(\text{head}) \\
+&\implies \text{invalidate\_dcache\_range}(\&\text{slot}_k, \text{sizeof}) \\
+&\implies \text{read\_payload}(\text{slot}_k)
+\end{aligned}$$
+
+Cleaning the data cache forces dirty cache lines out to physical SRAM, while invalidating the data cache discards stale cache entries so the consumer reads newly written payload bytes directly from SRAM rather than cached remnants.
+
+Third, the interface enforces latest-frame sampling semantics. If the neural policy publishes trajectory chunks faster than the reflex controller consumes them, the microcontroller does not queue stale messages. Instead, it computes the latest published index $k = \text{head\_sequence} \pmod 3$ and drops intermediate frames. In physical control systems, queueing outdated trajectory plans creates dangerous phase lag; consuming only the freshest available plan guarantees zero latency accumulation.
 
 
 ## Arithmetic Intensity vs. Memory Bandwidth: The Physics of Data Movement
 
-In physical systems design, the total power budget is constrained by onboard battery capacity and thermal dissipation limits. To maximize operational battery life and prevent thermal runaway, algorithms must be optimized for **Arithmetic Intensity** ($I_{\text{arith}}$), defined as the ratio of computational floating-point operations to memory access traffic [@hennessy2019computer]:
+In embodied robotic design, total power consumption is tightly constrained by onboard battery capacity and chassis thermal dissipation limits. Because electrical energy drawn from the battery is dissipated as heat, algorithms must be co-designed for **Arithmetic Intensity** ($I_{\text{arith}}$), defined as the ratio of computational floating-point operations performed to the total volume of memory traffic transferred across the memory bus [@hennessy2019computer]:
 
-$$I_{\text{arith}} = \frac{\text{Total Operations (FLOPs)}}{\text{Total Memory Traffic (Bytes)}} \quad \left[ \frac{\text{FLOPs}}{\text{Byte}} \right]$$
+$$I_{\text{arith}} = \frac{\text{Total Computational Operations (FLOPs)}}{\text{Total Memory Bus Traffic (Bytes)}} \quad \left[ \frac{\text{FLOPs}}{\text{Byte}} \right]$$
 
-The hardware roofline model dictates whether a neural policy is bound by computational throughput or memory bandwidth:
+The Williams and Hennessy Roofline Model establishes the upper bound on attainable computational performance for a given silicon architecture:
 
-$$\text{Attainable Performance (FLOPs/s)} = \min\left( \text{Peak Compute Bandwidth}, \; I_{\text{arith}} \times \text{Peak Memory Bandwidth} \right)$$
+$$\text{Attainable Performance (FLOPs/s)} = \min\left( \text{Peak Compute Throughput}, \; I_{\text{arith}} \times \text{Peak Memory Bandwidth} \right)$$
 
-In standard autoregressive transformer decoding (such as single-token VLA inference), the network fetches multi-gigabyte weight matrices from DRAM to perform a single vector-matrix multiply per token ($I_{\text{arith}} \approx 1\text{ FLOP/Byte}$). The accelerator's tensor ALUs spend $>90\%$ of their time stalled waiting for DRAM bytes to arrive, burning battery power in memory bus I/O pads.
+The intersection between the memory-bandwidth diagonal and the peak-compute ceiling defines the silicon architecture's ridge point ($I_{\text{ridge}} = \text{Peak Compute} / \text{Peak Bandwidth}$). When an algorithm's arithmetic intensity falls below this ridge point, execution is strictly memory-bound: computational throughput is constrained not by arithmetic ALU capacity, but by the rate at which data bytes can be fetched from external DRAM.
 
-To achieve maximum computational efficiency, Physical AI systems apply three silicon optimizations:
+Standard autoregressive vision-language-action (VLA) models suffer severely from this constraint during single-token generation. For a linear projection layer with weight matrix $W \in \mathbb{R}^{d_{\text{out}} \times d_{\text{in}}}$, computing a single output token vector $y = W x$ requires $2 d_{\text{out}} d_{\text{in}}$ floating-point operations (one multiply and one accumulate per parameter). In 16-bit precision (FP16 or BF16), loading the matrix from external DRAM requires fetching $2 d_{\text{out}} d_{\text{in}}$ bytes. The resulting arithmetic intensity is precisely unity:
 
-1. **On-Chip SRAM Weight Tiling:** Small, high-frequency trajectory decoders (such as 1D Temporal U-Nets for Diffusion Policy) are quantized to INT8 or FP8 precision, enabling the entire active model weights ($<8\text{ MB}$) to reside permanently inside the NPU's on-chip static SRAM.
-2. **Elimination of Off-Chip DRAM Round-Trips:** By keeping intermediate activations in on-chip SRAM across layers, memory bus traffic is reduced to zero during trajectory generation, increasing arithmetic intensity to $I_{\text{arith}} > 150\text{ FLOPs/Byte}$.
-3. **Energy Savings:** Operating out of SRAM cuts data movement energy by $98.5\%$, allowing the neural accelerator to sustain $50\text{ Hz}$ action chunking while drawing under $15\text{ Watts}$ of total power.
+$$I_{\text{arith, autoregressive}} = \frac{2 d_{\text{out}} d_{\text{in}} \text{ FLOPs}}{2 d_{\text{out}} d_{\text{in}} \text{ Bytes}} = 1.0 \quad \left[ \frac{\text{FLOP}}{\text{Byte}} \right]$$
+
+On an edge accelerator capable of $100\text{ TFLOP/s}$ with an LPDDR5 memory bandwidth of $68\text{ GB/s}$, the ridge point is $100{,}000 / 68 \approx 1{,}470\text{ FLOPs/Byte}$. At an arithmetic intensity of $1.0\text{ FLOP/Byte}$, the attainable performance is capped at just $68\text{ GFLOP/s}$—less than $0.1\%$ of the accelerator's peak compute capacity. Tensor ALUs remain idle over $99\%$ of the time waiting for DRAM wordlines to recharge, while high-frequency memory bus I/O drivers burn battery power and generate waste heat.
+
+To break through the memory wall, Physical AI systems adopt three silicon placement and architectural optimizations:
+
+First, small temporal trajectory decoders—such as 1D convolutional U-Nets for Diffusion Policy or Action Chunking Transformers—are quantized to INT8 or FP8 precision. Quantization compresses the full model footprint to under $8\text{ MB}$, allowing all layer weights to reside permanently inside the neural processing unit's on-chip static SRAM (TCM or tightly coupled cache).
+
+Second, by retaining both model weights and intermediate feature maps entirely in on-chip SRAM across all diffusion denoising iterations, off-chip DRAM round-trip traffic is eliminated during trajectory generation. Model weights are loaded once and reused across all temporal action steps in the chunk ($H = 16\text{--}32$), driving arithmetic intensity above $I_{\text{arith}} > 150\text{ FLOPs/Byte}$.
+
+Third, avoiding off-chip DRAM access produces massive thermodynamic and energy savings. In modern $7\text{ nm}$ silicon, fetching an operand from external LPDDR5 DRAM requires approximately $150\text{ pJ}$, whereas reading from on-chip SRAM requires only $1.5\text{ pJ}$—a $98.5\%$ reduction in data movement energy. Operating out of on-chip SRAM allows the neural accelerator to sustain continuous $50\text{ Hz}$ trajectory generation while consuming less than $15\text{ Watts}$ of electrical power.
 
 
 ## Thermal Design Power (TDP) and Dynamic Throttling (DVFS): The Thermal Envelope
@@ -137,9 +164,9 @@ All electrical energy consumed by silicon computing substrates is ultimately con
 
 The thermodynamic heat dissipation of the compute die is modeled by the first-order differential equation:
 
-$$C_{\text{die}} \frac{d T_j(t)}{dt} = P_{\text{dynamic}}(t) + P_{\text{leakage}}(T_j) - \frac{T_j(t) - T_{\text{ambient}}}{R_\theta}$$
+$$C_{\text{die}} \frac{d T_j(t)}{dt} = P_{\text{dynamic}}(t) + P_{\text{PHY}}(t) + P_{\text{leakage}}(T_j) - \frac{T_j(t) - T_{\text{ambient}}}{R_\theta}$$
 
-where $T_j$ is the silicon junction temperature, $C_{\text{die}}$ is the thermal capacitance of the silicon package, $R_\theta$ is the thermal resistance to ambient air, $P_{\text{dynamic}} = \alpha C V^2 f$ is the active switching power, and $P_{\text{leakage}} \propto T_j^2$ is temperature-dependent leakage current.
+where $T_j$ is the silicon junction temperature, $C_{\text{die}}$ is the thermal capacitance of the silicon package ($\text{J}/^\circ\text{C}$), $R_\theta$ is the lumped thermal resistance through the conduction-cooled chassis to ambient air ($^\circ\text{C}/\text{W}$), $P_{\text{dynamic}} = \alpha C_{\text{gate}} V^2 f$ is the active switching power (with activity factor $\alpha$, gate capacitance $C_{\text{gate}}$, supply voltage $V$, and clock frequency $f$), $P_{\text{PHY}}$ is memory I/O driver power, and $P_{\text{leakage}} \propto T_j^2$ is temperature-dependent static leakage current. Because leakage escalates quadratically with temperature, uncooled silicon risks a positive feedback loop: higher temperatures increase leakage power, which further drives up junction heat.
 
 When sustained neural inference drives the junction temperature past the silicon safety knee ($T_j > 85^\circ\text{C}$), on-chip thermal supervisory circuits trigger **Dynamic Voltage and Frequency Scaling (DVFS)**. To prevent silicon destruction, the hardware controller downclocks the accelerator:
 
@@ -147,7 +174,7 @@ $$f_{\text{clock}} \leftarrow 0.40 \times f_{\text{nominal}}$$
 
 This sudden $60\%$ frequency collapse doubles trajectory inference latency ($T_{\text{infer}}: 25\text{ ms} \to 60\text{ ms}$), causing System 1.5 to miss its $50\text{ ms}$ action chunk deadline. Actuators are starved of fresh waypoints, intent leases expire, and the robot trips a hard emergency stop.
 
-To eliminate thermal cliff collapses, Physical AI deploys **Proactive Thermal Cadence Scaling**. The firmware monitors on-die thermal diodes: when temperature reaches the warning knee ($T_j \ge 75^\circ\text{C}$), the system proactively scales the trajectory chunking horizon from $H=16$ to $H=32$ and lowers inference cadence from $50\text{ Hz}$ to $20\text{ Hz}$, stabilizing junction heat below the DVFS downclocking threshold without dropping control deadlines.
+To eliminate thermal cliff collapses, Physical AI deploys **Proactive Thermal Cadence Scaling**. The firmware monitors on-die thermal diodes: when temperature reaches the warning knee ($T_j \ge 75^\circ\text{C}$), the policy engine doubles the action chunk horizon ($H=16 \to 32$) and lowers inference invocation cadence from $50\text{ Hz}$ to $20\text{ Hz}$. Because a 32-step chunk executed at $50\text{ Hz}$ by the MCU provides $640\text{ ms}$ of valid trajectory lookahead, running the NPU once every $50\text{ ms}$ ($20\text{ Hz}$) maintains uninterrupted action streaming while cutting accelerator duty cycle and dynamic power by $60\%$, stabilizing junction heat safely below the $85^\circ\text{C}$ DVFS downclocking cliff.
 
 
 ## Re-Placement Ripple Effects: Evaluating Latency, Power, and Safety Migration
@@ -173,33 +200,43 @@ The cardinal rule of Physical AI placement dictates: **Never migrate time-critic
 The destructive physical reality of offloading time-critical policy execution across a non-deterministic wireless network is documented in the forensic autopsy of an autonomous heavy transport AGV.
 
 ::: {.callout-autopsy title="The Insulated Cold-Vault Collision"}
-**Platform:** 1.2-ton Autonomous Heavy Pallet Mover ($v = 1.8\text{ m/s}$).  
-**Failure Mechanism:** To reduce onboard compute costs and power draw, the high-level VLA policy was offloaded to an edge 5G server; entering a cold-storage vault created an RF multipath blackout of $1,420\text{ ms}$.  
-**Root Cause:** Drive torque commands remained latched during the wireless dropout without local fallback trajectory caches or an independent MCU stopping supervisor.  
-**Physical Consequence:** The vehicle coasted unguided for $2.56\text{ m}$ ($+1.36\text{ m}$ past obstacle clearance), smashing into a steel building pillar at $1.8\text{ m/s}$ ($42{,}000\text{ USD}$ overhaul).  
+**Platform:** 1.2-ton Autonomous Heavy Pallet Mover ($m = 1{,}200\text{ kg}$, $v = 1.8\text{ m/s}$).  
+**Failure Mechanism:** To reduce onboard compute costs and thermal dissipation, the high-level VLA policy was offloaded to an edge 5G server; entering a cold-storage vault created an RF multipath and shadow blackout of $1,420\text{ ms}$.  
+**Root Cause:** Drive torque commands remained latched at $240\text{ N}\cdot\text{m}$ during the wireless dropout without local fallback trajectory caches or an independent MCU stopping supervisor.  
+**Physical Consequence:** The vehicle coasted unguided for $2.556\text{ m}$ ($+1.356\text{ m}$ past physical obstacle clearance), smashing into a structural steel pillar at $1.8\text{ m/s}$ ($E_k = 1{,}944\text{ J}$), shearing the front steering kingpin, rupturing hydraulic lines, and crushing lithium battery modules ($42{,}000\text{ USD}$ overhaul).  
 :::
 
 ![The Autonomous Heavy Pallet Mover Platform. Offloading policy execution to a 5G edge server caused a fatal crash when entering a cold-storage vault that blocked RF signals for $1,420\text{ ms}$.](figures/fig09_agv_mover_cropped.jpg){#fig-agv-mover width=100%}
 
-In this industrial incident, a 1.2-ton automated guided vehicle (AGV) was transporting heavy palletized goods across a distribution warehouse at $v = 1.8\text{ m/s}$ (@fig-agv-mover). To minimize onboard thermal dissipation and battery consumption, systems engineers offloaded the multi-camera vision-language-action policy to an edge computing server over a private 5G Ultra-Reliable Low-Latency Communication (URLLC) network.
+In this industrial incident, a 1.2-ton automated guided vehicle (AGV) was transporting heavy palletized goods across a distribution warehouse at an operational velocity of $v = 1.8\text{ m/s}$ ($6.48\text{ km/h}$) (@fig-agv-mover). To minimize onboard thermal dissipation, bill-of-materials cost, and battery consumption, systems architects offloaded the multi-camera vision-language-action (VLA) policy to an offboard edge computing server over a private 5G Ultra-Reliable Low-Latency Communication (URLLC) network.
 
-At timestamp $T + 84.210\text{ s}$, the AGV crossed the threshold into an industrial cold-storage refrigeration vault. The vault walls were constructed of double-sided steel-clad polyurethane insulation panels, forming a virtual Faraday cage. The RF signal-to-noise ratio collapsed immediately, and the 5G connection entered an unannounced $1,420\text{ ms}$ packet blackout.
+At timestamp $T + 84.210\text{ s}$, the AGV crossed the doorway threshold into an industrial cold-storage refrigeration vault. The vault walls were constructed of double-sided steel-clad polyurethane insulation panels, forming a continuous Faraday cage. The RF signal-to-noise ratio collapsed immediately from $+24\text{ dB}$ to $0\text{ dB}$, and the 5G connection entered an unannounced $1,420\text{ ms}$ packet blackout.
 
-Onboard the vehicle, the Linux host processor had no local trajectory cache. The motor inverter controller was programmed to hold the last received velocity setpoint until a new command arrived. Lacking an autonomous bare-metal microcontroller monitoring stopping clearance ($d_{\text{stop}}$), the 1.2-ton machine coasted unguided at full speed:
+Onboard the vehicle, the host processor maintained no local trajectory cache. The motor inverter controller was configured with a naive Zero-Order Hold that held the last received torque setpoint ($\tau_{\text{motor}} = 240\text{ N}\cdot\text{m}$) until a new command packet arrived. Lacking an autonomous bare-metal microcontroller evaluating dynamic stopping clearance ($d_{\text{stop}}$) or enforcing hardware heartbeat watchdog timeouts, the 1.2-ton machine coasted forward at full operational velocity:
 
 $$d_{\text{coast}} = v \cdot \Delta t_{\text{blackout}} = 1.8\text{ m/s} \times 1.420\text{ s} = 2.556\text{ m}$$
 
-At the entrance of the vault, a structural steel building column was located at a physical clearance of $d_{\text{clearance}} = 1.20\text{ m}$. Because the vehicle traveled $2.56\text{ m}$ without braking, it exhausted the clearance and smashed into the steel column at full speed ($v = 1.8\text{ m/s}$).
+At the entrance of the vault, a structural steel building column was located at a physical clearance of $d_{\text{clearance}} = 1.20\text{ m}$. Because the vehicle traveled $2.556\text{ m}$ without initiating deceleration, it completely exhausted the available clearance buffer and overshot the impact point by:
 
-The kinetic energy at impact ($E_k = \frac{1}{2} m v^2 = \frac{1}{2} \times 1{,}200 \times 1.8^2 = 1{,}944\text{ Joules}$) sheared the front steering kingpin, ruptured high-pressure hydraulic steering lines, and crushed onboard lithium battery modules ($42{,}000\text{ USD}$ overhaul cost). The flight-recorder telemetry ledger is detailed in @tbl-telemetry-ch10.
+$$\Delta d = d_{\text{coast}} - d_{\text{clearance}} = 2.556\text{ m} - 1.200\text{ m} = +1.356\text{ m}$$
+
+The vehicle struck the solid steel column at full operational velocity ($v = 1.8\text{ m/s}$). With a total vehicle mass of $m = 1{,}200\text{ kg}$, the linear momentum carried into the collision was:
+
+$$p = m v = 1{,}200\text{ kg} \times 1.8\text{ m/s} = 2{,}160\text{ kg}\cdot\text{m/s} = 2.16 \times 10^3\text{ N}\cdot\text{s}$$
+
+The kinetic energy dissipated during impact was:
+
+$$E_k = \frac{1}{2} m v^2 = \frac{1}{2} \times 1{,}200\text{ kg} \times (1.8\text{ m/s})^2 = 1{,}944\text{ Joules}$$
+
+The structural deceleration shock sheared the $45\text{ mm}$ alloy-steel front steering kingpin, ruptured the $210\text{ bar}$ high-pressure hydraulic steering lines, and crushed the forward $48\text{ V}$ lithium iron phosphate ($\text{LiFePO}_4$) battery modules ($42{,}000\text{ USD}$ overhaul cost). The flight-recorder telemetry ledger is detailed in @tbl-telemetry-ch10.
 
 | Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
 | :--- | :--- | :--- | :--- |
-| **$T + 84.210\text{ s}$** | 5G RF Transceiver (Vehicle) | Vehicle crosses cold-storage vault threshold; steel-clad insulation panel blocks 5G signals. | RF signal-to-noise ratio drops to zero. |
+| **$T + 84.210\text{ s}$** | 5G RF Transceiver (Vehicle) | Vehicle crosses cold-storage vault threshold; steel-clad insulation panel blocks 5G signals. | RF signal-to-noise ratio drops to $0\text{ dB}$; $100\%$ packet loss. |
 | **$T + 84.250\text{ s}$** | Linux Host MPU (Vehicle) | TCP socket enters retransmit timeout; high-level VLA trajectory stream halts. | $1,420\text{ ms}$ communication blackout begins. |
-| **$T + 84.500\text{ s}$** | Inverter PWM Controller | Lacking local trajectory cache or MCU watchdog, inverter latches last forward drive torque ($240\text{ N}\cdot\text{m}$). | 1.2-ton machine coasts unguided at $1.8\text{ m/s}$. |
-| **$T + 85.000\text{ s}$** | Vehicle Chassis / Front Linkage | Vehicle traverses $1.42\text{ m}$, completely exhausting physical clearance ($d_{\text{clearance}} = 1.20\text{ m}$). | Collision unavoidable; zero braking engaged. |
-| **$T + 85.630\text{ s}$** | Chassis / Steel Building Pillar | Vehicle strikes steel pillar at $1.8\text{ m/s}$ ($E_k = 1{,}944\text{ J}$). | Steering linkage shears; hydraulic lines rupture ($42{,}000\text{ USD}$ damage). |
+| **$T + 84.500\text{ s}$** | Inverter PWM Controller | Lacking local trajectory cache or MCU watchdog, inverter latches last forward drive torque ($240\text{ N}\cdot\text{m}$). | 1.2-ton machine coasts unguided at $1.8\text{ m/s}$ ($p = 2{,}160\text{ N}\cdot\text{s}$). |
+| **$T + 85.000\text{ s}$** | Vehicle Chassis / Front Linkage | Vehicle traverses $1.422\text{ m}$, completely exhausting physical clearance ($d_{\text{clearance}} = 1.20\text{ m}$). | Collision unavoidable; zero braking engaged. |
+| **$T + 85.630\text{ s}$** | Chassis / Steel Building Pillar | Vehicle strikes steel pillar at $1.8\text{ m/s}$ ($E_k = 1{,}944\text{ J}$). | Steering kingpin shears; hydraulic lines rupture ($42{,}000\text{ USD}$ damage). |
 | **Root Cause** | *Systems Bottleneck* | Offloading real-time policy authority across an unbudgeted, stochastic wireless network without local trajectory fail-safes. |
 | **Architectural Flaw** | *Privilege & Co-Design* | Lack of local MCU heartbeat watchdog and absence of onboard autonomous stopping distance supervisor ($d_{\text{stop}}$). |
 
@@ -210,13 +247,19 @@ The kinetic energy at impact ($E_k = \frac{1}{2} m v^2 = \frac{1}{2} \times 1{,}
 
 To establish a formal hardware mapping across compute fabrics, the systems architecture defines the **Workload Placement Specification (PLACE-01)** (@tbl-dossier-place-01).
 
-| Subsystem Domain | Architectural Parameter | Guaranteed Invariant & Verification Boundary |
-| :--- | :--- | :--- |
-| **Tier 1 (MCU) Execution** | `core_type`<br>`clock_hz`<br>`sram_bytes` | ARM Cortex-M7 / Dual-Core Lockstep RISC-V<br>$480.0\text{ MHz} \pm 10\text{ ppm}$<br>$512\text{ KB}$ (Zero Heap / Static Arrays Only - `malloc=0`) |
-| **Tier 2 (NPU) Placement** | `model_type`<br>`target_cadence`<br>`sram_tiling_mb` | Diffusion Policy / ACT ($H=16$)<br>$20.0\text{ Hz}$ ($50\text{ ms}$ execution budget)<br>$\ge 8.0\text{ MB}$ dedicated on-chip weight SRAM |
-| **Tier 3 (MPU) Placement** | `os_kernel`<br>`max_p99_latency_ms`<br>`dram_alloc_gb` | Linux 6.6 with `PREEMPT_RT`<br>$\le 35.0\text{ ms}$ nominal ($P_{99}$)<br>$4.0\text{ GB}$ LPDDR5 pinned memory (`mlockall`) |
-| **Bus QoS Configuration** | `mcu_read_qos`<br>`npu_fetch_qos`<br>`dma_stream_qos` | `QoS = 15` (Highest priority - preemption enabled)<br>`QoS = 10` (Medium-high priority tensor fetches)<br>`QoS = 4` (Throttled background camera DMA) |
-| **Thermal Envelopes** | `t_junction_max`<br>`fan_trip_temp`<br>`dvfs_derate_temp` | $85.0^\circ\text{C}$ maximum junction threshold ($T_j$)<br>$65.0^\circ\text{C}$ active cooling trigger<br>$75.0^\circ\text{C}$ proactive cadence scaling |
+| Parameter Category | Specification Key | Engineering Target Value | Verification Boundary |
+| :--- | :--- | :--- | :--- |
+| **Tier 1 (MCU) Execution** | `mcu.core_clock` | $480.0\text{ MHz} \pm 10\text{ ppm}$ | Lockstep Cortex-M7 / RISC-V |
+| **MCU Memory Allocation** | `mcu.heap_bytes` | $0\text{ Bytes}$ (`malloc = 0`) | $512\text{ KB}$ DTCM static arrays only |
+| **MCU Real-Time WCET** | `mcu.max_wcet_us` | $\text{WCET} \le 175.0\,\mu\text{s}$ | $17.5\%$ CPU load margin at $1000\text{ Hz}$ |
+| **Tier 2 (NPU) Placement** | `npu.cadence_hz` | $20.0\text{ Hz}$ ($50\text{ ms}$ budget) | Action Chunking ($H=16\text{--}32$) |
+| **NPU SRAM Weight Tiling** | `npu.sram_tile_mb` | $\ge 8.0\text{ MB}$ dedicated SRAM | $I_{\text{arith}} \ge 120\text{ FLOPs/Byte}$ (INT8/FP8) |
+| **Tier 3 (MPU) OS Kernel** | `mpu.os_kernel` | Linux 6.6 `PREEMPT_RT` | Pinned memory (`mlockall`, zero swap) |
+| **Bus QoS Priority (MCU)** | `qos.mcu_read` | `QoS = 15` (Preemption Enabled) | $<50\text{ ns}$ interconnect mailbox latency |
+| **Bus QoS Priority (NPU)** | `qos.npu_fetch` | `QoS = 10` (Medium-High Priority) | Sustained tensor weight burst bandwidth |
+| **Bus QoS Priority (Camera)** | `qos.camera_dma` | `QoS = 4` (Throttled Background) | Paced FIFO transfer during bus idle cycles |
+| **Thermal Warning Knee** | `therm.derate_c` | $75.0^\circ\text{C}$ ($T_j$) | Proactive cadence scaling trigger |
+| **Maximum Junction Limit** | `therm.max_tj_c` | $85.0^\circ\text{C}$ ($T_j$) | Absolute DVFS downclocking threshold |
 
 : The Workload Placement Specification (**PLACE-01**). Quantitative silicon parameters, bus QoS priorities, and thermal boundaries bridging Architecture to Integration. {#tbl-dossier-place-01}
 
@@ -225,7 +268,7 @@ We audit the Workload Placement stage across the Five Physical Columns in the Co
 | Physical Constraint | Placement Systems Tension | Chapter 10 Architectural Resolution |
 | :--- | :--- | :--- |
 | **Time & Freshness** | Network and OS latency tails ($>1\text{ s}$) create blind execution. | **Strict Local Placement:** System 1 reflexes reside strictly on onboard MCU. |
-| **Inertia & Stopping** | Large kinetic momentum requires guaranteed local stopping autonomy. | **Hardware Watchdog Timers ($15\text{ ms}$)** triggering local Category 1 braking. |
+| **Inertia & Stopping** | Large kinetic momentum ($p = 2{,}160\text{ N}\cdot\text{s}$) requires guaranteed local stopping autonomy. | **Hardware Watchdog Timers ($15\text{ ms}$)** triggering local Category 1 braking. |
 | **Actuation & Jerk** | Discrete IPC messages command jagged motor step changes. | **MCU Quintic Spline Interpolation** executed in zero-wait-state SRAM. |
 | **Energy & Thermal** | Excessive DRAM accesses and NPU heating cause thermal throttling. | **On-Chip SRAM Model Tiling** and dynamic thermal derating ledgers. |
 | **Silicon Determinism** | Shared UMA memory crossbar contention stalls critical threads. | **Hardware AXI QoS Priority Arbitration** (`ARQOS`/`AWQOS`). |
@@ -233,10 +276,104 @@ We audit the Workload Placement stage across the Five Physical Columns in the Co
 : Placement Co-Design Checkpoint Ledger. Systematic architectural accounting of workload placement across physical constraints. {#tbl-placement-matrix-checkpoint}
 
 
-## Chapter Summary and Forward Handoff
+## Fallacies and Pitfalls in Heterogeneous Compute Placement
 
-This chapter established how cognitive workloads are deliberately placed across heterogeneous silicon fabrics. Physical AI rejects the cloud illusion of fungible compute, mapping multi-rate cognitive stages across Cloud, Host MPU, Neural Accelerator NPU, and Real-Time MCU based on cadence, memory bandwidth, thermal dissipation, and physical trust boundaries.
+Deploying neural policies onto embodied hardware requires dismantling digital software abstractions that treat computation as fungible, memory transfers as free, and wireless connectivity as deterministic.
 
-By enforcing hardware AXI QoS bus priorities, lock-free shared SRAM ring buffers, and local microcontroller fail-safes, we eliminate memory crossbar contention and guarantee that network dropouts never cause physical collisions.
+::: {.callout-fallacy title="High-Speed Wireless Networks (5G URLLC / Wi-Fi 7) Provide Sufficient Determinism for Direct Real-Time Actuator Control"}
+**The Fallacy:** *“Because 5G Ultra-Reliable Low-Latency Communication (URLLC) and Wi-Fi 7 offer nominal latencies of $1\text{--}5\text{ ms}$ and multi-gigabit throughput, high-level policies running on edge servers can directly stream real-time motor torque setpoints or close actuator loops over the air without onboard local safety supervision.”*
 
-In the following chapter, **Chapter 11 (Runtime Governance and Safety Systems: Hazard Mitigation, Dual-Heartbeat Watchdogs, and Governed Flywheels)**, we explore how physical agents are governed during continuous operations. We examine human-machine supervisory authority, dynamic hazard escalation, dual-heartbeat hardware watchdogs, and governed data flywheels that guarantee continuous operational safety.
+**The Reality:** Radio frequency (RF) propagation in real-world industrial and unstructured environments is fundamentally stochastic. Wireless channels are subject to Rayleigh/Rician multipath fading, destructive interference nulls, shadow fading from moving metal equipment or steel-clad insulated walls (Faraday cages), antenna polarization mismatch, and base station handoff stalls.
+
+While the median ($P_{50}$) round-trip time of a private 5G network may be $3\text{ ms}$, the tail latency distribution ($P_{99.999}$) exhibits severe heavy-tailed blowouts exceeding $1{,}000\text{--}2{,}000\text{ ms}$ during physical obstructions:
+
+$$P(\text{Blackout} > 1.0\text{ s}) > 0$$
+
+In physical systems, unmonitored latency translates directly into unguided kinetic displacement:
+
+$$d_{\text{coast}} = v \cdot \Delta t_{\text{blackout}}$$
+
+For a 1.2-ton machine traveling at $v = 1.8\text{ m/s}$, a $1.42\text{ s}$ network drop results in $2.556\text{ m}$ of unguided travel—instantly exhausting local clearance envelopes ($1.20\text{ m}$) and causing catastrophic mechanical impact ($E_k = 1{,}944\text{ J}$).
+
+Industrial safety standards (ISO 3691-4, IEC 62443, IEC 60204-1) mandate that closed-loop actuator authority requires provable, bounded, deterministic execution ($\le 1.0\text{ ms} \pm 50\,\mu\text{s}$). Wireless networks can only be used to transmit semantic deliberation and candidate plans governed by time-bounded **Expiring Intent Leases** ($\tau_{\text{lease}} \le 100\text{ ms}$), while local, physically connected bare-metal microcontrollers maintain autonomous stopping distance supervision ($d_{\text{stop}}$) and hardware watchdog fail-safes.
+:::
+
+::: {.callout-fallacy title="Shared Unified Memory (UMA) Eliminates All Data Movement Overhead Between CPU and Accelerator Silicon"}
+**The Fallacy:** *“Because modern embedded SoCs integrate CPU, GPU, and NPU into a Unified Memory Architecture (UMA) sharing a single physical LPDDR5 DRAM pool, zero-copy pointer passing eliminates all data movement latency, interconnect contention, and energy overhead between host software and neural accelerators.”*
+
+**The Reality:** While UMA eliminates explicit PCIe bus DMA copies between physically disjoint memory pools, all compute engines must share the *same* physical DRAM memory controller and internal AXI interconnect crossbars.
+
+When high-bandwidth sensor DMAs (such as four 4K MIPI CSI-2 camera streams at $2.5\text{ GB/s}$) and neural weight fetches ($20\text{ GB/s}$) saturate the memory crossbar, DRAM access latency for CPU and MCU threads spikes by $300\text{--}800\%$. A deterministic $1000\text{ Hz}$ real-time control loop attempting to read shared waypoints from DRAM is stalled by memory bus contention, causing hard deadline misses.
+
+Furthermore, CPU L1/L2 caches and NPU tensor accelerators are frequently non-coherent across execution domains. Passing buffers across these boundaries requires explicit cache maintenance operations:
+
+$$\text{Host Clean:} \quad \text{clean\_dcache\_range}(\text{addr}, \text{size})$$
+
+$$\text{Coprocessor Invalidate:} \quad \text{invalidate\_dcache\_range}(\text{addr}, \text{size})$$
+
+These operations stall processor execution pipelines, pollute cache hierarchies, and consume hundreds of clock cycles per transaction.
+
+Finally, accessing off-chip LPDDR5 DRAM consumes approximately $150\text{ pJ/access}$, whereas fetching operands from on-chip static SRAM consumes $<2\text{ pJ/access}$—a $75\times$ energy disparity. Continuous DRAM streaming rapidly exhausts battery capacity and elevates package junction temperature ($T_j$), demonstrating that UMA is a shared contention domain requiring strict hardware AXI QoS arbitration and on-chip SRAM weight tiling.
+:::
+
+::: {.callout-caution title="Dynamic Voltage and Frequency Scaling (DVFS) Downclocking Induced by Model Memory Bandwidth Thrashing"}
+**The Hazard:** Deploying neural network policies with low arithmetic intensity ($I_{\text{arith}} \approx 1\text{--}2\text{ FLOPs/Byte}$) that continuously stream multi-gigabyte weight tensors across off-chip DRAM buses in passively cooled or IP67-sealed robotic enclosures.
+
+**The Physical Failure:** In low-arithmetic-intensity models (such as unquantized autoregressive transformers), memory PHY I/O pads and DRAM controllers dissipate substantial Joulean power ($P_{\text{DRAM}} + P_{\text{PHY}}$) alongside active silicon switching power ($P_{\text{dynamic}} = \alpha C V^2 f$). 
+
+In an enclosed robot chassis, the silicon junction temperature is governed by first-order thermal dynamics:
+
+$$C_{\text{die}} \frac{d T_j(t)}{dt} = P_{\text{dynamic}}(t) + P_{\text{PHY}}(t) + P_{\text{leakage}}(T_j) - \frac{T_j(t) - T_{\text{ambient}}}{R_\theta}$$
+
+When sustained memory thrashing drives junction temperature past the hardware threshold ($T_j > 85^\circ\text{C}$), on-chip thermal supervisory circuits abruptly trigger Dynamic Voltage and Frequency Scaling (DVFS), downclocking accelerator core frequencies by up to $60\%$:
+
+$$f_{\text{clock}} \leftarrow 0.40 \times f_{\text{nominal}}$$
+
+This sudden frequency collapse doubles or triples forward inference latency ($T_{\text{infer}}: 25\text{ ms} \to 70\text{ ms}$), blowing past the $50\text{ ms}$ action chunking deadline. The low-level controller is starved of fresh waypoints, intent leases expire, and the vehicle trips an uncommanded emergency stop mid-operation.
+
+**The Defensive Practice:** Maximize arithmetic intensity by quantizing trajectory decoders into INT8 or FP8 formats that reside permanently within on-chip dedicated SRAM ($<8.0\text{ MB}$, $I_{\text{arith}} > 120\text{ FLOPs/Byte}$), reducing off-chip DRAM traffic to near zero. Pair this with **Proactive Thermal Cadence Scaling**: monitor on-die thermal diodes in real-time, dynamically expanding chunk horizon ($H=16 \to 32$) and reducing inference cadence ($50\text{ Hz} \to 20\text{ Hz}$) when $T_j \ge 75^\circ\text{C}$, stabilizing junction temperature below the DVFS downclocking cliff without dropping control deadlines.
+:::
+
+::: {.callout-caution title="False Sharing and Cache Line Ping-Pong in Inter-Processor Lock-Free Ring Buffers"}
+**The Hazard:** Allocating producer sequence counters (`head_sequence`) and consumer sequence counters (`tail_sequence`) on adjacent memory addresses within the same 64-byte hardware cache line in shared SRAM mailboxes bridging asymmetric processor cores (e.g., Linux Host CPU and Real-Time Coprocessor).
+
+**The Physical Failure:** Modern processors and cache controllers manage memory in discrete 64-byte cache lines. When the producer on Core 0 writes an updated `head_sequence`, the hardware cache coherency protocol (such as MESI or MOESI) invalidates the entire 64-byte cache line in Core 1's local cache.
+
+When the consumer on Core 1 subsequently reads or updates `tail_sequence`, it incurs an immediate cache miss. Core 1 must stall its execution pipeline, issue an interconnect snooping transaction or DRAM read, and reload the line into the *Shared* ($S$) or *Modified* ($M$) state.
+
+Over high-frequency IPC streams ($1000\text{ Hz}$), this continuous **cache line ping-pong** creates severe interconnect bus contention, inflates synchronization latency from $<50\text{ ns}$ to hundreds of microseconds, and introduces non-deterministic timing jitter that destroys real-time control guarantees.
+
+**The Defensive Practice:** Enforce strict cache line isolation using C11/C++11 alignment specifiers (`alignas(64)` or `alignas(CACHE_LINE_SIZE)`) on all independently modified shared variables, verified via compile-time static assertions:
+
+```c
+// STATIC ASSERTION FOR CACHE LINE ISOLATION
+static_assert(offsetof(lockless_sram_mailbox_t, tail_sequence) - 
+              offsetof(lockless_sram_mailbox_t, head_sequence) >= CACHE_LINE_SIZE,
+              "CRITICAL ERROR: False sharing detected between head and tail sequence!");
+```
+
+On non-coherent multi-core architectures (e.g., Cortex-A to Cortex-M), pair alignment with explicit cache clean (`clean_dcache_range`) and cache invalidation (`invalidate_dcache_range`) operations to guarantee deterministic, microsecond data exchange without bus ping-pong.
+:::
+
+
+## Chapter Summary and Forward Handoff to Chapter 11
+
+This chapter established how cognitive workloads are deliberately placed across heterogeneous silicon fabrics. Physical AI rejects the cloud illusion of fungible compute, mapping multi-rate cognitive stages across Cloud, Host MPU, Neural Accelerator NPU, and Real-Time MCU based on cadence ($0.001\text{ Hz} \to 1000\text{ Hz}$), memory bandwidth, thermal dissipation, and physical trust boundaries.
+
+The architectural discipline of heterogeneous compute placement rests on three core pillars:
+
+1. **Non-Fungibility of Physical Silicon:** Time-critical safety loops ($1000\text{ Hz}$) cannot be offloaded across non-deterministic wireless networks (5G/Wi-Fi) or general-purpose operating system schedulers. Generative policies propose candidate trajectories under expiring **Intent Leases** ($\tau_{\text{lease}} \le 100\text{ ms}$), while bare-metal microcontrollers maintain exclusive hardware authority over motor inverters.
+2. **Deterministic Interconnects and Zero-Copy IPC:** Shared Unified Memory Architectures (UMA) require hardware **AXI QoS Priority Arbitration** (`QoS=15` for MCU, `QoS=10` for NPU, `QoS=4` for Camera DMA) to prevent video streams from starving real-time control loops. Inter-processor communication must use lock-free SRAM ring buffers with strict 64-byte cache line isolation (`alignas(64)`) to eliminate mutex context switching and cache line ping-pong.
+3. **Thermodynamic Co-Design & Arithmetic Intensity:** Moving bits across off-chip DRAM consumes $750\times$ more energy per byte than on-chip arithmetic ($150\text{ pJ}$ vs $0.2\text{ pJ}$). Quantizing trajectory models to reside permanently in on-chip SRAM ($I_{\text{arith}} \ge 120\text{ FLOPs/Byte}$) eliminates DRAM bus heating. Real-time proactive thermal cadence scaling dynamically adjusts chunk horizons ($H=16 \to 32$) and inference rates ($50\text{ Hz} \to 20\text{ Hz}$) at $T_j \ge 75^\circ\text{C}$, preventing catastrophic DVFS downclocking cliffs ($>85^\circ\text{C}$).
+
+### Advancing to Chapter 11: Runtime Governance and Safety Systems
+
+Having established where cognitive workloads reside across heterogeneous silicon in Chapter 10, we now advance to **Chapter 11 (Runtime Governance and Safety Systems: Hazard Mitigation, Dual-Heartbeat Watchdogs, and Governed Flywheels)**. 
+
+In Chapter 11, we explore how distributed physical agents are governed during continuous operations:
+
+- **Dual-Heartbeat Hardware Watchdogs:** Structuring bidirectional hardware and software heartbeats between Linux host MPUs and bare-metal MCUs to detect hung threads and trigger microsecond safety fallbacks.
+- **Dynamic Hazard Escalation:** Implementing multi-tier fallback hierarchies (Category 2 trajectory hold $\to$ Category 1 controlled deceleration $\to$ Category 0 hardware Safe Torque Off) governed by runtime safety monitors.
+- **Expiring Intent Lease Protocols:** Enforcing bounded execution leases that automatically safe the platform when semantic planners fail to refresh commands within their allocated latency budget.
+- **Governed Data Flywheels:** Capturing real-world failure edge cases and out-of-distribution physical interactions for fleet-level retraining while preserving runtime determinism and operational safety.
+
