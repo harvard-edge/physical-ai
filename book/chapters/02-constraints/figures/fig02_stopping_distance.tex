@@ -1,26 +1,23 @@
-\documentclass[tikz,border=12pt]{standalone}
+\documentclass[tikz,border=10pt]{standalone}
 \usepackage[T1]{fontenc}
 \usepackage{tgheros}
 \usepackage{sfmath}
 \usepackage{amsmath}
-\usepackage{fontawesome5}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc,patterns}
 \usepackage{xcolor}
 
 \renewcommand{\familydefault}{\sfdefault}
 
-% Harvard Crimson & ETH Zurich Academic Semantic Palette
-\definecolor{harvardcrimson}{HTML}{A51C30}
+% Academic Semantic Palette (Harvard Crimson & ETH Zurich)
 \definecolor{ethdarkblue}{HTML}{1F407A}
 \definecolor{ethblue}{HTML}{215CAF}
-\definecolor{ethpetrol}{HTML}{007A87}
 \definecolor{ethbronze}{HTML}{B87333}
-\definecolor{ethslate}{HTML}{475569}
-\definecolor{cardbg}{HTML}{F8FAFC}
-\definecolor{cardborder}{HTML}{CBD5E1}
-\definecolor{safeTeal}{HTML}{10B981}
-\definecolor{amberWarn}{HTML}{D97706}
+\definecolor{harvardcrimson}{HTML}{A51C30}
+\definecolor{ethslate}{HTML}{334155}
+\definecolor{gridgray}{HTML}{E2E8F0}
+\definecolor{safegreen}{HTML}{0D9488}
+\definecolor{dangerred}{HTML}{DC2626}
 
 \begin{document}
 \begin{tikzpicture}[
@@ -30,87 +27,106 @@
 ]
 
   % ---------------------------------------------------------------------------
-  % TOP HEADER CARD
+  % PARAMETERS: Distance Scale 1 cm = 0.155 in (50 cm = 7.75 in)
   % ---------------------------------------------------------------------------
-  \node[draw=ethdarkblue, fill=ethdarkblue!5, rounded corners=6pt, line width=1.1pt, text width=9.20in, inner sep=8pt, align=center] (title) at (4.60in, 0) {
-    {\normalsize\bfseries\color{ethdarkblue}\faIcon{ruler-horizontal}\;\; DYNAMIC STOPPING DISTANCE: SENSE-TO-ACTUATION DELAY AS PHYSICAL DISPLACEMENT}\\[3pt]
-    {\scriptsize\color{ethslate}Translating Milliseconds of Computational Latency into Physical Centimeters of Unguided Collision Hazard}
-  };
-
-  % Equation Box
-  \node[draw=cardborder, fill=cardbg, rounded corners=5pt, line width=0.9pt, text width=9.20in, inner sep=7pt, align=center, below=0.12in of title] (eq) {
-    {\small $\displaystyle d_{\text{stop}}(v_0, \Delta t_{\text{delay}}) \;=\; \underbrace{v_0 \cdot \Delta t_{\text{delay}}}_{\substack{\text{\textbf{\color{ethblue}Phase 1: Linear Reaction Travel}}\\\text{\scriptsize\color{ethslate}(Coasting during computational delay)}}} \;+\; \underbrace{\frac{v_0^2}{2 a_{\text{max}}}}_{\substack{\text{\textbf{\color{ethbronze}Phase 2: Quadratic Braking Distance}}\\\text{\scriptsize\color{ethslate}(Mechanical deceleration to rest)}}}$}
-  };
+  \def\xscale{0.155in}
+  \def\yNom{0.0in}
+  \def\yTail{-1.20in}
+  \def\yAxis{-2.15in}
+  \def\barH{0.46in}
 
   % ---------------------------------------------------------------------------
-  % COORDINATE MAPPING: 1 meter = 16.0 inches (1 cm = 0.16 in)
-  % Origin at 0.60in from left, spanning to 0.50m (8.00in)
+  % BACKGROUND GRID & SPATIAL AXIS
   % ---------------------------------------------------------------------------
-  \coordinate (X0) at (0.60in, -1.50in);
-  
-  % ---------------------------------------------------------------------------
-  % ROW 1: NOMINAL EXECUTION (P50 = 30 ms)
-  % ---------------------------------------------------------------------------
-  \node[anchor=west, font=\sffamily\bfseries\scriptsize, text=ethdarkblue] at (0.20in, -1.45in) {
-    \faIcon{check-circle}\;\; \textbf{Nominal Case ($P_{50}$):} \textnormal{$v_0 = 1.0\text{ m/s},\, \Delta t = 30\text{ ms},\, a_{\text{max}} = 2.0\text{ m/s}^2$}
-  };
-
-  % Phase 1: Reaction (3 cm = 0.48 in)
-  \draw[fill=ethblue!25, draw=ethblue, line width=1.1pt, rounded corners=3pt] (0.60in, -1.95in) rectangle ++(0.48in, 0.36in)
-    node[midway, font=\sffamily\bfseries\tiny, text=ethdarkblue] {$3\text{ cm}$};
-
-  % Phase 2: Braking (25 cm = 4.00 in)
-  \draw[fill=ethbronze!25, draw=ethbronze, line width=1.1pt, rounded corners=3pt] ($(0.60in, -1.95in) + (0.48in, 0)$) rectangle ++(4.00in, 0.36in)
-    node[midway, font=\sffamily\bfseries\tiny, text=ethbronze] {Controlled Braking: $\frac{v_0^2}{2a_{\text{max}}} = 25\text{ cm}$};
-
-  % Safe Clearance Margin (7 cm = 1.12 in)
-  \draw[fill=safeTeal!15, draw=safeTeal, line width=1.0pt, dashed, rounded corners=3pt] ($(0.60in, -1.95in) + (4.48in, 0)$) rectangle ++(1.12in, 0.36in)
-    node[midway, font=\sffamily\bfseries\tiny, text=safeTeal] {Margin: $+7\text{ cm}$};
-
-  % Total Stop Tag (Nominal)
-  \node[draw=safeTeal, fill=white, rounded corners=3pt, font=\sffamily\bfseries\tiny, text=safeTeal, inner sep=3.5pt, anchor=west] at ($(0.60in, -1.95in) + (5.75in, 0.18in)$) {
-    \faIcon{shield-alt}\; Total $d_{\text{stop}} = 28\text{ cm}$ (\textbf{SAFE: $< 35\text{ cm}$ Clearance})
-  };
-
-  % ---------------------------------------------------------------------------
-  % ROW 2: TAIL LATENCY SPIKE (P99 = 230 ms)
-  % ---------------------------------------------------------------------------
-  \node[anchor=west, font=\sffamily\bfseries\scriptsize, text=harvardcrimson] at (0.20in, -2.55in) {
-    \faIcon{exclamation-triangle}\;\; \textbf{Tail Latency Spike ($P_{99}$):} \textnormal{$v_0 = 1.0\text{ m/s},\, \Delta t = 230\text{ ms},\, a_{\text{max}} = 2.0\text{ m/s}^2$}
-  };
-
-  % Phase 1: Expanded Reaction (23 cm = 3.68 in)
-  \draw[fill=harvardcrimson!25, draw=harvardcrimson, line width=1.1pt, rounded corners=3pt] (0.60in, -3.05in) rectangle ++(3.68in, 0.36in)
-    node[midway, font=\sffamily\bfseries\tiny, text=harvardcrimson] {$d_{\text{react}} = 23\text{ cm}$ ($+20\text{ cm}$ Blind Coasting Travel!)};
-
-  % Phase 2: Braking (25 cm = 4.00 in) - Place label on the right side of the barrier line
-  \draw[fill=ethbronze!25, draw=ethbronze, line width=1.1pt, rounded corners=3pt] ($(0.60in, -3.05in) + (3.68in, 0)$) rectangle ++(4.00in, 0.36in);
-  \node[font=\sffamily\bfseries\tiny, text=ethbronze] at ($(0.60in, -3.05in) + (3.68in + 2.85in, 0.18in)$) {Braking: $25\text{ cm}$};
-
-  % Crash / Impact Zone Tag
-  \node[draw=harvardcrimson, fill=harvardcrimson!15, rounded corners=3pt, font=\sffamily\bfseries\tiny, text=harvardcrimson, inner sep=3.5pt, anchor=west] at ($(0.60in, -3.05in) + (7.80in, 0.18in)$) {
-    \faIcon{skull-crossbones}\; $d_{\text{stop}} = 48\text{ cm}$ (\textbf{IMPACT: $+13\text{ cm}$ Breach})
-  };
-
-  % ---------------------------------------------------------------------------
-  % PHYSICAL OBSTACLE BARRIER (At x = 35 cm = 0.60in + 5.60in = 6.20in)
-  % ---------------------------------------------------------------------------
-  \draw[line width=1.8pt, draw=harvardcrimson, dashed] (6.20in, -1.35in) -- (6.20in, -3.30in);
-  \node[draw=harvardcrimson, fill=white, rounded corners=3pt, font=\sffamily\bfseries\tiny, text=harvardcrimson, inner sep=3pt] at (6.20in, -1.25in) {
-    \faIcon{hand-paper}\; Physical Clearance Barrier ($d_{\text{clearance}} = 35\text{ cm}$)
-  };
-
-  % ---------------------------------------------------------------------------
-  % SPATIAL DISTANCE AXIS (Bottom)
-  % ---------------------------------------------------------------------------
-  \draw[->, line width=1.1pt, ethslate] (0.60in, -3.45in) -- (8.90in, -3.45in)
-    node[right, font=\sffamily\bfseries\tiny, text=ethslate] {Distance $x$};
-
-  % Major Ticks: 0, 10, 20, 30, 35, 40, 50 cm
-  \foreach \x/\label in {0/0\text{ cm}, 10/10\text{ cm}, 20/20\text{ cm}, 30/30\text{ cm}, 35/35\text{ cm [Barrier]}, 40/40\text{ cm}, 50/50\text{ cm}} {
-    \draw[line width=0.8pt, ethslate] ($(0.60in, -3.35in) + (\x*0.16in, 0.05in)$) -- ($(0.60in, -3.35in) + (\x*0.16in, -0.05in)$);
-    \node[font=\sffamily\bfseries\tiny, text=ethslate, below=2pt] at ($(0.60in, -3.35in) + (\x*0.16in, -0.05in)$) {\label};
+  \foreach \x in {0, 10, 20, 30, 40, 50} {
+    \draw[gridgray, line width=0.5pt] (\x*\xscale, 0.70in) -- (\x*\xscale, \yAxis);
+    \draw[ethslate, line width=0.8pt] (\x*\xscale, \yAxis) -- (\x*\xscale, \yAxis - 0.06in);
+    \node[font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=ethslate, below=1pt] at (\x*\xscale, \yAxis - 0.06in) {\x\,cm};
   }
+
+  % 35 cm grid line
+  \draw[gridgray, line width=0.5pt] (35*\xscale, 0.70in) -- (35*\xscale, \yAxis);
+  \draw[ethslate, line width=0.8pt] (35*\xscale, \yAxis) -- (35*\xscale, \yAxis - 0.06in);
+  \node[font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=dangerred, below=1pt] at (35*\xscale, \yAxis - 0.06in) {35\,cm};
+
+  % Spatial Axis Line
+  \draw[->, ethslate, line width=1.1pt] (0, \yAxis) -- (53*\xscale, \yAxis)
+    node[right=3pt, font=\fontsize{8.5pt}{11pt}\selectfont\bfseries, text=ethslate] {Distance $x$};
+
+  % ---------------------------------------------------------------------------
+  % PHYSICAL CLEARANCE BARRIER (x = 35 cm)
+  % ---------------------------------------------------------------------------
+  \draw[dangerred, dashed, line width=1.5pt] (35*\xscale, 0.85in) -- (35*\xscale, \yAxis);
+  \node[draw=dangerred, fill=white, line width=1pt, rounded corners=2pt, inner sep=3.5pt, font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=dangerred, anchor=south] at (35*\xscale, 0.88in) {
+    Physical Clearance Barrier: $d_{\text{clearance}} = 35.0\text{ cm}$
+  };
+
+  % ---------------------------------------------------------------------------
+  % TRACK 1: NOMINAL CASE (P50 = 30 ms -> d_stop = 28 cm)
+  % ---------------------------------------------------------------------------
+  \node[anchor=south west, font=\fontsize{9pt}{11.5pt}\selectfont\bfseries, text=ethdarkblue] at (0, 0.50in) {
+    Nominal Stopping ($P_{50} = 30\text{ ms},\; v_0 = 1.0\text{ m/s},\; a_{\text{max}} = 2.0\text{ m/s}^2$)
+  };
+
+  % Phase 1: Reaction Drift (3 cm)
+  \draw[fill=ethblue!25, draw=ethblue, line width=0.9pt] (0, \yNom) rectangle ++(3*\xscale, \barH)
+    node[midway, font=\fontsize{7.5pt}{9pt}\selectfont\bfseries, text=ethblue!90!black] {$3\text{ cm}$};
+
+  % Phase 2: Kinetic Braking (25 cm: 3 -> 28)
+  \draw[fill=ethbronze!25, draw=ethbronze, line width=0.9pt] (3*\xscale, \yNom) rectangle ++(25*\xscale, \barH)
+    node[midway, font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=ethbronze!90!black] {Controlled Braking: $\frac{v_0^2}{2a_{\text{max}}} = 25\text{ cm}$};
+
+  % Safe Clearance Margin (7 cm: 28 -> 35)
+  \draw[fill=safegreen!12, draw=safegreen, dashed, line width=1.0pt] (28*\xscale, \yNom) rectangle ++(7*\xscale, \barH)
+    node[midway, font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=safegreen!90!black] {
+      Margin: $+7\text{ cm}$
+    };
+
+  % Nominal End Marker
+  \draw[ethdarkblue, line width=1.1pt] (28*\xscale, \yNom - 0.05in) -- (28*\xscale, \yNom + \barH + 0.05in);
+  \node[font=\fontsize{7.5pt}{9.5pt}\selectfont\bfseries, text=ethdarkblue, above=1pt] at (28*\xscale, \yNom + \barH + 0.05in) {
+    $d_{\text{stop}} = 28\text{ cm}$ (Safe)
+  };
+
+  % ---------------------------------------------------------------------------
+  % TRACK 2: TAIL LATENCY SPIKE (P99.9 = 230 ms -> d_stop = 48 cm)
+  % ---------------------------------------------------------------------------
+  \node[anchor=south west, font=\fontsize{9pt}{11.5pt}\selectfont\bfseries, text=dangerred] at (0, \yTail + 0.50in) {
+    Tail Latency Spike ($P_{99.9} = 230\text{ ms},\; v_0 = 1.0\text{ m/s}$)
+  };
+
+  % Phase 1: Expanded Reaction Drift (23 cm)
+  \draw[fill=dangerred!20, draw=dangerred, line width=0.9pt] (0, \yTail) rectangle ++(23*\xscale, \barH)
+    node[midway, font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=dangerred!90!black] {Unguided Reaction Drift: $v_0 \cdot \Delta t = 23\text{ cm}$ ($+20\text{ cm}$ Drift)};
+
+  % Phase 2: Kinetic Braking (25 cm: 23 -> 48)
+  \draw[fill=ethbronze!25, draw=ethbronze, line width=0.9pt] (23*\xscale, \yTail) rectangle ++(25*\xscale, \barH)
+    node[midway, font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=ethbronze!90!black] {Kinetic Braking: $25\text{ cm}$};
+
+  % Barrier Breach Hatch (35 -> 48 cm)
+  \draw[pattern=north east lines, pattern color=dangerred!60, draw=dangerred, line width=1.1pt] 
+    (35*\xscale, \yTail) rectangle (48*\xscale, \yTail + \barH);
+
+  % Breach Callout Text
+  \node[font=\fontsize{8.5pt}{10.5pt}\selectfont\bfseries, text=dangerred, anchor=west] at (36*\xscale, \yTail - 0.22in) {
+    Catastrophic Impact Breach: $+13\text{ cm}$ through obstacle!
+  };
+
+  % Tail End Marker
+  \draw[dangerred, line width=1.2pt] (48*\xscale, \yTail - 0.05in) -- (48*\xscale, \yTail + \barH + 0.05in);
+  \node[font=\fontsize{8pt}{10pt}\selectfont\bfseries, text=dangerred, above=1pt] at (48*\xscale, \yTail + \barH + 0.05in) {
+    $d_{\text{stop}} = 48\text{ cm}$ (Impact)
+  };
+
+  % ---------------------------------------------------------------------------
+  % LEGEND (Top row of clean semantic pills)
+  % ---------------------------------------------------------------------------
+  \coordinate (L0) at (0, 1.25in);
+  \node[anchor=west, font=\fontsize{7.5pt}{9.5pt}\selectfont] at (L0) {
+    \textbf{Stopping Phases:}\quad
+    \tikz[baseline=-2pt]{\draw[fill=ethblue!25, draw=ethblue] (0,0) rectangle (0.16in, 0.08in);}\;Phase 1: Linear Reaction Drift ($v_0 \cdot \Delta t$)\qquad
+    \tikz[baseline=-2pt]{\draw[fill=ethbronze!25, draw=ethbronze] (0,0) rectangle (0.16in, 0.08in);}\;Phase 2: Quadratic Kinetic Braking ($v_0^2 / 2a_{\text{max}}$)
+  };
 
 \end{tikzpicture}
 \end{document}
