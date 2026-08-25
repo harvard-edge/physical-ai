@@ -12,7 +12,8 @@ import os
 import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CH02_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "02-latency", "figures")
+BOOK_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+CH02_FIG_DIR = os.path.join(BOOK_DIR, "chapters", "02-constraints", "figures")
 
 
 # -----------------------------------------------------------------------------
@@ -280,9 +281,9 @@ METROLOGY_TEX = r'''\documentclass[tikz,border=12pt]{standalone}
     {\scriptsize\color{ethslate}Escaping Software Timestamp Delusions via Logic Analyzer GPIO Toggles and Shunt Current Probes}
   };
 
-  % Left Card: The Machine Under Test
+  % Left Card: The System Under Test
   \node[box] (dut) at (0, -0.65in) {
-    {\small\bfseries\color{ethdarkblue}\faIcon{server}\; Physical AI Machine Under Test}\\[3pt]
+    {\small\bfseries\color{ethdarkblue}\faIcon{server}\; Physical AI System Under Test (SUT)}\\[3pt]
     {\scriptsize\bfseries\color{ethslate}Arduino UNO Q Dual-Brain Platform}\\[6pt]
     \textbf{\color{ethblue}1. Sensor Frame Interrupt (GPIO 1):}\\[1pt]
     {\tiny Toggled inside camera driver ISR on DMA start.}\\[4pt]
