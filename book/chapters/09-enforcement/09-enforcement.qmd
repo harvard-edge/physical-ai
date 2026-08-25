@@ -24,26 +24,37 @@ After studying this chapter, you will be able to:
 :::
 
 
-## Introduction: Real-Time Safety Enforcement and the Proposal–Permission Split
+## Real-Time Safety Enforcement
 
-In conventional robotics software stacks, motion planning, trajectory optimization, and safety monitoring are frequently bundled into a monolithic application process executing under a standard operating system. In modern Physical AI architectures, where high-level reasoning and trajectory synthesis are driven by multi-billion parameter foundation models and diffusion decoders, this monolithic design is lethal.
+In Chapter 8, we engineered the System 1.5 trajectory planning organ, which generates continuous, multi-step action chunks ($H=16$) to bridge the cadence gap between high-level semantic reasoning ($1\text{ Hz}$) and low-level actuator control. However, passing these generative trajectories directly to physical motor drives introduces a lethal vulnerability. In conventional robotics stacks, motion planning, trajectory synthesis, and safety monitoring are frequently bundled into a monolithic application process executing under a standard operating system. In modern Physical AI architectures, where high-level reasoning and trajectory synthesis are driven by multi-billion parameter foundation models and diffusion decoders, this monolithic design is fatal.
 
 A general-purpose operating system such as standard Linux is engineered to optimize average throughput across competing processes. In doing so, it routinely introduces non-deterministic latency spikes: kernel memory compaction pauses, dirty page background flushes, thread preemption, and bus contention across shared DRAM crossbars (@fig-enforcer-timing). If safety monitoring resides in user-space software on the Linux host, any operating system stall halts the safety monitor simultaneously with the neural policy. During that stall, unserviced motor command registers remain latched while moving mass continues to coast forward under unguided momentum ($d_{\text{coast}} = v \cdot \Delta t$). For a robotic manipulator traveling at an operational velocity of $v = 1.5\text{ m/s}$, a modest $140\text{ ms}$ Linux kernel memory compaction stall results in $d_{\text{coast}} = 210\text{ mm}$ ($21\text{ cm}$) of completely unmonitored displacement, converting software scheduling jitter directly into a destructive physical collision.
 
 ![**System 1 Microsecond Timer Waterfall and Proposal-Permission Boundary.** Dedicated bare-metal MCU executes a strict $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) timer interrupt. Ingesting candidate spline waypoints from shared SRAM mailboxes, reading $1000\text{ Hz}$ joint telemetry, solving the Minimal-Intervention CBF-QP in $< 175\,\mu\text{s}$, and writing Space-Vector PWM registers to drive motor inverters.](figures/fig08_enforcer_timing_waterfall.svg){#fig-enforcer-timing width=100%}
 
-Physical AI resolves this vulnerability through the Proposal–Permission Privilege Split. The system is partitioned across heterogeneous silicon into two isolated operational domains:
+Physical AI resolves this vulnerability through the Proposal–Permission Privilege Split. The system is partitioned across heterogeneous silicon into two isolated operational domains (@tbl-proposal-permission-ch09):
 
 The untrusted proposal domain encompasses large Vision-Language-Action models (VLAs) and generative trajectory decoders (ACT, Diffusion Policies) executing on multi-core Linux Application Processors (MPUs) and edge Neural Processing Units (NPUs). This domain possesses rich semantic intelligence and wide receptive fields but is treated from a safety standpoint as an untrusted proposal service. It generates candidate trajectory chunks accompanied by expiring intent leases ($\tau_{\text{lease}} \approx 50\text{--}100\text{ ms}$), depositing them into lock-free shared memory mailboxes.
 
 The sole hardware permission authority belongs to a dedicated, hard real-time microcontroller (such as an ARM Cortex-M7 or dual-core lockstep RISC-V) executing bare-metal or on a microsecond RTOS kernel in tightly coupled static SRAM. This microcontroller possesses exclusive physical routing to the gate drivers of the motor inverters. It evaluates candidate trajectory chunks against non-negotiable physical invariants at a deterministic $1000\text{ Hz}$ ($1.0\text{ ms} \pm 5\,\mu\text{s}$) cadence. If an intent lease expires without renewal due to an upstream operating system stall, the microcontroller automatically clamps acceleration and executes a safe controlled stop.
 
+| System Dimension | Untrusted Proposal Domain (System 2 / 1.5) | Bare-Metal Permission Authority (System 1) |
+| :--- | :--- | :--- |
+| **Compute Silicon** | Multi-core Host MPU (ARM Cortex-A78, x86-64) & Edge NPU | Dedicated Real-Time MCU (ARM Cortex-M7, Lockstep RISC-V) |
+| **Operating System** | General-purpose Linux with dynamic memory management | Bare-metal firmware / Microsecond RTOS (`malloc = 0`) |
+| **Memory Discipline** | Virtual memory with DRAM paging, caching, and GC | Zero-allocation static DTCM SRAM with compile-time bounds |
+| **Execution Cadence** | Asynchronous $1\text{--}20\text{ Hz}$ with $P_{99} > 100\text{ ms}$ tails | Deterministic $1000\text{ Hz}$ timer ISR ($1.0\text{ ms} \pm 5\,\mu\text{s}$) |
+| **Algorithmic Role** | Semantic reasoning, scene understanding, spline proposals | CBF-QP projection, stopping invariants, 20 kHz FOC inverters |
+| **Hardware Authority** | Zero direct electrical connection to motor gate inverters | Exclusive physical routing to gate driver PWM and STO lines |
+
+: Proposal–Permission Privilege Split. Heterogeneous silicon separation between untrusted generative AI proposals and hard real-time safety enforcement. {#tbl-proposal-permission-ch09}
+
 Microcontroller firmware strictly obeys the iron law of deterministic execution (`malloc = 0`): zero dynamic heap allocations, zero blocking mutexes, and zero reliance on operating system threads. Every matrix, buffer, and data structure is allocated statically at compile time. By bounding the worst-case execution time to $\text{WCET} \le 175\,\mu\text{s}$, the safety enforcer guarantees that invariants are evaluated with microsecond precision, ensuring the physical survival of the machine even if the host Linux operating system crashes or freezes.
 
-The architecture begins by establishing Control Barrier Functions to guarantee mathematical forward set invariance (Section 9.2), transforming physical safety boundaries into linear constraints on motor inputs that act as a speed governor as clearance decreases. To execute these invariants on real hardware, the microcontroller solves a Minimal-Intervention Quadratic Program at every millisecond tick (Section 9.3), passing safe AI proposals untouched and computing minimal projections when danger threatens. The physical reflex layer couples this mathematical shield with dynamic stopping distance bounds, Cartesian impedance control, passivity energy tanks, and 20 kHz Field-Oriented Control (Section 9.4), grounding digital decisions in the physical realities of friction cones, contact forces, and motor thermal dissipation. When upstream software or hardware fails, the system executes a certified multi-tier escalation hierarchy from trajectory freeze down to hardware-isolated Safe Torque Off (Section 9.5). Finally, we analyze critical safety fallacies (Section 9.6) and synthesize the five sensory-motor organs in the Part II capstone review (Section 9.7).
+The architecture begins by establishing Control Barrier Functions to guarantee mathematical forward set invariance (Section 9.2), transforming physical safety boundaries into linear constraints on motor inputs that act as a speed governor as clearance decreases. To execute these invariants on real hardware, the microcontroller solves a Minimal-Intervention Quadratic Program at every millisecond tick (Section 9.3), passing safe AI proposals untouched and computing minimal projections when danger threatens. The physical reflex layer couples this mathematical shield with dynamic stopping distance bounds, Cartesian impedance control, passivity energy tanks, and 20 kHz Field-Oriented Control (Section 9.4), grounding digital decisions in the physical realities of friction cones, contact forces, and motor thermal dissipation. When upstream software or hardware fails, the system executes a certified multi-tier escalation hierarchy from trajectory freeze down to hardware-isolated Safe Torque Off (Section 9.5). Finally, we examine the forensic autopsy of an industrial gearbox fracture caused by an operating system latency tail, compile the formal safety enforcement specification, expose pervasive safety fallacies, and synthesize the five sensory-motor organs that conclude Part II.
 
 
-## Control Barrier Functions and Mathematical Forward Invariance
+## Control Barrier Functions
 
 In empirical machine learning, researchers frequently attempt to enforce safety by adding penalty terms to a reward function during reinforcement learning or by adding loss penalties during behavioral cloning. On physical hardware, soft loss penalties are fundamentally inadequate: they merely alter statistical expectations ($\mathbb{E}[R]$), readily permitting low-probability, catastrophic constraint violations when the system encounters novel out-of-distribution inputs. When an unmodeled optical glare or novel obstacle geometry induces an unfamiliar input state, a neural policy that scored $99.9\%$ in simulation can still command full voltage into a rigid barrier.
 
@@ -51,7 +62,7 @@ Physical safety requires a hard, mathematically provable guarantee of forward se
 
 $$\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$$
 
-where $\mathbf{x} \in \mathcal{X} \subset \mathbb{R}^n$ represents the physical state vector (joint positions, velocities, and obstacle distances), $\mathbf{u} \in \mathcal{U} \subset \mathbb{R}^m$ represents the commanded actuator control input (motor torques or phase voltages), $f: \mathbb{R}^n \to \mathbb{R}^n$ describes the autonomous drift dynamics, and $g: \mathbb{R}^n \to \mathbb{R}^{n \times m}$ defines the control input mapping.
+where $\mathbf{x} \in \mathcal{X} \subset \mathbb{R}^n$ represents the physical state vector (such as joint positions, velocities, and obstacle coordinates), $\mathbf{u} \in \mathcal{U} \subset \mathbb{R}^m$ represents the commanded actuator control input (motor torques or phase currents), $f: \mathbb{R}^n \to \mathbb{R}^n$ describes the autonomous drift dynamics (governed by gravity, Coriolis forces, and friction), and $g: \mathbb{R}^n \to \mathbb{R}^{n \times m}$ defines the control input mapping.
 
 We define the admissible safe operating set $\mathcal{C} \subset \mathcal{X}$ as the 0-superlevel set of a continuously differentiable scalar barrier certificate function $h: \mathcal{X} \to \mathbb{R}$:
 
@@ -63,15 +74,19 @@ $$\text{Int}(\mathcal{C}) = \left\{ \mathbf{x} \in \mathcal{X} \;\middle|\; h(\m
 
 The safe set $\mathcal{C}$ is forward invariant if for every initial state starting within the set ($\mathbf{x}(0) \in \mathcal{C}$), the trajectory remains strictly inside the set for all future time ($\mathbf{x}(t) \in \mathcal{C}, \forall t \ge 0$).
 
-Utilizing standard Lie derivative notation, where the row vector gradient $\nabla h(\mathbf{x}) \in \mathbb{R}^{1 \times n}$ is contracted along vector fields $f$ and $g$:
-- $L_f h(\mathbf{x}) = \nabla h(\mathbf{x}) f(\mathbf{x}) \in \mathbb{R}$ represents the natural drift rate of the safety margin along unforced physics.
-- $L_g h(\mathbf{x}) = \nabla h(\mathbf{x}) g(\mathbf{x}) \in \mathbb{R}^{1 \times m}$ represents the control authority available to modulate the safety margin via actuator inputs $\mathbf{u}$.
+To guarantee that the state never leaves $\mathcal{C}$, the scalar safety margin $h(\mathbf{x})$ must not decrease too rapidly as the state approaches the boundary $\partial \mathcal{C}$. Applying the multivariable chain rule to differentiate $h(\mathbf{x}(t))$ along the system dynamics yields:
 
-The fundamental Control Barrier Function (CBF) condition is expressed as:
+$$\dot{h}(\mathbf{x}) = \frac{\partial h}{\partial \mathbf{x}} \dot{\mathbf{x}} = \nabla h(\mathbf{x}) \big( f(\mathbf{x}) + g(\mathbf{x})\mathbf{u} \big) = \underbrace{\nabla h(\mathbf{x}) f(\mathbf{x})}_{L_f h(\mathbf{x})} + \underbrace{\nabla h(\mathbf{x}) g(\mathbf{x})}_{L_g h(\mathbf{x})} \mathbf{u}$$
 
-$$L_f h(\mathbf{x}) + L_g h(\mathbf{x})\mathbf{u} + \gamma h(\mathbf{x}) \ge 0$$
+where $\nabla h(\mathbf{x}) \in \mathbb{R}^{1 \times n}$ is the row-vector gradient of the barrier certificate with respect to the state. In this Lie derivative notation:
+- $L_f h(\mathbf{x}) = \nabla h(\mathbf{x}) f(\mathbf{x}) \in \mathbb{R}$ represents the natural drift rate of the safety margin along unforced physics (the autonomous evolution of clearance under gravity and existing velocity).
+- $L_g h(\mathbf{x}) = \nabla h(\mathbf{x}) g(\mathbf{x}) \in \mathbb{R}^{1 \times m}$ represents the directional control authority available to modulate the safety margin through actuator inputs $\mathbf{u}$.
 
-where $\gamma > 0$ is a positive linear convergence gain.
+The fundamental Control Barrier Function (CBF) condition enforces that the time derivative of the barrier satisfies a linear decay inequality:
+
+$$\dot{h}(\mathbf{x}) \ge -\gamma h(\mathbf{x}) \iff L_f h(\mathbf{x}) + L_g h(\mathbf{x})\mathbf{u} + \gamma h(\mathbf{x}) \ge 0$$
+
+where $\gamma > 0$ is a positive linear convergence gain with units of $\text{s}^{-1}$.
 
 ### The Speed Governor Invariant
 The differential inequality $\dot{h}(\mathbf{x}) \ge -\gamma h(\mathbf{x})$ acts as a dynamic speed governor governing the approach toward danger:
@@ -82,8 +97,44 @@ The differential inequality $\dot{h}(\mathbf{x}) \ge -\gamma h(\mathbf{x})$ acts
 
 Like a mechanical flyball governor on a steam engine, the barrier condition does not abruptly halt the machine at a distance; it smoothly throttles the maximum allowable approach speed down to zero at the boundary. Formal proofs of forward set invariance via Nagumo's condition and the comparison lemma are documented in Appendix Section 3.
 
+### Canonical Barrier Formulations Across Physical AI Archetypes
+To establish forward set invariance across diverse embodiments, Control Barrier Functions map distinct physical constraints into mathematical certificates $h(\mathbf{x}) \ge 0$:
 
-## Minimal-Intervention Quadratic Programming in Microsecond Silicon
+1. **Mobility (Obstacle Clearance Barrier):** For autonomous mobile robots, wheeled platforms, and quadrupeds moving in 2D or 3D space with position $\mathbf{p} \in \mathbb{R}^3$ and obstacle coordinate $\mathbf{p}_{\text{obs}} \in \mathbb{R}^3$, the safety margin is parameterized by the certified boundary radius $r_{\text{safe}}$:
+   $$h_{\text{obs}}(\mathbf{p}) = \|\mathbf{p} - \mathbf{p}_{\text{obs}}\|^2 - r_{\text{safe}}^2 \ge 0$$
+   Differentiating along the drift dynamics $\dot{\mathbf{p}} = \mathbf{v}$ yields the linear velocity constraint:
+   $$2(\mathbf{p} - \mathbf{p}_{\text{obs}})^T \mathbf{v} \ge -\gamma_{\text{obs}} \left( \|\mathbf{p} - \mathbf{p}_{\text{obs}}\|^2 - r_{\text{safe}}^2 \right)$$
+   *Concrete Numerical Walkthrough:* Consider a mobile robot positioned at $\mathbf{p} = [1.50, 0.00, 0.00]^T\text{ m}$ approaching a static obstacle at the origin $\mathbf{p}_{\text{obs}} = [0.00, 0.00, 0.00]^T\text{ m}$ with safety radius $r_{\text{safe}} = 0.50\text{ m}$ and gain $\gamma_{\text{obs}} = 2.0\text{ s}^{-1}$. The barrier value is $h_{\text{obs}} = 1.50^2 - 0.50^2 = 2.25 - 0.25 = 2.00\text{ m}^2$. The barrier inequality enforces:
+   $$2 [1.50, 0, 0] \mathbf{v} \ge -2.0 \times 2.00 \implies 3.0 v_x \ge -4.00 \implies v_x \ge -1.33\text{ m/s}$$
+   The robot may approach at up to $1.33\text{ m/s}$. When the robot advances to $\mathbf{p} = [0.60, 0.00, 0.00]^T\text{ m}$ ($10\text{ cm}$ clearance outside $r_{\text{safe}}$), the barrier contracts to $h_{\text{obs}} = 0.60^2 - 0.50^2 = 0.36 - 0.25 = 0.11\text{ m}^2$. The velocity constraint tightens to:
+   $$2(0.60) v_x \ge -2.0(0.11) \implies 1.20 v_x \ge -0.22 \implies v_x \ge -0.183\text{ m/s}$$
+   The barrier automatically throttles the maximum allowable approach speed from $1.33\text{ m/s}$ down to $0.183\text{ m/s}$, forcing approach velocity to zero at $r_{\text{safe}}$.
+
+2. **Manipulation (Joint Limit and Kinematic Braking Barrier):** For articulated manipulators governed by joint positions $\mathbf{q} \in \mathbb{R}^n$ and velocities $\dot{\mathbf{q}} \in \mathbb{R}^n$, the barrier protects mechanical hard stops and prevents gearbox over-speed conditions by incorporating Torricelli's kinematic braking envelope ($v^2 = 2 a \Delta x$):
+   $$h_{\text{joint}}(q_i, \dot{q}_i) = 2 \ddot{q}_{\text{max}, i} (q_i - q_{\text{min}, i}) - \dot{q}_i^2 \ge 0 \quad (\text{for approach to lower stop } q_{\text{min}, i} \text{ with } \dot{q}_i < 0)$$
+   where $q_i$ (rad) is the measured joint angle, $\dot{q}_i$ (rad/s) is joint velocity, $q_{\text{min}, i}$ (rad) is the lower hard stop, and $\ddot{q}_{\text{max}, i}$ ($\text{rad/s}^2$) is the maximum certified braking deceleration.
+   *Concrete Numerical Walkthrough:* A manipulator wrist joint approaches its lower limit $q_{\text{min}} = -1.50\text{ rad}$ from current position $q = -1.30\text{ rad}$ (remaining travel $\Delta q = 0.20\text{ rad}$) with maximum certified braking deceleration $\ddot{q}_{\text{max}} = 10.0\text{ rad/s}^2$. The barrier evaluates to:
+   $$h_{\text{joint}} = 2(10.0)(0.20) - \dot{q}^2 = 4.0 - \dot{q}^2 \ge 0 \implies |\dot{q}| \le \sqrt{4.0} = 2.0\text{ rad/s}$$
+   If an unverified policy commands a velocity of $\dot{q} = -2.50\text{ rad/s}$, the barrier evaluates to $h = 4.0 - 6.25 = -2.25 < 0$ (unsafe). The safety enforcer immediately clamps the joint velocity to $-2.0\text{ rad/s}$, guaranteeing that certified deceleration can arrest motion before physical impact with the mechanical stop.
+
+3. **Cybernetics (Actuator Thermal and Current Protection Barrier):** For high-bandwidth force-feedback systems and motor drives, the barrier prevents stator coil insulation breakdown ($155^\circ\text{C}$ NEMA Class F) and inverter MOSFET overcurrent trips:
+   $$h_{\text{thermal}}(T_{\text{stator}}) = T_{\text{max}} - T_{\text{stator}} \ge 0$$
+   $$h_{\text{current}}(i_d, i_q) = I_{\text{max}}^2 - (i_d^2 + i_q^2) \ge 0$$
+   The stator temperature evolves under Joule heating and first-order convective dissipation according to the continuous thermal differential equation:
+   $$\dot{T}_{\text{stator}} = \frac{1}{C_{\text{th}}} \left( I_{\text{rms}}^2 R_{\text{stator}} - \frac{T_{\text{stator}} - T_{\text{amb}}}{R_{\text{th}}} \right)$$
+   where $T_{\text{stator}}$ ($^\circ\text{C}$) is estimated stator winding temperature, $T_{\text{max}}$ ($^\circ\text{C}$) is the thermal limit, $T_{\text{amb}}$ ($^\circ\text{C}$) is ambient air temperature, $C_{\text{th}}$ ($\text{J/}^\circ\text{C}$) is copper stator thermal mass, $R_{\text{th}}$ ($^\circ\text{C/W}$) is thermal resistance to ambient, $R_{\text{stator}}$ ($\Omega$) is phase winding resistance, and $I_{\text{rms}} = \sqrt{i_d^2 + i_q^2}$ ($\text{A}$) is phase current.
+   *Concrete Numerical Walkthrough:* Consider an actuator with $R_{\text{stator}} = 0.25\,\Omega$, $C_{\text{th}} = 60.0\text{ J/}^\circ\text{C}$, $R_{\text{th}} = 2.00^\circ\text{C/W}$, $T_{\text{amb}} = 25.0^\circ\text{C}$, $T_{\text{max}} = 100.0^\circ\text{C}$, and gain $\gamma_{\text{th}} = 0.20\text{ s}^{-1}$. When the stator warms to $T_{\text{stator}} = 85.0^\circ\text{C}$ ($15.0^\circ\text{C}$ headroom), the barrier inequality $-\dot{T}_{\text{stator}} \ge -\gamma_{\text{th}}(T_{\text{max}} - T_{\text{stator}})$ enforces $\dot{T}_{\text{stator}} \le 0.20(15.0) = 3.00^\circ\text{C/s}$. The convective dissipation is $\frac{85.0 - 25.0}{2.00} = 30.0\text{ W}$. Substituting into the thermal model yields:
+   $$\frac{1}{60.0} \left( I^2(0.25) - 30.0 \right) \le 3.00 \implies I^2(0.25) \le 210.0\text{ W} \implies I \le \sqrt{840.0} = 28.98\text{ A}$$
+   The enforcer directly translates thermal headroom into a hard upper bound on allowable phase current ($I \le 29.0\text{ A}$), linearly derating motor torque before coil insulation degrades.
+
+::: {.callout-fallacy title="Global Forward Invariance vs. Local QP Myopia and Relative Degree Deadlock"}
+* **The Common Assumption:** A valid mathematical Control Barrier Function $h(\mathbf{x}) \ge 0$ satisfying $L_f h(\mathbf{x}) + L_g h(\mathbf{x})\mathbf{u} + \gamma h(\mathbf{x}) \ge 0$ guarantees that the robot will remain forward invariant within the safe set $\mathcal{C}$ under all operating conditions and arbitrary candidate control inputs.
+* **The Physical Reality:** A standard Control Barrier Function evaluated point-wise inside a 1 kHz Quadratic Program operates myopically in time. In physical systems, position constraints have relative degree 2 with respect to commanded motor torques ($\mathbf{u}$). When a heavy mechanical arm approaches a boundary at high velocity, the local QP solver may find valid instantaneous solutions that satisfy $\dot{h} \ge -\gamma h$ at step $k$, but drive the state into an *inescapable set*—a region where the required deceleration at step $k+1$ exceeds the physical torque or current saturation limits of the motor inverters ($|\mathbf{u}| > \mathbf{u}_{\text{max}}$). The QP solver suddenly encounters primal infeasibility ($\mathcal{U}_{\text{safe}} = \emptyset$), leaving the enforcer with no admissible mathematical control command and causing an uncommanded boundary breach.
+* **The Systems Invariant:** Safety certificates for second-order dynamical systems must employ High-Order or Exponential Control Barrier Functions (ECBFs) that explicitly account for state-dependent braking dynamics, coupled with viability kernel analysis that constrains the admissible boundary $\partial \mathcal{C}$ to states where certified braking deceleration $a_{\text{max}}$ remains strictly feasible under actuator saturation limits $\mathbf{u} \in [\mathbf{u}_{\text{min}}, \mathbf{u}_{\text{max}}]$.
+:::
+
+
+## Minimal-Intervention Quadratic Programs
 
 To merge unverified candidate action proposals from generative neural models ($\mathbf{u}_{\text{cand}}$) with hard physical safety guarantees, the System 1 microcontroller solves a Minimal-Intervention Control Barrier Function Quadratic Program (CBF-QP) at every $1000\text{ Hz}$ control cycle (@fig-cbf-projection).
 
@@ -106,13 +157,51 @@ The optimization embodies the minimal intervention principle:
 - **Unconstrained Execution:** As long as the neural policy's candidate proposal $\mathbf{u}_{\text{cand}}$ satisfies all barrier constraints ($L_f h_i + L_g h_i \mathbf{u}_{\text{cand}} + \gamma_i h_i \ge 0$), the unconstrained minimum $\mathbf{u}^* = \mathbf{u}_{\text{cand}}$ is achieved with zero solver iterations. The generative policy's command passes unmodified, preserving full behavioral dexterity.
 - **Active-Set Projection:** When a candidate action threatens to breach a barrier (such as driving an arm toward an obstacle or exceeding joint acceleration limits), the corresponding barrier constraint activates. The QP computes the Euclidean projection of $\mathbf{u}_{\text{cand}}$ onto the boundary of the admissible half-space $\mathcal{U}_{\text{safe}}$, modifying the neural command only by the exact mathematical minimum necessary to preserve forward invariance.
 
+### Active-Set KKT Formulation in Static Memory
+When an unconstrained candidate action $\mathbf{u}_{\text{cand}}$ violates one or more barrier constraints ($L_f h_i(\mathbf{x}) + L_g h_i(\mathbf{x})\mathbf{u}_{\text{cand}} + \gamma_i h_i(\mathbf{x}) < 0$), the active-set solver identifies the working set of active inequality constraints $\mathcal{A} \subseteq \{1, \dots, M_{\text{barriers}}\}$. The inequality-constrained QP reduces to an equality-constrained subproblem governed by the Karush-Kuhn-Tucker (KKT) optimality system:
+
+$$\begin{bmatrix} \mathbf{W} & -\mathbf{A}_{\mathcal{A}}^T \\ \mathbf{A}_{\mathcal{A}} & \mathbf{0} \end{bmatrix} \begin{bmatrix} \mathbf{u}^* \\ \boldsymbol{\lambda}_{\mathcal{A}}^* \end{bmatrix} = \begin{bmatrix} \mathbf{W}\mathbf{u}_{\text{cand}} \\ \mathbf{b}_{\mathcal{A}} \end{bmatrix}$$
+
+where:
+- $\mathbf{u}_{\text{cand}} \in \mathbb{R}^m$ is the unverified candidate actuator command proposed by the neural policy (commanded joint torques in $\text{N}\cdot\text{m}$ or phase currents in $\text{A}$).
+- $\mathbf{W} \in \mathbb{R}^{m \times m}$ is the symmetric positive-definite metric weighting matrix.
+- $\mathbf{A}_{\mathcal{A}} = [ L_g h_i(\mathbf{x}) ]_{i \in \mathcal{A}} \in \mathbb{R}^{|\mathcal{A}| \times m}$ is the matrix of stacked active barrier gradients.
+- $\mathbf{b}_{\mathcal{A}} = [ -L_f h_i(\mathbf{x}) - \gamma_i h_i(\mathbf{x}) ]_{i \in \mathcal{A}} \in \mathbb{R}^{|\mathcal{A}|}$ is the active boundary vector.
+- $\boldsymbol{\lambda}_{\mathcal{A}}^* \in \mathbb{R}^{|\mathcal{A}|}$ is the vector of non-negative Lagrange multipliers ($\boldsymbol{\lambda}_{\mathcal{A}}^* \ge 0$), representing the marginal cost (or "shadow price") of each active safety constraint.
+
+Solving this linear system via Schur complement yields the exact analytical projected command:
+
+$$\mathbf{u}^* = \mathbf{u}_{\text{cand}} - \mathbf{W}^{-1} \mathbf{A}_{\mathcal{A}}^T \left( \mathbf{A}_{\mathcal{A}} \mathbf{W}^{-1} \mathbf{A}_{\mathcal{A}}^T \right)^{-1} \left( \mathbf{A}_{\mathcal{A}} \mathbf{u}_{\text{cand}} - \mathbf{b}_{\mathcal{A}} \right)$$
+
+$$\boldsymbol{\lambda}_{\mathcal{A}}^* = \left( \mathbf{A}_{\mathcal{A}} \mathbf{W}^{-1} \mathbf{A}_{\mathcal{A}}^T \right)^{-1} \left( \mathbf{b}_{\mathcal{A}} - \mathbf{A}_{\mathcal{A}} \mathbf{u}_{\text{cand}} \right)$$
+
+*Concrete Numerical Walkthrough:* Consider a 2-joint planar robotic arm ($m = 2$) receiving a candidate torque command $\mathbf{u}_{\text{cand}} = [4.00, 2.00]^T\text{ N}\cdot\text{m}$ with identity weighting $\mathbf{W} = \mathbf{I}_2$. A single obstacle barrier constraint ($|\mathcal{A}| = 1$) is active, parameterized by gradient $\mathbf{A}_{\mathcal{A}} = [1.0, 2.0]$ and scalar threshold $b_{\mathcal{A}} = 10.00\text{ N}\cdot\text{m}$ (enforcing $1.0 u_1 + 2.0 u_2 \ge 10.00$).
+
+First, the microcontroller evaluates the candidate command against the barrier:
+$$\mathbf{A}_{\mathcal{A}} \mathbf{u}_{\text{cand}} = 1.0(4.00) + 2.0(2.00) = 8.00\text{ N}\cdot\text{m}$$
+
+Because $8.00 < 10.00$, the neural proposal breaches the safety margin by a deficit of $2.00\text{ N}\cdot\text{m}$. The solver computes the projection:
+1. Gramian scalar: $\mathbf{A}_{\mathcal{A}} \mathbf{W}^{-1} \mathbf{A}_{\mathcal{A}}^T = [1.0, 2.0] \begin{bmatrix} 1.0 \\ 2.0 \end{bmatrix} = 1.0^2 + 2.0^2 = 5.00$
+2. Constraint violation: $\mathbf{A}_{\mathcal{A}} \mathbf{u}_{\text{cand}} - b_{\mathcal{A}} = 8.00 - 10.00 = -2.00$
+3. Projected command calculation:
+   $$\mathbf{u}^* = \begin{bmatrix} 4.00 \\ 2.00 \end{bmatrix} - \begin{bmatrix} 1.0 \\ 2.0 \end{bmatrix} \left( \frac{1}{5.00} \right) (-2.00) = \begin{bmatrix} 4.00 \\ 2.00 \end{bmatrix} + \begin{bmatrix} 0.40 \\ 0.80 \end{bmatrix} = \begin{bmatrix} 4.40 \\ 2.80 \end{bmatrix}\text{ N}\cdot\text{m}$$
+4. Lagrange multiplier: $\lambda^* = \frac{10.00 - 8.00}{5.00} = 0.40 \ge 0$.
+
+Verifying the result: $1.0(4.40) + 2.0(2.80) = 4.40 + 5.60 = 10.00\text{ N}\cdot\text{m}$. The projected command satisfies the safety barrier exactly on the boundary, deviating from the neural proposal by the minimum possible Euclidean squared distance of $\|\mathbf{u}^* - \mathbf{u}_{\text{cand}}\|^2 = 0.40^2 + 0.80^2 = 0.80\text{ (N}\cdot\text{m)}^2$.
+
 ### Zero-Allocation Embedded Execution on ARM Cortex-M7
-Because this optimization must complete in $\text{WCET} \le 175\,\mu\text{s}$ inside an embedded microcontroller, the firmware employs pre-compiled, statically allocated active-set solvers (such as embedded active-set or operator-splitting algorithms).
+Because this optimization must complete in $\text{WCET} \le 175\,\mu\text{s}$ inside an embedded microcontroller, the firmware employs pre-compiled, statically allocated active-set solvers. On embedded silicon, computing matrix inversions at runtime with dynamic memory allocation is prohibitive. The firmware pre-allocates static factorization buffers ($L D L^T$ or Cholesky) in Tightly Coupled Memory (DTCM SRAM) for a maximum active set dimension $|\mathcal{A}| \le m$. The active-set iterations update the factorization via rank-one Givens rotations, guaranteeing deterministic convergence in bounded clock cycles.
 
-Operating in Tightly Coupled Memory (DTCM SRAM) with zero dynamic memory allocation (`malloc = 0`), an ARM Cortex-M7 running at $480\text{ MHz}$ solves a 6-DoF CBF-QP in fewer than $84{,}000$ clock cycles, consuming less than $8\text{ KB}$ of static memory. This guarantees that even during worst-case active-set iterations, execution consumes only $17.5\%$ of the $1000\,\mu\text{s}$ timer interrupt window, leaving ample headroom for sensor telemetry ingestion and inverter modulation. Complete multi-variable KKT matrix expansions and the full embedded C active-set solver implementation are provided in Appendix Section 3.
+Operating in DTCM SRAM with zero dynamic memory allocation (`malloc = 0`), an ARM Cortex-M7 running at $480\text{ MHz}$ solves a 6-DoF CBF-QP in fewer than $84{,}000$ clock cycles, consuming less than $8\text{ KB}$ of static memory. This guarantees that even during worst-case active-set iterations, execution consumes only $17.5\%$ of the $1000\,\mu\text{s}$ timer interrupt window, leaving ample headroom for sensor telemetry ingestion and inverter modulation. Complete multi-variable KKT matrix expansions and the full embedded C active-set solver implementation are provided in Appendix Section 3.
+
+::: {.callout-fallacy title="Dynamic Heap Allocation and General-Purpose Solvers on Microcontroller Silicon"}
+* **The Common Assumption:** Standard open-source interior-point and ADMM convex optimization libraries provide robust, production-grade QP solving that can be dropped directly into an embedded microcontroller safety loop.
+* **The Physical Reality:** General-purpose solvers rely on dynamic heap allocation (`malloc`, `free`, `realloc`) during matrix factorization, line searches, and constraint updates. In a 1 kHz bare-metal ISR, heap allocation causes memory fragmentation and risks heap exhaustion crashes. Crucially, interior-point algorithms exhibit non-deterministic iteration counts, with execution times fluctuating wildly from $40\,\mu\text{s}$ under nominal conditions to $>2500\,\mu\text{s}$ near ill-conditioned constraint boundaries. If a 1 kHz timer interrupt takes $2.5\text{ ms}$ to solve a safety QP, it overruns the control deadline, causing actuator watchdog trips or uncommanded motor shutdown.
+* **The Systems Invariant:** Embedded safety filters executing inside hard real-time interrupt routines must enforce strict zero-allocation memory discipline (`malloc = 0`). Solvers must be statically pre-allocated active-set or dual-projected gradient methods with mathematically bounded maximum iteration counts, guaranteeing worst-case execution time $\text{WCET} \le 175\,\mu\text{s}$ in static DTCM SRAM.
+:::
 
 
-## Dynamic Stopping Envelopes, Contact Impedance, and Motor Field-Oriented Control
+## Stopping Envelopes and Impedance Control
 
 Safety enforcement on physical hardware requires grounding digital optimization in the physical dynamics of moving mass, contact mechanics, and electromagnetic torque generation.
 
@@ -141,51 +230,84 @@ Because $0.319\text{ m} > 0.150\text{ m}$, the proposal would cause a collision.
 
 $$v_{\text{safe}} = \sqrt{(4.0 \times 0.012)^2 + 2(4.0)(0.150 - 0.020)} - (4.0 \times 0.012) = \sqrt{0.0023 + 1.040} - 0.048 = 0.973\text{ m/s}$$
 
-The microcontroller instantly clamps the velocity setpoint from $1.50\text{ m/s}$ down to $0.973\text{ m/s}$, containing kinetic energy within the physical braking boundary.
+The microcontroller instantly clamps the velocity setpoint from $1.50\text{ m/s} $ down to $0.973\text{ m/s}$, containing kinetic energy within the physical braking boundary.
 
 ### Contact Impedance Control and Passivity Energy Tanks
-While rigid position control is effective for free-space motion, it is hazardous during physical contact manipulation. When a manipulator interacts with a rigid surface (such as inserting a component, polishing a workpiece, or contacting an operator), small calibration errors generate extreme contact force spikes:
+While rigid position control is effective for free-space motion, it is hazardous during physical contact manipulation and locomotion foot placement. When a manipulator interacts with a rigid surface (such as inserting a component, polishing a workpiece, or contacting an operator), small calibration errors generate extreme contact force spikes:
 
 $$F_{\text{contact}} = k_{\text{env}} \cdot \Delta x$$
 
 Because the stiffness of steel or aluminum fixtures exceeds $k_{\text{env}} > 10^6\text{ N/m}$, a positional tracking error of just $0.5\text{ mm}$ produces contact forces exceeding $500\text{ N}$, stalling motors and damaging precision gear teeth.
 
-To achieve safe physical interaction, Physical AI replaces rigid position setpoints with Joint and Cartesian Impedance Control [@hogan1985impedance]. Rather than enforcing a rigid coordinate, the microcontroller regulates the dynamic relationship between external interaction forces $\mathbf{F}_{\text{ext}}$ and kinematic tracking error $\mathbf{e}(t) = \mathbf{x}(t) - \mathbf{x}_d(t)$, rendering the end-effector as a programmable virtual mass-spring-damper system:
+To achieve safe physical interaction, Physical AI replaces rigid position setpoints with Joint and Cartesian Impedance Control [@hogan1985impedance]. Rather than enforcing a rigid coordinate, the microcontroller regulates the dynamic relationship between external interaction forces $\mathbf{F}_{\text{ext}}$ and kinematic displacement errors $\mathbf{e}(t) = \mathbf{x}(t) - \mathbf{x}_d(t)$, rendering the end-effector as a programmable virtual mass-spring-damper system:
 
-$$\mathbf{M}_d \ddot{\mathbf{e}}(t) + \mathbf{D}_d \dot{\mathbf{e}}(t) + \mathbf{K}_d \mathbf{e}(t) = \mathbf{M}_d (\ddot{\mathbf{x}} - \ddot{\mathbf{x}}_d) + \mathbf{D}_d (\dot{\mathbf{x}} - \dot{\mathbf{x}}_d) + \mathbf{K}_d (\mathbf{x} - \mathbf{x}_d) = \mathbf{F}_{\text{ext}}$$
+$$\mathbf{M}_d \ddot{\mathbf{e}} + \mathbf{D}_d \dot{\mathbf{e}} + \mathbf{K}_d \mathbf{e} = \mathbf{F}_{\text{ext}}$$
 
-where $\mathbf{M}_d, \mathbf{D}_d, \mathbf{K}_d \succ 0$ are the desired virtual inertia, damping, and stiffness matrices, and $\mathbf{x}_d(t)$ is the nominal reference trajectory from the candidate chunk.
+$$\mathbf{M}_d (\ddot{\mathbf{x}} - \ddot{\mathbf{x}}_d) + \mathbf{D}_d (\dot{\mathbf{x}} - \dot{\mathbf{x}}_d) + \mathbf{K}_d (\mathbf{x} - \mathbf{x}_d) = \mathbf{F}_{\text{ext}}$$
 
-To maintain numerical stability without external force-torque sensors, the microcontroller implements Cartesian Stiffness Control at $1000\text{ Hz}$. The Jacobian transpose $\mathbf{J}^T(\mathbf{q})$ projects Cartesian restoring forces directly into joint space without matrix inversion, completely bypassing kinematic singularities:
+where:
+- $\mathbf{x}, \mathbf{x}_d \in \mathbb{R}^6$ are measured and desired Cartesian poses (translational position in $\text{m}$ and orientation in $\text{rad}$).
+- $\mathbf{M}_d \in \mathbb{R}^{6 \times 6}$ is the desired virtual inertia matrix ($\text{kg}$ and $\text{kg}\cdot\text{m}^2$).
+- $\mathbf{D}_d \in \mathbb{R}^{6 \times 6}$ is the virtual damping matrix ($\text{N}\cdot\text{s/m}$ and $\text{N}\cdot\text{m}\cdot\text{s/rad}$).
+- $\mathbf{K}_d \in \mathbb{R}^{6 \times 6}$ is the virtual stiffness matrix ($\text{N/m}$ and $\text{N}\cdot\text{m/rad}$).
+- $\mathbf{F}_{\text{ext}} \in \mathbb{R}^6$ is the external contact wrench (forces in $\text{N}$ and torques in $\text{N}\cdot\text{m}$).
+
+By tuning $\mathbf{K}_d$, the controller acts as a programmable mechanical shock absorber: yielding compliantly during unexpected impacts to protect harmonic drive and cycloidal gearboxes in robotic manipulators, cushioning foot-ground impact dynamics in quadruped mobility, and providing stable back-drivable compliance in wearable cybernetic exoskeletons.
+
+To maintain numerical stability without external force-torque sensors, the microcontroller implements Cartesian Stiffness Control at $1000\text{ Hz}$. By the principle of virtual work ($\delta W = \mathbf{F}^T \delta \mathbf{x} = \boldsymbol{\tau}^T \delta \mathbf{q}$, with $\delta \mathbf{x} = \mathbf{J}(\mathbf{q}) \delta \mathbf{q}$), the Jacobian transpose $\mathbf{J}^T(\mathbf{q}) \in \mathbb{R}^{n \times 6}$ projects Cartesian restoring forces directly into joint torque space ($\boldsymbol{\tau} = \mathbf{J}^T \mathbf{F}$):
 
 $$\boldsymbol{\tau}^* = \mathbf{J}^T(\mathbf{q}) \left[ \mathbf{K}_d (\mathbf{x}_d - \mathbf{x}) + \mathbf{D}_d (\dot{\mathbf{x}}_d - \dot{\mathbf{x}}) \right] + \mathbf{g}(\mathbf{q})$$
 
-When impedance parameters vary dynamically during contact transitions, discrete-time integration can inadvertently inject energy, causing limit cycles or contact chatter. The microcontroller guards against instability using Passivity Observers and Energy Tanks [@ferraguti2013energy]. Treating the controller as a virtual energy reservoir, the enforcer monitors power exchange ($P(t) = \mathbf{F}_{\text{ext}}^T \dot{\mathbf{x}}$) and drains the energy tank ($E_{\text{tank}}$) whenever active work is performed. If the tank depletes ($E_{\text{tank}} \le E_{\text{min}}$), virtual stiffness is capped and physical damping is injected, guaranteeing that the closed-loop system remains strictly passive ($\int_0^t P(\tau) d\tau \ge -E_{\text{tank}}(0)$). To prevent excessive virtual energy accumulation during prolonged free-space damping phases, the tank is bounded by an upper saturation capacity ($E_{\text{tank}} \le E_{\text{max}}$), eliminating dangerous transient stiffness bursts upon subsequent workpiece impact.
+where $\mathbf{g}(\mathbf{q}) \in \mathbb{R}^n$ is the analytical gravity compensation torque vector ($\text{N}\cdot\text{m}$). Crucially, because this formulation uses the Jacobian transpose rather than the inverse ($\mathbf{J}^{-1}$), it requires zero matrix inversion and remains completely immune to kinematic singularities (such as an outstretched elbow where $\det(\mathbf{J}) = 0$).
+
+*Concrete Numerical Walkthrough:* A 2-link planar arm with end-effector target $\mathbf{x}_d = [0.60, 0.20]^T\text{ m}$ is displaced by contact to $\mathbf{x} = [0.58, 0.20]^T\text{ m}$ ($\Delta x = 0.02\text{ m} = 20\text{ mm}$). With stiffness $K_x = 500.0\text{ N/m}$, damping $D_x = 50.0\text{ N}\cdot\text{s/m}$, and zero velocity error, the virtual Cartesian restoring force is $F_x = 500.0 \times 0.02 = 10.0\text{ N}$. Given current Jacobian transpose column $\mathbf{J}_x^T(\mathbf{q}) = [-0.30, -0.15]^T\text{ m}$, the restoring joint torques compute instantly as $\boldsymbol{\tau}_{\text{restoring}} = [-0.30, -0.15]^T \times 10.0 = [-3.00, -1.50]^T\text{ N}\cdot\text{m}$ plus gravity compensation.
+
+When impedance parameters vary dynamically during contact transitions, discrete-time integration can inadvertently inject energy, causing limit cycles or contact chatter. The microcontroller guards against instability using Passivity Observers and Energy Tanks [@ferraguti2013energy]. Treating the controller as a virtual energy reservoir, the enforcer monitors power exchange ($P(t) = \mathbf{F}_{\text{ext}}^T \dot{\mathbf{x}}$) and updates the energy tank state:
+
+$$E_{\text{tank}}[k] = E_{\text{tank}}[k-1] + \Delta t \left( \sigma[k] P_{\text{dissipated}}[k] - P_{\text{injected}}[k] \right)$$
+
+If the tank depletes ($E_{\text{tank}} \le E_{\text{min}}$), virtual stiffness is capped and physical damping is injected, guaranteeing that the closed-loop system remains strictly passive ($\int_0^t P(\tau) d\tau \ge -E_{\text{tank}}(0)$).
 
 ### Motor Field-Oriented Control and Thermal Safeguards
 At the physical boundary where digital control setpoints become analog electromagnetic forces, the microcontroller commands brushless permanent magnet synchronous motors (PMSMs) using Field-Oriented Control (FOC) executing at $20\text{ kHz}$ in hardware timer peripherals.
 
-FOC decouples the three-phase AC stator currents ($i_a, i_b, i_c$) into two orthogonal DC current components rotating synchronously with the rotor magnetic flux:
+In machine learning models, motor control is often abstracted as a scalar value $u \in [-1, 1]$. In physical PMSM motors, current flows through three stator coils separated by $120^\circ$ electrical phase angles. Regulating rapidly oscillating three-phase sinusoidal AC currents with standard PID controllers introduces phase lag and gain attenuation at high rotor speeds. Field-Oriented Control resolves this by mathematically projecting the three AC phase currents onto two DC current components rotating synchronously with the rotor magnetic field:
 
-1. **Clarke Transformation:** Maps three-phase stator currents onto a two-phase stationary orthogonal reference frame ($\alpha, \beta$). Leveraging Kirchhoff's current law in isolated neutral windings ($i_a + i_b + i_c = 0$), the microcontroller computes this using two current shunt measurements:
+1. **Clarke Transformation:** Maps three-phase stator currents ($i_a, i_b, i_c$) onto a two-phase stationary orthogonal reference frame ($\alpha, \beta$). Leveraging Kirchhoff's current law in isolated neutral star windings ($i_a + i_b + i_c = 0 \implies i_c = -i_a - i_b$), the microcontroller computes this using two current shunt ADC readings:
 
-$$\begin{bmatrix} i_\alpha \\ i_\beta \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & \frac{1}{\sqrt{3}} & -\frac{1}{\sqrt{3}} \end{bmatrix} \begin{bmatrix} i_a \\ i_b \\ i_c \end{bmatrix}$$
+$$\begin{bmatrix} i_\alpha \\ i_\beta \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ \frac{1}{\sqrt{3}} & \frac{2}{\sqrt{3}} \end{bmatrix} \begin{bmatrix} i_a \\ i_b \end{bmatrix} = \begin{bmatrix} i_a \\ \frac{i_a + 2 i_b}{\sqrt{3}} \end{bmatrix}$$
 
-2. **Park Transformation:** Projects stationary currents onto the rotating rotor reference frame ($d, q$) using the optical joint encoder angle $\theta_e$:
+2. **Park Transformation:** Projects the stationary currents ($i_\alpha, i_\beta$) onto the rotating rotor reference frame ($d, q$) using the electrical rotor angle $\theta_e$ measured by optical or magnetic encoders:
 
 $$\begin{bmatrix} i_d \\ i_q \end{bmatrix} = \begin{bmatrix} \cos\theta_e & \sin\theta_e \\ -\sin\theta_e & \cos\theta_e \end{bmatrix} \begin{bmatrix} i_\alpha \\ i_\beta \end{bmatrix}$$
 
-By rotating with the rotor magnetic field, FOC transforms complex AC sinusoidal currents into two stationary DC quantities. The Direct Axis Current ($i_d$) controls the rotor magnetic flux alignment (regulated to $i_d = 0$ for non-salient motors to maximize electrical efficiency), while the Quadrature Axis Current ($i_q$) produces electromagnetic torque in direct proportion to the motor torque constant $K_t$:
+In this rotating reference frame, the Direct Axis Current ($i_d$) controls rotor magnetic flux alignment (regulated to $i_d^* = 0$ for surface-mount permanent magnet motors to maximize electrical efficiency), while the Quadrature Axis Current ($i_q$) produces pure electromagnetic torque in direct linear proportion to the motor torque constant $K_t$:
 
 $$\tau_{\text{motor}} = \frac{3}{2} P \cdot \lambda_{\text{pm}} \cdot i_q = K_t \cdot i_q$$
 
-where $P$ is the number of motor pole pairs and $\lambda_{\text{pm}}$ is the permanent magnet flux linkage. The resulting voltage setpoints $(v_d^*, v_q^*)$ are converted into three-phase pulse-width modulation duty cycles using Space-Vector PWM (SVPWM), driving the gate voltages of isolated MOSFET/IGBT H-bridge inverters at $20\text{ kHz}$ with center-aligned ADC sampling.
+where $P$ is the number of magnetic pole pairs and $\lambda_{\text{pm}}$ ($\text{Wb}$) is the rotor permanent magnet flux linkage.
 
-To protect motor windings from thermal damage during sustained high-torque operations, the firmware executes a real-time discrete $I^2t$ thermal accumulator with first-order cooling dissipation:
+*Concrete Numerical Walkthrough:* A 4-pole-pair PMSM with torque constant $K_t = 0.25\text{ N}\cdot\text{m/A}$ measures phase currents $i_a = +10.00\text{ A}$ and $i_b = -5.00\text{ A}$ (implying $i_c = -5.00\text{ A}$) at rotor electrical angle $\theta_e = 30.0^\circ$ ($\cos 30^\circ \approx 0.866, \sin 30^\circ = 0.500$).
+1. Clarke transform: $i_\alpha = 10.00\text{ A}$, $i_\beta = \frac{10.00 + 2(-5.00)}{\sqrt{3}} = \frac{0.00}{\sqrt{3}} = 0.00\text{ A}$.
+2. Park transform:
+   $$i_d = \cos(30^\circ)(10.00) + \sin(30^\circ)(0.00) = 0.866 \times 10.00 = +8.66\text{ A}$$
+   $$i_q = -\sin(30^\circ)(10.00) + \cos(30^\circ)(0.00) = -0.500 \times 10.00 = -5.00\text{ A}$$
+3. Electromagnetic torque: $\tau_{\text{motor}} = 0.25\text{ N}\cdot\text{m/A} \times (-5.00\text{ A}) = -1.25\text{ N}\cdot\text{m}$.
+The FOC current loop then adjusts inverter PWM duty cycles to drive $i_d \to 0$ and track the desired torque command $i_q^* = \tau_{\text{safe}} / K_t$.
 
-$$E_{\text{thermal}}[k] = E_{\text{thermal}}[k-1] + \left( I_{\text{phase}}^2[k] R_{\text{stator}} - \frac{T_{\text{stator}}[k-1] - T_{\text{ambient}}}{R_{\text{thermal}}} \right) \Delta t$$
+The resulting voltage setpoints $(v_d^*, v_q^*)$ are converted into three-phase pulse-width modulation duty cycles using Space-Vector PWM (SVPWM), driving the gate voltages of isolated MOSFET/IGBT H-bridge inverters at $20\text{ kHz}$ with center-aligned ADC sampling.
 
-When estimated stator temperature exceeds the warning threshold ($T_{\text{stator}} > 85^\circ\text{C}$), the microcontroller initiates linear torque derating, preventing enamel insulation breakdown at $155^\circ\text{C}$ (NEMA Class F).
+To protect motor windings from thermal damage during sustained high-torque operations, the firmware executes a real-time discrete thermal accumulator:
+
+$$T_{\text{stator}}[k] = T_{\text{stator}}[k-1] + \frac{\Delta t}{C_{\text{th}}} \left( I_{\text{phase}}^2[k] R_{\text{stator}} - \frac{T_{\text{stator}}[k-1] - T_{\text{amb}}}{R_{\text{th}}} \right)$$
+
+where $\Delta t = 0.001\text{ s}$ ($1.0\text{ ms}$ tick), $C_{\text{th}} = 60.0\text{ J/}^\circ\text{C}$, $R_{\text{th}} = 2.00^\circ\text{C/W}$, and $R_{\text{stator}} = 0.25\,\Omega$. When estimated stator temperature exceeds the warning threshold ($T_{\text{stator}} > 85^\circ\text{C}$), the microcontroller initiates linear torque derating, preventing enamel insulation breakdown at $155^\circ\text{C}$ (NEMA Class F).
+
+::: {.callout-fallacy title="Ideal Instantaneous Torque Generation vs. Inductive Back-EMF Collapse"}
+* **The Common Assumption:** In simulation and high-level control design, motor torque $\tau$ is treated as an instantaneous algebraic function of commanded control input ($\tau = K_t i_q$), allowing the safety filter to assume commanded torque steps are realized immediately at the motor shaft.
+* **The Physical Reality:** Physical motor windings have non-zero electrical inductance $L_{\text{stator}}$ and resistance $R_{\text{stator}}$, governing current dynamics by the differential equation $\frac{di_q}{dt} = \frac{v_q - R i_q - K_e \omega_m}{L}$. At high rotational speeds ($\omega_m$), the motor generates substantial back-electromotive force ($e_{\text{bemf}} = K_e \omega_m$) that directly opposes the inverter DC bus voltage. When the safety enforcer demands rapid counter-torque to arrest high-speed motion, the available voltage headroom $\Delta V = V_{\text{bus}} - K_e \omega_m$ collapses, capping the current slew rate $\frac{di_q}{dt}$. As a consequence, actual braking torque lags the commanded safety envelope, resulting in unmodeled stopping overshoot and physical impact.
+* **The Systems Invariant:** Bare-metal safety filters enforcing dynamic stopping bounds must incorporate electro-mechanical actuator models, constraining commanded torque derivative rates to the voltage-dependent physical slew limit ($\frac{d\tau}{dt} \le K_t \frac{V_{\text{bus}} - K_e \omega_m - R i_q}{L}$) and verifying that deceleration envelopes are achievable under instantaneous back-EMF conditions.
+:::
 
 ### Autopsy: The Late Commanded Deceleration
 The consequences of hosting safety checks in user-space software on a general-purpose operating system are documented in the forensic autopsy of a 6-DoF industrial articulated manipulator (@fig-enforcement-platform).
@@ -199,7 +321,7 @@ The consequences of hosting safety checks in user-space software on a general-pu
 * **Provenance:** Industrial workcell failure report and flight-recorder telemetry reconstructed for systems instruction.
 :::
 
-![**The 6-DoF Articulated Manipulator Testbed.** Highlighting the specific harmonic drive wrist joint that fractured during the collision incident when an operating system dirty page writeback caused a $140\text{ ms}$ scheduling stall.](figures/fig08_manipulator_arm_cropped.jpg){#fig-enforcement-platform width=100%}
+![A 6-DoF articulated manipulator arm in the testbed, highlighting the specific harmonic drive wrist joint that fractured during the collision incident.](figures/fig08_manipulator_arm_cropped.jpg){#fig-enforcement-platform width=100%}
 
 In this industrial workcell incident, the 6-DoF articulated manipulator was executing high-speed palletizing maneuvers at $v = 1.8\text{ m/s}$. Safety monitoring and trajectory generation were co-located in a user-space process executing under standard Linux on an x86-64 host computer.
 
@@ -226,13 +348,11 @@ Because the required stopping distance ($8.1\text{ cm}$) exceeded the remaining 
 | **$T - 0.040\text{ s}$** | Arm Actuators / Linkage | Arm continues coasting forward at $v = 1.8\text{ m/s}$ along un-cancelled trajectory chunk. | Reaction displacement consumes $0.252\text{ m}$ of clearance. |
 | **$T - 0.010\text{ s}$** | Linux MPU / Planning Thread | Planning thread resumes; emits emergency stop command to motor drivers. | Remaining clearance is only $0.028\text{ m}$ ($2.8\text{ cm}$). |
 | **$T + 0.000\text{ s}$** | Manipulator Wrist / Fixture | Arm strikes steel fixture plate at $0.92\text{ m/s}$ ($3.4\text{ kN}$ dynamic impact). | Harmonic drive flexspline fractures ($7,200\text{ USD}$ overhaul). |
-| **Root Cause** | *Systems Bottleneck* | Monolithic software safety supervisor suspended during Linux kernel memory compaction tail blowout ($140\text{ ms}$). |
-| **Architectural Flaw** | *Privilege & Co-Design* | Absence of an autonomous bare-metal MCU supervisor evaluating real-time dynamic stopping distance ($d_{\text{stop}}$) at 1000 Hz. |
 
 : Flight-Recorder Telemetry Ledger: The Late Commanded Deceleration Incident. Tracing non-deterministic OS latency tails to mechanical gearbox fracture. {#tbl-telemetry-ch09}
 
 
-## Safety Fallback Hierarchy and the Enforcement Specification
+## Safety Fallback Escalation Hierarchy
 
 To establish a defensible physical safety boundary, the execution subsystem structures emergency responses into a certified functional safety hierarchy aligned with IEC 60204-1, IEC 61800-5-2, and ISO 13849-1 (@fig-fallback-hierarchy).
 
@@ -243,7 +363,13 @@ Emergency stops are partitioned into three distinct operational tiers based on s
 
 1. **Category 2 Stop (Controlled Stop with Power Maintained):** Actuators remain energized while the microcontroller commands a controlled deceleration along the nominal trajectory or holds position via Cartesian impedance control. This tier is applied during transient intent lease renewals, minor boundary proximity, or recoverable human pause commands.
 2. **Category 1 Stop (Controlled Stop with Dynamic Braking / Safe Stop 1, SS1):** The microcontroller actively applies maximum certified counter-electromotive braking deceleration ($a_{\text{max}}$) to bring all moving joints to a complete stop, after which power to the motor inverters is disconnected. This tier is triggered when an intent lease expires without renewal, when tracking error diverges, or when an obstacle enters the dynamic stopping envelope.
-3. **Category 0 Stop (Safe Torque Off / STO):** Immediate, uncoordinated removal of electrical power from motor gate drivers via dedicated physical optocoupler interlocks in $< 5\,\mu\text{s}$. The inverter bridge MOSFETs are forced into high-impedance mode, electrically disconnecting stator coils regardless of microcontroller software state. Category 0 is hardwired to emergency e-stop buttons, hardware watchdog trip circuits, DC-link overvoltage monitors, and gate driver shoot-through protectors.
+3. **Category 0 Stop (Safe Torque Off / STO):** Immediate, uncoordinated removal of electrical power from motor gate drivers via dedicated physical optocoupler interlocks in $< 5\,\mu\text{s}$. By de-energizing the optocoupler input, the gate-driver bias supply is physically grounded, dropping the gate-source voltage $V_{GS}$ below threshold ($V_{th}$). The inverter bridge MOSFETs are forced into high-impedance cutoff mode, electrically disconnecting stator coils regardless of microcontroller software state or processor freeze. Category 0 is hardwired directly to emergency e-stop buttons, hardware watchdog trip circuits, DC-link overvoltage monitors, and gate driver shoot-through protectors.
+
+::: {.callout-fallacy title="Category 0 Safe Torque Off as a Universal Fail-Safe"}
+* **The Common Assumption:** Triggering a Category 0 Safe Torque Off (cutting power to all motor inverters immediately via hardware interlocks) is always the safest emergency response during any unexpected control anomaly or boundary breach.
+* **The Physical Reality:** Category 0 STO instantly eliminates active motor torque ($i_q = 0$), leaving the physical plant to decelerate solely under passive joint friction, dynamic gravity torques, and uncoordinated mechanical brakes. For a vertical articulated manipulator holding a heavy payload, triggering STO without holding brakes causes the arm to collapse downward under gravitational acceleration ($g = 9.81\text{ m/s}^2$), crashing into workcell equipment. For a high-speed mobile robot or vehicle, triggering STO removes active regenerative counter-braking and steering stabilization, transforming a controlled stop into an uncontrolled skid.
+* **The Systems Invariant:** Emergency shutdown architectures must implement a certified tiered fallback hierarchy: Category 1 (Safe Stop 1, SS1) controlled dynamic braking under active power must be the default response for operational and kinematic boundary faults, reserving Category 0 STO strictly for catastrophic hardware failures (e.g., short circuits, gate driver shoot-through, or brownouts) where active inverter control is physically compromised.
+:::
 
 ### The Real-Time Safety Enforcement Specification
 The execution subsystem formalizes its quantitative parameters in the Safety Enforcement Specification (@tbl-enf01-ledger).
@@ -274,21 +400,41 @@ We audit the Execution stage across the Five Physical Columns in the Co-Design C
 : Execution Co-Design Checkpoint Ledger. Systematic architectural accounting of real-time execution across the physical constraints. {#tbl-execution-matrix-checkpoint}
 
 
-## Fallacies and Pitfalls in Reflexes and Safety Enforcement
+## Systems Stress-Tests: Architectural Food for Thought
 
-Deploying real-time safety enforcement systems on physical hardware requires confronting the divide between abstract mathematical formulations and the realities of digital silicon, power electronics, and kinematic momentum.
+Evaluating the real-time reflex and safety enforcement tier requires navigating difficult trade-offs where control barrier theory, microsecond embedded execution, and high-power inverter dynamics intersect. The following four architectural stress-tests examine critical edge cases across bare-metal safety enforcement:
 
-#### Fallacy: Software Safety Checks in Application Code Provide Real-Time Guarantees {.unnumbered}
-Believing that implementing safety checks as validation assertions or wrapper nodes in Python or ROS 2 application software provides an adequate safety boundary before commanding robot actuators. User-space software running on a general-purpose operating system shares execution threads, memory buses, and kernel scheduling queues with the generative neural models it supervises. When the host operating system initiates background memory compaction or thread preemption, the user-space safety check is suspended simultaneously with the planning thread. During this scheduling blackout, motor command registers remain latched at previous setpoints, and physical inertia drives the machine forward unmonitored ($d_{\text{coast}} = v \cdot \Delta t_{\text{pause}}$). For a robot traveling at $v = 1.8\text{ m/s}$, a $140\text{ ms}$ compaction stall results in $25.2\text{ cm}$ of unguided displacement. Real-time safety guarantees require the Proposal–Permission Privilege Split: high-level planners propose candidate actions from untrusted user space, while an autonomous bare-metal microcontroller evaluates safety invariants at $1000\text{ Hz}$ in zero-allocation static SRAM with microsecond determinism.
+#### Stress-Test 1: The Relative-Degree Deadlock and Actuator Saturation Dilemma {.unnumbered}
 
-#### Fallacy: Control Barrier Functions Eliminate Certified Hardware Emergency Stops {.unnumbered}
-Assuming that because Control Barrier Functions mathematically guarantee forward invariance of the safe set ($\dot{h} \ge -\gamma h$), physical emergency stop circuits and hardware Safe Torque Off (STO) lines are redundant. CBF-QPs are digital control-theoretic filters running on microcontrollers under the assumption that the plant obeys nominal dynamics and actuators execute commanded inputs. They cannot prevent electrical or hardware faults: inverter bridge shoot-through short circuits, DC-link bus collapse, broken encoder wires, or microcontroller brownouts. Functional safety standards (IEC 61508, ISO 13849-1, IEC 60204-1) mandate a tiered emergency fallback hierarchy terminating in Category 0 Safe Torque Off (STO): dedicated optocoupler interlocks that physically de-energize gate driver power rails in $< 5\,\mu\text{s}$, electrically disconnecting stator windings regardless of microcontroller firmware state.
+An autonomous forklift carrying a $1200\text{ kg}$ pallet approaches a warehouse wall at $v = 3.5\text{ m/s}$. The safety microcontroller solves a 1 kHz Minimal-Intervention CBF-QP enforcing an obstacle clearance barrier $h(\mathbf{p}) = \|\mathbf{p} - \mathbf{p}_{\text{wall}}\|^2 - r_{\text{safe}}^2 \ge 0$.
 
-#### Pitfall: Solving CBF-QPs with Dynamic Heap Allocation on Embedded Silicon {.unnumbered}
-Calling dynamic memory allocators (`malloc`, `free`, `new`, `std::vector::resize`) inside $1000\text{ Hz}$ interrupt service routines (ISRs) on embedded microcontrollers. Dynamic heap allocators maintain linked-list pool descriptors where search time depends on heap fragmentation. Over millions of control ticks, fragmentation causes worst-case execution time tail spikes that blow past the millisecond timer deadline ($\text{WCET} > 175\,\mu\text{s}$). Worse, heap exhaustion triggers silent HardFault exceptions that halt the microcontroller and leave motor phases floating or latched. Real-time firmware must strictly enforce the iron law of embedded determinism (`malloc = 0`), pre-allocating all QP workspace vectors, barrier gradient buffers, and active-set factorizations statically in DTCM SRAM at compile time.
+Because position has relative degree 2 with respect to drive motor torque, the CBF inequality constrains instantaneous braking acceleration. At distance $d = 1.2\text{ m}$, the QP solver finds an instantaneous torque command that satisfies $\dot{h} \ge -\gamma h$ at $t_k$. However, this state lies outside the viability kernel: at $t_{k+1}$, satisfying the barrier requires a deceleration of $a_{\text{req}} = 8.5\text{ m/s}^2$, but tire-ground Coulomb friction limits maximum braking to $a_{\text{friction}} = \mu g = 0.6 \times 9.81 = 5.88\text{ m/s}^2$. The QP solver becomes primal infeasible ($\mathcal{U}_{\text{safe}} = \emptyset$) inside the 1 ms ISR.
 
-#### Pitfall: Ignoring Sensorimotor Transport Latency in Clearance Monitoring {.unnumbered}
-Formulating dynamic clearance thresholds using solely ideal kinematic braking distance $d_{\text{brake}} = \frac{v^2}{2 a_{\text{max}}}$, assuming braking takes effect immediately upon obstacle detection. In physical systems, sensorimotor transport latency $\tau_{\text{latency}}$ is non-zero. From the instant an obstacle appears to the instant the motor stator coil actually develops counter-torque, the system incurs delays across camera exposure, bus serialization, discrete filter phase lag, and current rise time ($\tau_{\text{latency}} \approx 12\text{--}25\text{ ms}$). During this latency window, the robot coasts forward at full velocity, consuming reaction drift: $d_{\text{drift}} = v \cdot \tau_{\text{latency}}$. For a robot traveling at $v = 1.8\text{ m/s}$ with $\tau_{\text{latency}} = 20\text{ ms}$, drift is $36\text{ mm}$, which alone can exceed the entire safety margin. Safety monitors must evaluate the total dynamic stopping envelope $d_{\text{stop}}(v) = v \cdot \tau_{\text{latency}} + \frac{v^2}{2 a_{\text{max}}}$ at every 1 kHz tick and enforce $d_{\text{clearance}} \ge d_{\text{stop}}(v) + d_{\text{margin}}$.
+*When an active-set QP solver encounters mathematical infeasibility due to actuator saturation, what deterministic fallback command must execute within the remaining $175\,\mu\text{s}$ window? How must systems engineers design High-Order Control Barrier Functions (HOCBFs) to ensure that the admissible set $\mathcal{C}$ accounts for state-dependent friction limits before high-speed trajectories are authorized?*
+
+#### Stress-Test 2: The Zero-Allocation Active-Set Iteration Bound vs. Primal Divergence {.unnumbered}
+
+An 8-DoF collaborative humanoid arm operates with 14 active Control Barrier Functions (joint limits, self-collision spheres, workspace boundaries, and thermal barriers). The safety filter runs on an ARM Cortex-M7 with a strict execution budget of $\text{WCET} \le 175\,\mu\text{s}$ at $1000\text{ Hz}$.
+
+During a fast multi-link reaching motion, 6 barrier constraints activate simultaneously. The active-set solver performs iterative Givens rotations in static DTCM SRAM (`malloc = 0`). Due to near-parallel constraint hyperplanes (ill-conditioned active set), the solver requires 18 active-set iterations to converge, consuming $240\,\mu\text{s}$ and overrunning the timer ISR deadline. If firmware enforces a hard iteration ceiling ($N_{\text{iter}} \le 10$), the solver terminates with a suboptimal, non-invariant control command that violates the self-collision boundary.
+
+*How should systems architects structure barrier hierarchies and constraint pruning (e.g., evaluating only the $K$-nearest geometric barriers based on spatial distance) to guarantee that active-set factorizations converge within a fixed, deterministic clock-cycle bound across all operational configurations?*
+
+#### Stress-Test 3: The Category 1 Dynamic Braking vs. Inverter DC-Bus Overvoltage Spikes {.unnumbered}
+
+A high-speed pick-and-place delta robot moving a $15\text{ kg}$ payload at $v = 4.0\text{ m/s}$ experiences an intent lease expiration fault. The safety MCU triggers a Category 1 Safe Stop 1 (SS1), commanding maximum counter-electromotive braking torque ($\tau = -K_t i_q$) to arrest motion in $45\text{ ms}$.
+
+As the motor phases generate counter-torque, mechanical kinetic energy ($E_k = \frac{1}{2} m v^2 = 120\text{ J}$) is regenerated back through the inverter bridge into the $48\text{ V}$ DC bus capacitor bank. The regenerated current surges to $I_{\text{regen}} = 55\text{ A}$, causing the DC bus voltage to spike from $48\text{ V}$ to $72\text{ V}$ in $8\text{ ms}$ ($\Delta V = \frac{I \Delta t}{C}$). This overvoltage exceeds the $60\text{ V}$ breakdown rating of the inverter MOSFETs, triggering the hardware overvoltage protection circuit to fire an immediate Category 0 Safe Torque Off (STO). With the inverter bridge floating ($0\text{ Nm}$ torque), the robot coasts un-braked at $4.0\text{ m/s}$ into the conveyor frame.
+
+*How must real-time safety enforcers co-design dynamic braking deceleration profiles ($a_{\text{brake}}$) with power electronics constraints (DC bus capacitance, brake chopper resistors, and regenerative current absorption) to prevent emergency stops from triggering secondary electrical hardware trips?*
+
+#### Stress-Test 4: The Tactile Impedance Relaxation vs. Hard Position Enclosure {.unnumbered}
+
+A collaborative robot arm is equipped with joint torque sensors executing Cartesian impedance control ($M \ddot{\mathbf{x}} + D \dot{\mathbf{x}} + K (\mathbf{x} - \mathbf{x}_{\text{ref}}) = \mathbf{F}_{\text{ext}}$) to safely co-exist with human operators. A hard Control Barrier Function simultaneously enforces a virtual safety fence ($x_{\text{tcp}} \le x_{\text{wall}}$).
+
+A human worker inadvertently leans against the robot arm, applying an external contact force of $\mathbf{F}_{\text{ext}} = 80\text{ N}$ toward the virtual wall. The impedance controller yields compliantly to protect the human from bruising, deflecting the end-effector toward the boundary. As the position approaches the safety fence, the CBF-QP overrides the compliance controller, commanding maximum counter-torque ($K_{\text{stiff}} \to \infty$) to prevent the barrier breach. This instantaneous stiffness step exerts a rigid $450\text{ N}$ reactionary force against the human operator's arm, causing soft-tissue injury.
+
+*How should systems engineers unify compliant physical human-robot interaction with inviolable geometric barrier certificates? Can Control Barrier Functions natively modulate impedance stiffness and damping parameters rather than commanding rigid kinematic projections when interacting with compliant biological bodies?*
 
 
 ## Master Capstone Synthesis of Part II

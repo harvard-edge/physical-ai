@@ -59,7 +59,9 @@ blockStart = function (tt, fmt)
 
   elseif fmt =="tex" then
     if tt.boxstyle=="foldbox.simple" then texEnv = "fbxSimple" end
-    return('\\begin{'..texEnv..'}{'..tt.type..'}{'..tt.typlabelTag..'}{'..tt.title..'}\n'..
+    local texLabel = tt.typlabelTag:gsub("([^\\])&", "%1\\&"):gsub("^&", "\\&"):gsub("([^\\])%%", "%1\\%%"):gsub("^%%", "\\%%")
+    local texTitle = tt.title:gsub("([^\\])&", "%1\\&"):gsub("^&", "\\&"):gsub("([^\\])%%", "%1\\%%"):gsub("^%%", "\\%%")
+    return('\\begin{'..texEnv..'}{'..tt.type..'}{'..texLabel..'}{'..texTitle..'}\n'..
            '\\phantomsection\\label{'..tt.id..'}\n')
   else
     return("<details><summary>Hallihallo</summary>")

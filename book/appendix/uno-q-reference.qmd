@@ -26,30 +26,20 @@ The **Physical AI Kit** uses the **Arduino UNO Q** as the reference educational 
 
 ## Shared Memory RPMSG Message Contract
 
-The MPU sends timestamped intent proposals to the MCU over the non-blocking RPMSG ring buffer.
+The MPU sends timestamped intent proposals to the MCU over the non-blocking RPMSG ring buffer. The shared message schema (`PhysicalAgent_IntentProposal_t`) enforces packed binary layout across cores:
 
-```c
-// Shared C Header for MPU and MCU: physical_agent_ipc.h
+| Field Name | Type | Size | Physical Units & Description |
+| :--- | :--- | :--- | :--- |
+| `message_id` | `uint32_t` | 4 bytes | Monotonic proposal sequence counter. |
+| `timestamp_us` | `uint64_t` | 8 bytes | 64-bit IEEE 1588 PTP hardware timestamp ($\mu\text{s}$). |
+| `lease_duration_ms` | `uint32_t` | 4 bytes | Maximum validity duration before proposal expires ($\text{ms}$). |
+| `target_pos_[x,y,z]` | `float[3]` | 12 bytes | 3D Cartesian spatial target in robot base frame ($\text{m}$). |
+| `max_velocity_m_s` | `float` | 4 bytes | Maximum permissible velocity envelope ($\text{m/s}$). |
+| `max_acceleration_m_s2` | `float` | 4 bytes | Maximum permissible acceleration bound ($\text{m/s}^2$). |
+| `model_confidence` | `float` | 4 bytes | Epistemic model confidence score $\gamma_{\text{conf}} \in [0.0, 1.0]$. |
+| `crc32` | `uint32_t` | 4 bytes | IEEE 802.3 32-bit CRC payload integrity checksum. |
 
-typedef struct __attribute__((packed)) {
- uint32_t message_id;
- uint64_t timestamp_us; // Microsecond hardware timestamp
- uint32_t lease_duration_ms; // Proposal expiration timeout
- 
- // Target Spatial Goal (Cartesian in end-effector or world frame)
- float target_pos_x; // Meters
- float target_pos_y; // Meters
- float target_pos_z; // Meters
- 
- // Trajectory Derivative Bounds
- float max_velocity_m_s; // Clamped velocity limit
- float max_acceleration_m_s2; // Clamped acceleration limit
- 
- // Confidence and CRC
- float model_confidence; // [0.0, 1.0]
- uint32_t crc32; // Payload integrity checksum
-} PhysicalAgent_IntentProposal_t;
-```
+: Physical AI Dual-Brain IPC Intent Proposal Schema. Binary layout of the packed shared-memory RPMSG payload. {#tbl-ipc-intent-contract}
 
 
 ## Hardware Safety Watchdog Protocol
