@@ -24,11 +24,11 @@ After studying this chapter, you will be able to:
 :::
 
 
-## The Semantic Reasoning Layer
+## The Semantic Reasoning Layer {#sec-reasoning-layer}
 
-In biological motor systems, cognitive deliberation operates through an asynchronous hierarchy. Conscious cortical reasoning evaluates abstract intentions, interprets open-world context, and decomposes complex goals over macroscopic timescales ($0.5\text{--}2\text{ Hz}$), while lower brainstem circuits and spinal motor pools execute high-rate reflexes at hundreds of hertz. In Physical AI architectures, this cognitive duality is formalized by positioning high-capacity Multimodal Vision-Language Models (VLMs) and Vision-Language-Action (VLA) models at the deliberative apex of the compute hierarchy (@fig-locator-ch07).
+In biological motor control, physical action operates through a strict temporal and physical hierarchy. When a human decides to pick up a mug from a tabletop, conscious cortical deliberation formulates a macroscopic goal over fractions of a second ($0.5\text{--}2\text{ Hz}$). The conscious brain does not calculate individual motor unit firing rates, biceps tendon tensions, or shoulder joint reaction torques. Instead, high-level intent delegates to spinal motor pools and cerebellar reflex circuits executing at hundreds of hertz. Those low-level reflex loops automatically adjust for muscle fatigue, maintain grip stability, and arrest arm motion if the fingers strike an unexpected rigid obstacle. If the conscious cortex instead attempted to command raw electrical pulses directly to muscle fibers without spinal reflex stabilization, reaching for an object in a dark room would tear ligaments and smash knuckles against the tabletop.
 
-Executing on multi-core Linux Application Processors (MPUs) or offboard compute clusters, System 2 deliberation ingests multimodal sensory observations $O_t$, natural language task prompts $\mathcal{P}_{\text{prompt}}$ (such as *"retrieve the heated calibration bolt behind the fixture"*), and persistent world state representations $S_t$ from the temporal memory organ. The model's primary objective is to translate unstructured semantic prompts into an ordered, executable High-Level Task Graph ($\mathcal{G}_{\text{task}}$).
+In Physical AI architectures, this cognitive duality is formalized by positioning high-capacity Multimodal Vision-Language Models (VLMs) and Vision-Language-Action (VLA) models at the deliberative apex of the compute hierarchy (@fig-locator-ch07). Executing on multi-core Linux Application Processors (MPUs) or offboard compute clusters, System 2 deliberation ingests multimodal sensory observations $O_t$, natural language task prompts $\mathcal{P}_{\text{prompt}}$ (such as *"retrieve the heated calibration bolt behind the fixture"*), and persistent world state representations $S_t$ from the temporal memory organ. The model's primary objective is to translate unstructured semantic prompts into an ordered, executable High-Level Task Graph ($\mathcal{G}_{\text{task}}$).
 
 In physical environments, executing multi-step behavioral primitives without strict causal ordering and state verification leads to mechanical damage. If an ungrounded high-level reasoner commands a robot to close its gripper before reaching the workpiece, or commands a rapid arm retraction before releasing a mechanical latch, moving linkages collide with rigid fixtures or drop fragile components. We formalize this dependency structure as a directed acyclic task graph:
 
@@ -46,12 +46,12 @@ Mastering this deliberative reasoning layer requires bridging three engineering 
 - **Carlos (ECE/Embedded):** Architects the Proposal–Permission boundary between Linux Application Processors (MPUs) and bare-metal Microcontrollers (MCUs), designing zero-allocation shared-memory mailboxes (`malloc = 0`) and hardware watchdogs that enforce deterministic Category 1 stops upon communication timeout.
 - **Alex (Robotics/MechE):** Analyzes the geometry of metric affordance grounding in $SE(3)$, constructing morphological workspace hulls ($\mathcal{W}_{\text{reach}}$) and Jacobian singularity filters ($\kappa(\mathbf{J}) \le 50.0, w(\mathbf{q}) \ge 0.05$) to protect harmonic drive flexsplines from destructive torque shocks.
 
-To bridge semantic intelligence to real-time physical mechanisms without compromising hardware integrity, this chapter establishes the architectural discipline of intent generation. We begin by examining the computational mechanics of Vision-Language-Action networks, tracing how cross-modal attention and discrete action binning generate candidate behaviors while exposing the Key-Value cache memory bottleneck on edge silicon (Section 7.2). We then resolve the metric grounding problem, lifting dimensionless 2D semantic tokens into calibrated 3D coordinates in $SE(3)$ and filtering proposals through morphological reachability hulls and Jacobian singularity metrics (Section 7.3). 
+To bridge semantic intelligence to real-time physical mechanisms without compromising hardware integrity, this chapter establishes the architectural discipline of intent generation. We begin by examining the computational mechanics of Vision-Language-Action networks, tracing how cross-modal attention and discrete action binning generate candidate behaviors while exposing the Key-Value cache memory bottleneck on edge silicon (@sec-vla-models). We then resolve the metric grounding problem, lifting dimensionless 2D semantic tokens into calibrated 3D coordinates in $SE(3)$ and filtering proposals through morphological reachability hulls and Jacobian singularity metrics (@sec-metric-grounding). 
 
-To bridge the latency chasm between slow deliberative reasoning and fast physical dynamics, we evaluate temporal action chunking across multi-step horizons and formulate receding-horizon polynomial blending to guarantee smooth acceleration (Section 7.4). We formalize the Proposal–Permission boundary into Expiring Intent Leases, defining the four runtime invariants and hardware watchdog mechanisms that execute in static microcontroller memory to enforce deterministic Category 2, 1, and 0 fail-safe stops (Section 7.5). We then analyze how conformal prediction and calibrated uncertainty detect spatial hallucinations to trigger safe epistemic abstention (Section 7.6). Finally, we conduct a forensic autopsy of an industrial arm flexspline fracture caused by ungrounded reach proposals (Section 7.7), freeze the intent interface specification ledger (Section 7.8), stress-test the architecture against high-stakes reasoning dilemmas (Section 7.9), and provide the clean forward handoff to trajectory synthesis (Section 7.10).
+To bridge the latency chasm between slow deliberative reasoning and fast physical dynamics, we evaluate temporal action chunking across multi-step horizons and formulate receding-horizon polynomial blending to guarantee smooth acceleration (@sec-action-chunking). We formalize the Proposal–Permission boundary into Expiring Intent Leases, defining the four runtime invariants and hardware watchdog mechanisms that execute in static microcontroller memory to enforce deterministic Category 2, 1, and 0 fail-safe stops (@sec-intent-leases). We then analyze how conformal prediction and calibrated uncertainty detect spatial hallucinations to trigger safe epistemic abstention (@sec-failure-modes). Finally, we conduct a forensic autopsy of an industrial arm flexspline fracture caused by ungrounded reach proposals (@sec-autopsy-intent), freeze the intent interface specification ledger (@sec-contract-intent), stress-test the architecture against high-stakes reasoning dilemmas (@sec-stress-intent), and provide the clean forward handoff to trajectory synthesis (@sec-summary-intent).
 
 
-## Vision-Language-Action Models
+## Vision-Language-Action Models {#sec-vla-models}
 
 To understand how modern foundation models generate physical intentions, we must examine the computational architecture of Vision-Language-Action (VLA) networks from first principles (@fig-vlm-grounding).
 
@@ -60,8 +60,8 @@ To understand how modern foundation models generate physical intentions, we must
 For **Carlos (ECE/Embedded)** and **Alex (Robotics/MechE)**, a Vision-Language-Action model can be understood as a multimodal sequence transducer that converts heterogeneous sensory signals into discrete behavioral tokens across four sequential stages:
 
 1. **Linguistic Tokenization:** The natural language prompt $\mathcal{P}_{\text{prompt}}$ is partitioned into subword units using Byte-Pair Encoding (BPE), mapping text strings to discrete token indices $\mathbf{t}_{\text{text}} \in \mathbb{N}^{L_{\text{text}}}$ and projecting them through an embedding lookup matrix into continuous latent vectors $\mathbf{E}_{\text{text}} \in \mathbb{R}^{L_{\text{text}} \times d}$ (where $d$ is the transformer hidden dimension, typically $d = 4096$).
-2. **Visual Patch Tokenization:** Visual frames from calibrated RGB-D cameras (e.g., $224 \times 224 \times 3$ pixels) are divided into non-overlapping $P \times P$ pixel patches (where $P = 14\text{ px}$, yielding $N_{\text{patches}} = (224/14)^2 = 256$ patches). A self-supervised vision transformer backbone (such as DINOv2 or SigLIP) projects each flattened patch into visual feature tokens $\mathbf{E}_{\text{vision}} \in \mathbb{R}^{N_{\text{patches}} \times d_v}$ that capture dense geometric contours and semantic textures.
-3. **Cross-Modal Alignment Adapters:** Because the visual backbone dimension ($d_v = 1024$) differs from the language model's hidden dimension ($d = 4096$), a projection adapter—typically a two-layer Multi-Layer Perceptron (MLP) or a Perceiver Resampler—maps visual tokens into language space: $\mathbf{Z}_{\text{vis}} = \text{MLP}(\mathbf{E}_{\text{vision}}) \in \mathbb{R}^{N_{\text{patches}} \times d}$.
+2. **Visual Patch Tokenization:** Visual frames from calibrated RGB-D cameras (e.g., $224 \times 224 \times 3$ pixels) are divided into non-overlapping $P \times P$ pixel patches (where $P = 14\text{ px}$, yielding $N_{\text{patches}} = (224/14)^2 = 256$ patches). A self-supervised vision transformer backbone (such as DINOv2 or SigLIP) projects each flattened patch into visual feature tokens $\mathbf{E}_{\text{vision}} \in \mathbb{R}^{N_{\text{patches}} \times d_v}$ (where $d_v = 1024$) that capture dense geometric contours and semantic textures.
+3. **Cross-Modal Alignment Adapters:** Because the visual backbone dimension ($d_v = 1024$) differs from the language model's hidden dimension ($d = 4096$), a projection adapter (typically a two-layer Multi-Layer Perceptron or a Perceiver Resampler) maps visual tokens into language space: $\mathbf{Z}_{\text{vis}} = \text{MLP}(\mathbf{E}_{\text{vision}}) \in \mathbb{R}^{N_{\text{patches}} \times d}$.
 4. **Causal Transformer Decoding:** The concatenated token sequence $\mathbf{Z}_0 = [\mathbf{Z}_{\text{vis}}; \mathbf{E}_{\text{text}}] \in \mathbb{R}^{(N_{\text{patches}} + L_{\text{text}}) \times d}$ passes through an autoregressive transformer decoder consisting of dozens of causal self-attention layers.
 
 In physical systems, motor intent generation at time step $t$ must respect the arrow of time: a model cannot attend to future observations that have not yet occurred without violating physical causality. Furthermore, in high-dimensional latent spaces, dot products between unscaled queries and keys grow large, driving softmax activations into saturated regions where gradients vanish. Causal self-attention enforces temporal irreversibility and numerical stability:
@@ -76,11 +76,9 @@ To emit continuous robot actions from an autoregressive architecture designed fo
 
 A continuous 7-DoF robot action vector $\mathbf{a} = [\Delta x, \Delta y, \Delta z, \Delta \phi_x, \Delta \phi_y, \Delta \phi_z, \text{gripper}]^T \in \mathbb{R}^7$ (representing Cartesian end-effector translation deltas, rotation deltas, and normalized gripper aperture) is normalized to $[a_{\text{min}}, a_{\text{max}}] = [-1, 1]$ and mapped into $B = 256$ uniform discrete bins:
 
-$$\text{bin}(a_i) = \text{clip}\left( \left\lfloor \frac{a_i - a_{\text{min}}}{a_{\text{max}} - a_{\text{min}}} \cdot B \right\rfloor, 0, B - 1 \right)$$
+$$\text{bin}(a_i) = \text{clip}\left( \left\lfloor \frac{a_i - a_{\text{min}}}{a_{\text{max}} - a_{\text{min}}} \cdot B \right\rfloor, 0, B - 1 \right), \qquad \hat{a}_i = a_{\text{min}} + \frac{k + 0.5}{B}(a_{\text{max}} - a_{\text{min}})$$
 
-During inference, the predicted discrete action token index $k \in [0, B - 1]$ is un-binned back into continuous metric space via linear de-quantization to the bin center:
-
-$$\hat{a}_i = a_{\text{min}} + \frac{k + 0.5}{B}(a_{\text{max}} - a_{\text{min}})$$
+During inference, the predicted discrete action token index $k \in [0, B - 1]$ is un-binned back into continuous metric space via linear de-quantization to the bin center.
 
 *Numerical Walkthrough:* For an end-effector velocity bound of $[-0.5, +0.5]\text{ m/s}$ ($a_{\text{min}} = -0.5\text{ m/s}, a_{\text{max}} = +0.5\text{ m/s}$) with $B=256$ discrete bins, the discretization resolution is $\Delta v = \frac{1.0}{256} \approx 3.91\text{ mm/s}$. If the high-level reasoner commands $v = 0.100\text{ m/s}$, the bin index is:
 
@@ -107,21 +105,17 @@ Because single-batch token generation has an arithmetic intensity of less than $
 When autoregressive weight and KV-cache streaming saturates $85\text{--}90\%$ of the DRAM crossbar bandwidth, real-time camera DMA ring buffers experience bus arbitration stalls. This memory contention drops sensory frames and inflates $P_{99}$ deliberative tail latency from nominal $P_{50} = 450\text{ ms}$ to an unmanageable $P_{99} = 1800\text{ ms}$. This severe latency jitter confirms why slow autoregressive VLAs must never be placed inside real-time motor control loops.
 
 
-## Metric Affordance Grounding
+## Metric Affordance Grounding {#sec-metric-grounding}
 
 When an autoregressive VLA model generates a discrete action sequence, the resulting tokens represent dimensionless numerical indices. Before these tokens can command physical mechanisms, they must be grounded into continuous, metric coordinate frames within the physical workspace (@fig-reachability-filter).
 
 ![**Kinematic Reachability and Singularity Screening Filter.** Candidate goal poses generated by foundation models are screened through three non-negotiable geometric gates: (1) 3D Workspace Bounding Hull ($\mathcal{W}_{\text{reach}}$), (2) Keep-Out Collision Volumes ($\mathcal{B}_{\text{keepout}}$), and (3) Singularity Manipulability Envelopes ($\kappa(\mathbf{J}) \le 50, w(\mathbf{q}) \ge 0.05$). Proposals breaching reachability boundaries are rejected before passing to trajectory generators.](figures/fig06_kinematic_reachability_filter.svg){#fig-reachability-filter width=100%}
 
-In computer vision pipelines, neural detectors output bounding boxes or keypoints in 2D pixel coordinates $(u, v)$. A pixel is dimensionless: commanding a robot arm to move to pixel $(480, 360)$ without calibrated optics and registered depth commands an undefined physical target, causing the arm to plunge into the workbench or sweep through empty air. Lifting 2D semantic affordance predictions into 3D metric space begins by combining camera intrinsic calibration with optical depth registration $d(u, v)$ and extrinsic frame transformations:
+In computer vision pipelines, neural detectors output bounding boxes or keypoints in 2D pixel coordinates $(u, v)$. A pixel is dimensionless light on an imaging sensor: commanding a robot arm to move to pixel $(480, 360)$ without calibrated optics and registered depth commands an undefined physical target, causing the arm to plunge into the workbench or sweep through empty air. Lifting 2D semantic affordance predictions into 3D metric space begins by combining camera intrinsic calibration with optical depth registration $d(u, v)$ and extrinsic frame transformations:
 
-$$\mathbf{p}_{\text{target}}^{\text{camera}} = \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} d(u, v) = \begin{bmatrix} \frac{u - c_x}{f_x} d(u, v) \\ \frac{v - c_y}{f_y} d(u, v) \\ d(u, v) \end{bmatrix}$$
+$$\mathbf{p}_{\text{target}}^{\text{world}} = \mathbf{T}_{\text{cam}}^{\text{world}} \begin{bmatrix} \mathbf{K}^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} d(u, v) \\ 1 \end{bmatrix} = \mathbf{T}_{\text{cam}}^{\text{world}} \begin{bmatrix} \frac{u - c_x}{f_x} d(u, v) \\ \frac{v - c_y}{f_y} d(u, v) \\ d(u, v) \\ 1 \end{bmatrix}$$
 
-$$\mathbf{p}_{\text{target}}^{\text{world}} = \mathbf{T}_{\text{camera}}^{\text{world}} \begin{bmatrix} \mathbf{p}_{\text{target}}^{\text{camera}} \\ 1 \end{bmatrix}$$
-
-$$\mathbf{T}_{\text{target}}^{\text{world}} = \begin{bmatrix} \mathbf{R}_{\text{approach}} & \mathbf{p}_{\text{target}}^{\text{world}} \\ \mathbf{0}^T & 1 \end{bmatrix} \in SE(3)$$
-
-where $(u, v)$ are pixel coordinates in the 2D image plane ($\text{pixels}$), $(c_x, c_y)$ is the optical principal point ($\text{pixels}$), $(f_x, f_y)$ are focal lengths ($\text{pixels}$), $d(u, v)$ is registered metric depth ($\text{meters}$), $\mathbf{K} \in \mathbb{R}^{3 \times 3}$ is the intrinsic camera matrix, $\mathbf{T}_{\text{camera}}^{\text{world}} \in SE(3)$ is the rigid $4 \times 4$ extrinsic transform from camera optical frame to robot base frame, and $\mathbf{R}_{\text{approach}} \in SO(3)$ aligns the gripper approach vector antiparallel to the surface normal $\hat{\mathbf{n}}$ while aligning finger travel with workpiece grasp geometry.
+where $(u, v)$ are pixel coordinates in the 2D image plane ($\text{pixels}$), $(c_x, c_y)$ is the optical principal point ($\text{pixels}$), $(f_x, f_y)$ are focal lengths ($\text{pixels}$), $d(u, v)$ is registered metric depth ($\text{meters}$), $\mathbf{K} \in \mathbb{R}^{3 \times 3}$ is the intrinsic camera matrix, and $\mathbf{T}_{\text{cam}}^{\text{world}} \in SE(3)$ is the rigid $4 \times 4$ extrinsic transform from camera optical frame to robot base frame. The approach orientation $\mathbf{R}_{\text{approach}} \in SO(3)$ aligns the gripper approach vector antiparallel to the surface normal $\hat{\mathbf{n}}$, completing the 6-DoF target pose $\mathbf{T}_{\text{target}}^{\text{world}} = \begin{bmatrix} \mathbf{R}_{\text{approach}} & \mathbf{p}_{\text{target}}^{\text{world}} \\ \mathbf{0}^T & 1 \end{bmatrix} \in SE(3)$.
 
 *Numerical Walkthrough:* On a $640 \times 480$ RGB-D camera with focal lengths $f_x = f_y = 525.0\text{ px}$, principal point $(c_x, c_y) = (320.0, 240.0)\text{ px}$, and measured depth $d(480, 360) = 0.650\text{ m}$, the 3D position in the camera frame is:
 
@@ -129,11 +123,11 @@ $$x_c = \frac{480.0 - 320.0}{525.0} \times 0.650 = \frac{160.0}{525.0} \times 0.
 
 $$y_c = \frac{360.0 - 240.0}{525.0} \times 0.650 = \frac{120.0}{525.0} \times 0.650 \approx 0.148\text{ m}, \quad z_c = 0.650\text{ m}$$
 
-Given a camera mounted on the robot base at offset $\mathbf{p}_{\text{cam}} = [0.10, 0.00, 0.50]^T\text{ m}$ with identity rotation ($\mathbf{R}_{\text{camera}}^{\text{world}} = \mathbf{I}$), the target in world coordinates is $\mathbf{p}_{\text{target}}^{\text{world}} = [0.10 + 0.198, 0.00 + 0.148, 0.50 + 0.650]^T = [0.298, 0.148, 1.150]^T\text{ m}$.
+Given a camera mounted on the robot base at offset $\mathbf{p}_{\text{cam}} = [0.10, 0.00, 0.50]^T\text{ m}$ with identity rotation ($\mathbf{R}_{\text{cam}}^{\text{world}} = \mathbf{I}$), the target in world coordinates is $\mathbf{p}_{\text{target}}^{\text{world}} = [0.10 + 0.198, 0.00 + 0.148, 0.50 + 0.650]^T = [0.298, 0.148, 1.150]^T\text{ m}$.
 
 Once a metric target frame $\mathbf{T}_{\text{target}}^{\text{world}}$ is constructed, the reasoning engine must verify that the proposed pose is physically reachable. The workspace of an articulated manipulator is strictly bounded by its kinematic linkage lengths, joint travel limits, and mounting geometry, defining the **Reachable Workspace Hull** ($\mathcal{W}_{\text{reach}} \subset \mathbb{R}^3$). Furthermore, obstacle geometry extracted from the temporal world model defines prohibited **Keep-Out Volumes** ($\mathcal{B}_{\text{keepout}} \subset \mathbb{R}^3$). Any target pose residing outside the bounding hull ($\mathbf{p}_{\text{target}} \notin \mathcal{W}_{\text{reach}}$) or intersecting a keep-out volume is immediately rejected. This morphological gating applies universally: mobile robots verify that 2D/3D navigation waypoints lie within traversable ground-plane corridors subject to non-holonomic steering bounds, while cybernetic processes verify that power and thermal dispatch setpoints reside within the admissible operating polytope defined by generator capability curves ($\mathbf{A}_{\text{grid}}\mathbf{x} \le \mathbf{b}$).
 
-Crucially, physical reachability extends beyond positional coordinates: the robot must be capable of generating motion without driving its actuators into kinematic singularities. For **Maya (CS/ML)** and **Carlos (ECE/Embedded)**, who may be encountering differential kinematics for the first time, the geometric Jacobian matrix $\mathbf{J}(\mathbf{q}) \in \mathbb{R}^{6 \times n}$ represents the instantaneous physical transmission ratio mapping joint angular velocities $\dot{\mathbf{q}} \in \mathbb{R}^n$ ($\text{rad/s}$) to end-effector Cartesian linear and angular velocities $\dot{\mathbf{x}} = [\mathbf{v}^T, \boldsymbol{\omega}^T]^T \in \mathbb{R}^6$ ($[\text{m/s}, \text{rad/s}]^T$):
+Physical reachability extends beyond positional coordinates: the robot must be capable of generating motion without driving its actuators into kinematic singularities. For **Maya (CS/ML)** and **Carlos (ECE/Embedded)**, who may be encountering differential kinematics for the first time, the geometric Jacobian matrix $\mathbf{J}(\mathbf{q}) \in \mathbb{R}^{6 \times n}$ represents the instantaneous physical transmission ratio mapping joint angular velocities $\dot{\mathbf{q}} \in \mathbb{R}^n$ ($\text{rad/s}$) to end-effector Cartesian linear and angular velocities $\dot{\mathbf{x}} = [\mathbf{v}^T, \boldsymbol{\omega}^T]^T \in \mathbb{R}^6$ ($[\text{m/s}, \text{rad/s}]^T$):
 
 $$\dot{\mathbf{x}} = \mathbf{J}(\mathbf{q})\dot{\mathbf{q}} \implies \dot{\mathbf{q}} = \mathbf{J}^\dagger(\mathbf{q})\dot{\mathbf{x}}$$
 
@@ -143,15 +137,9 @@ When an articulated arm approaches a kinematic singularity (such as full elbow e
 
 To prevent destructive acceleration whiplash, the semantic reasoning engine evaluates candidate configurations using the **Yoshikawa Manipulability Index** ($w(\mathbf{q})$) and the **Jacobian Condition Number** ($\kappa(\mathbf{J})$):
 
-$$w(\mathbf{q}) = \sqrt{\det\left( \mathbf{J}(\mathbf{q}) \mathbf{J}^T(\mathbf{q}) \right)} = \prod_{i=1}^6 \sigma_i(\mathbf{J})$$
+$$w(\mathbf{q}) = \sqrt{\det\left( \mathbf{J}(\mathbf{q}) \mathbf{J}^T(\mathbf{q}) \right)} = \prod_{i=1}^6 \sigma_i(\mathbf{J}) \ge w_{\text{min}} = 0.05, \qquad \kappa(\mathbf{J}) = \frac{\sigma_{\text{max}}(\mathbf{J})}{\sigma_{\text{min}}(\mathbf{J})} \le \kappa_{\text{max}} = 50.0$$
 
-$$\kappa(\mathbf{J}) = \frac{\sigma_{\text{max}}(\mathbf{J})}{\sigma_{\text{min}}(\mathbf{J})} \in [1, \infty)$$
-
-The Yoshikawa index $w(\mathbf{q})$ measures the volume of the 6D manipulability ellipsoid; as $w(\mathbf{q}) \to 0$, the ellipsoid flattens into a degenerate plane, signifying loss of mobility degrees of freedom. The condition number $\kappa(\mathbf{J})$ evaluates the ratio of maximum to minimum ellipsoid principal axes, measuring the velocity amplification and numerical distortion of the inverse kinematic solve. The reasoning engine enforces two non-negotiable kinematic invariants:
-
-$$\text{Manipulability Floor:} \quad w(\mathbf{q}) \ge w_{\text{min}} = 0.05$$
-
-$$\text{Condition Number Ceiling:} \quad \kappa(\mathbf{J}) \le \kappa_{\text{max}} = 50.0$$
+The Yoshikawa index $w(\mathbf{q})$ measures the volume of the 6D manipulability ellipsoid; as $w(\mathbf{q}) \to 0$, the ellipsoid flattens into a degenerate plane, signifying loss of mobility degrees of freedom. The condition number $\kappa(\mathbf{J})$ evaluates the ratio of maximum to minimum ellipsoid principal axes, measuring the velocity amplification and numerical distortion of the inverse kinematic solve.
 
 *Numerical Walkthrough:* In a well-conditioned nominal configuration $\mathbf{q}_{\text{nom}}$, a 6-DoF arm achieves singular values $\boldsymbol{\sigma}(\mathbf{J}) = [0.85, 0.72, 0.54, 0.40, 0.32, 0.20]$, yielding $w(\mathbf{q}) = \prod \sigma_i \approx 0.0084$ (normalized metric $w_{\text{norm}} \approx 0.12 \ge 0.05$) and condition number $\kappa(\mathbf{J}) = \frac{0.85}{0.20} = 4.25 \le 50.0$. Near full elbow extension, singular values collapse to $\sigma_{\text{min}} = 0.0008$, dropping manipulability to $w(\mathbf{q}) \approx 3.5 \times 10^{-5} \ll 0.05$ and exploding the condition number to $\kappa(\mathbf{J}) = \frac{0.85}{0.0008} = 1{,}062.5 \gg 50.0$, immediately triggering kinematic proposal rejection.
 
@@ -164,7 +152,7 @@ Any proposal that breaches these bounds is rejected in software before candidate
 :::
 
 
-## Temporal Action Chunking
+## Temporal Action Chunking {#sec-action-chunking}
 
 In early embodied AI implementations, researchers attempted to command robots by running foundation models in a tight single-step feedback loop: at each control step $t$, the VLA ingested a camera frame and emitted a single action $a_t$.
 
@@ -192,9 +180,7 @@ When transitioning between consecutive action chunks, abruptly switching from th
 
 To eliminate boundary jerk, the downstream trajectory planner executes **Receding-Horizon Boundary Stitching**. Action chunks are queried asynchronously at an update period $K < H$ (typically $K = H/2$). When a fresh action chunk $\mathbf{A}_{t+K:t+K+H}^{\text{new}}$ arrives, the planner blends the tail of the active trajectory with the head of the new trajectory using a temporal weighting kernel $w(\tau)$:
 
-$$\mathbf{a}_{\text{blended}}(\tau) = (1 - w(\tau)) \cdot \mathbf{a}_{\text{active}}(\tau) + w(\tau) \cdot \mathbf{a}_{\text{new}}(\tau)$$
-
-$$w(\tau) = 3\left(\frac{\tau}{T_{\text{blend}}}\right)^2 - 2\left(\frac{\tau}{T_{\text{blend}}}\right)^3$$
+$$\mathbf{a}_{\text{blended}}(\tau) = (1 - w(\tau)) \cdot \mathbf{a}_{\text{active}}(\tau) + w(\tau) \cdot \mathbf{a}_{\text{new}}(\tau), \qquad w(\tau) = 3\left(\frac{\tau}{T_{\text{blend}}}\right)^2 - 2\left(\frac{\tau}{T_{\text{blend}}}\right)^3$$
 
 where $\tau \in [0, T_{\text{blend}}]$ is the elapsed time within the blending window $T_{\text{blend}}$. The cubic Hermite weighting kernel $w(\tau) \in [0, 1]$ satisfies boundary conditions $w(0)=0, w(T_{\text{blend}})=1$ and zero endpoint derivatives $w'(0)=w'(T_{\text{blend}})=0$. This guarantees $\mathcal{C}^1$ velocity continuity across chunk transitions, eliminating instantaneous position jumps and bounding torque spikes. For high-precision mechanisms demanding $\mathcal{C}^2$ jerk continuity, a quintic polynomial $w_5(\tau)$ is substituted:
 
@@ -205,7 +191,7 @@ which enforces $w_5(0)=0, w_5(T_{\text{blend}})=1$, $w_5'(0)=w_5'(T_{\text{blend
 *Numerical Walkthrough:* For a blending duration of $T_{\text{blend}} = 100\text{ ms}$, at the midpoint $\tau = 50\text{ ms}$ ($\tau/T_{\text{blend}} = 0.5$), the cubic kernel evaluates to $w(0.5) = 3(0.5)^2 - 2(0.5)^3 = 3(0.25) - 2(0.125) = 0.75 - 0.25 = 0.500$. If the active trajectory commands velocity $v_{\text{active}} = 0.40\text{ m/s}$ and the newly arrived chunk commands $v_{\text{new}} = 0.60\text{ m/s}$, the blended velocity is $v_{\text{blended}}(50\text{ ms}) = (1 - 0.500)(0.40) + 0.500(0.60) = 0.20 + 0.30 = 0.50\text{ m/s}$. Because the polynomial derivative begins at zero ($w'(0) = 0$), the transition initiates with zero initial acceleration jump, protecting speed reducers from torque shock.
 
 
-## Expiring Intent Leases
+## Expiring Intent Leases {#sec-intent-leases}
 
 To operationalize the architectural privilege separation between untrusted foundation models on Linux MPUs and trusted permission supervisors on bare-metal MCUs, the reasoning engine communicates exclusively through the **Expiring Intent Lease** ($\mathcal{L}_{\text{intent}}$) (@fig-expiring-lease).
 
@@ -262,7 +248,7 @@ When an invariant is breached or a lease expires, the real-time supervisor maps 
 :::
 
 
-## Semantic Grounding Failure Modes
+## Semantic Grounding Failure Modes {#sec-failure-modes}
 
 When deploying large foundation models to govern physical intent, systems engineers confront three archetypal semantic failure modes that never arise in classical control theory:
 
@@ -299,7 +285,7 @@ If the confidence score drops below the safety threshold ($\gamma_{\text{conf}} 
 :::
 
 
-## Incident Autopsy: Unbounded Semantic Reach
+## Incident Autopsy: Unbounded Semantic Reach {#sec-autopsy-intent}
 
 The catastrophic consequences of passing un-screened semantic foundation model outputs directly to inverse kinematics solvers are documented in the forensic autopsy of an automated industrial assembly workcell.
 
@@ -357,7 +343,7 @@ This shock torque exceeded the size-20 harmonic drive speed reducer's ultimate m
 : Flight-Recorder Telemetry Ledger: The Unbounded Semantic Reach Incident. Tracing ungrounded VLM tokens to physical mechanical fracture. {#tbl-telemetry-ch07}
 
 
-## Engineering Contract: Intent Lease Schema
+## Engineering Contract: Intent Lease Schema {#sec-contract-intent}
 
 To guarantee that semantic reasoning foundation models remain strictly bounded within certified physical envelopes, the reasoning subsystem formalizes its output through the **Expiring Intent Lease Interface** (@tbl-intent-lease).
 
@@ -394,7 +380,7 @@ We audit the Reasoning stage across the Five Physical Columns in the Co-Design C
 : Reasoning Co-Design Checkpoint Ledger. Systematic architectural accounting of reasoning and deliberation across physical constraints. {#tbl-intent-matrix-checkpoint}
 
 
-## Systems Stress-Tests: Architectural Food for Thought
+## Systems Stress-Tests: Architectural Food for Thought {#sec-stress-intent}
 
 Evaluating the architectural boundary between semantic deliberation and real-time physical execution requires grappling with non-trivial design trade-offs where statistical intelligence collides with deterministic physical invariants.
 
@@ -434,7 +420,7 @@ Bench testing reveals that Architecture A exhibits exceptional open-world genera
 *Does the memory-bandwidth bottleneck of large autoregressive models represent a fundamental physical ceiling for on-robot System 2 deliberation? How must systems engineers partition silicon memory hierarchies (such as dedicated on-chip SRAM vs. shared DRAM) and configure AXI Quality-of-Service (QoS) bus arbitration to guarantee that statistical semantic reasoning cannot starve real-time sensorimotor memory pipelines?*
 
 
-## Chapter Summary and Forward Handoff to @sec-planning
+## Chapter Summary and Forward Handoff to @sec-planning {#sec-summary-intent}
 
 This chapter established how high-level semantic reasoning is grounded into metric physical action without risking mechanical destruction. High-capacity foundation models provide extraordinary open-world semantic comprehension by fusing visual patches and text tokens into shared latent spaces. However, their autoregressive architecture, memory-bandwidth limitations, and variable latency dictate that they must act strictly as untrusted proposal generators.
 
@@ -447,3 +433,4 @@ The architectural discipline of Physical AI intent and reasoning rests on three 
 Having transformed open-vocabulary human intentions into certified, time-bounded spatial contracts, the physical agent is now equipped with a clear operational objective. However, an intent lease defines *what* region the agent is authorized to traverse, not *how* joint motors must smoothly accelerate along kinematically feasible curves.
 
 In the following chapter, **@sec-planning (Planning and Trajectory Synthesis: System 1.5 Action Chunking, Real-Time MPC, and Kinodynamic Splines)**, we examine how physical agents convert macroscopic intent leases into high-frequency, continuous trajectory chunks. We explore how Action Chunking with Transformers (ACT) and diffusion policies generate multi-step waypoint horizons, how receding-horizon temporal ensembling eliminates boundary jerk, and how kinodynamic Model Predictive Control (MPC) and $\mathcal{C}^2$ quintic splines enforce motor torque and acceleration limits to bring semantic intention safely to life.
+
