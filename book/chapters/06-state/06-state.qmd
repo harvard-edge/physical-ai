@@ -126,9 +126,13 @@ $$\mathbf{T}(t + \Delta t) = \mathbf{T}(t) \cdot \exp\left( \boldsymbol{\xi}^\we
 Suppose a mobile robot base is located at initial pose $\mathbf{T}(0) = \mathbf{I}_{4 \times 4}$. Over a control interval $\Delta t = 10\text{ ms} = 0.010\text{ s}$, the base moves forward at linear velocity $v_x = 1.0\text{ m/s}$ ($v_y = 0, v_z = 0$) while yawing at angular rate $\omega_z = 0.50\text{ rad/s}$ ($\omega_x = 0, \omega_y = 0$).
 
 1. **Velocity Twist:** $\boldsymbol{\xi} = [1.0, 0.0, 0.0, 0.0, 0.0, 0.50]^T \in \mathbb{R}^6$.
+
 2. **Tangent Matrix:**
+
    $$\boldsymbol{\xi}^\wedge \Delta t = \begin{bmatrix} 0 & -0.005 & 0 & 0.010 \\ 0.005 & 0 & 0 & 0.000 \\ 0 & 0 & 0 & 0.000 \\ 0 & 0 & 0 & 0 \end{bmatrix}$$
+
 3. **Matrix Exponential Evaluation:** The rotation angle increment is $\Delta \theta = \omega_z \Delta t = 0.005\text{ rad}$ ($\approx 0.286^\circ$). With $\cos(0.005) \approx 0.999987$ and $\sin(0.005) \approx 0.004999$, the updated transform evaluates to:
+
    $$\mathbf{T}(0.010\text{ s}) = \begin{bmatrix} 0.999987 & -0.004999 & 0 & 0.009999 \\ 0.004999 & 0.999987 & 0 & 0.000025 \\ 0 & 0 & 1 & 0.000000 \\ 0 & 0 & 0 & 1 \end{bmatrix}$$
 
 Notice that the position updated forward by $9.999\text{ mm}$ with a subtle lateral arc of $0.025\text{ mm}$, while the rotation matrix remains strictly orthonormal with determinant $\det(\mathbf{R}) = 1.000000$. Exact Lie algebra integration eliminates norm drift entirely.
@@ -155,6 +159,7 @@ $$\begin{bmatrix} P_{B,x} \\ P_{B,y} \\ P_{B,z} \\ 1 \end{bmatrix} = \begin{bmat
 If any transformation along this kinematic chain is queried using an out-of-date timestamp without spatial covariance tracking, this coordinate multiplication injects spatial skew that drives downstream end-effectors directly into physical obstacles.
 
 ::: {.callout-fallacy title="Euclidean Interpolation on SO(3) and SE(3) Manifolds"}
+
 * **The Seductive Intuition:** Rotational transformations and spatial poses can be treated as standard Euclidean vectors in $\mathbb{R}^3$ (Euler angles $[\phi, \theta, \psi]^T$) or raw 4D vectors (unit quaternions $\mathbf{q} \in \mathbb{R}^4$). Interpolating between poses across time or taking averages can be accomplished via standard linear interpolation ($\mathbf{q}(t) = (1-\alpha)\mathbf{q}_0 + \alpha \mathbf{q}_1$).
 * **The Physical Reality:** The Special Orthogonal group $SO(3)$ and Special Euclidean group $SE(3)$ are curved, non-Euclidean Lie groups, not vector spaces. Linear interpolation of Euler angles triggers catastrophic gimbal lock singularities when pitch reaches $\theta = \pm 90^\circ$, causing instantaneous $180^\circ$ yaw/roll flips that command infinite joint velocities ($\dot{\mathbf{q}} \to \infty$) and shear gearbox teeth. Linear interpolation of quaternions violates the unit norm constraint ($\|\mathbf{q}\| = 1$), shrinking the rotation matrix and injecting artificial geometric scaling that distorts link lengths.
 * **The Systems Invariant:** Spatial transformations must be parameterized on Lie groups ($SO(3), SE(3)$). Interpolation, differentiation, and covariance propagation must be evaluated in Lie algebra tangent spaces ($\mathfrak{so}(3), \mathfrak{se}(3)$) via matrix exponentials $\exp(\boldsymbol{\xi}^\wedge \Delta t)$ or Spherical Linear Interpolation (Slerp) to preserve exact group constraints and prevent artificial kinetic impulses.
@@ -220,6 +225,7 @@ Consider a 1D scalar position estimate where prior variance is $P^- = 0.0400\tex
 2. **Kalman Gain:** $K = P^- H^T S^{-1} = (0.0400)(1.0) / 0.0500 = 0.800$.
 3. **Multiplicative Factor:** $(I - KH) = 1.0 - (0.800)(1.0) = 0.200$.
 4. **Joseph Dual Quadratic Form:**
+
    $$\text{Term 1:} \quad (I-KH) P^- (I-KH)^T = (0.200)(0.0400)(0.200) = 0.00160\text{ m}^2$$
    $$\text{Term 2:} \quad K R K^T = (0.800)(0.0100)(0.800) = 0.00640\text{ m}^2$$
    $$P^+ = 0.00160 + 0.00640 = 0.00800\text{ m}^2 \implies \sigma^+ = \sqrt{0.00800} \approx 0.0894\text{ m}$$
@@ -243,10 +249,15 @@ where:
 For a 3D Cartesian position sensor ($m = 3$) at significance level $\alpha = 0.01$ ($99\%$ confidence limit), the critical Chi-squared threshold is $\chi_{3, 0.99}^2 = 11.34$. Let the innovation covariance be isotropic: $\mathbf{S}_k = \text{diag}(0.0025, 0.0025, 0.0025)\text{ m}^2$ (standard deviation $\sigma_S = 0.050\text{ m} = 50\text{ mm}$).
 
 * **Case 1: Nominal Noisy Detection:** The sensor reports a small residual $\mathbf{y}_k = [0.03, -0.02, 0.04]^T\text{ m}$:
+
   $$d_M^2 = \frac{(0.03)^2 + (-0.02)^2 + (0.04)^2}{0.0025} = \frac{0.0009 + 0.0004 + 0.0016}{0.0025} = \frac{0.0029}{0.0025} = 1.16$$
+
   Since $1.16 \le 11.34$, the measurement is statistically consistent with the state belief and is accepted into the Joseph update.
+
 * **Case 2: Corrupted Optical Flare / Reflection:** A specular reflection creates a false visual target yielding $\mathbf{y}_k = [0.25, 0.10, -0.20]^T\text{ m}$:
+
   $$d_M^2 = \frac{(0.25)^2 + (0.10)^2 + (-0.20)^2}{0.0025} = \frac{0.0625 + 0.0100 + 0.0400}{0.0025} = \frac{0.1125}{0.0025} = 45.00$$
+
   Since $45.00 > 11.34$, the measurement is gated and rejected. The filter discards the packet, preventing a false $25\text{ cm}$ state jump that would jerk the physical robot.
 
 ### Static SRAM Ring Buffers and Microsecond Timestamp Propagation
@@ -258,6 +269,7 @@ For a 12-state kinematic filter ($\mathbf{x} \in \mathbb{R}^{12}$), the state ve
 State histories are maintained in fixed-size circular ring buffers indexed by 64-bit IEEE 1588 Precision Time Protocol (PTP) hardware timestamps. When an asynchronous camera observation with capture timestamp $t_{\text{capture}} = t_{\text{now}} - 45\text{ ms}$ arrives, the estimator rewinds its state history in the ring buffer, applies the measurement update at the exact historical epoch, and re-propagates forward to $t_{\text{now}}$ using stored proprioceptive inputs. This deterministic update completes within a worst-case execution time ($\text{WCET}$) of less than $150\ \mu\text{s}$, guaranteeing sub-millisecond control loop determinism at $1000\text{ Hz}$.
 
 ::: {.callout-fallacy title="Static Process Noise Covariance Across Hybrid Dynamic Contact"}
+
 * **The Seductive Intuition:** Tuning a constant process noise covariance matrix $\mathbf{Q} \in \mathbb{R}^{n \times n}$ in an Extended Kalman Filter (EKF) during nominal free-space motion provides optimal filtering performance across all operational phases.
 * **The Physical Reality:** Physical embodiment involves discontinuous contact transitions (e.g., footfalls in legged locomotion, gripper impacts during grasping, or wheel slip on ice). During contact transitions, the physical system undergoes instantaneous mechanical deceleration impulses ($\dot{\mathbf{v}} = \frac{\mathbf{F}_{\text{ext}}}{m} \Delta t$) that violate smooth continuous-time differential equations. A static $\mathbf{Q}$ tuned for smooth free flight becomes overly confident, causing the filter to treat the real impact deceleration as sensor noise. The filter rejects valid encoder/IMU measurements, delays impact state updates, and suffers covariance matrix collapse (non-positive definiteness, $\mathbf{P} \not\succ 0$), triggering divergence.
 * **The Systems Invariant:** Process noise covariance must be dynamically modulated across contact state discretizations: when contact force sensors or tactile switches detect impact ($\|\mathbf{F}_{\text{ext}}\| > F_{\text{thresh}}$), the state estimator must switch to contact-regime noise models ($\mathbf{Q}_{\text{contact}} \gg \mathbf{Q}_{\text{flight}}$) or apply Joseph-form covariance updates ($\mathbf{P} = (\mathbf{I}-\mathbf{K}\mathbf{H})\mathbf{P}(\mathbf{I}-\mathbf{K}\mathbf{H})^T + \mathbf{K}\mathbf{R}\mathbf{K}^T$) to guarantee positive semi-definiteness on embedded silicon.
@@ -363,12 +375,15 @@ Consider an ensemble of $M = 4$ heads predicting the 3D position $[x, y, z]^T$ o
   * Head predictions: $\hat{\mathbf{p}}^{(1)} = [0.500, 0.200, 0.100]^T\text{ m}$, $\hat{\mathbf{p}}^{(2)} = [0.505, 0.202, 0.098]^T\text{ m}$, $\hat{\mathbf{p}}^{(3)} = [0.495, 0.198, 0.101]^T\text{ m}$, $\hat{\mathbf{p}}^{(4)} = [0.500, 0.200, 0.101]^T\text{ m}$.
   * Mean: $\bar{\mathbf{p}} = [0.500, 0.200, 0.100]^T\text{ m}$.
   * Squared deviations from mean:
+
     $$\|\hat{\mathbf{p}}^{(1)} - \bar{\mathbf{p}}\|^2 = 0.000000\text{ m}^2$$
     $$\|\hat{\mathbf{p}}^{(2)} - \bar{\mathbf{p}}\|^2 = (0.005)^2 + (0.002)^2 + (-0.002)^2 = 0.000033\text{ m}^2$$
     $$\|\hat{\mathbf{p}}^{(3)} - \bar{\mathbf{p}}\|^2 = (-0.005)^2 + (-0.002)^2 + (0.001)^2 = 0.000030\text{ m}^2$$
     $$\|\hat{\mathbf{p}}^{(4)} - \bar{\mathbf{p}}\|^2 = (0.000)^2 + (0.000)^2 + (0.001)^2 = 0.000001\text{ m}^2$$
+
   * Sample variance: $\sigma_{\text{epistemic}}^2 = \frac{0.000064}{3} = 0.0000213\text{ m}^2 \implies \sigma_{\text{epistemic}} = \sqrt{0.0000213} \approx 0.0046\text{ m} = 4.6\text{ mm}$.
   * Since $4.6\text{ mm} \le \sigma_{\text{safe\_ceiling}} = 15.0\text{ mm}$, the supervisor confirms high model confidence and authorizes motion.
+
 * **Scenario B: Unfamiliar Dynamics (Tool Slipping in Gripper):**
   * Head predictions diverge: $\hat{\mathbf{p}}^{(1)} = [0.500, 0.200, 0.100]^T$, $\hat{\mathbf{p}}^{(2)} = [0.620, 0.120, 0.220]^T$, $\hat{\mathbf{p}}^{(3)} = [0.380, 0.280, -0.020]^T$, $\hat{\mathbf{p}}^{(4)} = [0.540, 0.160, 0.140]^T$.
   * Epistemic standard deviation explodes to $\sigma_{\text{epistemic}} = 112.4\text{ mm} \gg 15.0\text{ mm}$.
@@ -418,6 +433,7 @@ $$t_{\text{max}} = \frac{0.100\text{ m} - 0.020\text{ m} - 0.005\text{ m}}{0.50\
 If a sensory occlusion lasts longer than $t_{\text{max}} = 150\text{ ms}$, the spatial uncertainty envelope breaches safe physical limits. At this exact threshold, the state estimate's Time-To-Live (TTL) lease expires, forcing the system to halt motion before a collision can occur.
 
 ::: {.callout-fallacy title="Unanchored Latent Space Dynamics in Generative World Models"}
+
 * **The Seductive Intuition:** Training an unconstrained autoregressive neural network or diffusion world model to predict future latent states ($\hat{\mathbf{z}}_{t+1} = f_\theta(\mathbf{z}_t, \mathbf{a}_t)$) allows the robot to "imagine" open-world physical dynamics without needing explicit geometric coordinates, Lie algebra frame trees, or rigid kinematic equations.
 * **The Physical Reality:** Pure neural latent spaces lack metric grounding and conservation-law inductive biases. Without explicit metric coordinate anchoring, multi-step autoregressive rollouts suffer from compounding latent drift ($E[\|\mathbf{z}_t - \hat{\mathbf{z}}_t\|] \propto e^{\lambda t}$). Over a 2-second imagination horizon, unanchored latent states drift into physically impossible manifolds—predicting that rigid objects can interpenetrate, that mass vanishes, or that gravity reverses. When a trajectory optimizer plans actions against these ungrounded latent futures, it outputs high-gain actuator commands that drive mechanical linkages into hard obstacles.
 * **The Systems Invariant:** Latent world models (JEPAs, RSSMs) must be hybrid-anchored: predictive latent embeddings $\mathbf{z}_t \in \mathbb{R}^d$ must be mapped to metric $SE(3)$ coordinate heads that are continually projected onto physically verified kinematic frame trees and bounded by Lyapunov uncertainty horizons ($t \le t_{\text{max}}$).
@@ -429,6 +445,7 @@ If a sensory occlusion lasts longer than $t_{\text{max}} = 150\text{ ms}$, the s
 The consequences of uncompensated coordinate transform latency are illustrated by an industrial incident involving a high-speed precision manipulator.
 
 ::: {.callout-autopsy title="The Stale Frame Tree Collision"}
+
 * **System:** 6-DoF Precision Articulated Manipulator operating at $v = 0.9\text{ m/s}$ in an industrial surface-mount assembly cell.
 * **Incident:** Vacuum gripper collided with an aluminum assembly fixture at $0.9\text{ m/s}$, delivering an impact force of $1.8\text{ kN}$ that shattered ceramic vacuum tooling and damaged internal load cells ($3,200\text{ USD}$ repair cost).
 * **Telemetry Snapshot:** Forearm link occluded wrist camera for $180\text{ ms}$; transform lookup returned cached coordinates aged $65\text{ ms}$; vertical coordinate error reached $5.85\text{ cm}$; impact occurred at $T + 0.000\text{ s}$.
@@ -468,6 +485,7 @@ Assuming the workpiece lay $5.85\text{ cm}$ below its true position, the traject
 To eliminate stale-transform collisions, Physical AI architectures enforce bounded SRAM ring buffers indexed by 64-bit PTP hardware timestamps. When querying a transform at time $t_{\text{query}}$, the state engine performs exact geodesic interpolation in Lie algebra space $\mathfrak{se}(3)$ between the bounding historical frames ($t_1 \le t_{\text{query}} \le t_2$). If the query timestamp exceeds the freshest recorded frame by more than the configured TTL lease ($\Delta t > \tau_{\text{ttl}}$), the lookup returns an explicit `TRANSFORM_EXPIRED` fault, forcing downstream planning to halt.
 
 ::: {.callout-fallacy title="Non-Isochronous Transform Multiplication Across Asynchronous Cadences"}
+
 * **The Seductive Intuition:** When computing an end-effector tool target in robot base coordinates, multiplying the current real-time joint encoder transform ($\mathbf{T}_{\text{cam}}^{\text{base}}(t_{\text{now}})$) by the latest available object detection transform ($\mathbf{T}_{\text{target}}^{\text{cam}}(t_{\text{detect}})$) is safe as long as the object is nominally stationary.
 * **The Physical Reality:** Even if the external object is stationary, the robot's own mounting base and articulated links are moving at high velocity ($v = 0.9\text{ m/s}$). Multiplying a transform from $t_{\text{now}}$ with a vision transform from $t_{\text{now}} - 65\text{ ms}$ combines coordinate frames from two completely different physical points in time. The $65\text{ ms}$ temporal mismatch injects an uncompensated spatial skew ($\Delta z = v \cdot \Delta t = 5.85\text{ cm}$), causing the robot to drive its end-effector at full velocity directly into solid workcell fixtures.
 * **The Systems Invariant:** Coordinate frame trees must enforce strict isochronous (time-matched) transform multiplication: all transforms in a kinematic chain must be interpolated to the exact same hardware PTP timestamp $t_{\text{query}}$ in Lie algebra tangent space $\mathfrak{se}(3)$ before matrix multiplication is authorized.
@@ -484,6 +502,7 @@ To detect silent failures online, the state supervisor monitors two runtime heal
    $$\bar{d}_M^2 = \frac{1}{N_w} \sum_{i=1}^{N_w} \mathbf{y}_i^T \mathbf{S}_i^{-1} \mathbf{y}_i$$
 
    where:
+
    * **$N_w$:** Number of historical update cycles in the sliding window (e.g., $N_w = 20$).
    * **$\mathbf{y}_i = \mathbf{z}_i - h(\hat{\mathbf{x}}_i^-) \in \mathbb{R}^m$:** Innovation residual vector at time step $i$.
    * **$\mathbf{S}_i \in \mathbb{R}^{m \times m}$:** Innovation covariance matrix at step $i$.

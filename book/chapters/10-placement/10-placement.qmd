@@ -89,6 +89,7 @@ where $t_{\text{prop}}$ is the baseline silicon propagation delay, $t_{\text{arb
 $$t_{\text{block}} = \frac{N_{\text{burst}} \cdot L_{\text{burst}}}{W_{\text{bus}} \cdot f_{\text{bus}}}$$
 
 where:
+
 - $N_{\text{burst}}$ is the number of pending lower-priority burst transactions queued in the memory controller [dimensionless count].
 - $L_{\text{burst}}$ is the burst length per transaction [$\text{Bytes}$] (e.g., $256\text{ bytes}$ for an AXI `INCR256` transaction).
 - $W_{\text{bus}}$ is the physical data width of the crossbar interconnect in bytes per clock cycle [$\text{Bytes/cycle}$] (e.g., $16\text{ bytes}$ for a 128-bit crossbar).
@@ -147,6 +148,7 @@ $$\text{slot\_idx} = \text{head\_sequence} \pmod{N_{\text{slots}}}$$
 $$\tau_{\text{staleness}} = t_{\text{sample}} - t_{\text{publish}} \le \frac{1}{f_{\text{producer}}} = T_{\text{chunk}}$$
 
 where:
+
 - $\text{slot\_idx}$ is the physical buffer index into the triple-buffered SRAM mailbox [dimensionless integer $\in \{0, 1, 2\}$].
 - $\text{head\_sequence}$ is the monotonically increasing 64-bit atomic transaction counter [count].
 - $N_{\text{slots}} = 3$ is the triple-buffered slot allocation preventing writer-reader memory collisions.
@@ -249,6 +251,7 @@ The transition between operational regimes is defined by the hardware **Ridge Po
 $$\beta_{\text{ridge}} = \frac{\pi_{\text{peak}}}{\beta_{\text{mem}}} \quad \left[ \frac{\text{FLOPs}}{\text{Byte}} \right]$$
 
 where:
+
 - $\pi_{\text{peak}}$ is the peak theoretical compute throughput of the accelerator [$\text{FLOPs/s}$].
 - $\beta_{\text{mem}}$ is the peak sustained memory bus bandwidth [$\text{Bytes/s}$].
 - $\beta_{\text{ridge}}$ is the hardware ridge point separating memory-bound from compute-bound regimes [$\text{FLOPs/Byte}$].
@@ -275,6 +278,7 @@ Consider a concrete numerical comparison between two deployment architectures on
   Because single-token generation executes approximately $14.0\text{ GFLOPs/token}$ ($14.0 \times 10^9\text{ FLOPs/s}$), the operational arithmetic intensity is:
   $$I_{\text{arith}} = \frac{14.0 \times 10^9\text{ FLOPs/s}}{70.0 \times 10^9\text{ Bytes/s}} = 0.20\text{ FLOPs/Byte} \ll \beta_{\text{ridge}} \approx 120\text{ FLOPs/Byte}$$
   This $10.50\text{ W}$ memory bus power draw occurs entirely in PHY I/O pads and DRAM banks before arithmetic is performed, trapping the processor in the memory-bound regime where ALUs are stalled $>95\%$ of the time.
+
 * **Architecture B: Quantized Action-Chunked Policy in On-Chip SRAM:** An INT8-quantized 1D Temporal U-Net diffusion policy ($6.5\text{ MB}$ total parameter footprint) resides permanently inside the neural accelerator's $8\text{ MB}$ on-chip static SRAM. Generating a 16-step action chunk requires $1.2\text{ GFLOPs}$ of computation ($60.0\text{ GFLOPs/s}$ at $50\text{ Hz}$) while generating zero off-chip DRAM traffic ($\text{BW}_{\text{DRAM}} = 0\text{ GB/s}$). At internal SRAM access energy $E_{\text{SRAM}} \approx 1.5\text{ pJ/byte}$, total data movement power is:
   $$P_{\text{SRAM\_IO}} = 50\text{ Hz} \times 6.5 \times 10^6\text{ Bytes} \times 1.5 \times 10^{-12}\text{ J/Byte} = 0.00049\text{ Watts} = 0.49\text{ mW}$$
   Operational arithmetic intensity surges to $I_{\text{arith}} > 180\text{ FLOPs/Byte} > \beta_{\text{ridge}}$, operating squarely in the compute-bound regime, slashing data movement heat by $99.9\%$, and enabling sustained $50\text{ Hz}$ inference within a compact $8\text{ W}$ total SoC power envelope.
@@ -303,6 +307,7 @@ The thermodynamic heat dissipation of the compute die is governed by the lumped-
 $$C_{\text{th}} \frac{d T_j(t)}{dt} = P_{\text{dynamic}}(t) + P_{\text{leakage}}(T_j) - \frac{T_j(t) - T_{\text{ambient}}}{R_{\text{th}}}$$
 
 where:
+
 - $T_j(t)$ is the instantaneous silicon junction temperature [$^\circ\text{C}$].
 - $T_{\text{ambient}}$ is the ambient enclosure temperature [$^\circ\text{C}$].
 - $C_{\text{th}}$ is the lumped thermal capacitance of the silicon die and copper heat spreader [$\text{Joules}/^\circ\text{C}$ or $\text{J/K}$].
@@ -331,6 +336,7 @@ Consider an autonomous mobile robot with an onboard compute module enclosed in a
   Because $T_{\text{ss}} = 90.0^\circ\text{C} > 85.0^\circ\text{C}$, the silicon will breach the critical safety threshold ($T_{\text{trip}} = 85.0^\circ\text{C}$). The time elapsed before throttling trips is:
   $$t_{\text{trip}} = -45.0 \ln\left(1 - \frac{85.0 - 45.0}{25.0 \times 1.80}\right) = -45.0 \ln\left(1 - \frac{40.0}{45.0}\right) = -45.0 \ln\left(\frac{1}{9}\right) = 45.0 \ln(9) \approx 98.88\text{ s} \approx 98.9\text{ s}$$
   At $t = 98.9\text{ seconds}$, the hardware DVFS downclocking cliff triggers, forcing clock frequencies down by $60\%$ and halving inference throughput mid-mission.
+
 * **Proactive Cadence Scaling ($P_{\text{total}} \to 12.0\text{ W}$):** When firmware detects $T_j \ge 75.0^\circ\text{C}$ and proactively expands the chunk horizon ($H=16 \to 32$) while scaling cadence ($50\text{ Hz} \to 20\text{ Hz}$), total power drops to $12.0\text{ W}$. The new equilibrium stabilizes at:
   $$T_{\text{ss}} = 45.0^\circ\text{C} + (12.0\text{ W} \times 1.80\text{ K/W}) = 45.0 + 21.6 = 66.6^\circ\text{C}$$
   This safely caps package heating well below $80.0^\circ\text{C}$, completely preventing DVFS clock throttling while preserving real-time control deadlines.
@@ -479,6 +485,7 @@ During initial testing of Architecture A, a tug traveling at $v = 2.0\text{ m/s}
 A bimanual humanoid robot is designed to execute high-speed reactive manipulation ($50\text{ Hz}$ trajectory generation). The System 1.5 diffusion policy requires evaluating a 1D Temporal U-Net backbone on an embedded SoC.
 
 The engineering team has two options:
+
 1. **Option 1 (Large 65 MB FP16 Model on DRAM):** Generates exceptionally dexterous trajectories across 12 contact stages, but requires fetching $65\text{ MB}$ of weights from LPDDR5 DRAM per forward pass ($3.25\text{ GB/s}$ continuous DRAM traffic).
 2. **Option 2 (Compact 6.5 MB INT8 Model in SRAM):** Quantized to fit entirely within the NPU's dedicated $8\text{ MB}$ on-chip static SRAM ($I_{\text{arith}} > 180\text{ FLOPs/Byte}$, zero DRAM traffic), with a $4\%$ reduction in trajectory success rate on delicate assembly tasks.
 

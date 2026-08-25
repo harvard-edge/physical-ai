@@ -47,11 +47,13 @@ In physical control systems, holding a commanded position or velocity setpoint c
    The corresponding phase lag $\angle G_{\text{delay}}(j\omega)$ introduced into the open-loop transfer function is:
    $$\angle G_{\text{delay}}(j\omega) = -\omega \tau_d$$
    where $\tau_d = \frac{1}{2} T_{\text{infer}}$ represents the effective average transport lag of the zero-order hold.
+
 3. **Variable and Intuition Breakdown:**
    - $\omega$ is the dynamic frequency (or bandwidth) of the commanded motion in radians per second ($\text{rad/s}$), where $\omega = 2\pi f$. A fast arm sweep at $f = 1.6\text{ Hz}$ corresponds to $\omega \approx 10.0\text{ rad/s}$.
    - $T_{\text{infer}}$ is the forward inference latency of the neural network policy in seconds ($\text{s}$).
    - $\tau_d = \frac{1}{2}T_{\text{infer}}$ is the effective group delay in seconds ($\text{s}$), representing the average age of the held command across the sampling interval.
    - $\Delta \phi = -\omega \tau_d$ is the phase erosion in radians ($\text{rad}$) or degrees ($^\circ$). Because phase subtracts directly from the system's phase margin ($\text{PM} = 180^\circ + \angle L(j\omega_c)$), every degree of phase lost brings the physical plant closer to destructive instability.
+
 4. **Concrete Numerical Example:** Consider an articulated robot arm executing a high-speed assembly sweep with a dominant motion bandwidth of $\omega = 10.0\text{ rad/s}$ ($f \approx 1.59\text{ Hz}$). The vision-based neural policy requires $T_{\text{infer}} = 50.0\text{ ms}$ ($0.050\text{ s}$), establishing an effective ZOH transport delay of $\tau_d = 0.025\text{ s}$ ($25.0\text{ ms}$). The resulting phase loss is:
    $$\begin{aligned}
    \Delta \phi &= -\omega \tau_d = -10.0\text{ rad/s} \times 0.025\text{ s} = -0.25\text{ rad} \\
@@ -64,11 +66,13 @@ In physical control systems, holding a commanded position or velocity setpoint c
 System 1.5 resolves this cadence mismatch by replacing single-step outputs with multi-step trajectory chunks ($H \in [16, 32]$). By predicting a continuous temporal horizon of future waypoints in a single parallel inference pass, the planner amortizes the computational cost of neural inference across physical time. The resulting stream of future setpoints is buffered into shared memory, evaluated through kinodynamic boundary constraints, and interpolated to supply the $1000\text{ Hz}$ real-time execution tier with unbroken, jerk-continuous reference commands.
 
 Crucially, this trajectory planning paradigm generalizes across all three Physical AI archetypes:
+
 - **Manipulation (Articulated Arms):** 7-DoF joint angle trajectory chunks ($\mathbf{q}_{t:t+H}$) prevent high-frequency acceleration steps, protecting precision harmonic drives and cycloidal speed reducers from shear fracture.
 - **Mobility (Wheeled AMRs & Quadrupeds):** Continuous linear velocity $v(t)$, yaw rate $\omega(t)$, and foot trajectory chunks prevent tire slip, steering chatter, and dynamic rollover during high-speed maneuvers.
 - **Cybernetics (Battery Energy Storage & Microgrids):** Active and reactive power setpoint chunks ($[P(t), Q(t)]$) limit power ramp rates ($dP/dt$), preventing transformer saturation, inductive voltage spikes, and battery thermal runaway.
 
 Mastering this mid-rate planning organ requires bridging three engineering perspectives:
+
 - **Maya (CS/ML):** Evaluates why single-step autoregression fails on edge memory buses and how generative decoders (ACT and Diffusion Policies) synthesize multi-step action chunks filtered through receding-horizon temporal ensembling.
 - **Carlos (ECE/Embedded):** Architects lock-free Single-Producer Single-Consumer (SPSC) ring buffers, triple-buffering mailboxes, and zero-allocation Horner's evaluations in static SRAM to guarantee sub-microsecond timing within the 1 kHz timer ISR.
 - **Alex (Robotics/MechE):** Analyzes the physical mechanics of mechanical jerk ($\dddot{\mathbf{q}}$), formulating closed-form $\mathcal{C}^2$ quintic polynomial splines that strictly enforce joint jerk bounds ($\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$) and torque rate limits ($\|\dot{\boldsymbol{\tau}}\| \le 150.0\text{ N}\cdot\text{m/s}$).
@@ -94,15 +98,18 @@ To quantify the physical hazard of inference latency on stopping clearance, we e
 1. **Physical Hazard:** When an embodied agent detects an obstacle, moving mass cannot stop instantaneously. The total distance traversed before coming to a complete rest is the sum of the distance drifted during computational latency (reaction delay) and the kinematic braking distance. Inflating inference latency expands the reaction zone, turning minor compute delays into physical collisions.
 2. **Mathematical Formulation:** Under a constant maximum deceleration limit $a_{\text{max}}$, the dynamic stopping distance $d_{\text{stop}}$ is:
    $$d_{\text{stop}} = v \cdot \tau_{\text{delay}} + \frac{v^2}{2 a_{\text{max}}}$$
+
 3. **Variable and Intuition Breakdown:**
    - $v$ is the current forward or Cartesian velocity of the robot in meters per second ($\text{m/s}$).
    - $\tau_{\text{delay}}$ is the end-to-end computational and transmission latency in seconds ($\text{s}$), encompassing camera exposure, neural inference, memory transfer, and motor drive queueing.
    - $a_{\text{max}}$ is the maximum allowable emergency braking deceleration in meters per second squared ($\text{m/s}^2$), constrained by motor peak torque and tip-over stability.
    - $v \cdot \tau_{\text{delay}}$ represents the *reaction drift distance* during which the robot travels blindly at full speed before braking begins.
    - $\frac{v^2}{2 a_{\text{max}}}$ represents the *pure physical braking distance* dictated by kinetic energy dissipation.
+
 4. **Concrete Numerical Example:** Consider an autonomous mobile robot traveling at $v = 1.0\text{ m/s}$ with emergency braking limit $a_{\text{max}} = 2.0\text{ m/s}^2$. 
    - Under single-pass action chunking ($H=16$), neural inference runs in parallel once every $20\text{ Hz}$ cycle, with pipeline latency bounded to $\tau_{\text{delay}} = 25.0\text{ ms} = 0.025\text{ s}$. The reaction drift is $d_{\text{drift}} = 1.0 \times 0.025 = 0.025\text{ m}$ ($2.5\text{ cm}$), and total stopping distance is:
      $$d_{\text{stop, chunk}} = 0.025 + \frac{1.0^2}{2(2.0)} = 0.025 + 0.250 = 0.275\text{ m} \quad (27.5\text{ cm})$$
+
    - Under 16-step sequential autoregression, the cumulative latency explodes to $\tau_{\text{delay}} = 192.0\text{ ms} = 0.192\text{ s}$. The reaction drift balloons to $d_{\text{drift}} = 1.0 \times 0.192 = 0.192\text{ m}$ ($19.2\text{ cm}$), inflating the total stopping distance to:
      $$d_{\text{stop, autoreg}} = 0.192 + 0.250 = 0.442\text{ m} \quad (44.2\text{ cm})$$
    This represents a $61\%$ increase in stopping distance ($16.7\text{ cm}$ extra drift), easily breaching the safety clearance margin in cluttered human environments.
@@ -132,12 +139,14 @@ We evaluate the mathematical formulation of the reverse diffusion step:
 1. **Physical Hazard:** Deterministic regression fails in contact-rich manipulation tasks with multimodal solutions (such as pushing a T-block or inserting a plug). In contrast, diffusion policies represent arbitrary continuous probability distributions over trajectories without suffering from mode collapse.
 2. **Mathematical Formulation:** The discrete reverse diffusion iteration that steps from noise level $k$ to $k-1$ is:
    $$\mathbf{A}^{k-1} = \frac{1}{\sqrt{\alpha_k}} \left( \mathbf{A}^k - \frac{\beta_k}{\sqrt{1 - \bar{\alpha}_k}} \boldsymbol{\epsilon}_\theta(\mathbf{A}^k, k, \mathbf{O}_t) \right) + \sigma_k \mathbf{z}$$
+
 3. **Variable and Intuition Breakdown:**
    - $\mathbf{A}^k \in \mathbb{R}^{H \times d_a}$ is the noisy trajectory chunk at diffusion iteration $k \in \{K, K-1, \dots, 1\}$.
    - $\mathbf{O}_t$ represents observation conditioning containing visual patch tokens, spatial affordances, and proprioception measured at current time $t$.
    - $\boldsymbol{\epsilon}_\theta(\mathbf{A}^k, k, \mathbf{O}_t)$ is the learned neural noise prediction network (typically a 1D Temporal Convolutional U-Net).
    - $\beta_k \in (0, 1)$ is the variance schedule at step $k$, with $\alpha_k = 1 - \beta_k$ and cumulative product $\bar{\alpha}_k = \prod_{j=1}^k \alpha_j$.
    - $\sigma_k \mathbf{z}$ is optional injected Gaussian noise ($\mathbf{z} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$). In real-time deterministic deployment, numerical solvers set $\sigma_k = 0$ (as in Denoising Diffusion Implicit Models, DDIM) to produce repeatable trajectories.
+
 4. **Concrete Numerical Example:** Consider generating a trajectory chunk for a 7-DoF manipulator ($d_a = 7$) over horizon $H=16$ ($16 \times 7 = 112$ scalar values). Standard diffusion models use $K = 100$ denoising steps, which would take over $400\text{ ms}$ on an embedded GPU—far too slow for real-time control. Modern Physical AI implementations deploy accelerated DDIM or Flow Matching solvers requiring only $K = 4\text{--}8$ denoising steps. On an NVIDIA Jetson AGX Orin running TensorRT with FP16 precision, an 8-step DDIM solve completes in exactly $18.5\text{ ms}$, generating all 112 joint setpoints well within the $50.0\text{ ms}$ ($20\text{ Hz}$) planning cycle. Complete mathematical derivations of score-matching variational bounds and diffusion loss functions are cataloged in Appendix C.10.
 
 ### Receding-Horizon Temporal Ensembling
@@ -154,12 +163,14 @@ We formalize temporal ensembling using our four-step formula:
 2. **Mathematical Formulation:** At any physical time $t$, multiple overlapping action predictions $\{\mathbf{a}_t^{(i)}\}_{i=1}^M$ exist in memory, generated by policies evaluated at historical timestamps $t_i \le t$. The final commanded action waypoint $\mathbf{a}^*(t)$ is computed by an exponentially weighted average:
    $$\mathbf{a}^*(t) = \frac{\sum_{i=1}^M w_i \cdot \mathbf{a}_t^{(i)}}{\sum_{i=1}^M w_i}, \qquad w_i = \exp\left( -\lambda_{\text{decay}} (t - t_i) \right)$$
    where $\lambda_{\text{decay}} \ge 0$ is a temporal decay parameter.
+
 3. **Variable and Intuition Breakdown:**
    - $t$ is the current physical clock time ($\text{s}$).
    - $t_i$ is the initiation timestamp of the $i$-th historical action chunk ($\text{s}$).
    - $\mathbf{a}_t^{(i)}$ is the waypoint predicted by chunk $i$ for absolute timestamp $t$.
    - $\lambda_{\text{decay}}$ is the exponential forgetting factor (typically $\lambda_{\text{decay}} = 0.25$ per $50\text{ ms}$ interval).
    - $w_i = \exp(-\lambda_{\text{decay}}(t - t_i))$ is the weighting coefficient. Newer predictions (where $t - t_i$ is small) receive higher weight because they reflect fresher sensory observations, while older predictions provide inertial smoothing.
+
 4. **Concrete Numerical Example:** Suppose at physical time $t = 100\text{ ms}$, we have $M = 3$ overlapping predictions for Joint 1 angle from chunks generated at $t_1 = 0\text{ ms}$, $t_2 = 50\text{ ms}$, and $t_3 = 100\text{ ms}$. With $\lambda_{\text{decay}} = 0.25$ per step ($k = (t - t_i)/0.050$):
    - Chunk 3 ($k = 0$, newest): $w_3 = \exp(-0.25 \times 0) = 1.000$, predicting $a^{(3)} = 0.520\text{ rad}$.
    - Chunk 2 ($k = 1$, $50\text{ ms}$ old): $w_2 = \exp(-0.25 \times 1) \approx 0.779$, predicting $a^{(2)} = 0.480\text{ rad}$.
@@ -221,12 +232,15 @@ In the 1 kHz timer Interrupt Service Routine (ISR) of the microcontroller, the e
    $$s(\tau) = a_0 + \tau \Big( a_1 + \tau \big( a_2 + \tau ( a_3 + \tau ( a_4 + \tau a_5 ) ) \big) \Big)$$
    $$\dot{s}(\tau) = a_1 + \tau \Big( 2 a_2 + \tau \big( 3 a_3 + \tau ( 4 a_4 + \tau \cdot 5 a_5 ) \big) \Big)$$
    $$\ddot{s}(\tau) = 2 a_2 + \tau \Big( 6 a_3 + \tau \big( 12 a_4 + \tau \cdot 20 a_5 \big) \Big)$$
+
 3. **Variable and Intuition Breakdown:**
    - $\tau = t - t_{\text{start}}$ is the elapsed physical time within the current spline segment in seconds ($\text{s}$), where $0 \le \tau \le T$.
    - $a_0, a_1, \dots, a_5$ are the pre-computed polynomial coefficients stored in static SRAM.
    - By structuring the polynomial through Horner's nested form, computing position requires $5$ Fused Multiply-Adds (FMAs), velocity requires $4$ FMAs, and acceleration requires $3$ FMAs—totaling exactly $12$ FMAs per joint axis. A hardware FMA instruction executes $x \leftarrow (a \cdot b) + c$ in a single clock cycle with single-rounding precision.
+
 4. **Concrete Numerical Example:** Consider evaluating Joint 1 at time $\tau = 0.025\text{ s}$ ($25.0\text{ ms}$) within a $T = 0.050\text{ s}$ segment with pre-computed coefficients:
    $$\mathbf{a} = [a_0=0.0, a_1=1.0, a_2=0.0, a_3=400.0, a_4=-8000.0, a_5=48000.0]$$
+
    - Position $s(0.025)$:
      $$\text{Inner}_1 = a_4 + 0.025 \times a_5 = -8000.0 + 1200.0 = -6800.0$$
      $$\text{Inner}_2 = a_3 + 0.025 \times \text{Inner}_1 = 400.0 - 170.0 = 230.0$$
@@ -238,6 +252,7 @@ In the 1 kHz timer Interrupt Service Routine (ISR) of the microcontroller, the e
 ### Cross-Archetype Embedded Memory Implementations
 
 This lock-free silicon memory architecture is identical across all three embodied archetypes:
+
 - **Manipulation:** The SPSC queue transfers 7-DoF joint position, velocity, and acceleration coefficients to CAN-FD or EtherCAT motor drive transceivers.
 - **Mobility:** In autonomous mobile robots (AMRs) and automated guided vehicles (AGVs), the queue maps $[v_x, v_y, \omega_z]$ velocity trajectories into bare-metal motor traction controllers over an ISO 11898 CAN bus.
 - **Cybernetics:** In grid-tied battery storage systems, the queue transfers active/reactive power ramps $[P(t), Q(t)]$ directly to Digital Signal Processors (DSPs) driving high-voltage Silicon Carbide (SiC) inverter bridge gates.
@@ -269,12 +284,14 @@ We evaluate the mathematical mechanics of mechanical jerk using our four-step fo
    $$\dot{\boldsymbol{\tau}} = \mathbf{M}(\mathbf{q})\dddot{\mathbf{q}} + \dot{\mathbf{M}}(\mathbf{q})\ddot{\mathbf{q}} + \frac{d}{dt}\left[ \mathbf{C}(\mathbf{q}, \dot{\mathbf{q}})\dot{\mathbf{q}} + \mathbf{g}(\mathbf{q}) \right] \approx \mathbf{M}(\mathbf{q})\mathbf{j}$$
    The structural natural resonance frequency $f_n$ of a joint linkage with torsional stiffness $k_{\text{joint}}$ and rotational inertia $I_{\text{link}}$ is:
    $$f_n = \frac{1}{2\pi}\sqrt{\frac{k_{\text{joint}}}{I_{\text{link}}}}$$
+
 3. **Variable and Intuition Breakdown:**
    - $\mathbf{j} = \dddot{\mathbf{q}} = \frac{d^3\mathbf{q}}{dt^3}$ is the joint jerk vector in radians per second cubed ($\text{rad/s}^3$).
    - $\dot{\boldsymbol{\tau}}$ is the torque rate of change in Newton-meters per second ($\text{N}\cdot\text{m/s}$).
    - $k_{\text{joint}}$ is the torsional spring stiffness of the joint gearbox in Newton-meters per radian ($\text{N}\cdot\text{m/rad}$).
    - $I_{\text{link}}$ is the effective rotational inertia of the distal link in kilogram-meters squared ($\text{kg}\cdot\text{m}^2$).
    - $f_n$ is the fundamental mechanical resonant frequency in Hertz ($\text{Hz}$). When control commands contain spectral energy near $f_n$, the joint acts as an mechanical amplifier, sustaining destructive oscillations.
+
 4. **Concrete Numerical Example:** Consider Joint 2 of a precision manipulator arm carrying a fixture payload, with combined link inertia $I_{\text{link}} = 0.045\text{ kg}\cdot\text{m}^2$ and harmonic drive torsional stiffness $k_{\text{joint}} = 4{,}500\text{ N}\cdot\text{m/rad}$. The joint natural resonance frequency is:
    $$f_n = \frac{1}{2\pi}\sqrt{\frac{4{,}500\text{ N}\cdot\text{m/rad}}{0.045\text{ kg}\cdot\text{m}^2}} = \frac{1}{2\pi}\sqrt{100{,}000} = \frac{316.23}{6.2832} \approx 50.33\text{ Hz} \approx 50.3\text{ Hz}$$
    Because the neural policy updates at $20\text{ Hz}$ ($50\text{ ms}$) and the motor inverter updates at $1000\text{ Hz}$ ($1.0\text{ ms}$), un-interpolated step commands inject sharp high-frequency harmonic content spanning $20\text{--}80\text{ Hz}$. This directly excites the $50.3\text{ Hz}$ resonant mode, amplifying transmission vibrations and fatiguing flexspline teeth.
@@ -300,11 +317,13 @@ To protect mechanical transmissions, Physical AI systems interpolate discrete wa
    $$a_5 = \frac{12(s_1 - s_0) - 6(\dot{s}_1 + \dot{s}_0)T - (\ddot{s}_1 - \ddot{s}_0)T^2}{2T^5}$$
    For rest-to-rest transitions ($s_0=0, s_1=1$ with zero initial and final velocity and acceleration), this general solution reduces to the canonical $\mathcal{C}^2$ quintic smoothstep polynomial in normalized time $\alpha = \tau / T \in [0, 1]$:
    $$S(\alpha) = 6\alpha^5 - 15\alpha^4 + 10\alpha^3$$
+
 3. **Variable and Intuition Breakdown:**
    - $s_0, s_1$ are the initial and final joint positions in radians ($\text{rad}$).
    - $\dot{s}_0, \dot{s}_1$ are the initial and final joint velocities in radians per second ($\text{rad/s}$).
    - $\ddot{s}_0, \ddot{s}_1$ are the initial and final joint accelerations in radians per second squared ($\text{rad/s}^2$). Setting $\ddot{s}_0 = \ddot{s}_{\text{prev}}(T)$ guarantees unbroken acceleration across consecutive chunks.
    - $T$ is the segment duration in seconds ($\text{s}$), typically $T = 0.050\text{ s}$ ($50.0\text{ ms}$).
+
 4. **Concrete Numerical Example:** Consider a trajectory segment of duration $T = 0.050\text{ s}$ ($50.0\text{ ms}$) transitioning Joint 1 from $s_0 = 0.0\text{ rad}$ to $s_1 = 0.15\text{ rad}$, with initial velocity $\dot{s}_0 = 2.0\text{ rad/s}$, target velocity $\dot{s}_1 = 3.5\text{ rad/s}$, and boundary accelerations $\ddot{s}_0 = 0.0\text{ rad/s}^2, \ddot{s}_1 = 0.0\text{ rad/s}^2$:
    - $a_0 = 0.0\text{ rad}$
    - $a_1 = 2.0\text{ rad/s}$
@@ -317,6 +336,7 @@ To protect mechanical transmissions, Physical AI systems interpolate discrete wa
 ### Cross-Archetype Physical Jerk Protection
 
 The physics of $\mathcal{C}^2$ quintic spline interpolation applies universally across embodied domains:
+
 - **Manipulation:** Enforcing joint jerk bounds ($\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$) prevents gearbox tooth pitting and harmonic drive fatigue in multi-axis arms.
 - **Mobility:** Enforcing lateral jerk bounds ($j_{\text{lat}} \le 2.0\text{ m/s}^3$) on mobile robot trajectories prevents sudden lateral acceleration shifts, eliminating wheel slip in AMRs and dynamic rollover in legged quadrupeds.
 - **Cybernetics:** Enforcing $\mathcal{C}^2$ continuity on active power ramps ($dP/dt \le 50.0\text{ kW/s}$) prevents large current slew rates ($dI/dt$), eliminating inductive voltage spikes ($V = L \frac{dI}{dt}$) across power transformers and inverter filter inductors.
@@ -351,6 +371,7 @@ We trace the mechanical fracture using our four-step formula:
 1. **Physical Hazard:** Step changes in commanded velocity across discrete control ticks generate enormous acceleration spikes. When multiplied by link inertia, the resulting torque pulse severely exceeds the ultimate shear strength of transmission pins.
 2. **Mathematical Formulation:** The commanded acceleration, dynamic torque shock, and pin shear stress are:
    $$\ddot{q}_2 = \frac{\Delta \dot{q}}{\Delta t}, \qquad \tau_{\text{shock}} = I_{\text{joint2}} \cdot \ddot{q}_2, \qquad \tau_{\text{pin}} = \frac{F_{\text{shear}}}{A_{\text{pins}}} = \frac{\tau_{\text{shock}} / r_{\text{carrier}}}{n_{\text{pins}} \cdot \frac{\pi}{4} d_{\text{pin}}^2}$$
+
 3. **Variable and Intuition Breakdown:**
    - $\Delta \dot{q} = \dot{q}_{\text{new}} - \dot{q}_{\text{old}}$ is the velocity step across the chunk seam in radians per second ($\text{rad/s}$).
    - $\Delta t$ is the motor inverter control tick in seconds ($\text{s}$), here $0.001\text{ s}$ ($1.0\text{ ms}$).
@@ -359,11 +380,14 @@ We trace the mechanical fracture using our four-step formula:
    - $r_{\text{carrier}}$ is the pitch radius of the planetary pin carrier in meters ($\text{m}$).
    - $n_{\text{pins}}$ is the number of planetary pins sharing the load, each of diameter $d_{\text{pin}}$.
    - $\tau_{\text{pin}}$ is the shear stress on the pin cross-section in Megapascals ($\text{MPa}$).
+
 4. **Concrete Numerical Example:** In this incident:
    - Commanded acceleration spiked to:
      $$\ddot{q}_2 = \frac{\Delta \dot{q}}{\Delta t} = \frac{1.07\text{ rad/s}}{0.001\text{ s}} = 1{,}070\text{ rad/s}^2$$
+
    - Given the combined link and payload inertia ($I_{\text{joint2}} \approx 0.045\text{ kg}\cdot\text{m}^2$), the dynamic torque shock was:
      $$\tau_{\text{shock}} = I_{\text{joint2}} \cdot \ddot{q}_2 = 0.045 \times 1{,}070 = 48.15\text{ N}\cdot\text{m} \approx 48.2\text{ N}\cdot\text{m}$$
+
    - This torque pulse exceeded the $28.0\text{ N}\cdot\text{m}$ rated shear threshold of the Joint 2 cycloidal speed reducer. At a carrier radius of $r_{\text{carrier}} = 0.035\text{ m}$, total shear force reached $F = 48.15 / 0.035 = 1{,}375.7\text{ N}$. Concentrated across the pin engagement faces, the peak localized shear stress exceeded the $280\text{ MPa}$ shear yield strength of the hardened steel pins, shearing them cleanly under $4.2\text{ kN}$ total instantaneous shear force. The forearm linkage detached and dropped the $12.0\text{ kg}$ assembly fixture onto the granite table ($3,800\text{ USD}$ overhaul). The flight-recorder telemetry sequence is documented in @tbl-telemetry-ch08.
 
 | Timestamp | Subsystem & Substrate | Recorded State / Telemetry Event | Physical Implication |
@@ -401,6 +425,7 @@ To prevent this windup failure, Physical AI architectures enforce the **Asynchro
   The maximum rate of torque change is strictly bounded by winding inductance:
   $$\dot{\tau}_{\text{max}} = K_t \left( \frac{V_{\text{bus}} - K_e N_{\text{gear}} \dot{q} - R i_q}{L} \right)$$
   At high joint speeds, available voltage headroom $\Delta V$ approaches zero, severely choking torque slew rates ($\dot{\tau} \to 0$). A trajectory that satisfies static torque bounds but demands high torque slew rates ($\|\dot{\boldsymbol{\tau}}\| > 150.0\text{ N}\cdot\text{m/s}$) causes severe torque tracking lag, inverter overcurrent faults, or DC bus voltage collapse.
+
 * **The Systems Invariant:** Trajectory planners must enforce dynamic torque-rate limits ($\|\dot{\boldsymbol{\tau}}\| \le \dot{\tau}_{\text{max}}(\dot{\mathbf{q}})$) and evaluate electro-mechanical voltage headroom envelopes before committing candidate splines to real-time motor inverters.
 :::
 
@@ -455,11 +480,13 @@ We formulate the mathematical verification of chunk boundaries using our four-st
 1. **Physical Hazard:** Silent boundary velocity steps ($\Delta \dot{\mathbf{q}}$) or acceleration jumps ($\Delta \ddot{\mathbf{q}}$) across consecutive chunk seams command impulsive torque transients that excite mechanical resonance, wear gearbox teeth, and degrade positional repeatability without triggering OS kernel panics.
 2. **Mathematical Formulation:** At each chunk handoff boundary, the real-time microcontroller evaluates the boundary derivative jump norms:
    $$\Delta \dot{\mathbf{q}}_{\text{boundary}} = \|\dot{\mathbf{q}}_0^{(k+1)} - \dot{\mathbf{q}}_H^{(k)}\|, \qquad \Delta \ddot{\mathbf{q}}_{\text{boundary}} = \|\ddot{\mathbf{q}}_0^{(k+1)} - \ddot{\mathbf{q}}_H^{(k)}\|$$
+
 3. **Variable and Intuition Breakdown:**
    - $\dot{\mathbf{q}}_H^{(k)}$ and $\ddot{\mathbf{q}}_H^{(k)}$ are the terminal joint velocity and acceleration vectors of the active Chunk $k$ evaluated at $t = t_0 + H\Delta t$.
    - $\dot{\mathbf{q}}_0^{(k+1)}$ and $\ddot{\mathbf{q}}_0^{(k+1)}$ are the initial joint velocity and acceleration vectors of the newly committed candidate Chunk $k+1$.
    - $\Delta \dot{\mathbf{q}}_{\text{boundary}}$ is the Euclidean velocity discontinuity across all $n$ kinematic joints in radians per second ($\text{rad/s}$).
    - $\Delta \ddot{\mathbf{q}}_{\text{boundary}}$ is the Euclidean acceleration discontinuity in radians per second squared ($\text{rad/s}^2$).
+
 4. **Concrete Numerical Example:** Consider an industrial robot arm with boundary acceptance thresholds set to $\Delta \dot{q}_{\text{thresh}} = 0.20\text{ rad/s}$ and $\Delta \ddot{q}_{\text{thresh}} = 5.0\text{ rad/s}^2$. 
    - When an un-ensembled diffusion chunk arrives with $\Delta \dot{\mathbf{q}}_{\text{boundary}} = 0.45\text{ rad/s} > 0.20\text{ rad/s}$, the MCU boundary checker flags the chunk seam in under $0.8\,\mu\text{s}$. 
    - Rather than executing the discontinuous waypoint, the MCU rejects Chunk $k+1$, triggers an atomic pipeline re-anchoring interrupt, and generates a smooth quintic deceleration profile that arrests joint motion to zero. This online detector provides over $99.5\%$ diagnostic coverage against transmission-damaging trajectory discontinuities.
@@ -478,6 +505,7 @@ Evaluating trajectory synthesis and mid-rate planning architectures requires con
 #### Stress-Test 1: The Long-Horizon Amortization vs. Reaction-Drift Dilemma {.unnumbered}
 
 An autonomous mobile manipulator navigates dynamic hospital corridors at $v = 1.5\text{ m/s}$. The engineering team evaluates two diffusion trajectory policy configurations:
+
 1. **Long Horizon ($H = 32$ steps, $50\text{ ms}$ interval, $1.6\text{ s}$ duration):** Evaluated at $2\text{ Hz}$ ($500\text{ ms}$ inference latency). Amortizes compute, keeping NPU power dissipation at $8\text{ W}$ and delivering exceptionally smooth long-range paths.
 2. **Short Horizon ($H = 8$ steps, $50\text{ ms}$ interval, $400\text{ ms}$ duration):** Evaluated at $20\text{ Hz}$ ($50\text{ ms}$ inference latency). Requires high-frequency inference drawing $28\text{ W}$, heating the embedded SoC near the thermal throttling threshold.
 
@@ -517,6 +545,7 @@ The motor cannot ramp torque fast enough to track the spline's acceleration prof
 This chapter established the necessity and mechanics of trajectory action chunking as the architectural bridge between cognitive inference and mechanical reality. We diagnosed the dynamical instability caused by single-step Markovian latency and demonstrated how generative decoders (including ACT and Diffusion Policies) amortize this latency by producing multi-step prediction horizons ($H=16$). Through receding-horizon temporal ensembling and $\mathcal{C}^2$ quintic polynomial splines, discrete neural predictions are mathematically transformed into continuous, jerk-bounded trajectories that safely drive high-frequency motor inverters without triggering mechanical resonances or shearing gearbox pins.
 
 Across our engineering disciplines:
+
 - **Maya (CS/ML)** mastered how generative sequence-to-sequence decoders and temporal ensembling transform stochastic diffusion samples into smooth, low-pass filtered control horizons without autoregressive KV-cache bottlenecks.
 - **Carlos (ECE/Embedded)** engineered the lock-free static SRAM queues, triple-buffering mailboxes, and zero-allocation Horner's evaluations that execute in under $1.2\,\mu\text{s}$ within the 1 kHz timer ISR.
 - **Alex (Robotics/MechE)** derived the closed-form $\mathcal{C}^2$ quintic spline boundary conditions that strictly enforce joint jerk bounds ($\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$) and torque rate limits ($\|\dot{\boldsymbol{\tau}}\| \le 150.0\text{ N}\cdot\text{m/s}$), preventing catastrophic gear pin shear.

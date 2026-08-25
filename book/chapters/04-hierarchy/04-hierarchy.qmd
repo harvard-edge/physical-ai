@@ -10,6 +10,7 @@ In classical computing, software is decoupled from physical time. If a foundatio
 {{< pagebreak >}}
 
 ::: {.callout-objective}
+
 After studying this chapter, you will be able to:
 
 1. **Quantify the Cadence Chasm:** Analyze the fundamental frequency mismatch between semantic deliberation ($0.5\text{--}2\text{ Hz}$), trajectory decoding ($20\text{--}50\text{ Hz}$), and reactive motor reflexes ($1000\text{ Hz}$).
@@ -21,6 +22,7 @@ After studying this chapter, you will be able to:
 7. **Architect Zero-Allocation Inter-Cadence IPC:** Design lock-free SRAM ring buffers using atomic sequence counters and zero dynamic heap allocation (`malloc = 0`).
 
 **Core Chapter Takeaway:** Embodied intelligence cannot execute as a single monolithic software loop; it demands an asynchronous multi-rate hierarchy that decouples slow foundation models from deterministic, bare-metal safety reflexes across a strict Proposal–Permission boundary.
+
 :::
 
 
@@ -50,12 +52,14 @@ We then establish the Proposal–Permission Privilege Split (Section 4.6), confi
 To understand why monolithic software execution fails catastrophically when coupled to physical mass, we conduct a forensic autopsy of the formal National Transportation Safety Board (NTSB) investigation into the March 2018 Uber Advanced Technologies Group (ATG) autonomous vehicle collision in Tempe, Arizona. The experimental platform, illustrated in @fig-tempe-testbed, was a modified Volvo XC90 sport utility vehicle operating in autonomous mode, cruising northbound on an unlit multi-lane arterial road at $v = 19.4\text{ m/s}$ ($43.5\text{ mph}$, or approximately $70\text{ km/h}$). In classical computer vision benchmarks, software performance is characterized by abstract statistical metrics such as mean average precision or frame processing throughput; in embodied AI, however, an operating vehicle represents a two-ton physical mass possessing substantial linear kinetic energy ($E_k = \frac{1}{2} m v^2 \approx 3.8 \times 10^5\text{ J}$) traversing physical space in unyielding real time. Every millisecond of algorithmic delay or state corruption burns irreplaceable physical clearance. The Tempe crash was not caused by catastrophic sensor blindness, optical occlusion, or sudden mechanical actuator breakage; rather, it was engineered by an architectural failure of multi-rate systems partitioning, specifically subordinating real-time braking safety authority to a stochastic, asynchronous neural perception loop without enforcing a deterministic Proposal–Permission boundary.
 
 ::: {.callout-autopsy title="The Tempe Desynchronization"}
+
 * **System:** Modified Volvo XC90 automated vehicle platform ($m \approx 2100\text{ kg}$) cruising at $v = 19.4\text{ m/s}$ ($43.5\text{ mph}$, $70\text{ km/h}$) on an unlit multi-lane arterial roadway in Tempe, Arizona.
 * **Incident:** Autonomous vehicle struck a pedestrian pushing a cargo-laden bicycle across traffic lanes at full cruising velocity with zero automated braking deceleration applied, dissipating $3.8 \times 10^5\text{ J}$ of kinetic energy in a fatal impact.
 * **Telemetry Snapshot:** First detected at $T - 5.6\text{ s}$ ($82\text{ m}$ range); classifier toggled across four distinct semantic labels; Kalman filter velocity reset to $\mathbf{0}$ on each label toggle; motion planner asserted $1000\text{ ms}$ suppression delay at $T - 1.2\text{ s}$ ($23.3\text{ m}$ clearance); impact at $T + 0.0\text{ s}$ ($d_{\text{clearance}} = 0\text{ m}$).
 * **Root Cause:** Semantic label thrashing in the $10\text{ Hz}$ neural classifier caused the tracking subsystem to repeatedly destruct and re-instantiate C++ tracking objects, zeroing the Kalman filter velocity state vector and hiding lateral motion until an unmanaged $1.0\text{ s}$ software suppression timer burned the remaining physical dynamic stopping clearance.
 * **Architectural Flaw:** Monolithic centralization of safety authority within an asynchronous, class-dependent neural perception pipeline rather than delegating emergency stopping to an independent, class-agnostic 1 kHz bare-metal safety reflex.
 * **Provenance:** Formal National Transportation Safety Board (NTSB) investigation report NTSB/HAR-19/03 (Accident HWY18MH010).
+
 :::
 
 ![**The Uber ATG Automated Driving System Test Platform.** Deploying a modified Volvo XC90 equipped with roof-mounted LiDAR, radar clusters, and optical cameras. The NTSB investigation revealed that asynchronous classification toggling across the $10\text{ Hz}$ perception pipeline repeatedly reset tracking state velocity vectors, while an artificial $1000\text{ ms}$ software suppression delay consumed the physical dynamic stopping margin.](figures/fig03_tempe_vehicle_cropped.jpg){#fig-tempe-testbed width=85%}
@@ -148,9 +152,11 @@ where $v$ is instantaneous velocity ($\text{m/s}$), $\tau_{\text{latency}}$ is w
 : The Three Cadences of Physical AI. Dimension comparison across the asynchronous multi-rate temporal hierarchy. {#tbl-three-cadences}
 
 ::: {.callout-fallacy title="The Single-Rate Monolithic Control Loop (The Unified Thread Fallacy)"}
+
 * **The Common Assumption:** If an engineering team quantizes a vision-language-action policy (e.g., using INT8 TensorRT) and runs it on a high-end edge accelerator alongside real-time Linux (`PREEMPT_RT`), the entire stack—perception, trajectory generation, and motor torque dispatch—can execute within a single synchronous 1 kHz `while True:` loop.
 * **The Physical Reality:** Software quantization accelerates average execution ($P_{50}$) but cannot eliminate hardware non-determinism. Out-of-order execution, DRAM refresh cycles, PCIe arbitration, and OS memory compaction inevitably cause tail latency spikes ($P_{99.9} > 100\text{ ms}$). In a synchronous single-rate loop, a single 100 ms inference stall freezes the motor control loop for 100 consecutive ticks. The physical robot coasts unguided under kinetic momentum ($d_{\text{react}} = v \cdot \Delta t$), inducing phase lag inversion ($\Delta \phi = -\omega t_{\text{delay}}$) and tripping over-current hardware clamps.
 * **The Systems Invariant:** Physical AI demands an asynchronous multi-rate temporal hierarchy decoupled across isolated silicon domains. Millisecond motor reflexes must execute on bare-metal microcontroller cores completely independent of high-level neural inference threads.
+
 :::
 
 
@@ -194,20 +200,26 @@ Maintaining data consistency across heterogeneous silicon is further complicated
 Bridging extreme rate disparities, such as an MCU evaluating closed-loop impedance at 1000 Hz against an AI trajectory planner generating state updates at 50 Hz, requires lock-free double-buffering or triple-buffering mailbox structures. In a triple-buffered mailbox contract, memory is partitioned into three discrete pre-allocated frames: the Writer Buffer, the Reader Buffer, and the Exchange Buffer. The 50 Hz trajectory generator populates the Writer Buffer in isolation; upon completing and flushing the payload, it executes an unconditional atomic exchange (`atomic_exchange_explicit`) on an index tracking variable, swapping the Writer Buffer index with the Exchange Buffer index and capturing the old exchange buffer for its next write cycle. Whenever the 1 kHz MCU loop triggers via hardware timer interrupt, it atomically claims the Exchange Buffer index as its new Reader Buffer, obtaining the newest available trajectory vector in under five nanoseconds. Because the writer and reader never access the same physical buffer index simultaneously, neither core ever stalls, lock contention is mathematically eliminated, and the high-frequency control loop is completely decoupled from trajectory generation jitter.
 
 ::: {.callout-fallacy title="POSIX Mutexes and Blocking Synchronization in Real-Time Loops"}
+
 * **The Common Assumption:** Standard OS synchronization primitives like `std::mutex`, `pthread_mutex_t`, or counting semaphores provide thread-safe mutual exclusion with minimal code complexity when sharing memory between trajectory planners and motor control loops.
 * **The Physical Reality:** POSIX mutexes rely on kernel futexes and OS scheduler mediation. When an unprivileged low-priority thread holds a mutex and gets preempted, a hard real-time 1 kHz control thread attempting to acquire the lock enters an unbounded sleep state—a classic *priority inversion*. Even with priority inheritance protocols enabled, acquiring a contested mutex incurs $5\text{--}50\,\mu\text{s}$ of scheduler jitter. If the high-level policy stalls or deadlocks in user space, the motor control loop hangs indefinitely, causing inverter PWM registers to latch stale current into stator coils until physical destruction occurs.
 * **The Systems Invariant:** Real-time safety paths must never execute blocking synchronization primitives, kernel context switches, or lock spinning. Inter-cadence memory sharing across heterogeneous cores must strictly employ wait-free, lock-free SPSC SRAM mailboxes governed by atomic sequence counters and acquire-release memory fences.
+
 :::
 
 To achieve deterministic, wait-free communication across heterogeneous processor domains, physical AI systems organize shared SRAM mailboxes under four strict hardware-level principles:
 
 1. **Cache Line Isolation (`alignas(64)`):** Modern 64-bit application processors (ARM Cortex-A) operate with 64-byte cache lines. If a producer variable (e.g., `write_seq`) and a consumer variable (e.g., `read_seq`) share the same 64-byte cache line, modifying either variable forces cache line invalidations across all processor cores—a severe performance degradation known as *false sharing*. Structs and sequence counters must be explicitly aligned to 64-byte boundaries.
+
 2. **Triple-Buffered Lock-Free Exchange:** Bridging extreme rate disparities (such as a 50 Hz trajectory planner writing to a 1000 Hz motor controller) without lock contention requires a triple-buffered mailbox partition consisting of three distinct slots:
    - *The Writer Slot:* Owned exclusively by the 50 Hz Linux MPU for populating the incoming trajectory chunk.
    - *The Reader Slot:* Owned exclusively by the 1000 Hz real-time MCU for evaluating the active polynomial spline.
    - *The Exchange Slot:* Holds the most recently published, fully committed trajectory chunk.
+
    When the MPU finishes assembling a chunk, it executes an atomic swap between its Writer Index and the Exchange Index with `memory_order_release`. When the MCU timer interrupt fires, it atomically swaps its Reader Index with the Exchange Index with `memory_order_acquire`, acquiring the newest trajectory payload in under five nanoseconds without thread blocking.
+
 3. **Explicit Point of Coherency (PoC) Cache Maintenance:** In heterogeneous SoCs where application cores operate with L1/L2 data caches while real-time microcontrollers access SRAM directly without hardware cache snooping (non-coherent interconnects), software must explicitly enforce cache maintenance. The producer flushes dirty cache lines to physical SRAM using clean operations (`dc civac` on ARM64) accompanied by Data Synchronization Barriers (`dsb ish`), while the consumer invalidates its local cache lines (`dc ivac`) to force fresh reads directly from physical memory.
+
 4. **Zero Heap Allocation (`malloc = 0`):** All mailbox payload buffers, sequence counters, and spline coefficient arrays are statically declared at compile time in dedicated on-chip SRAM partitions, guaranteeing zero runtime dynamic memory allocation and eliminating heap fragmentation risks.
 
 Even with optimal hardware memory synchronization, physical AI systems must manage boundary failure modes arising from cadence mismatches and computational latency spikes. When inference latency spikes cause the high-level policy to starve the control loop (consumer executing faster than producer updates), the low-level controller cannot simply apply a zero-order hold on the last received setpoint. In physical actuators, step discontinuities in commanded positions $\Delta \mathbf{q}_d$ demand instantaneous velocity shifts, producing infinite acceleration impulses that trigger torque saturation, excessive inverter current, and violent mechanical resonance. Instead, when the sequence counter indicates no new buffer has been published, the MCU evaluates a local $\mathcal{C}^2$-continuous polynomial extrapolation:
@@ -219,9 +231,11 @@ parameterized by the spline coefficients packaged in the last valid payload, whe
 Conversely, when high-rate vision or tactile state estimators produce frames faster than a downstream consumer can process (producer overflow), the lock-free ring buffer executes an intentional stale-frame drop policy. The producer advances write sequence indices past unread slots while incrementing an atomic overflow diagnostic counter, guaranteeing that the physical AI system acts strictly upon fresh spatial reality rather than stale, delayed control representations that would degrade phase margin and destabilize the closed-loop system (@tbl-cross-cadence-mechanisms).
 
 ::: {.callout-fallacy title="Zero-Order Hold Setpoint Stepping Across Cadence Boundaries"}
+
 * **The Common Assumption:** When bridging a 50 Hz trajectory planner to a 1 kHz motor control loop, holding the position setpoint constant for 20 ms (Zero-Order Hold) and then jumping to the next waypoint is a harmless discrete approximation.
 * **The Physical Reality:** Stepping a commanded position by $\Delta \mathbf{q}$ across a sample period $T_s$ creates step velocity jumps ($\dot{\mathbf{q}} = \Delta \mathbf{q} / T_s$) and infinite impulsive jerk ($\dddot{\mathbf{q}} \to \infty$). In high-gain joint feedback loops, these step discontinuities demand instantaneous torque reversals, launching acoustic shockwaves through mechanical transmissions, chipping planetary gear teeth, stripping harmonic drive flexsplines, and tripping inverter over-current protections.
 * **The Systems Invariant:** Cadence boundary handoffs must enforce $\mathcal{C}^2$ differential continuity. Trajectory payloads must transmit polynomial spline coefficients or multi-step action chunks, allowing the 1 kHz real-time microcontroller to evaluate local quintic splines in static SRAM with strictly bounded jerk ($\|\dddot{\mathbf{q}}\| \le \mathbf{j}_{\text{max}}$).
+
 :::
 
 | IPC Synchronization Mechanism | Typical Latency ($\mu\text{s}$) | Memory Bus Impact | Determinism Guarantee | Non-Coherent Safety Mechanism |
@@ -247,10 +261,13 @@ In this formulation, $\mathcal{G}_{\text{task}} \in \mathrm{SE}(3) \times \mathb
 To guarantee physical safety, the deterministic permission authority executes a fixed-period (1 kHz) interrupt service routine (ISR) on an isolated real-time microcontroller core (e.g., an Arm Cortex-M7 or lockstep RISC-V processor executing from static SRAM). Every millisecond tick, the MCU evaluates four non-negotiable runtime invariants before allowing any candidate control input $\mathbf{u}_{\text{cand}}$ to energize the motor commutators:
 
 1. **Temporal Freshness:** The instantaneous hardware time $t_{\text{now}}$ must satisfy $t_{\text{now}} - t_{\text{issue}} \le \Delta t_{\text{lease}}$. If an upstream computation stall or network drop causes the lease to lapse, the MCU immediately triggers a deterministic fallback deceleration. Silence from the proposal engine triggers safety.
+
 2. **Workspace Boundedness (Geofence):** The proposed operational target and forward kinematic swept volume must reside strictly inside the authorized spatial envelope and outside all keep-out zones: $\mathbf{p}_{\text{target}} \in \mathcal{S}_{\text{hull}} \setminus \mathcal{B}_{\text{keepout}}$.
+
 3. **Dynamic Stopping Clearance:** The available physical clearance to an obstacle $d_{\text{clearance}}$ must strictly exceed the robot's physical stopping distance under maximum emergency braking deceleration:
    $$d_{\text{clearance}} \ge d_{\text{stop}}(v) = v \cdot \tau_{\text{latency}} + \frac{v^2}{2 a_{\text{max}}}$$
    where $v$ is the instantaneous velocity, $\tau_{\text{latency}}$ is the sensing and communication latency delay, and $a_{\text{max}}$ is the maximum allowable deceleration bounded by actuator torque and traction limits.
+
 4. **Forward Safety Barrier (Speed Governor):** For every physical safety boundary modeled by a barrier function $h(\mathbf{x}) \ge 0$ (where $h(\mathbf{x}) > 0$ represents the safe operating region and $h(\mathbf{x}) = 0$ is the boundary), the system's approach velocity must satisfy:
    $$\dot{h}(\mathbf{x}) \ge -\gamma \, h(\mathbf{x})$$
    where $\gamma > 0$ is a tunable decay parameter. Intuitively, this invariant acts as an automatic speed governor: when the robot is far from danger ($h \gg 0$), it is free to move at high speed ($\dot{h}$ can be negative). As the robot approaches the safety boundary ($h \to 0$), the maximum allowable approach speed towards the obstacle is continuously throttled down to zero, guaranteeing that the machine cannot cross into unsafe territory.^[in @sec-enforcement, we will explore the complete control-theoretic formulation of Control Barrier Functions (CBFs), their Lie derivative expansions $L_f h(\mathbf{x}) + L_g h(\mathbf{x})\mathbf{u} \ge -\alpha(h(\mathbf{x}))$, and how microcontrollers solve quadratic programs deterministically in static SRAM with zero dynamic heap allocation.]
@@ -272,9 +289,11 @@ This filter embodies the core pair-programming philosophy of Physical AI: during
 When an intent lease deterministically expires without renewal, or when aggressive external disturbances render the QP constraint set empty, the permission authority executes an escalation hierarchy structured across standardized functional safety stop categories (@tbl-safety-stop-escalation). The initial response is a Category 2 stop, representing a controlled stop where power to the actuator inverter bridges is fully retained: the MCU freezes the target configuration at the boundary of the last valid state $\mathbf{q}(t_{\text{freeze}})$ and executes localized, high-bandwidth closed-loop impedance regulation to hold posture against gravity while awaiting the arrival of a fresh, valid lease. If the lease lapse persists beyond a secondary threshold $\tau_{\text{fault}} > \Delta t_{\text{lease}}$, or if the clearance margin continues to degrade, the system escalates to a Category 1 stop (Safe Stop 1, SS1), wherein the MCU commands a certified maximum-torque decelerating trajectory along an admissible braking manifold until total kinetic energy collapses to zero, subsequently engaging mechanical spring-applied friction brakes and de-energizing the pulse-width modulation (PWM) drivers. Finally, upon detection of unrecoverable internal anomalies (such as lockstep core comparison mismatches, DC bus over-current surges, or physical limit switch trips), the system instantly trips a Category 0 stop (Safe Torque Off, STO). In Category 0, dual-channel hardware safety relays physically sever the high-voltage DC supply to the three-phase bridge inverters within microseconds, collapsing the rotating magnetic field and isolating the motor windings from electrical power, ensuring that no software defect, operating system panic, or neural network hallucination can violate the invariant laws of physical mechanics.
 
 ::: {.callout-fallacy title="Unbounded Action Horizons and the Active Abort Fallacy"}
+
 * **The Common Assumption:** An autonomous system can issue open-ended velocity, position, or torque setpoints to low-level motor controllers, relying on the high-level neural autonomy stack or a supervisory thread to transmit an explicit "abort" or "emergency stop" command when a failure occurs.
 * **The Physical Reality:** If the high-level application processor experiences an out-of-memory kernel panic, enters an unhandled garbage collection pause, locks up on a socket read, or suffers thermal downclocking, it ceases executing instructions. Because the faulted host cannot transmit an affirmative abort command, the low-level controller continues executing the last latched setpoint indefinitely, driving the physical robot at full power into obstacles, hardstops, or human operators.
 * **The Systems Invariant:** All high-level proposals must be issued as temporally bounded Expiring Intent Leases ($\mathcal{L}_{\text{intent}}$) with hard hardware-enforced expiration times ($\Delta t_{\text{lease}} \le 100\text{ ms}$). Silence from the proposal engine is an immediate fail-safe trigger; if a lease is not proactively renewed before expiration, the real-time microcontroller's hardware watchdog timer deterministically transitions actuators to a safe holding state.
+
 :::
 
 
@@ -327,6 +346,7 @@ To master multi-rate systems engineering across heterogeneous silicon and physic
 #### Stress-Test 1: The Shared UMA Memory Crossbar and the 4K Ingestion Dilemma {.unnumbered}
 
 An autonomous humanoid robot's head incorporates four $4\text{K}$ 60 FPS global-shutter perception cameras streaming uncompressed raw Bayer data directly into a shared LPDDR5 DRAM subsystem across an ARM AXI on-die crossbar ($48.0\text{ GB/s}$ physical bandwidth). The compute SoC hosts:
+
 - A high-capacity 7B Vision-Language-Action foundation model (System 2, running on an NPU cluster).
 - A 50 Hz diffusion trajectory generator (System 1.5, running on an embedded GPU).
 - A 1000 Hz real-time safety enforcer (System 1, running on an isolated Cortex-R5 real-time core).
@@ -346,6 +366,7 @@ An autonomous humanoid robot's head incorporates four $4\text{K}$ 60 FPS global-
 A bipedal humanoid ($m = 70\text{ kg}$) is ascending an uneven concrete staircase at $v = 0.8\text{ m/s}$. The robot is in single-stance phase on its right foot, dynamically balancing its center of mass ($CoM$) forward over the edge of the next stair riser.
 
 * **The Cadence Blackout:** The upstream System 2 VLA planner, running on the Linux host, encounters a dynamic memory allocation heap fragmentation stall, delaying the next Expiring Intent Lease by $85\text{ ms}$. The active intent lease ($\Delta t_{\text{lease}} = 100\text{ ms}$) expires.
+
 * **The Conflict:**
   - *Safety Policy A (Strict Safe Stop 1 / Category 1):* The System 1 safety supervisor detects lease expiry and triggers an immediate controlled dynamic brake to rest ($v \to 0$). However, because the robot is in single-stance dynamic fall, bringing joint velocities to zero freezes the stance leg, causing the body momentum ($p = mv$) to pivot over the foot and pitch violently down the staircase.
   - *Safety Policy B (Open-Ended Horizon Extrapolation):* The System 1 controller continues forward extrapolation along the old trajectory. However, the stair geometry shifts $5\text{ cm}$ to the left, which the expired intent lease did not account for.
@@ -359,6 +380,7 @@ A bipedal humanoid ($m = 70\text{ kg}$) is ascending an uneven concrete staircas
 A mobile dual-arm manipulator is performing hazardous chemical decontamination. The System 1.5 diffusion policy generates 16-step action chunks ($H=16$, spanning an $800\text{ ms}$ horizon at $20\text{ Hz}$ execution, with nominal inference time $t_{\text{inference}} = 35\text{ ms}$).
 
 * **The Environmental Thermal Load:** Ambient room temperature rises to $45^\circ\text{C}$. The embedded GPU reaches $95^\circ\text{C}$, triggering hardware Dynamic Voltage and Frequency Scaling (DVFS). GPU clock frequency is halved from $1.3\text{ GHz}$ to $650\text{ MHz}$.
+
 * **The Cascade Breakdown:**
   - Diffusion inference time inflates from $35\text{ ms}$ to $110\text{ ms}$.
   - Because the policy runs at $20\text{ Hz}$ ($50\text{ ms}$ period), it cannot complete inference within a single cycle.
@@ -374,6 +396,7 @@ A mobile dual-arm manipulator is performing hazardous chemical decontamination. 
 A multi-joint industrial manipulator coordinates its joint controllers across an IEEE 802.1AS Time-Sensitive Networking (TSN) Ethernet bus. The host MPU runs an open-loop trajectory publisher on Linux, while 6 individual joint microcontrollers execute Field-Oriented Control at 10 kHz.
 
 * **The Asynchrony Trap:** Due to an uncalibrated crystal oscillator drift ($+60\text{ ppm}$) on Joint 3's microcontroller, its local hardware clock advances by $216\text{ ms}$ over one hour relative to the master PTP clock.
+
 * **The Causality Inversion:**
   - When the MPU dispatches a multi-joint trajectory payload timestamped with $t_{\text{issue}} = T_{\text{master}}$, Joint 3 evaluates the temporal freshness check: $\Delta t = t_{\text{local}} - t_{\text{issue}}$.
   - Because $t_{\text{local}} > t_{\text{issue}} + \Delta t_{\text{lease}}$, Joint 3 rejects the valid trajectory as "stale" and trips an emergency stop, while Joints 1, 2, 4, 5, and 6 continue tracking the trajectory.

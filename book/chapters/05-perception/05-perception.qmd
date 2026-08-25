@@ -76,6 +76,7 @@ $$Q_{\text{pixel}} = \min\left( Q_{\text{sat}}, \; \int_{t_{\text{start}}}^{t_{\
   * $I_{\text{dark}}(T)$: Temperature-dependent dark leakage current ($\text{A} = \text{C/s}$), doubling every $6\text{--}8^\circ\text{C}$ via $I_{\text{dark}}(T) \approx I_0 \cdot 2^{(T - T_0)/7}$.
   * $q_e = 1.602 \times 10^{-19}\text{ C}$: Elementary electrical charge.
   * $\mathcal{N}(0, \sigma_{\text{read}}^2)$: Readout noise distribution ($e^-$ RMS) from on-chip amplifiers and analog-to-digital converters (ADC).
+
 * **Concrete Numerical Example:** An industrial robotic manipulator operates near high-power joint motors where ambient sensor temperature reaches $T = 55^\circ\text{C}$ (against a $T_0 = 20^\circ\text{C}$ baseline). Factory illumination provides a monochromatic green flux ($\lambda = 550\text{ nm}$) of $\Phi = 2.0 \times 10^6\text{ photons/s}$ to a $3.0\,\mu\text{m} \times 3.0\,\mu\text{m}$ pixel. Silicon quantum efficiency is $\eta(550\text{ nm}) = 0.60$, yielding an optical generation rate of $\eta \Phi = 1.2 \times 10^6\,e^-/\text{s}$. Over an exposure window $t_{\text{exp}} = 10\text{ ms} = 0.010\text{ s}$, the optical signal accumulates $Q_{\text{opt}} = 1.2 \times 10^6 \times 0.010 = 12,000\,e^-$. Due to motor heat, dark current rises from $I_0 = 10\text{ pA}$ ($6.24 \times 10^7\,e^-/\text{s}$) to $I_{\text{dark}}(55^\circ\text{C}) \approx 10 \times 2^{(35/7)} = 320\text{ pA}$, accumulating $Q_{\text{dark}} = \frac{320 \times 10^{-12}\text{ C/s}}{1.602 \times 10^{-19}\text{ C}} \times 0.010\text{ s} \approx 20,000\,e^-$. With read noise $\sigma_{\text{read}} = 5\,e^-$, total charge is $Q_{\text{pixel}} = 12,000 + 20,000 = 32,000\,e^-$, consuming $64\%$ of a $50,000\,e^-$ well capacity purely in thermal noise and severely degrading the optical Signal-to-Noise Ratio ($\text{SNR} = 12,000 / \sqrt{12,000 + 20,000 + 5^2} \approx 67.0 \approx 36.5\text{ dB}$).
 
 ### Motion Blur and Spatial Uncertainty
@@ -86,6 +87,7 @@ $$\Delta x_{\text{blur}} = \|\mathbf{v}\| \cdot t_{\text{exp}}$$
 
 * **Physical Hazard & Motivation:** Optical motion blur converts sharp physical surface edges into diffuse spatial gradients, destroying sub-millimeter grasp localization and causing mechanical collisions.
 * **Variable & Unit Breakdown:** $\|\mathbf{v}\|$ is the relative linear velocity between sensor and target object ($\text{m/s}$), $t_{\text{exp}}$ is the exposure duration ($\text{s}$), and $\Delta x_{\text{blur}}$ is the resulting spatial blur width ($\text{m}$ or $\text{mm}$).
+
 * **Concrete Numerical Example:** When a robotic arm manipulates an assembly line workpiece moving at $v = 1.5\text{ m/s}$ with a camera configured for an exposure time of $t_{\text{exp}} = 15\text{ ms}$, the object's physical edge smears across $\Delta x_{\text{blur}} = 1.5\text{ m/s} \times 0.015\text{ s} = 22.5\text{ mm}$ of spatial blur (@tbl-motion-blur). For a mechanical parallel-jaw gripper designed with only $10\text{ mm}$ of nominal clearance around the workpiece, a $22.5\text{ mm}$ spatial uncertainty gradient makes millimeter-precision grasp localization mathematically impossible, guaranteeing physical collision, fixture jamming, or dropped components.
 
 | Workpiece Motion State | Optical Exposure Window | Spatial Edge Profile | Grasp Localization Accuracy | Physical Outcome |
@@ -105,6 +107,7 @@ $$\Delta \theta_{\text{shear}} = \|\boldsymbol{\omega}\| \cdot t_{\text{readout}
 
 * **Physical Hazard & Motivation:** Under rapid platform rotation, top and bottom rows capture the physical world from different body orientations, bending vertical pillars into curved parabolas and destroying epipolar geometry.
 * **Variable & Unit Breakdown:** $\|\boldsymbol{\omega}\|$ is the angular yaw/pitch rate ($\text{rad/s}$), $t_{\text{readout}}$ is the total frame scan time ($\text{s}$), and $\Delta \theta_{\text{shear}}$ is the angular skew across the frame ($\text{rad}$ or degrees).
+
 * **Concrete Numerical Example:** If an autonomous mobile robot rotates at an angular velocity of $\omega = 2.0\text{ rad/s}$ ($114.6^\circ/\text{s}$) while acquiring a rolling-shutter image with $t_{\text{readout}} = 30\text{ ms}$, the top and bottom rows diverge by $\Delta \theta_{\text{shear}} = 2.0 \times 0.030 = 0.060\text{ rad} \approx 3.44^\circ$. At a working distance of $Z = 2.0\text{ m}$, this angular distortion translates to a lateral displacement error of $\Delta x \approx Z \tan(\Delta \theta_{\text{shear}}) \approx 2.0 \times 0.060 = 12.0\text{ cm}$. In the resulting image, straight vertical structural pillars appear sheared and curved, circular wheels distort into slanted ellipses, and epipolar geometric constraints collapse. Consequently, high-speed embodied platforms must mandate global shutter sensors—wherein every pixel across the array captures charge simultaneously—or apply microsecond-level hardware gyroscope interpolation to unwarp rolling-shutter geometric distortion row by row.
 
 ::: {.callout-fallacy title="The Instantaneous Exposure Illusion (Rolling Shutter Shear vs. Spatial Grounding)"}
@@ -125,6 +128,7 @@ $$\delta \mathbf{p}(t) = \frac{1}{2} \mathbf{b}_a t^2$$
 
 * **Physical Hazard & Motivation:** Open-loop integration of MEMS accelerometer biases produces positional drift that explodes quadratically over time, rendering inertial dead reckoning blind within seconds.
 * **Variable & Unit Breakdown:** $\mathbf{b}_a \in \mathbb{R}^3$ is the unmodeled accelerometer zero-rate bias vector ($\text{m/s}^2$), $t$ is the elapsed integration time ($\text{s}$), and $\delta \mathbf{p}(t)$ is the resulting metric positional error ($\text{m}$).
+
 * **Concrete Numerical Example:** For a commercial MEMS accelerometer with a modest bias offset of $\|\mathbf{b}_a\| = 0.05\text{ m/s}^2$ ($\approx 5.1\text{ mg}$), integrating over $t = 10\text{ s}$ yields:
 $$\|\delta \mathbf{p}(10\text{ s})\| = \frac{1}{2} \left(0.05\text{ m/s}^2\right) \left(10\text{ s}\right)^2 = \mathbf{2.5\text{ meters}}$$
 Without continuous fusion with external absolute spatial references (such as visual odometry, LiDAR scan-matching, or GPS), an autonomous mobile agent will drift by multiple meters in seconds, turning open-loop dead reckoning into catastrophic collision.
@@ -155,6 +159,7 @@ $$\text{Bandwidth (GB/s)} = \text{Width} \times \text{Height} \times \text{Bytes
   * $\text{Bytes/Pixel}$: Memory payload per pixel ($B_{\text{pixel}}$), e.g., $4\text{ B}$ for RGBA8888 or uncompressed RAW/RGB32, $2\text{ B}$ for YUV422.
   * $\text{FPS}$: Ingestion frame rate ($\text{Hz}$ or $\text{frames/s}$).
   * $N_{\text{cameras}}$: Count of concurrent synchronized video streams.
+
 * **Concrete Numerical Example:**
 $$\begin{aligned}
 \text{BW}_{\text{720p}}  &= 2 \times (1280 \times 720 \times 4\text{ B}) \times 30\text{ Hz} = 221.2\text{ MB/s} &&(0.65\%\text{ of } 34\text{ GB/s}) \\
@@ -165,6 +170,7 @@ $$\begin{aligned}
 ### Silicon DRAM Contention Mechanics
 
 While an ingestion rate of $3.98\text{ GB/s}$ appears safely below the nominal theoretical rating of a $34\text{ GB/s}$ LPDDR5 memory bus, dynamic RAM is not an idealized continuous pipe. Physical DRAM memory controllers organize access around memory channels, ranks, banks, rows, and columns. Each bank contains a 2D matrix of memory cells and a local row buffer (typically $8\text{ KB}$). Accessing memory requires:
+
 1. **Row Activation (`ACT`):** Loading an entire row into the bank's row buffer ($\sim 12\text{ ns}$). If the next request targets the same row, it is a *row-buffer hit* with minimal latency.
 2. **Row Precharge (`PRE`):** If the next access targets a different row in the same bank, the controller must precharge the bank (writing back the active row) and issue a new `ACT` command (*row-buffer conflict/miss*), imposing a penalty of $t_{\text{RP}} + t_{\text{RCD}} \approx 30\text{--}50\text{ ns}$.
 3. **Write-to-Read Turnaround ($t_{\text{WTR}}$):** Switching the bidirectional data bus from DMA write bursts to NPU read bursts requires bus turnaround dead cycles.
@@ -222,12 +228,15 @@ $$\phi(\mathbf{x}) = \begin{cases} + \min_{\mathbf{y} \in \partial \mathcal{O}} 
   * $\mathcal{F}$: Unoccupied free space ($\mathbf{x} \notin \mathcal{O}$).
   * $\phi(\mathbf{x})$: Signed Euclidean distance ($\text{m}$). Positive in free space, zero at obstacle boundaries, negative within obstacle interiors.
   * $\nabla \phi(\mathbf{x})$: Spatial gradient vector. Because the Euclidean SDF satisfies the Eikonal equation $\|\nabla \phi(\mathbf{x})\| = 1$ almost everywhere, the gradient vector directly yields the outward unit surface normal: $\hat{\mathbf{n}}(\mathbf{x}) = \nabla \phi(\mathbf{x})$.
+
 * **Concrete Numerical Example:** A robotic end-effector at query position $\mathbf{x} = [0.42, 0.18, 0.35]^T\text{ m}$ queries a local $64 \times 64 \times 64$ voxel SDF grid ($1\text{ cm}$ voxel pitch, $512\text{ KB}$ table in ARM Cortex-M7 SRAM) near a cylindrical structural column of radius $R = 0.05\text{ m}$ centered at $[0.50, 0.20, 0.35]^T\text{ m}$.
   1. The radial distance to the column axis is $r = \sqrt{(0.42 - 0.50)^2 + (0.18 - 0.20)^2} = \sqrt{(-0.08)^2 + (-0.02)^2} = \sqrt{0.0068} \approx 0.0825\text{ m}$.
   2. The signed surface clearance evaluates to:
      $$\phi(\mathbf{x}) = r - R = 0.0825\text{ m} - 0.0500\text{ m} = \mathbf{0.0325\text{ m}} = 3.25\text{ cm}$$
+
   3. The unit normal gradient pointing outward away from the column is:
      $$\nabla \phi(\mathbf{x}) = \frac{[0.42 - 0.50, \, 0.18 - 0.20, \, 0]^T}{0.0825} = \begin{bmatrix} -0.970 \\ -0.242 \\ 0.000 \end{bmatrix}$$
+
   4. When evaluated by a Control Barrier Function enforcer with stiffness gain $k_{\text{rep}} = 500\text{ N/m}$ and safety margin $d_{\text{safe}} = 0.05\text{ m}$ ($5\text{ cm}$), the repulsive barrier force evaluates in $\mathcal{O}(1)$ time ($< 1\,\mu\text{s}$ via 8 SRAM loads and 7 multiply-accumulate operations):
      $$\mathbf{F}_{\text{rep}} = -k_{\text{rep}} (\phi(\mathbf{x}) - d_{\text{safe}}) \nabla \phi(\mathbf{x}) = -500 \cdot (0.0325 - 0.050) \begin{bmatrix} -0.970 \\ -0.242 \\ 0 \end{bmatrix} = \begin{bmatrix} -8.49 \\ -2.12 \\ 0.00 \end{bmatrix}\text{ N}$$
 
@@ -246,6 +255,7 @@ $$\mathbf{z}_0 = \left[ \mathbf{x}_p^1 \mathbf{E}; \, \mathbf{x}_p^2 \mathbf{E};
 
 * **Physical Hazard & Motivation:** Selecting patch size $P$ dictates a strict trade-off between spatial quantization resolution on physical objects and the number of tokens $N$ entering quadratic attention.
 * **Variable & Unit Breakdown:** $I \in \mathbb{R}^{H \times W \times C}$ is the input image, $P$ is the patch width/height in pixels, $\mathbf{x}_p^i \in \mathbb{R}^{P^2 C}$ is the flattened pixel vector of patch $i$, $\mathbf{E} \in \mathbb{R}^{(P^2 C) \times d}$ is the linear projection matrix, $\mathbf{E}_{\text{pos}} \in \mathbb{R}^{N \times d}$ is the positional encoding matrix, and $N$ is the total token count.
+
 * **Concrete Numerical Example:** For a standard robotic camera frame of $224 \times 224$ pixels with $P = 14$, the image yields $N = (224/14)^2 = 256$ tokens with latent dimension $d = 768$ (ViT-B). At a working distance of $Z = 1.0\text{ m}$ with camera focal length $f = 500\text{ px}$, each $14 \times 14$ patch projects to a physical spatial footprint of:
 $$\Delta X = \frac{P \cdot Z}{f} = \frac{14 \times 1.0\text{ m}}{500} = 0.028\text{ m} = 2.8\text{ cm}$$
 To achieve millimeter-precision grasping on small electronic components ($< 5\text{ mm}$), the perception pipeline must perform sub-patch feature interpolation or utilize multi-scale foveated cropping.
@@ -260,6 +270,7 @@ where $\mathbf{Q} = \mathbf{z}\mathbf{W}_Q$, $\mathbf{K} = \mathbf{z}\mathbf{W}_
 
 * **Physical Hazard & Motivation:** The all-to-all attention matrix $\mathbf{A} = \text{softmax}(\mathbf{Q}\mathbf{K}^T / \sqrt{d_k}) \in \mathbb{R}^{N \times N}$ scales quadratically ($\mathcal{O}(N^2)$). If token count $N$ expands without memory budgeting, attention matrices spill from fast on-chip SRAM cache into external DRAM, stalling inference.
 * **Variable & Unit Breakdown:** $\mathbf{Q}, \mathbf{K} \in \mathbb{R}^{N \times d_k}$ are Query and Key projection tensors, $\mathbf{V} \in \mathbb{R}^{N \times d_v}$ is the Value tensor, $d_k$ is the projection channel dimension per head, and $\mathbf{A} \in \mathbb{R}^{N \times N}$ is the soft routing attention matrix.
+
 * **Concrete Numerical Example:** For $N = 256$ tokens ($224 \times 224$ frame), the attention matrix $\mathbf{A} \in \mathbb{R}^{256 \times 256}$ contains $65,536$ elements ($131\text{ KB}$ at FP16), fitting comfortably within an edge NPU's $16\text{ MB}$ SRAM cache. However, if a camera is upgraded to $896 \times 896$ resolution ($N = 4096$), $\mathbf{A} \in \mathbb{R}^{4096 \times 4096}$ expands to $16.78\text{ million}$ elements ($33.55\text{ MB}$ per attention head), spilling into DRAM and inducing severe memory bus contention unless tiled FlashAttention is used.
 
 ### Self-Supervised Geometric Distillation (DINOv2)
@@ -283,6 +294,7 @@ $$\Phi\left( \mathbf{T} \cdot \mathcal{X} \right) = \rho(\mathbf{T}) \cdot \Phi(
     * **Trivial Representation ($\rho(\mathbf{T}) = 1$):** Used for invariant physical scalars (grasp success probability $\hat{p} \in [0, 1]$, friction coefficient $\hat{\mu}$, object mass $\hat{m}$): $\Phi(\mathbf{T}\mathcal{X}) = \Phi(\mathcal{X})$.
     * **Vector Representation ($\rho(\mathbf{T}) = \mathbf{R}$):** Used for 3D directional vectors (surface normals $\hat{\mathbf{n}} \in \mathbb{S}^2$, grasp approach vectors $\hat{\mathbf{v}}$): $\Phi(\mathbf{T}\mathcal{X}) = \mathbf{R}\Phi(\mathcal{X})$.
     * **Higher-Order Representations:** Wigner-$D$ matrices acting on spherical harmonics for complex directional torque fields.
+
 * **Concrete Numerical Example:** Consider an object geometry $\mathcal{X}$ rotated by $90^\circ$ around the z-axis:
   $$\mathbf{R} = \mathbf{R}_z(90^\circ) = \begin{bmatrix} 0 & -1 & 0 \\ 1 & 0 & 0 \\ 0 & 0 & 1 \end{bmatrix}, \quad \mathbf{t} = \mathbf{0}$$
   For an initial surface normal prediction $\hat{\mathbf{n}} = [1, 0, 0]^T$ on the unrotated object, the equivariant network guarantees that evaluating the rotated object $\mathbf{T}\mathcal{X}$ outputs:
@@ -317,10 +329,12 @@ $$\begin{bmatrix} \mathbf{P}_B \\ 1 \end{bmatrix} = \mathbf{T}_C^B \begin{bmatri
   * $\mathbf{P}_C = [X_C, Y_C, Z_C]^T \in \mathbb{R}^3$: 3D metric coordinate in camera frame ($\text{m}$).
   * $\mathbf{T}_C^B = \begin{bmatrix} \mathbf{R}_C^B & \mathbf{p}_C^B \\ \mathbf{0}^T & 1 \end{bmatrix} \in SE(3)$: Extrinsic transformation matrix from camera frame $C$ to robot base frame $B$.
   * $\mathbf{P}_B \in \mathbb{R}^3$: 3D metric Cartesian position in robot base frame ($\text{m}$).
+
 * **Concrete Numerical Walkthrough:**
   1. On a $640 \times 480$ depth stream with $f_x = f_y = 500\text{ px}$ and optical center $(c_x, c_y) = (320, 240)$, a grasp patch centroid is detected at pixel $(u, v) = (420, 240)$ with registered depth $d(420, 240) = 1.20\text{ m}$.
   2. The unprojected camera coordinate evaluates to:
      $$\mathbf{P}_C = \begin{bmatrix} \frac{420 - 320}{500} \cdot 1.20 \\ \frac{240 - 240}{500} \cdot 1.20 \\ 1.20 \end{bmatrix} = \begin{bmatrix} 0.24 \\ 0.00 \\ 1.20 \end{bmatrix}\text{ m}$$
+
   3. The camera is mounted on a robot wrist with extrinsic orientation $\mathbf{R}_C^B = \begin{bmatrix} 0 & 0 & 1 \\ 0 & 1 & 0 \\ -1 & 0 & 0 \end{bmatrix}$ (optical axis aligned with base x-axis) and translation $\mathbf{p}_C^B = [0.10, 0.00, 0.50]^T\text{ m}$.
   4. The 3D position in the robot base frame evaluates to:
      $$\mathbf{P}_B = \begin{bmatrix} 0 & 0 & 1 \\ 0 & 1 & 0 \\ -1 & 0 & 0 \end{bmatrix} \begin{bmatrix} 0.24 \\ 0.00 \\ 1.20 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.00 \\ 0.50 \end{bmatrix} = \begin{bmatrix} 1.20 \\ 0.00 \\ -0.24 \end{bmatrix} + \begin{bmatrix} 0.10 \\ 0.00 \\ 0.50 \end{bmatrix} = \begin{bmatrix} \mathbf{1.30} \\ \mathbf{0.00} \\ \mathbf{0.26} \end{bmatrix}\text{ m}$$
@@ -352,6 +366,7 @@ $$t_{\text{mid}} = t_{\text{start}} + \frac{1}{2} t_{\text{exp}}$$
 
 * **Physical Hazard & Motivation:** An optical exposure integrates photons over a finite window $[t_{\text{start}}, t_{\text{start}} + t_{\text{exp}}]$. The resulting image represents the time-averaged physical state of the world centered at the exposure midpoint $t_{\text{mid}}$. Timestamping frames at software arrival ($t_{\text{recv}} = t_{\text{start}} + t_{\text{exp}} + t_{\text{DMA}} + t_{\text{OS}}$) injects phase lag that destabilizes high-speed feedback control.
 * **Variable & Unit Breakdown:** $t_{\text{start}}$ is the hardware-latched exposure start timestamp ($\mu\text{s}$), $t_{\text{exp}}$ is the exposure duration ($\mu\text{s}$), and $t_{\text{mid}}$ is the physical exposure midpoint timestamp ($\mu\text{s}$).
+
 * **Concrete Numerical Example:** If a camera triggers at $t_{\text{start}} = 100.000\text{ ms}$ with exposure $t_{\text{exp}} = 10.000\text{ ms}$, the optical midpoint is $t_{\text{mid}} = 105.000\text{ ms}$. If software logs frame arrival at $t_{\text{recv}} = 128.400\text{ ms}$ after MIPI transmission and DMA interrupt latency, software timestamping introduces $\Delta t_{\text{skew}} = 23.400\text{ ms}$ of unmodeled lag. For a robot moving at $v = 2.5\text{ m/s}$, this creates an unmodeled position error of $\Delta x = 2.5 \times 0.0234 = 5.85\text{ cm}$.
 
 ### Lie Group $SO(3)$ Orientation Propagation in Tangent Space $\mathfrak{so}(3)$
@@ -373,11 +388,14 @@ $$\exp\left(\boldsymbol{\omega}^\wedge \Delta t\right) = \mathbf{I} + \frac{\sin
   * $\Delta t$: Time interval between high-rate IMU samples ($\text{s}$), e.g., $1.0\text{ ms}$ at $1000\text{ Hz}$.
   * $\boldsymbol{\omega}^\wedge \in \mathfrak{so}(3)$: Skew-symmetric cross-product matrix generating infinitesimal rotations ($\text{rad/s}$).
   * $\theta = \|\boldsymbol{\omega}\|\Delta t$: Total angular rotation magnitude across the interval $\Delta t$ (radians).
+
 * **Concrete Numerical Example:** An autonomous quadruped undergoes a rapid yaw rotation of $\omega_z = 1.0\text{ rad/s}$ ($\omega_x = 0, \omega_y = 0$). Over an IMU step of $\Delta t = 10\text{ ms} = 0.010\text{ s}$, the rotation angle is $\theta = 1.0 \times 0.010 = 0.010\text{ rad} \approx 0.573^\circ$.
   1. The skew-symmetric generator evaluates to:
      $$\boldsymbol{\omega}^\wedge \Delta t = \begin{bmatrix} 0 & -0.01 & 0 \\ 0.01 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix}, \quad (\boldsymbol{\omega}^\wedge \Delta t)^2 = \begin{bmatrix} -0.0001 & 0 & 0 \\ 0 & -0.0001 & 0 \\ 0 & 0 & 0 \end{bmatrix}$$
+
   2. With $\sin(0.01) \approx 0.00999983$ and $1 - \cos(0.01) \approx 0.00005000$, Rodrigues' formula yields:
      $$\exp(\boldsymbol{\omega}^\wedge \Delta t) = \begin{bmatrix} 1 - 0.00005000 & -0.00999983 & 0 \\ 0.00999983 & 1 - 0.00005000 & 0 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 0.999950 & -0.010000 & 0 \\ 0.010000 & 0.999950 & 0 \\ 0 & 0 & 1 \end{bmatrix}$$
+
   3. Verifying orthogonality: $\det = 0.999950^2 + 0.010000^2 = 0.999900 + 0.000100 = \mathbf{1.000000}$. The matrix preserves exact rigid geometry without numerical distortion.
 
 ### Epipolar Geometry and Extrinsic Calibration Drift
@@ -397,6 +415,7 @@ $$\epsilon_{\text{epi}} = \frac{(\mathbf{x}_2^T \mathbf{F} \mathbf{x}_1)^2}{(\ma
   * $\mathbf{E} = [\mathbf{t}]_\times \mathbf{R}$: Essential matrix in metric length units ($\text{m}$).
   * $\mathbf{F} = \mathbf{K}_2^{-T} \mathbf{E} \mathbf{K}_1^{-1}$: Fundamental matrix ($\text{px}^{-1}$).
   * $\epsilon_{\text{epi}}$: Sampson first-order geometric distance approximation ($\text{px}^2$).
+
 * **Concrete Numerical Example:** A stereo camera pair with baseline $b = 0.20\text{ m}$ ($20\text{ cm}$) and focal length $f = 500\text{ px}$ tracks an obstacle at range $Z = 5.0\text{ m}$. Nominal disparity is $\text{disp} = \frac{f \cdot b}{Z} = \frac{500 \cdot 0.20}{5.0} = 20.0\text{ px}$. During operation, motor heat induces a structural bracket toe-out deflection of $\Delta \theta = 0.5^\circ = 0.00873\text{ rad}$. This deflection shifts the horizontal feature position in Camera 2 by $\Delta u \approx f \cdot \tan(\Delta \theta) = 500 \times 0.00873 = 4.36\text{ px}$. Sampson residual error spikes from $\epsilon_{\text{epi}} < 0.1\text{ px}^2$ to $\epsilon_{\text{epi}} \approx (4.36)^2 \approx \mathbf{19.0\text{ px}^2}$. If uncorrected, perceived disparity drops to $\text{disp}' = 20.0 - 4.36 = 15.64\text{ px}$, causing triangulated depth to balloon to $Z' = \frac{500 \times 0.20}{15.64} = \mathbf{6.39\text{ m}}$—a catastrophic $+1.39\text{ m}$ depth error ($+27.8\%$) that triggers real-time bundle adjustment recalibration.
 
 ::: {.callout-fallacy title="The Static Extrinsic Baseline Illusion (Thermal Expansion and Vibration Drift)"}
@@ -437,13 +456,16 @@ $$F_{\text{impact}} = \frac{m v^2}{2 \delta}$$
   * $m$: Total platform mass ($\text{kg}$).
   * $\delta$: Mechanical compliance deceleration displacement of the leg and chassis during collision ($\text{m}$).
   * $F_{\text{impact}}$: Peak dynamic collision force ($\text{N}$), derived from the work-energy theorem ($W = F_{\text{impact}} \delta = \frac{1}{2} m v^2$).
+
 * **Concrete Numerical Example:**
   1. For the $45\text{ kg}$ quadruped traversing at $v = 2.5\text{ m/s}$, the baseline $22\text{ ms}$ pipeline consumed $d_{\text{react}} = 2.5 \times 0.022 = 5.5\text{ cm}$.
   2. Under the $135\text{ ms}$ memory starvation blowout, the reaction distance expanded by more than $500\%$:
      $$d_{\text{react}} = 2.5\text{ m/s} \times 0.135\text{ s} = \mathbf{33.8\text{ cm}}$$
+
   3. With only $d_{\text{clearance}} = 15.0\text{ cm}$ of remaining clearance to an approaching concrete curb, the robot overshot the obstacle boundary by $\Delta d = 33.8\text{ cm} - 15.0\text{ cm} = 18.8\text{ cm}$.
   4. Assuming a leg compliance deceleration displacement of $\delta = 10\text{ mm} = 0.010\text{ m}$ upon impacting the rigid concrete curb, the instantaneous dynamic impact force reached:
      $$F_{\text{impact}} = \frac{45\text{ kg} \times (2.5\text{ m/s})^2}{2 \times 0.010\text{ m}} = \frac{45 \times 6.25}{0.020} = \mathbf{14,062.5\text{ N}} \approx \mathbf{14.1\text{ kN}}$$
+
   5. Because the ultimate tensile yield strength of the Ti-6Al-4V titanium femur linkage was $8.5\text{ kN}$, the $14.1\text{ kN}$ dynamic impact instantly shattered the front-right femur and sheared the cycloidal speed reducer ($4,800\text{ USD}$ hardware replacement, 12 days facility downtime).
 
 The microsecond flight recorder ledger is documented in @tbl-telemetry-ch05.
@@ -475,6 +497,7 @@ $$\tau_{\text{safe}} = \frac{d_{\text{clearance}}}{v_{\text{robot}}}$$
   * $v_{\text{obs\_max}}$: Maximum dynamic velocity of obstacles in the environment ($\text{m/s}$).
   * $\sigma_{\text{spatial}}(t)$: Bounding radius of obstacle spatial uncertainty ($\text{m}$).
   * $\tau_{\text{safe}}$: Critical freshness expiration deadline ($\text{s}$).
+
 * **Concrete Numerical Example:** For a robot moving at $v_{\text{robot}} = 2.5\text{ m/s}$ with clearance $d_{\text{clearance}} = 0.15\text{ m}$, the critical freshness deadline evaluates to $\tau_{\text{safe}} = \frac{0.15}{2.5} = 0.060\text{ s} = 60\text{ ms}$. When perception latency inflated to $\Delta_{\text{AoI}} = 135\text{ ms}$, the safety threshold was breached by $75\text{ ms}$, during which an approaching obstacle ($v_{\text{obs\_max}} = 1.0\text{ m/s}$) expanded spatial uncertainty by $\Delta \sigma = 1.0 \times 0.135 = 13.5\text{ cm}$. Whenever $\Delta_{\text{AoI}} > \tau_{\text{safe}}$, the perception organ must mark the observation as expired, triggering downstream planners to discard stale tokens and execute emergency deceleration fallbacks.
 
 
@@ -527,6 +550,7 @@ $$\mathbf{p}^* = \arg\max_{\theta} Q(\theta) \quad \text{subject to} \quad \begi
   * $M(\theta)$: DRAM allocation footprint ($\text{MB}$).
   * $B(\theta)$: Continuous memory crossbar bus bandwidth consumption ($\text{GB/s}$).
   * $E(\theta)$: Thermal electrical power dissipation ($\text{Watts}$).
+
 * **Concrete Numerical Example:** Consider an embedded robotics SoC with thermal limit $P_{\text{thermal\_max}} = 25\text{ W}$, memory bus cap $B_{\text{bus\_max}} = 10\text{ GB/s}$, and dynamics deadline $\tau_{\text{world}} = 50\text{ ms}$ ($t_{\text{compute}} = 20\text{ ms} \implies L \le 30\text{ ms}$):
   * **Configuration A (Dual 4K @ 60 Hz + ViT-L):** $B = 3.98\text{ GB/s}$, $L = 135\text{ ms}$ (**VIOLATES** $L \le 30\text{ ms}$), $P = 28.5\text{ W}$ (**VIOLATES** thermal limit). Result: Memory crossbar thrashing, thermal throttling, and mechanical collision.
   * **Configuration B (Dual 720p @ 60 Hz + DINOv2 ViT-B):** $B = 0.44\text{ GB/s}$, $L = 22\text{ ms}$ (**SATISFIES** $L \le 30\text{ ms}$), $P = 14.2\text{ W}$, $M = 48\text{ MB}$. Result: Optimal Pareto operating point delivering $98.4\%$ grasp accuracy with deterministic microsecond stability.
