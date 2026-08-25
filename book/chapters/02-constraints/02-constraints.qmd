@@ -214,35 +214,25 @@ Arresting moving mass or tracking a planned trajectory requires applying physica
 
 ### Stator Inductance and Electrical Rise Time
 
-Electric motors generate physical torque through Lorentz forces produced by electric current flowing through stator wire windings ($\boldsymbol{\tau} = K_t \mathbf{I}$). The voltage-current dynamics of a motor phase winding follow Faraday's Law of Induction:
+Electric motors generate physical torque through Lorentz forces produced by electric current flowing through stator wire windings ($\boldsymbol{\tau} = K_t \mathbf{I}$). In power electronics, an inductor acts like an *electrical flywheel*: it physically opposes sudden changes in current. Just as you cannot instantly change the rotational velocity of a heavy mechanical flywheel without applying infinite torque, an inverter cannot instantly change current in a wire coil without applying infinite voltage. 
+
+The voltage-current dynamics of a motor phase winding follow Faraday's Law of Induction:
 
 $$V(t) = R \cdot I(t) + L \frac{dI(t)}{dt} + K_e \cdot \omega(t)$$
 
-where $V(t)$ is the applied inverter phase voltage, $R$ is winding resistance, $L$ is stator coil inductance, $I(t)$ is electrical phase current, $K_e$ is the back-electromotive force (back-EMF) constant, and $\omega(t)$ is rotor angular velocity.
+where $V(t)$ is the applied inverter phase voltage, $R$ is winding resistance, $L$ is stator coil inductance, $I(t)$ is phase current, $K_e$ is the back-electromotive force (back-EMF) constant, and $\omega(t)$ is rotor angular velocity.
 
-Because torque is proportional to current, changing torque requires changing current. But changing current is actively opposed by the coil's inductance $L$, which induces an opposing counter-voltage ($L \frac{dI}{dt}$). Stator inductance $L$ and resistance $R$ define the electrical time constant of the motor:
+Because torque is proportional to current, commanding a rapid change in torque requires driving a rapid change in current ($\frac{dI}{dt}$). However, coil inductance $L$ actively induces an opposing counter-voltage that slows current growth. Together, stator inductance and resistance establish the **electrical time constant** $\tau_e = L/R$. When the inverter applies a step voltage, current rises exponentially ($I(t) \propto 1 - e^{-t/\tau_e}$), requiring approximately three electrical time constants ($3\tau_e$) for the magnetic field to build $95\%$ of target torque. For a typical robotic joint actuator with winding resistance $R = 0.60\,\Omega$ and stator inductance $L = 1.8\text{ mH}$, the electrical time constant is $\tau_e = 3.0\text{ ms}$, requiring $3\tau_e = 9.0\text{ ms}$ of physical time before commanded torque can physically materialize in the air gap.
 
-$$\tau_e = \frac{L}{R}$$
-
-When the power inverter applies a step voltage, phase current rises exponentially rather than instantaneously:
-
-$$I(t) = \frac{V_{\text{bus}} - K_e\omega}{R}\left(1 - e^{-t/\tau_e}\right)$$
-
-Achieving 95% of commanded steady-state torque consumes approximately three electrical time constants ($3\tau_e$). For a typical brushless joint actuator with winding resistance $R = 0.60\,\Omega$ and stator inductance $L = 1.8\text{ mH}$, the electrical time constant is:
-
-$$\tau_e = \frac{1.8 \times 10^{-3}\text{ H}}{0.60\,\Omega} = 3.0\text{ ms}$$
-
-This coil requires $3\tau_e = 9.0\text{ ms}$ of physical time before 95% of target torque can physically build in the air gap. 
-
-Furthermore, as rotor speed $\omega(t)$ increases, the spinning permanent magnets induce a back-EMF voltage ($K_e\omega$) that directly opposes the DC bus voltage. This collapses the available voltage headroom ($\Delta V = V_{\text{bus}} - K_e\omega$), severely choking the rate of current growth ($\frac{dI}{dt} \to 0$) at high joint velocities:
+Furthermore, as rotor velocity $\omega(t)$ increases, the spinning permanent magnets generate an opposing back-EMF voltage ($K_e\omega$) that subtracts directly from the DC supply voltage. This collapses the available voltage headroom ($\Delta V = V_{\text{bus}} - K_e\omega$), severely choking the rate of current growth at high speeds. Consequently, the maximum rate of torque generation is bounded by a hardware ceiling:
 
 $$\|\dot{\boldsymbol{\tau}}(t)\| \le \dot{\tau}_{\text{max}}(\omega) = \frac{K_t \left(V_{\text{bus}} - K_e\omega\right)}{L}$$
 
-If an upstream motion planner commands an instantaneous step jump in torque, the low-level current controller demands an infinite voltage slew rate ($\frac{dV}{dt} \to \infty$). This saturates the inverter PWM duty cycle ceiling ($D \to 100\%$) and depresses the DC supply rail due to transient inrush current. To prevent control instability, the torque slew rate limit $\dot{\tau}_{\text{max}}(\omega)$ must be frozen into the Physical Operating Specification (@tbl-physical-spec) as an immutable hardware ceiling.
+If an upstream motion planner commands an instantaneous step jump in torque, the current controller demands an infinite voltage slew rate ($\frac{dV}{dt} \to \infty$), which saturates power inverter gate drivers and collapses the DC supply bus. To prevent control instability, the torque slew rate limit $\dot{\tau}_{\text{max}}(\omega)$ must be frozen into the Physical Operating Specification (@tbl-physical-spec) as an immutable hardware boundary.
 
 ::: {.callout-fallacy title="The Instantaneous Motor Torque Assumption"}
-* **The Common Assumption:** In simulation and high-level reinforcement learning, commanded actuator torque $\boldsymbol{\tau}_{\text{cmd}}$ is treated as an algebraic variable instantly asserted on physical joints at the next discrete timestep ($\boldsymbol{\tau}(t) = \boldsymbol{\tau}_{\text{cmd}}(t)$).
-* **The Physical Reality:** Actuators are electromagnetic inductors governed by Faraday's Law ($V = IR + L \frac{dI}{dt} + K_e \omega$). Because magnetic field energy ($\frac{1}{2} L I^2$) cannot transition instantaneously, motor torque ($\tau = K_t I$) exhibits an exponential rise time governed by the electrical time constant $\tau_e = L/R$, requiring $\approx 3\tau_e$ ($6\text{ to } 15\text{ ms}$) to deliver 95% of target torque. Attempting a step change in torque demands an infinite voltage slew rate ($\frac{dV}{dt} \to \infty$), which saturates power inverter gate drivers and collapses the DC supply bus. When un-smoothed discrete torque setpoints pass into mechanical reducers (harmonic drives or planetary gearheads), the resulting impulsive jerk ($\dddot{\mathbf{q}} \to \infty$) exceeds the shear yield limit ($\sigma_{\text{yield}}$) of gear teeth, inducing micro-fractures, tooth pitting, and catastrophic gear shear.
+* **The Common Assumption:** In simulation and reinforcement learning, commanded actuator torque $\boldsymbol{\tau}_{\text{cmd}}$ is treated as an algebraic variable instantly asserted on physical joints at the next discrete timestep ($\boldsymbol{\tau}(t) = \boldsymbol{\tau}_{\text{cmd}}(t)$).
+* **The Physical Reality:** Actuators are electromagnetic inductors governed by Faraday's Law ($V = IR + L \frac{dI}{dt} + K_e \omega$). Because magnetic field energy ($\frac{1}{2} L I^2$) cannot transition instantaneously, motor torque exhibits an exponential rise time governed by $\tau_e = L/R$, requiring $3\tau_e$ ($6\text{ to } 15\text{ ms}$) to deliver 95% of target torque. Attempting a step change in torque demands an infinite voltage slew rate ($\frac{dV}{dt} \to \infty$), which saturates power inverter gate drivers and collapses the DC supply bus. When un-smoothed discrete torque setpoints pass into mechanical reducers (harmonic drives or planetary gearheads), the resulting impulsive jerk ($\dddot{\mathbf{q}} \to \infty$) exceeds the shear yield limit ($\sigma_{\text{yield}}$) of gear teeth, inducing micro-fractures, tooth pitting, and catastrophic gear shear.
 * **The Systems Invariant:** Trajectory generation and low-level control loops must enforce $\mathcal{C}^2$ differential jerk continuity ($\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$) with torque slew rates strictly clamped to electrical rise limits and mechanical transmission shear bounds: $\|\dot{\boldsymbol{\tau}}(t)\| \le W_p \sigma_{\text{yield}} / \Delta t_{\text{rise}}$, where $W_p$ is the polar section modulus of the transmission shaft or gear tooth.
 :::
 
@@ -258,7 +248,7 @@ When a discrete neural policy emits piecewise-constant trajectory setpoints at d
 
 $$\mathbf{j}(t) = \dddot{\mathbf{q}}(t) = \frac{d^3\mathbf{q}}{dt^3} \longrightarrow \infty$$
 
-Because the high-speed motor rotor must undergo an angular acceleration step of $N \Delta \ddot{\mathbf{q}}$, the inertial shock torque transmitted through the gearbox teeth is:
+Because the high-speed motor rotor must undergo an angular acceleration step of $N \Delta \ddot{\mathbf{q}}$, the inertial shock torque transmitted through the gearbox teeth scales with reflected inertia:
 
 $$\tau_{\text{shock}} = N^2 J_{\text{rotor}} \Delta \ddot{\mathbf{q}}$$
 
@@ -281,37 +271,21 @@ To generate peak torques and accelerate heavy masses, motor inverters must drive
 
 ### Thermal Time Constants and Continuous Ratings
 
-An electric motor has thermal capacitance $C_{\text{th}}$ (heat storage in copper windings and iron stator teeth) and thermal resistance $R_{\text{th}}$ (heat dissipation to ambient air). Under a lumped first-order thermal differential equation:
+An electric motor functions thermodynamically like a miniature oven wrapped in insulation. Heat is generated almost instantaneously deep within copper wire windings whenever current flows ($P_{\text{loss}} = I^2 R$). However, conducting that heat out through iron stator teeth and aluminum motor housings into ambient air is a sluggish process governed by the motor's **thermal time constant** $\tau_{\text{th}} = R_{\text{th}} C_{\text{th}}$, where $C_{\text{th}}$ is thermal heat capacity and $R_{\text{th}}$ is thermal dissipation resistance.
 
-$$C_{\text{th}} \frac{dT(t)}{dt} + \frac{T(t) - T_{\text{amb}}}{R_{\text{th}}} = P_{\text{loss}}(t)$$
+Embodied AI systems operate across a **triple time-constant hierarchy** spanning five orders of magnitude: electrical dynamics ($\tau_e = L/R \approx 10^{-3}\text{ s}$) operate orders of magnitude faster than mechanical motion ($\tau_m = J/b \approx 10^{-1}\text{ s}$), which in turn operates orders of magnitude faster than thermal accumulation ($\tau_{\text{th}} = R_{\text{th}}C_{\text{th}} \approx 10^{1}\text{--}10^{3}\text{ s}$). Because current changes ten thousand times faster than temperature, closed-loop controllers cannot rely on sluggish external temperature sensors for real-time protection; internal coil temperatures can spike to destructive levels during sudden peak-torque maneuvers long before external chassis sensors detect a change.
 
-the thermal dynamics are governed by the thermal time constant:
-
-$$\tau_{\text{th}} = R_{\text{th}} C_{\text{th}}$$
-
-Embodied AI systems operate across a **triple time-constant hierarchy** spanning five orders of magnitude:
-
-$$\underbrace{\tau_e = \frac{L}{R}}_{\text{Electrical: } 10^{-3}\text{ s}} \;\ll\; \underbrace{\tau_m = \frac{J}{b}}_{\text{Mechanical: } 10^{-1}\text{ s}} \;\ll\; \underbrace{\tau_{\text{th}} = R_{\text{th}}C_{\text{th}}}_{\text{Thermal: } 10^{1}\text{--}10^{3}\text{ s}}$$
-
-Because electrical current changes $10,000\times$ faster than temperature, closed-loop controllers cannot rely on direct thermal feedback. Internal coil temperatures can spike to destructive levels during sudden peak-torque maneuvers long before external chassis sensors detect a change.
-
-In steady-state equilibrium ($\frac{dT}{dt} = 0$), continuous heat generation balances ambient dissipation ($I_{\text{cont}}^2 R = \frac{\Delta T_{\text{max}}}{R_{\text{th}}}$), establishing the **continuous current rating** ($I_{\text{cont}}$):
+In steady-state equilibrium, continuous heat generation balances ambient dissipation ($I_{\text{cont}}^2 R = \Delta T_{\text{max}} / R_{\text{th}}$), establishing the **continuous current rating** ($I_{\text{cont}}$):
 
 $$I_{\text{cont}} = \sqrt{\frac{\Delta T_{\text{max}}}{R \cdot R_{\text{th}}}}$$
 
-For short acceleration bursts ($\Delta t_{\text{burst}} \ll \tau_{\text{th}}$), actuators operate in the near-adiabatic regime where heat dissipation to the environment is negligible. The total thermal energy absorbed by the coil mass ($Q = C_{\text{th}} \Delta T_{\text{max}}$) must not exceed the Joule heat generated by peak current $I_{\text{peak}}$:
-
-$$C_{\text{th}} \Delta T_{\text{max}} = I_{\text{peak}}^2 R \cdot \Delta t_{\text{burst, max}}$$
-
-Substituting $C_{\text{th}} = \tau_{\text{th}} / R_{\text{th}}$ and $\Delta T_{\text{max}} = I_{\text{cont}}^2 R R_{\text{th}}$ yields the **Quadratic Burst Scaling Law**:
+For short acceleration bursts ($\Delta t_{\text{burst}} \ll \tau_{\text{th}}$), actuators operate in the near-adiabatic regime where heat dissipation to the environment is negligible. Total thermal energy absorbed by the coil mass must not exceed the Joule heat generated by peak current $I_{\text{peak}}$, yielding the **Quadratic Burst Scaling Law**:
 
 $$\Delta t_{\text{burst, max}} \le \tau_{\text{th}} \left( \frac{I_{\text{cont}}}{I_{\text{peak}}} \right)^2$$
 
-This quadratic relationship reveals an unforgiving physical trade-off: **doubling peak torque demands four times the Joule heat ($I^2$), reducing the permissible burst duration to one-fourth ($25\%$) of the safe window**.
+This quadratic relationship exposes an unforgiving physical trade-off: **doubling peak torque demands four times the Joule heat ($I^2$), reducing the permissible burst duration to one-fourth ($25\%$) of the safe window**.
 
-For example, with winding resistance $R = 0.50\,\Omega$, thermal resistance $R_{\text{th}} = 2.0\text{ K/W}$, and allowable temperature rise $\Delta T_{\text{max}} = 80\text{ K}$, the continuous thermal rating is $I_{\text{cont}} = \sqrt{\frac{80}{0.50 \times 2.0}} \approx 8.94\text{ A}$. If a dynamic leaping or lifting policy commands peak current $I_{\text{peak}} = 20.0\text{ A}$ ($2.24 \times I_{\text{cont}}$) under thermal time constant $\tau_{\text{th}} = 60\text{ s}$, the maximum safe burst duration is:
-
-$$\Delta t_{\text{burst, max}} \le 60 \times \left(\frac{8.94}{20.0}\right)^2 \approx 12.0\text{ s}$$
+Consider a robotic joint motor with winding resistance $R = 0.50\,\Omega$, thermal resistance $R_{\text{th}} = 2.0\text{ K/W}$, and allowable temperature rise $\Delta T_{\text{max}} = 80\text{ K}$, yielding a continuous rating $I_{\text{cont}} \approx 8.94\text{ A}$. If a dynamic leaping or lifting policy commands peak current $I_{\text{peak}} = 20.0\text{ A}$ ($2.24 \times I_{\text{cont}}$) under thermal time constant $\tau_{\text{th}} = 60\text{ s}$, the maximum safe burst duration is only $\Delta t_{\text{burst, max}} \le 60 \times (8.94 / 20.0)^2 \approx 12.0\text{ s}$. 
 
 Sustaining peak current beyond twelve seconds causes pyrolytic breakdown of wire dielectric enamel ($>180^\circ\text{C}$)[^insulation] or irreversible rotor magnet demagnetization ($>100^\circ\text{C}$). Furthermore, copper has a positive temperature coefficient of resistance ($\alpha_{\text{Cu}} \approx +0.393\%/\text{K}$). As windings heat from room temperature to $180^\circ\text{C}$, resistance increases by $+63\%$ ($R(T) = R_0[1 + \alpha_{\text{Cu}}(T - T_0)]$), non-linearly accelerating Joule losses in a dangerous thermal positive feedback loop.
 
@@ -359,13 +333,11 @@ As summarized in @tbl-thermal-domains, thermal dynamics and failure thresholds g
 : Thermal characteristics, breakdown mechanisms, and safety countermeasures across physical and computational subsystems in Physical AI architectures. {#tbl-thermal-domains}
 
 ::: {.callout-archetype title="Cybernetic Energy and Process Systems: Megawatt Grid Storage Inverter"}
-* **Physical System:** 500 kW grid-tied battery energy storage inverter with liquid cooling loop.
-* **Archetype Domain:** Archetype 3 (Cybernetic Energy and Process Systems).
-* **Governing Physical Column:** Column 4 (Energy, Thermal Accumulation, and Derating).
-* **Physical State Dynamics ($W_t \to W_{t+1}$):** Thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics.
-* **The Systems Tension:** A high-level neural policy running on an edge server optimizes wholesale grid price arbitrage and battery state-of-charge ($1\text{ Hz}$ dispatch). If a sudden grid voltage sag occurs, the model commands maximum reactive current, but thermal accumulation ($\tau_{\text{th}} = 45\text{ s}$) threatens to destroy power semiconductor junctions ($T_j \ge 150^\circ\text{C}$).
-* **The Proposal–Permission Contract:** The untrusted MPU proposes active/reactive power dispatch vectors ($P_t, Q_t$). The trusted DSP/microcontroller permission supervisor executes at $1000\text{ Hz}$ in zero-allocation static SRAM, continuously integrating the $I^2t$ thermal accumulator and autonomously clamping current to $I_{\text{cont}}$ before silicon breakdown occurs.
-* **Cross-Archetype Synthesis:** While Mobility (Archetype 1) is bounded by kinetic stopping distances ($d_{\text{stop}}$) and Contact Manipulation (Archetype 2) is bounded by gearbox tooth shear ($\sigma_{\text{shear}}$), Cybernetic Energy Systems (Archetype 3) are bounded by thermal accumulation ($I^2t$) and fluid transport lags under the exact same proposal-permission architecture.
+**Physical System & Domain:** A 500 kW grid-tied battery energy storage inverter with liquid cooling represents Archetype 3 (Cybernetic Energy and Process Systems), bound primarily by Column 4 (Energy, Thermal Accumulation, and Derating). The physical state dynamics ($W_t \to W_{t+1}$) are governed by the thermal capacitance $C_{\text{th}}$ of insulated-gate bipolar transistor (IGBT) silicon junctions, coolant fluid flux $\dot{V}$, and $I^2R$ resistive Joule dissipation in converter magnetics.
+
+**The Systems Tension & Proposal–Permission Contract:** A high-level neural policy running on an edge server optimizes wholesale grid price arbitrage and battery state-of-charge ($1\text{ Hz}$ dispatch). If a sudden grid voltage sag occurs, the model commands maximum reactive current, but thermal accumulation ($\tau_{\text{th}} = 45\text{ s}$) threatens to destroy power semiconductor junctions ($T_j \ge 150^\circ\text{C}$). To protect the hardware, the untrusted MPU proposes active/reactive power dispatch vectors ($P_t, Q_t$), while the trusted DSP permission supervisor executes at $1000\text{ Hz}$ in zero-allocation static SRAM, continuously integrating the $I^2t$ thermal accumulator and autonomously clamping current to $I_{\text{cont}}$ before silicon breakdown occurs.
+
+**Cross-Archetype Synthesis:** While Mobility (Archetype 1) is bounded by kinetic stopping distances ($d_{\text{stop}}$) and Contact Manipulation (Archetype 2) is bounded by gearbox tooth shear ($\sigma_{\text{shear}}$), Cybernetic Energy Systems (Archetype 3) are bounded by thermal accumulation ($I^2t$) and fluid transport lags under the exact same proposal-permission architecture.
 :::
 
 ## Compute and Determinism {#sec-compute-determinism}
@@ -376,17 +348,13 @@ To architect deterministic computing engines for embodied intelligence, engineer
 
 ### Propagation Speed and the Euclidean Geometry of Memory
 
-Software abstractions routinely treat computer memory as a flat, uniform address space where any memory location can be accessed in negligible time. On real silicon, physical signals do not propagate instantaneously. Signal propagation speed through silicon metal layers and printed circuit board (PCB) copper traces is bounded by Maxwell's equations and the dielectric constant ($\epsilon_r$) of the insulating substrate:
+Software abstractions routinely treat computer memory as a flat, uniform address space where any memory location can be accessed in negligible time. On real silicon, physical signals do not propagate instantaneously. Signal propagation speed through silicon metal layers and printed circuit board (PCB) copper traces is bounded by Maxwell's equations and the dielectric constant ($\epsilon_r$) of the insulating substrate: $v_{\text{prop}} = c / \sqrt{\epsilon_r} \approx 15\text{ cm/ns}$.
 
-$$v_{\text{prop}} = \frac{c}{\sqrt{\epsilon_r}} \approx \frac{3.0 \times 10^8\text{ m/s}}{\sqrt{4.0}} \approx 1.5 \times 10^8\text{ m/s} \approx 15\text{ cm/ns}$$
+Every centimeter of physical PCB trace adds approximately $67\text{ picoseconds}$ of electromagnetic flight delay. While picoseconds seem negligible in isolation, modern processors operate at gigahertz clock frequencies where a single clock cycle spans less than $0.5\text{ nanoseconds}$ ($500\text{ ps}$). In that single clock cycle, light in copper travels barely $7.5\text{ cm}$. Consequently, the memory hierarchy is an inescapable geometric consequence of Euclidean space and the finite speed of light:
 
-Every centimeter of physical PCB trace adds approximately $67\text{ picoseconds}$ of electromagnetic flight delay. While picoseconds seem negligible in isolation, modern processors operate at gigahertz clock frequencies where a single clock cycle spans less than $0.5\text{ nanoseconds}$ ($500\text{ ps}$).
-
-Consequently, the memory hierarchy is not an arbitrary software convention—it is an inescapable geometric consequence of Euclidean space and the finite speed of light:
-
-1. **On-Chip Registers ($< 0.05\text{ mm}$ distance):** Located immediately adjacent to the arithmetic execution units, register flight times are sub-picosecond, delivering single-cycle access ($< 0.5\text{ ns}$).
-2. **On-Chip Static SRAM ($1\text{ to } 5\text{ mm}$ distance):** Integrated directly onto the silicon die, static RAM delivers deterministic, single-digit nanosecond latency ($1\text{ to } 3\text{ ns}$).
-3. **Off-Chip Dynamic RAM (DRAM) ($50\text{ to } 100\text{ mm}$ distance):** Separated from the processor across PCB copper traces, package solder balls, and memory bus interface receivers, accessing external DRAM requires traversing tens of physical millimeters, demanding $50\text{ to } 100\text{ ns}$ per transaction—a **$100\times$ physical latency penalty** dictated purely by physical distance and trace capacitive charging.
+* **On-Chip Registers ($< 0.05\text{ mm}$ distance):** Located immediately adjacent to arithmetic execution units, register flight times are sub-picosecond, delivering single-cycle access ($< 0.5\text{ ns}$).
+* **On-Chip Static SRAM ($1\text{ to } 5\text{ mm}$ distance):** Integrated directly onto the silicon die, static RAM delivers deterministic, single-digit nanosecond latency ($1\text{ to } 3\text{ ns}$).
+* **Off-Chip Dynamic RAM (DRAM) ($50\text{ to } 100\text{ mm}$ distance):** Separated from the processor across PCB copper traces, package solder balls, and memory bus receivers, external DRAM access requires traversing tens of physical millimeters, demanding $50\text{ to } 100\text{ ns}$ per transaction—a **$100\times$ physical latency penalty** dictated purely by physical distance and trace capacitive charging.
 
 Hard real-time safety supervisors must therefore execute strictly within on-chip static SRAM within millimeters of the processor core. Routing high-frequency $1000\text{ Hz}$ reflex loops across centimeters of PCB copper to off-chip DRAM injects a $100\times$ latency penalty and exposes the safety loop to board-level electrical bus contention.
 
@@ -396,11 +364,7 @@ Machine learning researchers often ask: if on-chip static SRAM is so fast and de
 
 This physical density trade-off creates the **Weight-Shuttling Wall**: modern vision-language-action policies require gigabytes of parameter weights and activation maps, far exceeding fast on-chip SRAM capacity. The neural accelerator cannot hold the model on-chip; it must continuously stream hundreds of megabytes of neural weights across external PCB buses on every single forward evaluation pass.
 
-Furthermore, shuttling charge across physical conductors is thermodynamically expensive:
-
-$$\text{Energy}(\text{32-bit ALU FLOP}) \approx 1\text{--}5\text{ pJ} \quad \ll \quad \text{Energy}(\text{32-bit DRAM Fetch}) \approx 1000\text{--}2000\text{ pJ}$$
-
-Fetching a single word from off-chip DRAM consumes **one thousand times more physical energy** than performing an arithmetic multiplication, generating substantial Joule heat that directly accelerates the silicon thermal derating derived in @sec-energy-thermal.
+Furthermore, shuttling charge across physical conductors is thermodynamically expensive: performing a 32-bit ALU floating-point operation consumes only $1\text{--}5\text{ pJ}$, whereas fetching a 32-bit word from off-chip DRAM consumes $1000\text{--}2000\text{ pJ}$. Shuttling data consumes **one thousand times more physical energy** than arithmetic computation, generating substantial Joule heat that directly accelerates silicon thermal derating.
 
 Because large foundation models operate with low arithmetic operational intensity ($\text{FLOPs/Byte}$) at real-time batch size 1, edge neural policy execution is fundamentally **memory-bandwidth bound** (Bytes/second) rather than arithmetic compute throughput (FLOP/s):
 
