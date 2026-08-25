@@ -99,62 +99,65 @@ When instrumented at the hardware level, this causal sense-to-actuation pipeline
 
 ### The Three Dynamical Hazards of Latency
 
-Every millisecond of unmanaged delay in the sense-to-actuation chain triggers three destructive physical failure modes:
+In pure software systems, latency merely delays the arrival of a result: a web page loads a fraction of a second later, or a database query takes longer to return. In Physical AI, latency actively destroys physical stability. When an intelligent machine senses the world, deliberates in silicon, and commands an actuator, any unmanaged delay in that pipeline interacts destructively with the continuous laws of physics. 
+
+To grasp why latency is so destructive to an embodied machine, consider what happens when you attempt to drive a car while viewing the road through a camera feed with a 200-millisecond lag. As the car drifts slightly to the left, you turn the steering wheel to the right to correct the course. But because the video feed is delayed, your eyes have not yet seen the correction occur, leading you to hold the rightward steering command too long. By the time the vehicle finally turns right, it has overshot the lane center. In response, you instinctively yank the steering wheel back to the left, but that command also arrives late. Within seconds, these delayed, out-of-phase corrections amplify into violent oscillations that tear the vehicle off the road. 
+
+This human driving experience mirrors the mathematical reality of robotic control. Every millisecond of unmanaged delay in the sense-to-actuation chain triggers three fundamental dynamical hazards: **Control Instability and Phase Lag Erosion**, **The Geometric Freshness Wall**, and **The 1,000 Hz Tail Catastrophe**.
 
 #### Hazard 1: Control Instability and Phase Lag Erosion {.unnumbered}
-To understand why delay destroys physical stability, imagine driving a car while looking through a video screen with a $200\text{ ms}$ delay. When the car drifts slightly left, you steer right to correct it. But because of the delay, your corrective steering command reaches the wheels after the car has already continued drifting. By the time the wheels turn right, you have over-steered, forcing you to violently correct back to the left. Within seconds, the car is oscillating out of control.
 
-In control theory [@astrom2021feedback], transport delay $\tau_d = \text{AoI}$ strips away closed-loop **phase margin** ($\text{PM}$) without reducing gain. For a control loop operating at crossover frequency $\omega_c$, transport delay rotates the feedback phase angle:
+In control theory [@astrom2021feedback], transport delay ($\tau_d = \text{AoI}$) strips away closed-loop **phase margin** ($\text{PM}$) without attenuating feedback gain. For a physical control loop operating at crossover frequency $\omega_c$, transport delay rotates the feedback phase angle directly into the right half-plane:
 
 $$\Delta \phi = -\omega_c \cdot \tau_d \cdot \left(\frac{180^\circ}{\pi}\right)$$
 
-At a moderate control crossover frequency of $\omega_c = 20\text{ rad/s}$ (typical for robotic arms and mobile balancing robots), an increase in latency from nominal ($52.2\text{ ms}$) to tail ($126.0\text{ ms}$) injects a massive phase loss of $\Delta \phi = -144.4^\circ$. This wipes out standard $45^\circ\text{--}60^\circ$ phase margins, driving the closed-loop phase margin negative ($\text{PM} \le 0^\circ$). Negative corrective feedback instantly transforms into constructive positive feedback, driving physical motors into violent limit-cycle oscillations and mechanical resonance.
+Consider a robotic arm or mobile balancing robot operating at a moderate control crossover frequency of $\omega_c = 20\text{ rad/s}$. If the computational latency of the vision-language policy inflates from its nominal median ($P_{50} = 52.2\text{ ms}$) to a tail latency spike ($P_{99} = 126.0\text{ ms}$), the additional delay injects a phase loss of $\Delta \phi = -144.4^\circ$. This catastrophic phase erosion completely consumes typical $45^\circ\text{--}60^\circ$ stability margins, driving the effective phase margin deeply negative ($\text{PM} \le 0^\circ$). The moment phase margin turns negative, negative corrective feedback instantly converts into constructive positive feedback, pumping energy into the mechanical structure and driving physical motors into violent limit-cycle oscillations.
 
-**What This Means for the Systems Engineer:**
-* **The Trap:** Attempting to close a high-frequency control loop (e.g., commanding raw joint torques or velocities) directly from a slow or variable-latency neural policy ($10\text{--}30\text{ Hz}$).
-* **The Engineering Action:** **Decouple deliberative inference from real-time motor control.** The slow neural network must output macroscopic, time-parameterized trajectory chunks or intent leases. A dedicated, high-frequency real-time controller ($1000\text{ Hz}$) on a bare-metal microcontroller tracks and stabilizes the trajectory locally using fresh, microsecond sensor feedback.
+This dynamic exposes a critical architectural rule for physical AI systems: **high-level deliberative neural policies must never attempt to close high-frequency feedback loops directly.** Commanding raw joint torques or motor voltages from a 10 Hz to 30 Hz neural policy across an operating system scheduler is fundamentally unstable. Instead, the autonomy architecture must cleanly decouple deliberation from real-time stabilization. The slow, variable-latency neural network emits macroscopic, time-parameterized trajectory chunks or spatial intent goals, while a dedicated, high-frequency real-time controller running at 1000 Hz on a bare-metal microcontroller tracks and stabilizes the trajectory locally using fresh, microsecond sensor feedback.
 
 #### Hazard 2: The Geometric Freshness Wall {.unnumbered}
-Sensory observations begin decaying the exact microsecond photons strike the camera sensor. During the elapsed delay $\Delta t = \text{AoI}$, dynamic obstacles in the workspace continue moving along their velocity trajectories. The spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding the agent's internal belief expands linearly over time:
+
+While phase lag destabilizes high-frequency feedback loops, delay simultaneously blinds the robot to dynamic changes in its environment. Sensory observations begin aging the exact microsecond photons strike the camera sensor. During the elapsed delay $\Delta t = \text{AoI}$, dynamic obstacles in the workspace continue moving along their velocity trajectories. Because the robot is blind to environmental evolution during deliberation, the spatial uncertainty envelope ($\sigma_{\text{pos}}$) bounding its internal belief expands linearly over time:
 
 $$\sigma_{\text{pos}}(t) = \sigma_0 + \|\mathbf{v}_{\text{rel}}\| \cdot \Delta t$$
 
-where $\sigma_0$ is the baseline sensor calibration noise and $\mathbf{v}_{\text{rel}} = \mathbf{v}_{\text{target}} - \mathbf{v}_{\text{ego}}$ is the relative closing velocity. When this spatial uncertainty envelope expands to equal the available physical clearance $d_{\text{clearance}}$, the agent can no longer guarantee collision-free operation. Solving for elapsed time yields the **Freshness Wall** ($\Delta t_{\text{wall}}$):
+where $\sigma_0$ is baseline sensor calibration noise and $\mathbf{v}_{\text{rel}} = \mathbf{v}_{\text{target}} - \mathbf{v}_{\text{ego}}$ is the relative closing velocity between the robot and an approaching obstacle. When this spatial uncertainty envelope expands to equal the available physical clearance $d_{\text{clearance}}$, the robot's internal world model ceases to guarantee collision-free operation. Solving for elapsed time yields the **Freshness Wall** ($\Delta t_{\text{wall}}$):
 
 $$\Delta t_{\text{wall}} = \frac{d_{\text{clearance}} - \sigma_0}{\|\mathbf{v}_{\text{rel}}\|}$$
 
-The Freshness Wall is a hard geometric expiration date. For a mobile robot navigating an aisle with relative closing velocity $\|\mathbf{v}_{\text{rel}}\| = 1.6\text{ m/s}$, initial clearance $d_{\text{clearance}} = 0.25\text{ m}$ ($25\text{ cm}$), and sensor noise $\sigma_0 = 0.01\text{ m}$ ($1\text{ cm}$), the Freshness Wall is:
+The Freshness Wall is a hard geometric expiration date. Consider an autonomous mobile robot navigating a warehouse aisle with a relative closing velocity $\|\mathbf{v}_{\text{rel}}\| = 1.6\text{ m/s}$, an initial physical clearance $d_{\text{clearance}} = 0.25\text{ m}$ ($25\text{ cm}$), and sensor calibration noise $\sigma_0 = 0.01\text{ m}$ ($1\text{ cm}$). Evaluating the Freshness Wall yields:
 
 $$\Delta t_{\text{wall}} = \frac{0.25 - 0.01}{1.6} = 0.150\text{ s} = 150\text{ ms}$$
 
-If an unexpected memory bus contention or neural kernel stall inflates deliberation delay to $160\text{ ms}$, the spatial uncertainty envelope exceeds available clearance ($\sigma_{\text{pos}} = 0.266\text{ m} > 0.25\text{ m}$). The proposed action is obsolete upon arrival, transforming a planned bypass into an unavoidable physical collision.
+If an unexpected memory bus contention stall or neural kernel delay inflates end-to-end deliberation latency to $160\text{ ms}$, the spatial uncertainty envelope expands to $\sigma_{\text{pos}} = 0.266\text{ m}$, exceeding available physical clearance. The proposed motion plan is obsolete upon arrival: executing it transforms a planned bypass into an unavoidable physical collision.
 
-**What This Means for the Systems Engineer:**
-* **The Trap:** Assuming that as long as a neural model eventually outputs an answer, the robot can safely execute it.
-* **The Engineering Action:** **Attach an expiring Time-To-Live (TTL) lease to every perception frame and trajectory command.** The low-level safety supervisor must check:
-  $$\text{Timestamp}_{\text{current}} - t_{\text{obs}} < \Delta t_{\text{wall}}$$
-  If an incoming neural proposal arrives after $\Delta t_{\text{wall}}$ has elapsed, the microcontroller must immediately drop the stale plan and execute a deterministic fallback (such as holding position or applying maximum regenerative braking).
+To prevent stale perception from commanding dangerous actions, the autonomy framework must attach an expiring **Time-To-Live (TTL) lease** to every perception frame and trajectory chunk. On every 1 kHz cycle, the low-level microcontroller safety supervisor validates freshness against the physical boundary:
+
+$$\text{Timestamp}_{\text{current}} - t_{\text{obs}} < \Delta t_{\text{wall}}$$
+
+If a proposed trajectory arrives after $\Delta t_{\text{wall}}$ has elapsed, the microcontroller immediately revokes execution authority, discards the stale proposal, and transitions to a deterministic fallback maneuver, such as holding position or applying maximum regenerative braking.
 
 #### Hazard 3: The 1,000 Hz Tail Catastrophe {.unnumbered}
+
 In cloud software and web services, engineering teams optimize for median latency ($P_{50}$) and tolerate a $99\text{th}$ percentile ($P_{99}$) service-level objective. If a cloud API satisfies 99% of requests within $50\text{ ms}$, engineers celebrate: only 1 in 100 user clicks suffers a slight delay.
 
-In Physical AI, a safety supervisor on a mobile base or robotic manipulator executes at $1000\text{ Hz}$—running $1000$ discrete cycles every second, or $3.6\text{ million}$ cycles every single hour. Under a standard $P_{99}$ cloud reliability standard, the control loop misses its timing deadline on $1\%$ of those cycles. That is not an edge case; it represents **$36{,}000$ catastrophic deadline violations every hour**, or $10$ missed control cycles every second. Designing for median latency ($P_{50}$) leaves $1.8\text{ million}$ timing violations per hour, while even an aggressive $P_{99.9}$ design permits $3{,}600$ deadline misses per hour.
+In Physical AI, that same $P_{99}$ reliability standard is catastrophic. A safety supervisor on an autonomous mobile base or robotic manipulator executes at $1000\text{ Hz}$, evaluating 1,000 discrete control cycles every second—or $3.6\text{ million}$ cycles every single hour. Under a $P_{99}$ design standard where 1% of cycles experience a latency blowout, the control loop suffers **$36{,}000$ deadline violations every hour**, or 10 missed control cycles every second. Designing for median latency ($P_{50}$) leaves $1.8\text{ million}$ timing violations per hour, while even an aggressive $P_{99.9}$ design permits $3{,}600$ deadline misses per hour.
 
-Because physical inertia carries moving mass forward during every missed cycle, safety invariants cannot be certified against average or median performance. 
-
-**What This Means for the Systems Engineer:**
-* **The Trap:** Benchmarking models on standard Python profilers or measuring average frame rates ($P_{50}$) to determine system safety.
-* **The Engineering Action:** **Size all safety budgets strictly against the extreme tail distribution ($P_{99.9}$) or Worst-Case Execution Time (WCET).** Eliminate all dynamic multi-frame FIFO queues in the control path; if a new neural plan is not ready, the controller must never wait—it must execute a bounded interpolation on the previously certified trajectory chunk.
+Because physical inertia carries moving mass forward during every missed cycle, safety invariants cannot be certified against average or median performance. Systems engineers must size all safety margins, stopping clearances, and execution budgets strictly against extreme tail distributions ($P_{99.9}$) or deterministic Worst-Case Execution Time (WCET). Furthermore, real-time control paths must eliminate dynamic multi-frame FIFO queues entirely: if a new neural plan is delayed, the low-level controller must never block or wait—it must execute a bounded, mathematically certified interpolation on the previously validated trajectory chunk.
 
 ### The Systems Metrology Contract
 
-To enforce temporal invariants on physical hardware, engineering teams must establish three operational principles:
+Enforcing temporal invariants on physical hardware requires bridging the divide between high-level software abstractions and bare-metal electronic timing. In practice, this contract rests on three foundational engineering principles: hardware-grounded instrumentation, clock domain synchronization, and the freshness budget invariant.
 
-1. **Hardware-Grounded Metrology (Escaping the Software Timestamp Delusion):** Software developers transitioning to robotics often measure latency by calling user-space timers (`t = time.time()`) before and after a model call. This practice conceals extensive physical delays: user-space timers are blind to optical charge integration ($8\text{--}15\text{ ms}$), bus DMA transfers, memory crossbar contention, and motor coil electrical rise times ($3L/R$). Furthermore, calling software timers incurs interpreter overhead, object allocations, and cache-line evictions that distort high-frequency control loops. True physical latency must be verified through hardware-level instrumentation—measuring electrical transitions from sensor strobe outputs, across memory buses, to motor inverter current probes.
-2. **Clock Domain Synchronization:** Multi-processor architectures execute on separate quartz crystal oscillators with independent thermal drift (10 to 50 parts per million). Without hardware synchronization,[^ptp] clocks diverge by tens of microseconds every second. Sub-microsecond time synchronization must be enforced across all computing domains using IEEE 1588 Precision Time Protocol (PTP / IEEE 802.1AS) and hardware capture timers.
-3. **The Freshness Budget Invariant:** Upstream neural policies must be budgeted such that worst-case tail latency satisfies the physical world reaction deadline:
-   $$t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}} \le \Delta t_{\text{wall}}$$
-   If an upstream model takes longer than $\Delta t_{\text{wall}}$ to compute an action, the plan is expired upon arrival. The real-time safety layer must immediately discard stale proposals and execute safe fallback maneuvers.
+First, engineering teams must escape what we term the *Software Timestamp Delusion*. Software engineers entering robotics frequently measure model latency by calling user-space timers (`t = time.time()`) immediately before and after a neural inference call. This practice conceals extensive physical delays: user-space timers are completely blind to optical charge integration in the camera ($8\text{--}15\text{ ms}$), Direct Memory Access (DMA) bus transfers, memory crossbar contention, and the inductive rise time of motor coils ($3L/R$). Furthermore, invoking software timers inside high-frequency control loops introduces interpreter overhead, object allocations, and cache-line evictions that distort execution timing. True physical latency must be verified through hardware-level instrumentation, such as toggling dedicated General-Purpose Input/Output (GPIO) pins at interrupt boundaries and observing electrical transitions with an external logic analyzer and oscilloscope current probes.
+
+Second, the system must maintain strict clock synchronization across disparate physical compute domains. Modern Physical AI platforms distribute computation across multiple silicon dies—such as a Linux application processor for neural perception and a real-time microcontroller for motor control. These independent chips execute on separate quartz crystal oscillators that drift thermally by 10 to 50 parts per million. Without hardware synchronization,[^ptp] their internal clocks diverge by tens of microseconds every second, corrupting state estimation and time-stamped trajectory handoffs. Sub-microsecond time synchronization must be maintained across all compute domains using hardware timer capture triggers and network synchronization protocols such as IEEE 1588 Precision Time Protocol (PTP / IEEE 802.1AS).
+
+Third, the entire autonomy pipeline must enforce the **Freshness Budget Invariant**. The end-to-end latency budget of upstream neural policies must be bounded so that worst-case tail execution always satisfies the physical world reaction deadline:
+
+$$t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}} \le \Delta t_{\text{wall}}$$
+
+By mathematically bounding tail execution within $\tau_{\text{world}}$, the system guarantees that every action arriving at the motor inverters is derived from fresh sensory reality. If an unexpected compute stall causes $t_{\text{total}}$ to exceed $\Delta t_{\text{wall}}$, the proposal is deemed expired upon arrival, triggering an immediate, deterministic handover to the low-level safety layer.
 
 [^ptp]: Sub-microsecond hardware timestamping across multi-board or distributed architectures requires dedicated hardware time synchronization protocols such as IEEE 1588 Precision Time Protocol (PTP) or hardware timer capture triggers [@ieee1588].
 
@@ -183,12 +186,13 @@ Because $\mathbf{M}(\mathbf{q})$ varies continuously as joint angles $\mathbf{q}
 
 ![**Dynamic Stopping Distance Physics ($d_{\text{stop}}$).** Translating milliseconds of computational delay into physical centimeters of stopping hazard. The total stopping distance is the sum of the linear reaction phase ($v_0 \cdot \Delta t_{\text{delay}}$) and the quadratic braking phase ($\frac{v_0^2}{2a_{\text{max}}}$). A tail latency spike expands reaction travel, converting a safe stop into a collision.](figures/fig02_stopping_distance.svg){#fig-stopping-distance width=100%}
 
-As illustrated in @fig-stopping-distance, the total dynamic stopping distance ($d_{\text{stop}}$), measured from the instant an obstacle appears until the machine reaches a complete halt, divides into two distinct physical phases:
+As illustrated in @fig-stopping-distance, the total dynamic stopping distance ($d_{\text{stop}}$)—measured from the physical instant an obstacle appears until the machine comes to a complete rest—decomposes into two distinct physical phases:
 
 $$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stopping Distance}} = \underbrace{v_0 \cdot \Delta t_{\text{delay}}}_{\text{Phase 1: Linear Reaction Drift}} \;+\; \underbrace{\frac{v_0^2}{2 a_{\text{max}}}}_{\text{Phase 2: Quadratic Kinetic Braking}}$$
 
-1. **Phase 1: Linear Reaction Drift ($v_0 \cdot \Delta t_{\text{delay}}$):** During the total sense-to-actuation latency $\Delta t_{\text{delay}}$ (derived in @sec-sense-to-actuation), no corrective force has yet reached the physical actuators. By Newton's First Law, the center of mass coasts forward unguided at velocity $v_0$. This exposes the fundamental cyber-physical bridge: *computational delay translates directly into linear unguided projectile travel through physical space*.
-2. **Phase 2: Quadratic Kinetic Braking ($\frac{v_0^2}{2 a_{\text{max}}}$):** Once braking torque engages, the machine decelerates at maximum available deceleration $a_{\text{max}}$, dissipating kinetic energy over a quadratic distance. Physical braking onsets are further bounded by finite jerk rise times ($\Delta t_{\text{jerk}} = a_{\text{max}} / j_{\text{max}}$), governed by the electromagnetic coil rise times and transmission shear limits derived in @sec-actuation-jerk.
+During Phase 1 (**Linear Reaction Drift**, $v_0 \cdot \Delta t_{\text{delay}}$), the system is traversing its end-to-end sense-to-actuation pipeline ($\Delta t_{\text{delay}}$). Because the neural policy and safety layers are still computing, no opposing force has yet reached the physical actuators. By Newton's First Law, the center of mass coasts forward unguided at its initial velocity $v_0$. This exposes the fundamental cyber-physical bridge: *computational delay translates directly into linear unguided projectile travel through physical space*.
+
+Once braking torque physically builds in the actuators, Phase 2 (**Quadratic Kinetic Braking**, $\frac{v_0^2}{2 a_{\text{max}}}$) engages. The machine decelerates at maximum available deceleration $a_{\text{max}}$, dissipating its kinetic energy across a quadratic braking distance. Physical braking onsets are further bounded by finite jerk rise times ($\Delta t_{\text{jerk}} = a_{\text{max}} / j_{\text{max}}$), governed by the electromagnetic coil rise times and transmission shear limits derived in @sec-actuation-jerk.
 
 ::: {.callout-case title="The Dynamic Stopping Overrun"}
 * **Physical Scenario:** An autonomous mobile platform operates in a warehouse with initial velocity $v_0 = 1.0\text{ m/s}$, maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
@@ -200,27 +204,29 @@ $$\underbrace{d_{\text{stop}}(v_0, \Delta t_{\text{delay}})}_{\text{Total Stoppi
 
 ### Dynamic Safety Clearance Invariants and the Speed Governor
 
-Because computational delay expands stopping distance linearly, obstacle clearance thresholds must never be hardcoded as fixed geometric constants (such as "maintain a 30 cm buffer"). Instead, safety must be enforced through two dual physical invariants:
+Because computational delay expands stopping distance linearly, obstacle clearance thresholds must never be hardcoded as static geometric constants (such as maintaining an arbitrary "30 cm buffer"). Instead, safe physical agency requires enforcing two dual physical invariants that link measured latency directly to actuation authority.
 
 #### Invariant 1: The Dynamic Clearance Safety Invariant {.unnumbered}
-To guarantee collision-free operation under worst-case tail latency, the available workspace clearance $d_{\text{clearance}}$ must satisfy the scalar safety set condition:
+
+To guarantee collision-free operation under worst-case tail execution, the available workspace clearance $d_{\text{clearance}}$ must satisfy the scalar safety set condition:
 
 $$h(\mathbf{x}) = d_{\text{clearance}} - \left( d_{\text{stop}}\left(v_0, \Delta t(P_{99.9})\right) + d_{\text{margin}} \right) \ge 0$$
 
-where $d_{\text{margin}}$ is an empirical buffer accounting for terrain slip and structural dimensions. In Chapter 9, we formalize $h(\mathbf{x})$ as a Control Barrier Function [@ames2019control] and synthesize deterministic 1 kHz Quadratic Programs that provably maintain this invariant on real-time microcontrollers without conservative trajectory clipping.
+where $d_{\text{margin}}$ is an empirical safety buffer accounting for surface friction variability and chassis geometry. In Chapter 9, we formalize $h(\mathbf{x})$ as a Control Barrier Function [@ames2019control] and synthesize deterministic 1 kHz Quadratic Programs that maintain this invariant on real-time microcontrollers without overly conservative trajectory clipping.
 
 #### Invariant 2: The Closed-Form Dynamic Speed Governor {.unnumbered}
-By setting $d_{\text{stop}}(v_{\text{safe}}, \Delta t) = d_{\text{clearance}} - d_{\text{margin}}$ and solving the quadratic equation for velocity, we obtain the algebraic dual of the stopping equation—the **Dynamic Speed Governor**:
+
+By setting $d_{\text{stop}}(v_{\text{safe}}, \Delta t) = d_{\text{clearance}} - d_{\text{margin}}$ and solving the quadratic stopping equation for velocity, we obtain the algebraic dual of stopping kinematics—the **Dynamic Speed Governor**:
 
 $$v_{\text{safe}}\left(d_{\text{clearance}}, \Delta t_{\text{delay}}\right) = \sqrt{(a_{\text{max}} \Delta t_{\text{delay}})^2 + 2 a_{\text{max}} \left(d_{\text{clearance}} - d_{\text{margin}}\right)} - a_{\text{max}} \Delta t_{\text{delay}}$$
 
-The Speed Governor proves that the maximum permissible operating speed of any autonomous physical machine is explicitly parameterized by its worst-case computational tail latency $\Delta t(P_{99.9})$. If memory contention or neural model complexity inflates computational tail latency, the vehicle must automatically derate its operating velocity to ensure that the physical stopping envelope remains within available workspace clearance.
+The Speed Governor proves that the maximum permissible operating speed of any autonomous physical machine is explicitly parameterized by its worst-case computational tail latency $\Delta t(P_{99.9})$. If memory bus contention, thermal throttling, or complex neural beam search inflates tail latency, the machine must automatically derate its operating velocity to guarantee that its physical stopping envelope remains within available clearance.
 
-**What This Means for the Systems Engineer:**
-* **The Trap:** Hardcoding a static speed limit or a fixed clearance margin in software, assuming that because the robot halted safely during lab testing at $P_{50}$ latency, it is safe in real-world deployment.
-* **The Engineering Action:** **Implement the Dynamic Speed Governor as an online velocity clamp in the low-level motion controller.** Before commanding a forward velocity $v_{\text{cmd}}$, the controller queries current measured obstacle clearance $d_{\text{clearance}}$ and worst-case measured tail latency $\Delta t_{P99}$, evaluating:
-  $$v_{\text{cmd}} \leftarrow \min\left(v_{\text{cmd}}, \; v_{\text{safe}}(d_{\text{clearance}}, \Delta t_{P99})\right)$$
-  If the robot enters a narrow corridor (reducing $d_{\text{clearance}}$) or if background neural inference causes scheduling jitter (increasing $\Delta t$), the system automatically and smoothly down-throttles its physical speed, mathematically guaranteeing it can always halt within available clearance.
+In real-world deployment, this invariant is implemented as an online velocity clamp in the low-level motion controller. Before dispatching a commanded forward velocity $v_{\text{cmd}}$ to joint inverters, the real-time safety layer queries the current measured obstacle clearance $d_{\text{clearance}}$ and the verified $P_{99.9}$ tail latency budget, clamping velocity according to:
+
+$$v_{\text{cmd}} \leftarrow \min\left(v_{\text{cmd}}, \; v_{\text{safe}}(d_{\text{clearance}}, \Delta t_{P99.9})\right)$$
+
+When the robot enters a constrained passageway or when onboard compute resources experience temporary contention spikes, the speed governor automatically and continuously down-throttles physical velocity, preserving the mathematical guarantee that the machine can always halt before breaching the obstacle boundary.
 
 
 ## Actuation and Mechanical Limits {#sec-actuation-jerk}
@@ -277,11 +283,7 @@ Because the high-speed motor rotor must undergo an angular acceleration step of 
 
 $$\tau_{\text{shock}} = N^2 J_{\text{rotor}} \Delta \ddot{\mathbf{q}}$$
 
-Due to the $N^2$ scaling factor, even a lightweight rotor generates massive dynamic shock loads under step acceleration commands. This triggers three destructive physical failure modes:
-
-1. *Gear Tooth Shear and Flexspline Fatigue:* Transmission components experience peak shear stress $\tau_{\text{shear}} = \frac{T}{W_p}$, where $W_p$ is the polar section modulus of the gear tooth or flexspline cup. Impulsive jerk spikes exceed the material shear yield strength ($\tau_{\text{yield}}$), causing tooth pitting, fatigue micro-fractures, and tooth stripping.
-2. *Structural Resonance:* Impulsive shock waves excite unmodeled high-frequency mechanical resonance modes ($1\text{--}2\text{ kHz}$) in the robotic linkages.
-3. *State Estimator Saturation:* Mechanical vibration transients propagate directly into the chassis, saturating MEMS accelerometers and gyroscopes and corrupting the state estimation pipeline.
+Due to the $N^2$ scaling factor, even a lightweight rotor generates massive dynamic shock loads under step acceleration commands. This triggers a destructive mechanical failure cascade. First, transmission components experience peak shear stress ($\tau_{\text{shear}} = T/W_p$, where $W_p$ is the polar section modulus of the gear tooth or flexspline cup). Impulsive jerk spikes easily exceed the material shear yield strength ($\tau_{\text{yield}}$), causing tooth pitting, fatigue micro-fractures, and catastrophic tooth stripping. Second, impulsive shock waves excite unmodeled high-frequency mechanical resonance modes ($1\text{--}2\text{ kHz}$) in the robot's physical linkages. Third, these mechanical vibration transients propagate directly into the chassis, saturating MEMS accelerometers and gyroscopes and corrupting the state estimation pipeline.
 
 To protect mechanical hardware from impulsive shock loads, autonomy architectures must enforce **$\mathcal{C}^2$ differential jerk continuity** ($\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$). The planning layer must synthesize kinodynamically smooth trajectory splines across time horizons (as formulated in Chapter 8), while the real-time microcontroller reflex layer enforces microsecond torque slew rate and current clamping (as detailed in Chapter 9).
 
@@ -459,11 +461,7 @@ In standard software development, dynamic memory allocation (`malloc`, `free`, `
 
 In real-time embedded safety systems, dynamic heap allocation is a fatal physical hazard [@kopetz2011real; @wilhelm2008worst]. Searching through a fragmented dynamic heap to find a free memory block is a spatial linked-list traversal process that takes variable, non-deterministic physical time. 
 
-Permitting dynamic heap allocation within real-time control silicon introduces three severe failure modes:
-
-1. *Non-Deterministic Pointer Chasing:* Standard free-list allocators exhibit variable execution times during spatial linked-list traversal, causing timing stalls that miss real-time deadlines.
-2. *Heap Fragmentation:* Continuous dynamic allocation over multi-hour physical missions fragments memory, eventually triggering catastrophic out-of-memory allocation failures.
-3. *Stack-Heap Collisions:* Real-time microcontrollers lack memory management units (MMUs) to catch memory collisions; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing fatal unhandled processor lockups that leave actuators unguided.
+Permitting dynamic heap allocation within real-time control silicon introduces three severe physical failure modes. First, standard free-list allocators exhibit non-deterministic execution times during spatial linked-list traversal, causing timing stalls that miss hard real-time control deadlines. Second, continuous dynamic allocation and deallocation over multi-hour physical missions fragments the heap, eventually triggering catastrophic out-of-memory allocation failures even when aggregate free memory appears sufficient. Third, real-time microcontrollers lack memory management units (MMUs) to catch memory boundary violations; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing unhandled processor lockups that leave actuators completely unguided.
 
 ::: {.callout-important title="The Iron Law of Real-Time Safety: Zero Dynamic Heap Allocation"}
 Zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing data structures) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines (enforcing NASA JPL Rule 3 and MISRA C:2012 Rule 21.3).
