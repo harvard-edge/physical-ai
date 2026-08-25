@@ -66,30 +66,9 @@ When a sensor captures an observation at historical instant $t_{\text{obs}}$, th
 
 $$\text{AoI}(t_{\text{act}}) = t_{\text{act}} - t_{\text{obs}} = \tau_{\text{trans}} + \tau_{\text{dma}} + \tau_{\text{perceive}} + \tau_{\text{infer}} + \tau_{\text{ipc}} + \tau_{\text{enforce}} + \tau_{\text{actuator}}$$
 
-When instrumented at the hardware level, this causal sense-to-actuation pipeline decomposes into seven sequential physical and computational stages (@fig-latency-waterfall and @tbl-latency-breakdown):
-
-1. **Stage 1: Optical and Physical Transduction ($\tau_{\text{trans}}$):** Photons striking silicon photodiode wells require $8\text{ to } 15\text{ ms}$ of exposure to accumulate sufficient electrical charge under ambient lighting (with rolling-shutter readouts adding progressive spatial distortion).
-2. **Stage 2: Direct Memory Access Ingestion ($\tau_{\text{dma}}$):** The camera interface serializes digitized pixel frames across high-speed serial links into main DRAM buffers ($3\text{ to } 8\text{ ms}$).
-3. **Stage 3: Spatial Perception and Feature Extraction ($\tau_{\text{perceive}}$):** The vision backbone processes raw sensory frames into structured spatial embeddings ($12\text{ to } 25\text{ ms}$).
-4. **Stage 4: Deliberative Policy and Motion Synthesis ($\tau_{\text{infer}}$):** The neural policy network evaluates environmental features and synthesizes candidate motion proposals ($22\text{ to } 60\text{ ms}$).
-5. **Stage 5: Inter-Processor Communication ($\tau_{\text{ipc}}$):** The application processor packages candidate actions and transfers them across memory buses to the real-time microcontroller domain ($0.8\text{ to } 2.0\text{ ms}$).
-6. **Stage 6: Deterministic Safety Verification and Gating ($\tau_{\text{enforce}}$):** Operating deterministically at $1000\text{ Hz}$ in static microcontroller SRAM, the safety supervisor validates the proposed action against physical invariants ($0.4\text{ to } 1.0\text{ ms}$).
-7. **Stage 7: Electromagnetic Actuator Rise Time ($\tau_{\text{actuator}}$):** Stator wire coils possess electrical inductance $L$ and resistance $R$, requiring three electrical time constants ($3\tau_e = 3L/R \approx 6\text{ to } 15\text{ ms}$) for the magnetic field to build ninety-five percent of commanded physical torque.
+When instrumented at the hardware level, this causal sense-to-actuation pipeline traces a continuous path from physical photons to electromagnetic torque (@fig-latency-waterfall). The journey begins in the physical domain with optical transduction ($\tau_{\text{trans}}$), where photons striking photodiode wells require 8 to 15 ms of charge accumulation. Once digitized, frames are serialized across Direct Memory Access channels into DRAM ($\tau_{\text{dma}}$), where the vision backbone and deliberative neural policy extract spatial features and decode candidate trajectories ($\tau_{\text{perceive}} + \tau_{\text{infer}}$). The candidate plan is then dispatched across inter-processor mailboxes ($\tau_{\text{ipc}}$) to a deterministic 1000 Hz safety supervisor running in static SRAM ($\tau_{\text{enforce}}$), which validates physical invariants before gating current into motor inverters. Finally, the signal returns to the physical domain, where stator coil inductance requires three electrical time constants ($3\tau_e = 3L/R \approx 6\text{--}15\text{ ms}$) for the magnetic field to build commanded torque ($\tau_{\text{actuator}}$).
 
 ![**The 7-Stage Sense-to-Actuation Latency Timeline Waterfall.** Gantt-style timeline tracking physical transduction, memory bus transfer, neural compute, inter-processor communication, real-time safety enforcement, and electromagnetic rise time across nominal ($P_{50} = 52.2\text{ ms}$) and tail ($P_{99} = 126.0\text{ ms}$) execution paths against the physical world deadline ($\tau_{\text{world}} = 80\text{ ms}$).](figures/fig02_latency_waterfall.svg){#fig-latency-waterfall width=100%}
-
-| Stage | Subsystem and Mechanism | $P_{50}$ | $P_{99}$ | Dominant Physical / Silicon Bottleneck |
-| :--- | :--- | :---: | :---: | :--- |
-| **1. Transduce ($\tau_{\text{trans}}$)** | Photodiode charge well integration | $8.0\text{ ms}$ | $15.0\text{ ms}$ | Optical flux & photon integration |
-| **2. DMA Ingest ($\tau_{\text{dma}}$)** | Serial-to-DRAM memory crossbar transfer | $3.0\text{ ms}$ | $8.0\text{ ms}$ | Memory interconnect bandwidth |
-| **3. Perception ($\tau_{\text{perceive}}$)** | Spatial perception & feature extraction | $12.0\text{ ms}$ | $25.0\text{ ms}$ | Neural accelerator arithmetic throughput |
-| **4. Policy ($\tau_{\text{infer}}$)** | Deliberative policy & trajectory decoding | $22.0\text{ ms}$ | $60.0\text{ ms}$ | Weight-streaming memory bandwidth |
-| **5. Inter-IPC ($\tau_{\text{ipc}}$)** | Inter-core mailbox & message transfer | $0.8\text{ ms}$ | $2.0\text{ ms}$ | Interrupt dispatch & memory synchronization |
-| **6. Enforce ($\tau_{\text{enforce}}$)** | Deterministic safety invariant check (1 kHz) | $0.4\text{ ms}$ | $1.0\text{ ms}$ | Real-time microcontroller execution |
-| **7. Actuator ($\tau_{\text{actuator}}$)** | Stator coil $L/R$ electrical rise time | $6.0\text{ ms}$ | $15.0\text{ ms}$ | Stator magnetic field build-up ($3L/R$) |
-| **TOTAL** | **End-to-End Latency Chain ($\text{AoI}$)** | **$52.2\text{ ms}$** | **$126.0\text{ ms}$** | **Budget Ceiling: $\le 80.0\text{ ms}$** |
-
-: The 7-stage sense-to-actuation latency breakdown. Deconstructing end-to-end delay across physical transduction, memory bus transfers, neural processing, inter-core communication, real-time safety evaluation, and electromagnetic actuator rise time. {#tbl-latency-breakdown}
 
 ::: {.callout-fallacy title="High Frame Rate and Median Latency Guarantee Closed-Loop Stability"}
 * **The Common Assumption:** If a deep neural policy runs at a high frame rate of $60\text{ FPS}$ with a nominal median latency of $P_{50} = 20\text{ ms}$, the control pipeline has ample headroom to safely stabilize an embodied system requiring $20\text{ Hz}$ feedback.
@@ -544,17 +523,19 @@ A heavy-duty quadruped robot's hip and knee actuators use direct-drive brushless
   2. When the real-time microcontroller's $I^2t$ energy accumulator trips and autonomously clamps phase current to $I_{\text{cont}} = 14\text{ A}$ to prevent motor burnout, available torque drops by $60\%$, causing the robot to buckle under gravity.
   3. How should the hierarchical autonomy stack co-design the high-level gait planner, spline jerk limiter ($\dddot{\mathbf{q}} \le \dddot{q}_{\text{max}}$), and real-time thermal observer to scale locomotion speed dynamically before thermal clamping forces a catastrophic collapse?
 
-#### Stress-Test 3: The Crossbar Starvation vs. Safe Veto Dilemma (Compute & Time Columns) {.unnumbered}
+#### Stress-Test 3: The Shared Bus Contention vs. Safe Veto Dilemma (Compute, Time, and Actuation) {.unnumbered}
 
-An autonomous robotic surgical cutting system utilizes a heterogeneous System-on-Chip containing an 8-core CPU (running Linux with a learned soft-tissue deformation model), an 80 TOPS Neural Processing Unit (NPU), an Image Signal Processor (ISP) ingesting dual $4\text{K}$ 60 FPS endoscope video streams, and a lockstep Cortex-R5 real-time microcontroller executing a $1000\text{ Hz}$ Control Barrier Function safety enforcer. All compute engines share a single 128-bit LPDDR5 DRAM crossbar with $51.2\text{ GB/s}$ aggregate bandwidth.
+An autonomous robotic surgical platform performs microsurgical cutting under stereo camera guidance. The platform's compute engine runs three concurrent workloads sharing a single physical memory bus:
+1. High-resolution stereo video ingestion from endoscopic cameras ($3.0\text{ GB/s}$).
+2. An onboard neural policy computing continuous tissue deformation trajectories ($28.0\text{ GB/s}$).
+3. A real-time safety reflex loop executing at $1000\text{ Hz}$ to verify gripper contact forces.
 
-* Under nominal execution, the ISP writes $3.0\text{ GB/s}$ via DMA, the NPU reads $28.0\text{ GB/s}$ of model weights, and the CPU consumes $8.0\text{ GB/s}$ for kinematic transformations (total $39.0\text{ GB/s} < 51.2\text{ GB/s}$).
-* During a delicate tissue resection, an unexpected surgical illumination flare causes the ISP auto-exposure engine to initiate sudden high-bandwidth burst transfers ($+14.0\text{ GB/s}$), while the NPU simultaneously initiates a multi-hypothesis recovery beam search ($+16.0\text{ GB/s}$). Aggregate memory crossbar demand spikes to $69.0\text{ GB/s}$, exceeding physical DRAM bandwidth by $35\%$.
+During nominal operation, total memory bus traffic consumes $39.0\text{ GB/s}$ of a $51.2\text{ GB/s}$ physical bus capacity. However, an unexpected surgical illumination flare causes the camera interface to burst high-bandwidth raw pixel transfers ($+14.0\text{ GB/s}$), while the neural model simultaneously initiates a multi-hypothesis trajectory replanning cycle ($+16.0\text{ GB/s}$). Aggregate data demand spikes to $69.0\text{ GB/s}$, exceeding the physical bus bandwidth by $35\%$.
 
 * **The Systems Dilemma:**
-  1. The DRAM crossbar saturates. The real-time Cortex-R5 microcontroller, attempting to read end-effector force telemetry from a shared DRAM mailbox, experiences an arbitration stall of $1.8\text{ ms}$, causing it to miss two consecutive $1.0\text{ ms}$ real-time control ticks.
-  2. If the safety supervisor defaults to a classic "hard dynamic brake" fail-safe, the sudden mechanical deceleration ($jerk \to \infty$) tears the delicate tissue held by the gripper. If it holds the last commanded velocity, unguided motion risks severing an adjacent blood vessel.
-  3. What exact silicon-level architectural mechanisms (such as hardware AXI QoS priority registers, non-cacheable DMA memory buffers, and static on-chip SRAM partitions under `malloc = 0`) are required to make the real-time safety path completely immune to perception-induced memory bus contention?
+  1. **The Physical Bus Stall:** The $1000\text{ Hz}$ safety reflex, attempting to read force sensor telemetry across the saturated memory bus, suffers an arbitration delay of $1.8\text{ ms}$—missing two consecutive $1.0\text{ ms}$ control deadlines. Explain why this delay is a direct consequence of the physical properties of shared electrical conductors.
+  2. **The Mechanical Dilemma:** If the safety supervisor defaults to an instantaneous emergency stop, the resulting acceleration discontinuity ($\dddot{\mathbf{q}} \to \infty$) creates high shock forces that risk tearing delicate biological tissue. If it holds the last commanded velocity, unguided inertial drift risks breaching safe anatomical boundaries.
+  3. **The Physical Isolation Principle:** Using the physical memory hierarchy principles established in Section 2.6 (Euclidean distance, SRAM vs. DRAM latency, and static allocation), explain why real-time safety reflexes must never depend on shared off-chip memory conduits. *(In Chapter 4 and Chapter 10, we will formalize the hardware memory isolation and mailbox architectures that enforce this boundary.)*
 
 #### Stress-Test 4: The Cross-Column Multi-Rate Cascade Failure (Whole-System Integration Dilemma) {.unnumbered}
 
