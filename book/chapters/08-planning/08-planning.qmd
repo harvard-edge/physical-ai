@@ -1,10 +1,11 @@
 # Planning and Trajectory Synthesis\chaptersubtitle{Action Chunking, Receding-Horizon Ensembling, and Kinodynamic Splines} {#sec-planning}
 
-![**Systems Organ Focus:** Stage 5 (Trajectory Planning & Action Chunking). Acting as the System 1.5 proposal engine, the trajectory planner translates 1 Hz expiring intent leases from System 2 into continuous, multi-step action chunks ($H=16$), amortizing neural inference delay across physical time while guaranteeing $\mathcal{C}^2$ jerk continuity before passing candidate commands to the 1 kHz real-time MCU safety enforcer.](figures/fig_pipeline_locator.svg){#fig-locator-ch08 width=100% fig-pos="H"}
+![**Systems Organ Focus:** Stage 5 (Trajectory Planning & Action Chunking). Acting as the System 1.5 proposal engine, the trajectory planner translates 1 Hz expiring intent leases from System 2 into continuous, multi-step action chunks ($H=16$), amortizing neural inference delay across physical time while guaranteeing $\mathcal{C}^2$ jerk continuity before passing candidate commands to the 1 kHz real-time MCU safety enforcer.](figures/fig_pipeline_locator.svg){#fig-locator-ch08 fig-pos="H" width=100%}
 
 *Why does an AI policy that outputs smooth trajectories in simulation snap gear teeth and shake violently on a physical robot?*
 
 In digital machine learning, sequential decision-making is framed as a Markov decision process where policies emit a single discrete action per time step. On physical hardware, this single-step paradigm breaks down because neural forward passes require tens of milliseconds, during which actuators starve for fresh setpoints. When delayed actions arrive, discrete step changes command instantaneous acceleration steps, injecting theoretical infinite jerk ($\dddot{\mathbf{q}} \to \infty$) that excites mechanical resonances, fatigues harmonic drive flexsplines, and shears gearbox pins. Physical AI resolves this throughput mismatch through action chunking: predicting multi-step future horizons that amortize computational latency, blending overlapping predictions across physical time through exponential recency ensembling, and interpolating waypoints via $\mathcal{C}^2$ quintic splines to respect the physical limits of mass, torque, and transmission integrity.
+
 
 {{< pagebreak >}}
 
@@ -22,6 +23,7 @@ After studying this chapter, you will be able to:
 
 **Core Chapter Takeaway:** Bridging the temporal chasm between macroscopic semantic reasoning ($1\text{ Hz}$) and microsecond motor reflexes ($1000\text{ Hz}$) requires a System 1.5 mid-rate planning organ that decodes continuous, kinodynamically feasible multi-step action chunks while enforcing $\mathcal{C}^2$ polynomial spline continuity to eliminate destructive mechanical jerk.
 :::
+
 
 ## Trajectory Synthesis and Cadence
 
@@ -51,7 +53,10 @@ In physical control systems, holding a commanded position or velocity setpoint c
    - $\tau_d = \frac{1}{2}T_{\text{infer}}$ is the effective group delay in seconds ($\text{s}$), representing the average age of the held command across the sampling interval.
    - $\Delta \phi = -\omega \tau_d$ is the phase erosion in radians ($\text{rad}$) or degrees ($^\circ$). Because phase subtracts directly from the system's phase margin ($\text{PM} = 180^\circ + \angle L(j\omega_c)$), every degree of phase lost brings the physical plant closer to destructive instability.
 4. **Concrete Numerical Example:** Consider an articulated robot arm executing a high-speed assembly sweep with a dominant motion bandwidth of $\omega = 10.0\text{ rad/s}$ ($f \approx 1.59\text{ Hz}$). The vision-based neural policy requires $T_{\text{infer}} = 50.0\text{ ms}$ ($0.050\text{ s}$), establishing an effective ZOH transport delay of $\tau_d = 0.025\text{ s}$ ($25.0\text{ ms}$). The resulting phase loss is:
-   $$\Delta \phi = -\omega \tau_d = -10.0\text{ rad/s} \times 0.025\text{ s} = -0.25\text{ rad} = -0.25 \times \left(\frac{180^\circ}{\pi}\right) \approx -14.32^\circ \approx -14.3^\circ$$
+   $$\begin{aligned}
+   \Delta \phi &= -\omega \tau_d = -10.0\text{ rad/s} \times 0.025\text{ s} = -0.25\text{ rad} \\
+   &= -0.25 \times \left(\frac{180^\circ}{\pi}\right) \approx -14.3^\circ
+   \end{aligned}$$
    If the low-level joint position controller was tuned with a typical industrial phase margin of $\text{PM} = 35.0^\circ$, this single inference delay erodes over $40\%$ of the entire stability reserve ($\text{PM}_{\text{effective}} = 35.0^\circ - 14.3^\circ = 20.7^\circ$). The robot begins to vibrate audibly, overshooting target waypoints by several centimeters.
 
 ### The System 1.5 Solution: Action Chunking
