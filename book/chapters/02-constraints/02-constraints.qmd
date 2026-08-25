@@ -456,66 +456,52 @@ The *Physical Operating Specification* records the eight foundational physical c
 
 : The Physical Operating Specification. The eight foundational physical and silicon parameters that bound real-time safety enforcement on the Physical AI System Under Test (SUT). {#tbl-physical-spec}
 
-Once measured and certified, the values in @tbl-physical-spec are compiled directly into the real-time microcontroller's immutable firmware constants. These values form the mathematical boundary conditions evaluated by the real-time safety supervisor using Control Barrier Functions (CBFs) on every $1\text{ kHz}$ tick. In modern control theory, a Control Barrier Function $h(\mathbf{x}) \ge 0$ defines a forward-invariant safe operating set $\mathcal{C}$ [@ames2019control]. By enforcing the barrier condition $\dot{h}(\mathbf{x}, \mathbf{u}) \ge -\alpha(h(\mathbf{x}))$, the real-time microcontroller continuously monitors candidate motor commands from upstream neural policies and projects unsafe proposals back onto the verified safe boundary before current is gated into motor inverters.
+Once measured and certified, the values in @tbl-physical-spec are compiled directly into the real-time microcontroller's immutable firmware constants. These values form the physical boundary conditions evaluated by the real-time safety supervisor on every control tick. Rather than allowing high-level software to drive actuators unchecked, the embedded controller continuously compares candidate motor commands against these physical thresholds—verifying freshness against $\Delta t_{\text{wall}}$, clearance against $d_{\text{stop}}$, and torque limits against thermal and mechanical bounds—before gating electrical power to the motors.
 
 
 ## Systems Stress-Tests: Architectural Food for Thought {#sec-constraints-stress-tests}
 
-To transition from analytical equations to whole-system architectural reasoning, consider four high-stakes engineering dilemmas where physical laws, computational delays, and mechanical limits collide.
+To transition from abstract equations to systems engineering reasoning, consider four foundational dilemmas where software assumptions collide with the five physical constraints.
 
-#### Stress-Test 1: The Epistemic Freshness vs. Stopping Distance Paradox (Time & Inertia Columns) {.unnumbered}
+#### Stress-Test 1: The Reaction Distance Trap (Time & Inertia Columns) {.unnumbered}
 
-You are architecting the autonomy stack for an autonomous mobile logistics platform operating at $v_0 = 1.5\text{ m/s}$ in a dynamic warehouse aisle with an available clearance budget $d_{\text{clearance}} = 0.50\text{ m}$ ($50\text{ cm}$) and maximum mechanical braking deceleration $a_{\text{max}} = 2.5\text{ m/s}^2$. Sensor calibration uncertainty is $\sigma_0 = 0.04\text{ m}$.
-
-* **Architecture A (Deep Foundation Policy):** A 7B parameter Vision-Language-Action (VLA) foundation model running on an onboard NPU delivers exceptional semantic generalization and obstacle trajectory forecasting, but incurs an end-to-end latency of $t_{\text{vla}} = 75\text{ ms}$ ($P_{50}$) with worst-case tail latency $P_{99.9} = 190\text{ ms}$. To amortize computation, it outputs 16-step action chunks spanning an $800\text{ ms}$ planning horizon.
-* **Architecture B (Compact Reactive Policy):** A 50M parameter lightweight spatial policy executes in $t_{\text{light}} = 8\text{ ms}$ ($P_{50}$) with tail latency $P_{99.9} = 14\text{ ms}$, outputting 2-step action chunks ($100\text{ ms}$ horizon), but exhibits $3.5\times$ higher tracking error when encountering novel clutter.
-
+* **The Scenario:** An autonomous wheeled robot carrying a payload operates in a busy warehouse aisle at a forward speed of $v_0 = 1.5\text{ m/s}$. The robot senses obstacles using an onboard camera and maintains a physical clearance margin of $0.50\text{ m}$ ahead. Maximum available braking deceleration is $a_{\text{max}} = 3.0\text{ m/s}^2$.
+* **The Digital vs. Physical Contrast:** In software simulation, an AI model that processes frames in an average of $20\text{ ms}$ appears more than fast enough to stop before hitting an obstacle. But on physical hardware, an occasional operating system scheduling pause or memory stall causes a tail latency spike of $250\text{ ms}$ ($P_{99}$).
 * **The Systems Dilemma:**
-  1. A human-operated forklift abruptly reverses into the aisle at velocity $\|\mathbf{v}_{\text{target}}\| = 2.0\text{ m/s}$. Calculate the geometric Freshness Wall ($\Delta t_{\text{wall}}$) and total dynamic stopping distance ($d_{\text{stop}}$) under both architectures during a $P_{99.9}$ tail latency stall.
-  2. Under Architecture A, does the internal spatial uncertainty envelope $\sigma_{\text{pos}}(t)$ breach the clearance boundary before the first braking command can be physically asserted by the motor inverters?
-  3. How must a two-tier proposal-permission runtime supervisor be architected to leverage the high-level semantic reasoning of Architecture A while guaranteeing the hard kinetic stopping envelope of Architecture B?
+  1. Calculate the total stopping distance ($d_{\text{stop}} = v_0 \cdot \Delta t_{\text{latency}} + \frac{v_0^2}{2a_{\text{max}}}$) during a nominal $20\text{ ms}$ cycle versus a $250\text{ ms}$ tail latency spike.
+  2. Explain why the platform halts safely with $12.5\text{ cm}$ of clearance remaining under nominal conditions, but collides with the obstacle during a latency spike before braking can even begin.
+  3. If an obstacle is also moving toward the robot, how does the expanding spatial uncertainty envelope define a hard expiration date on sensory information (the Freshness Wall)?
+* **The Physical AI Insight:** Average latency ($P_{50}$) is a dangerous software metric for physical systems. In the physical world, moving mass never pauses for silicon; every millisecond of computational delay translates directly into unguided physical travel, meaning safety margins must always be budgeted against worst-case tail latency ($P_{99.9}$).
 
-#### Stress-Test 2: The Structural Jerk vs. Thermal Breakdown Trade-off (Actuation & Energy Columns) {.unnumbered}
+#### Stress-Test 2: The Torque-Jerk-Thermal Dilemma (Actuation & Energy Columns) {.unnumbered}
 
-A heavy-duty quadruped robot's hip and knee actuators use direct-drive brushless motors with phase winding resistance $R = 0.15\,\Omega$, inductance $L = 120\,\mu\text{H}$, continuous current rating $I_{\text{cont}} = 14\text{ A}$, thermal resistance $R_{\text{th}} = 1.8\text{ K/W}$, and thermal time constant $\tau_{\text{th}} = 45\text{ s}$. The platform must ascend a steep $25^\circ$ grade carrying an external payload, requiring a continuous joint current of $I_{\text{climb}} = 35\text{ A}$ ($2.5 \times I_{\text{cont}}$).
-
-* **The High-Bandwidth Trap:** To reject rapid foot slip disturbances, the low-level motor controller operates at $20\text{ kHz}$ with aggressive proportional gains, yielding high current slew rates ($\frac{di}{dt} \approx 250\text{ A/ms}$). However, high-frequency torque ripple excites structural resonance in the titanium leg linkages ($f_{\text{res}} = 1.2\text{ kHz}$), saturating MEMS IMU sensors and degrading state estimation.
-* **The Low-Pass Filtering Trap:** To eliminate structural resonance, the policy smooths trajectory setpoints using a low-pass filter and holds high continuous joint stiffness. However, continuous operation at $I = 35\text{ A}$ generates $P_{\text{loss}} = I^2 R = (35)^2 \times 0.15 = 183.75\text{ W}$ of resistive Joule heating per joint.
-
+* **The Scenario:** A robotic manipulator must lift a heavy metal workpiece from a conveyor belt within a tight production cycle. To maximize throughput, the motion planner commands maximum motor torque as quickly as possible.
+* **The Digital vs. Physical Contrast:** Digital planners often model actuators as ideal torque sources capable of stepping instantaneously between force levels. In physical reality, stator coils have electrical inductance ($L/R$) that resists rapid current changes, transmissions have finite shear strength that fractures under excessive jerk ($\dddot{\mathbf{q}}$), and motor windings dissipate resistive Joule heat ($I^2R$).
 * **The Systems Dilemma:**
-  1. Using the adiabatic burst equation $\Delta t_{\text{burst, max}} \le \tau_{\text{th}} (I_{\text{cont}} / I_{\text{peak}})^2$, calculate the maximum safe duration the robot can sustain this climb before winding temperature breaches the Class F dielectric insulation limit ($155^\circ\text{C}$).
-  2. When the real-time microcontroller's $I^2t$ energy accumulator trips and autonomously clamps phase current to $I_{\text{cont}} = 14\text{ A}$ to prevent motor burnout, available torque drops by $60\%$, causing the robot to buckle under gravity.
-  3. How should the hierarchical autonomy stack co-design the high-level gait planner, spline jerk limiter ($\dddot{\mathbf{q}} \le \dddot{q}_{\text{max}}$), and real-time thermal observer to scale locomotion speed dynamically before thermal clamping forces a catastrophic collapse?
+  1. If the controller commands an instantaneous step change in torque, why does the resulting mechanical jerk shock ($\dddot{\mathbf{q}} \to \infty$) threaten gearbox teeth and excite structural vibrations?
+  2. If the motor is operated continuously at double its continuous current rating ($2 \times I_{\text{cont}}$) to hold the heavy payload, by what factor does resistive heat dissipation ($P = I^2R$) increase?
+  3. How must the system balance the need for fast motion against the physical limits of gear shear and winding insulation temperature?
+* **The Physical AI Insight:** Actuation and Energy form an unyielding physical trade-off. Software cannot command infinite torque slew rates without destroying mechanical transmissions, nor can it sustain peak currents without accumulating irreversible thermal energy that leads to motor burnout.
 
-#### Stress-Test 3: The Shared Bus Contention vs. Safe Veto Dilemma (Compute, Time, and Actuation) {.unnumbered}
+#### Stress-Test 3: The Memory Highway Bottleneck (Compute & Time Columns) {.unnumbered}
 
-An autonomous robotic surgical platform performs microsurgical cutting under stereo camera guidance. The platform's compute engine runs three concurrent workloads sharing a single physical memory bus:
-
-1. High-resolution stereo video ingestion from endoscopic cameras ($3.0\text{ GB/s}$).
-2. An onboard neural policy computing continuous tissue deformation trajectories ($28.0\text{ GB/s}$).
-3. A real-time safety reflex loop executing at $1000\text{ Hz}$ to verify gripper contact forces.
-
-During nominal operation, total memory bus traffic consumes $39.0\text{ GB/s}$ of a $51.2\text{ GB/s}$ physical bus capacity. However, an unexpected surgical illumination flare causes the camera interface to burst high-bandwidth raw pixel transfers ($+14.0\text{ GB/s}$), while the neural model simultaneously initiates a multi-hypothesis trajectory replanning cycle ($+16.0\text{ GB/s}$). Aggregate data demand spikes to $69.0\text{ GB/s}$, exceeding the physical bus bandwidth by $35\%$.
-
+* **The Scenario:** An edge computing board on an autonomous mobile robot processes high-resolution stereo camera streams while simultaneously running an onboard neural perception model and a 1000 Hz real-time safety monitor. All three tasks share a single physical memory bus.
+* **The Digital vs. Physical Contrast:** Software frameworks treat unified memory as a frictionless medium where CPU cores, GPU accelerators, and camera interfaces access data without interfering with one another. In hardware reality, the memory bus is a physical set of shared electrical wires with finite bandwidth and arbitration queues.
 * **The Systems Dilemma:**
-  1. **The Physical Bus Stall:** The $1000\text{ Hz}$ safety reflex, attempting to read force sensor telemetry across the saturated memory bus, suffers an arbitration delay of $1.8\text{ ms}$—missing two consecutive $1.0\text{ ms}$ control deadlines. Explain why this delay is a direct consequence of the physical properties of shared electrical conductors.
-  2. **The Mechanical Dilemma:** If the safety supervisor defaults to an instantaneous emergency stop, the resulting acceleration discontinuity ($\dddot{\mathbf{q}} \to \infty$) creates high shock forces that risk tearing delicate biological tissue. If it holds the last commanded velocity, unguided inertial drift risks breaching safe anatomical boundaries.
-  3. **The Physical Isolation Principle:** Using the physical memory hierarchy principles established in Section 2.6 (Euclidean distance, SRAM vs. DRAM latency, and static allocation), explain why real-time safety reflexes must never depend on shared off-chip memory conduits. *(In Chapter 4 and Chapter 10, we will formalize the hardware memory isolation and mailbox architectures that enforce this boundary.)*
+  1. When an unexpected visual scene causes the cameras to burst high-bandwidth raw pixel transfers across the memory bus, why do processor memory reads experience queuing stalls?
+  2. If the 1000 Hz real-time safety loop attempts to read sensor data across a saturated memory bus and suffers a 2-millisecond delay, how does a compute bus bottleneck convert directly into a physical safety violation?
+  3. Why does physical determinism mandate that real-time safety routines execute in isolated, on-chip static SRAM (`malloc = 0`) rather than relying on shared off-chip DRAM?
+* **The Physical AI Insight:** Compute resources are physically bounded. When multiple high-bandwidth components compete for the same physical memory bus, asynchronous sensory traffic can starve real-time control loops, proving that software determinism requires physical hardware isolation.
 
-#### Stress-Test 4: The Cross-Column Multi-Rate Cascade Failure (Whole-System Integration Dilemma) {.unnumbered}
+#### Stress-Test 4: The Cross-Column Domino Effect (Whole-System Integration) {.unnumbered}
 
-An autonomous electric vertical takeoff and landing (eVTOL) cargo aircraft encounters severe low-altitude wind shear during a terminal descent. The vehicle must coordinate across all five physical columns simultaneously: Time (sensor fusion transport delays), Inertia (vehicle kinetic momentum and rotor inertia), Actuation (inverter gate drive and motor electrical rise time), Energy (battery discharge C-rate and inverter switch junction heating), and Compute (CAN-FD and Ethernet TSN bus traffic).
-
-* *Column 1 (Time):* Optical flow and LiDAR point-cloud clustering incur a $45\text{ ms}$ perception pipeline delay.
-* *Column 2 (Inertia):* The vehicle has downward velocity $w_0 = 2.5\text{ m/s}$ at an altitude of only $h = 4.0\text{ m}$ above the landing pad.
-* *Column 3 (Actuation):* Motor inverters ramp electrical current, but rotor rotational inertia ($J_{\text{rotor}}$) limits blade acceleration to $\dot{\Omega}_{\text{max}} = 1200\text{ rpm/s}$, imposing an aerodynamic thrust lag of $\Delta t_{\text{thrust}} \approx 80\text{ ms}$.
-* *Column 4 (Energy):* Ramping all 8 lift motors simultaneously draws a $15\text{C}$ discharge burst, causing an immediate battery terminal voltage sag of $\Delta V_{\text{bus}} = -18\%$, which depresses back-EMF headroom and reduces peak available motor torque ($I_{\text{peak}} = (V_{\text{bus}} - K_e\Omega)/R$).
-* *Column 5 (Compute):* High-frequency telemetry packets from 8 motor controllers flood the internal CAN-FD network, causing a priority inversion stall that delays the attitude setpoint packet to the flight computer by $12\text{ ms}$.
-
+* **The Scenario:** An autonomous delivery rover approaches a steep curb ramp while tracking a delivery path. A sudden visual glare event causes a brief delay in the perception pipeline.
+* **The Digital vs. Physical Contrast:** In an idealized software stack, a perception delay is an isolated software event: the vision module simply finishes slightly later. In an embodied machine, a delay in one column triggers an immediate cascade across all five physical columns.
 * **The Systems Dilemma:**
-  1. Calculate whether the total cascade delay ($\Delta t_{\text{total}} = \Delta t_{\text{perceive}} + \Delta t_{\text{compute}} + \Delta t_{\text{thrust}}$) combined with torque degradation from battery voltage sag breaches the vertical clearance envelope ($h \le 0$) before touchdown velocity can be arrested ($w \le 0.5\text{ m/s}$).
-  2. Trace how a failure originating in one physical column (battery internal resistance in Energy) cascades across Actuation (torque limits), Compute (network queuing), Time (transport delay), and Inertia (impact collision).
-  3. How does compiling an empirical Physical Operating Specification (@tbl-physical-spec) prior to flight testing enable the engineering team to detect and decouple these cross-column feedback loops?
+  1. *Time to Inertia:* Trace how a $100\text{ ms}$ perception delay (Column 1) causes the rover to travel further before detecting the ramp, reducing its available stopping and maneuvering distance (Column 2).
+  2. *Inertia to Actuation:* Because the rover is now closer to the curb, the controller must command a much sharper steering correction and higher braking torque, spiking joint jerk and mechanical stress (Column 3).
+  3. *Actuation to Energy & Compute:* The sudden peak current draw spikes resistive heating in the motor coils (Column 4), while rapid sensor and state updates flood the communication and memory buses (Column 5).
+* **The Physical AI Insight:** The Five Physical Constraints are not independent silos; they form a single interconnected physical system. A delay or failure in any one column cascades immediately through momentum, torque, heat, and silicon, requiring holistic co-design across the entire machine.
 
 
 ## Summary {#sec-constraints-summary}
@@ -523,3 +509,4 @@ An autonomous electric vertical takeoff and landing (eVTOL) cargo aircraft encou
 Physical AI begins where digital software abstractions collide with unyielding physical laws. Throughout this chapter, we established the quantitative instruments, physical constraints, and compute mechanisms that govern the boundary between learned deliberation and physical reality. Unlike digital computing where execution delay is benign, physical dynamical systems evolve along an unyielding time axis, dictating that worst-case tail latency must remain strictly within the physical world deadline ($t_{\text{total}}(P_{99.9}) + t_{\text{margin}} < \tau_{\text{world}}$) to prevent destructive phase margin erosion ($\text{PM} \le 0^\circ$).
 
 By tracing the seven-stage sense-to-actuation waterfall, from optical charge integration through neural compute to electromagnetic rise times, we established the Five Physical Columns. We proved why $P_{50}$ throughput is an illusion, derived the Freshness Wall ($\Delta t_{\text{wall}}$), formalized dynamic stopping kinematics ($d_{\text{stop}}$), bounded inductive rise times ($\tau_e = L/R$), enforced $\mathcal{C}^2$ jerk continuity ($\dddot{\mathbf{q}}$), and codified the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`) in static SRAM. With the physical columns established, @sec-cognition turns to the horizontal rows of the Co-Design Matrix (*Perceive*, *Remember*, *Reason*, *Plan*, *Execute*), orchestrating multi-rate cognitive execution across heterogeneous hardware.
+
