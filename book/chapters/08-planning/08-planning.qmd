@@ -1,4 +1,4 @@
-# Planning and Trajectory Synthesis\chaptersubtitle{Action Chunking, Receding-Horizon Ensembling, and Kinodynamic Splines}
+# Planning and Trajectory Synthesis\chaptersubtitle{Action Chunking, Receding-Horizon Ensembling, and Kinodynamic Splines} {#sec-planning}
 
 ![**Systems Organ Focus:** Stage 5 (Trajectory Planning & Action Chunking). Acting as the System 1.5 proposal engine, the trajectory planner translates 1 Hz expiring intent leases from System 2 into continuous, multi-step action chunks ($H=16$), amortizing neural inference delay across physical time while guaranteeing $\mathcal{C}^2$ jerk continuity before passing candidate commands to the 1 kHz real-time MCU safety enforcer.](figures/fig_pipeline_locator.svg){#fig-locator-ch08 width=100% fig-pos="H"}
 
@@ -25,7 +25,7 @@ After studying this chapter, you will be able to:
 
 ## Trajectory Synthesis and Cadence
 
-Physical action takes place across fundamentally incompatible time scales. When an autonomous embodied agent operates in an unstructured physical environment, high-level semantic reasoning and deliberate task decomposition operate at macroscopic intervals ($0.5\text{--}2.0\text{ Hz}$), constrained by the heavy arithmetic burden and memory bandwidth of multi-billion-parameter vision-language models (Chapter 7). Conversely, stabilizing physical contact, damping structural vibrations, and regulating magnetic flux in brushless motor windings demands microsecond determinism ($1000\text{--}20{,}000\text{ Hz}$, Chapter 9). Between these two extremes sits the trajectory planning organ, designated in this textbook as System 1.5 (@fig-locator-ch08).
+Physical action takes place across fundamentally incompatible time scales. When an autonomous embodied agent operates in an unstructured physical environment, high-level semantic reasoning and deliberate task decomposition operate at macroscopic intervals ($0.5\text{--}2.0\text{ Hz}$), constrained by the heavy arithmetic burden and memory bandwidth of multi-billion-parameter vision-language models (@sec-intent). Conversely, stabilizing physical contact, damping structural vibrations, and regulating magnetic flux in brushless motor windings demands microsecond determinism ($1000\text{--}20{,}000\text{ Hz}$, Chapter 9). Between these two extremes sits the trajectory planning organ, designated in this textbook as System 1.5 (@fig-locator-ch08).
 
 ### The Cadence Mismatch and the Single-Step Bottleneck
 
@@ -435,11 +435,11 @@ We audit the Planning stage across the Five Physical Columns in the Co-Design Ch
 
 Following the co-design framework, we evaluate the depth to which each physical column constrains the trajectory planning organ:
 
-1. **Actuation Limits and Jerk (DOMINANT):** This is the center of gravity for Chapter 8. The mathematical boundary matching of position, velocity, and acceleration directly dictates whether physical transmissions survive or shear under neural control commands.
+1. **Actuation Limits and Jerk (DOMINANT):** This is the center of gravity for @sec-planning. The mathematical boundary matching of position, velocity, and acceleration directly dictates whether physical transmissions survive or shear under neural control commands.
 2. **Time and Freshness (SECONDARY):** Binds through the latency amortization mechanism. Predicting multi-step horizons is the sole reason high-capacity neural networks can govern physical mechanisms without starving low-level control loops.
 3. **Inertia and Stopping (THIN):** Binds through the requirement that trajectory horizons must not command accelerations that violate dynamic braking envelopes ($d_{\text{stop}}$). If an obstacle enters the swept volume, the plan must truncate to allow safe deceleration.
 4. **Silicon Determinism (THIN):** Binds through the memory layout of static SRAM ring buffers. The trajectory queue must be lock-free and statically allocated to prevent non-deterministic thread contention across heterogeneous processor cores.
-5. **Energy and Thermal (NOT BINDING):** Does not directly bind the trajectory planning organ. While rapid motor accelerations dissipate Joule heat ($I^2R$), the thermal protection of motor windings and power inverters is enforced at the 1 kHz and 20 kHz execution tiers (Chapter 9), not within the trajectory spline geometry.
+5. **Energy and Thermal (NOT BINDING):** Does not directly bind the trajectory planning organ. While rapid motor accelerations dissipate Joule heat ($I^2R$), the thermal protection of motor windings and power inverters is enforced at the 1 kHz and 20 kHz execution tiers (@sec-enforcement), not within the trajectory spline geometry.
 
 ### Silent Failure and Online Diagnostic Detectors
 
@@ -463,7 +463,7 @@ We formulate the mathematical verification of chunk boundaries using our four-st
 
 In research settings, emerging end-to-end foundation models attempt to absorb trajectory planning directly into large multimodal networks that map raw sensory pixels to low-level motor torques. When this occurs, the explicit trajectory planning organ appears to vanish from the software diagram.
 
-However, absorbing the planning module does not eliminate the physical constraint. A neural network outputting direct torques at $50\text{ Hz}$ still commands discrete step changes across physical time. The physical plant still possesses mass, the motor windings still possess inductive time constants ($\tau_e = L/R$), and the gearbox still shears under unbounded torque derivatives. When the trajectory planner is absorbed, the verification checks (jerk bounding, torque rate limiting, and state re-anchoring) do not disappear; they simply relocate to the deterministic bare-metal safety filter (Chapter 9) at the boundary to physical hardware.
+However, absorbing the planning module does not eliminate the physical constraint. A neural network outputting direct torques at $50\text{ Hz}$ still commands discrete step changes across physical time. The physical plant still possesses mass, the motor windings still possess inductive time constants ($\tau_e = L/R$), and the gearbox still shears under unbounded torque derivatives. When the trajectory planner is absorbed, the verification checks (jerk bounding, torque rate limiting, and state re-anchoring) do not disappear; they simply relocate to the deterministic bare-metal safety filter (@sec-enforcement) at the boundary to physical hardware.
 
 
 ## Systems Stress-Tests: Architectural Food for Thought
@@ -507,7 +507,7 @@ The motor cannot ramp torque fast enough to track the spline's acceleration prof
 *Why is kinematic $\mathcal{C}^2$ jerk continuity necessary but insufficient for high-speed dynamic maneuvers? How must trajectory synthesis engines incorporate electro-mechanical actuator models (including back-EMF, winding inductance, and inverter DC bus voltage limits) to certify that planned acceleration profiles are physically achievable before committing commands to hardware?*
 
 
-## Chapter Summary and Forward Handoff to Chapter 9
+## Chapter Summary and Forward Handoff to @sec-enforcement
 
 This chapter established the necessity and mechanics of trajectory action chunking as the architectural bridge between cognitive inference and mechanical reality. We diagnosed the dynamical instability caused by single-step Markovian latency and demonstrated how generative decoders (including ACT and Diffusion Policies) amortize this latency by producing multi-step prediction horizons ($H=16$). Through receding-horizon temporal ensembling and $\mathcal{C}^2$ quintic polynomial splines, discrete neural predictions are mathematically transformed into continuous, jerk-bounded trajectories that safely drive high-frequency motor inverters without triggering mechanical resonances or shearing gearbox pins.
 
@@ -516,4 +516,4 @@ Across our engineering disciplines:
 - **Carlos (ECE/Embedded)** engineered the lock-free static SRAM queues, triple-buffering mailboxes, and zero-allocation Horner's evaluations that execute in under $1.2\,\mu\text{s}$ within the 1 kHz timer ISR.
 - **Alex (Robotics/MechE)** derived the closed-form $\mathcal{C}^2$ quintic spline boundary conditions that strictly enforce joint jerk bounds ($\|\dddot{\mathbf{q}}\| \le 25.0\text{ rad/s}^3$) and torque rate limits ($\|\dot{\boldsymbol{\tau}}\| \le 150.0\text{ N}\cdot\text{m/s}$), preventing catastrophic gear pin shear.
 
-With the candidate trajectory chunk smoothed, verified, and deposited into the lock-free shared SRAM mailbox, authority transfers to the lowest tier of the physical computing stack. In **Chapter 9 (Reflexes and Safety Enforcement: System 1 1000 Hz Control Barrier Functions, Compliance, and Motor FOC)**, we examine bare-metal microcontroller execution. We explore how deterministic real-time execution engines ingest these polynomial splines, evaluate hard mathematical Control Barrier Function Quadratic Programs (CBF-QPs) in static SRAM, regulate contact impedance, and command high-frequency Field-Oriented Control (FOC) space-vector PWM inverters at $20\text{ kHz}$ to guarantee absolute physical survival.
+With the candidate trajectory chunk smoothed, verified, and deposited into the lock-free shared SRAM mailbox, authority transfers to the lowest tier of the physical computing stack. In **@sec-enforcement (Reflexes and Safety Enforcement: System 1 1000 Hz Control Barrier Functions, Compliance, and Motor FOC)**, we examine bare-metal microcontroller execution. We explore how deterministic real-time execution engines ingest these polynomial splines, evaluate hard mathematical Control Barrier Function Quadratic Programs (CBF-QPs) in static SRAM, regulate contact impedance, and command high-frequency Field-Oriented Control (FOC) space-vector PWM inverters at $20\text{ kHz}$ to guarantee absolute physical survival.
