@@ -18,7 +18,7 @@
 
 // Typography & Paragraph Flow
 #set text(
-  font: ("STIX Two Text", "STIXTwoText", "Times New Roman"),
+  font: ("STIX Two Text", "Times New Roman"),
   size: 9.5pt,
   fill: ink,
   lang: "en",
@@ -32,12 +32,14 @@
 )
 
 // Part Page Layout (Clean Harvard/ETH Style, No Blue Blobs or Overlaps)
+#let part-counter = counter("book-part")
+
 #let part(title) = {
   pagebreak(to: "odd")
   part-counter.step()
   v(28%)
   align(center)[
-    #text(font: "Avenir Next", size: 13pt, weight: "bold", fill: ethpetrol, tracking: 0.2em)[#smallcaps[PART #part-counter.display("I")]]
+    #text(font: "Avenir Next", size: 13pt, weight: "bold", fill: ethpetrol, tracking: 0.2em)[#smallcaps[PART #context part-counter.display("I")]]
     #v(0.8em)
     #text(font: "STIX Two Text", size: 24pt, weight: "bold", fill: harvardcrimson)[#title]
     #v(1.2em)
@@ -69,7 +71,7 @@
   #v(0.2em)
 ]
 
-// Callout Boxes Styling
+// Figure & Caption Styling
 #show figure.where(kind: "quarto-float-fig"): it => block(width: 100%, inset: (y: 0.8em))[
   #set align(center)
   #it.body

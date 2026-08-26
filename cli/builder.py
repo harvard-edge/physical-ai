@@ -53,14 +53,12 @@ class BookBuilder:
         self.sync_svg_assets()
 
         cmd = ["quarto", "render"]
-        if fmt == "pdf":
-            cmd.extend(["--to", "pdf"])
-        elif fmt == "typst":
+        if fmt in ("pdf", "typst"):
             cmd.extend(["--to", "typst"])
         elif fmt == "html":
             cmd.extend(["--to", "html"])
 
-        print(f"{BOLD}{CYAN}▶ Building Physical AI book (format: {fmt})...{RESET}")
+        print(f"{BOLD}{CYAN}▶ Building Physical AI book (format: {fmt} [Typst])...{RESET}")
         result = subprocess.run(cmd, cwd=self.book_dir)
         if result.returncode == 0:
             print(f"\n{GREEN}{BOLD}✓ Book build succeeded! Output in {self.build_dir}{RESET}\n")
@@ -69,7 +67,7 @@ class BookBuilder:
             print(f"\n{RED}{BOLD}✗ Build failed with exit code {result.returncode}{RESET}\n")
             return False
 
-    def build_chapter(self, chapter_name: str, fmt: str = "pdf") -> bool:
+    def build_chapter(self, chapter_name: str, fmt: str = "typst") -> bool:
         """Builds a single chapter file (e.g. '01-boundary')."""
         self.sync_svg_assets()
 
@@ -83,12 +81,10 @@ class BookBuilder:
 
         target_qmd = matches[0]
         rel_qmd = target_qmd.relative_to(self.book_dir)
-        print(f"{BOLD}{CYAN}▶ Building single chapter: {rel_qmd} (format: {fmt})...{RESET}")
+        print(f"{BOLD}{CYAN}▶ Building single chapter: {rel_qmd} (format: {fmt} [Typst])...{RESET}")
 
         cmd = ["quarto", "render", str(rel_qmd)]
-        if fmt == "pdf":
-            cmd.extend(["--to", "pdf"])
-        elif fmt == "typst":
+        if fmt in ("pdf", "typst"):
             cmd.extend(["--to", "typst"])
         elif fmt == "html":
             cmd.extend(["--to", "html"])

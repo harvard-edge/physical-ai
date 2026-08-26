@@ -201,8 +201,8 @@ def gen_ch13_fault_timeline():
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
     svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">CROSS-LAYER SEEDED FAULT RESPONSE TIMELINE</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Digital Oscilloscope Logic Analyzer Trace: Host Linux MPU Panic ⟶ Deterministic Real-Time MCU Safe Halt</text>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">ENDOGENOUS REAL-TIME INTERVENTION &amp; RECOVERY</text>')
+    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Digital Oscilloscope Logic Analyzer Trace: Host Linux MPU Panic → Deterministic Real-Time MCU Safe Halt</text>')
 
     # Oscilloscope Display Box
     ox = 40

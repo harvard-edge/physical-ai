@@ -111,7 +111,7 @@ def gen_fig01_pipeline_intro():
     # Bottom Physical World Strip
     wy = 390
     svg.append(f'<rect x="24" y="{wy}" width="{W-48}" height="50" rx="6" fill="{CRIMSON}" fill-opacity="0.06" stroke="{CRIMSON}" stroke-width="1.2"/>')
-    svg.append(f'<text x="{W/2}" y="{wy+18}" font-size="11" font-weight="700" fill="{CRIMSON}" text-anchor="middle">THE PHYSICAL WORLD &amp; ACTUATION DYNAMICS (W_t ⟶ W_t+1)</text>')
+    svg.append(f'<text x="{W/2}" y="{wy+18}" font-size="11" font-weight="700" fill="{CRIMSON}" text-anchor="middle">THE PHYSICAL WORLD &amp; ACTUATION DYNAMICS (W_t → W_t+1)</text>')
     svg.append(f'<text x="{W/2}" y="{wy+36}" font-size="9" fill="{SLATE}" text-anchor="middle">Kinetic Momentum · Friction Limits · Thermal Constraints · Motor Torque Saturation · No Software Undo</text>')
 
     svg.append(f'<line x1="154" y1="365" x2="154" y2="{wy}" stroke="{PETROL}" stroke-width="1.5" marker-end="url(#arr-petrol)"/>')
@@ -176,7 +176,7 @@ def gen_fig01_codesign_matrix():
 
     cols = ["1. Physical Column", "2. Silicon Substrate", "3. Algorithmic Organ", "4. Failure Mode", "5. Systems Invariant"]
     rows = [
-        ("TIME", "Cortex MPU ⟷ RT MCU", "1 kHz QP Barrier Solver", "Tail latency overrun", "P99.9 Wall Latency < Budget", NAVY),
+        ("TIME", "Cortex MPU ↔ RT MCU", "1 kHz QP Barrier Solver", "Tail latency overrun", "P99.9 Wall Latency < Budget", BLUE),
         ("INERTIA", "Static SRAM (Zero Malloc)", "Action Chunking (H=16)", "Kinetic collision", "d_stop(t) ≤ d_clearance", BLUE),
         ("ACTUATION", "Gate Drivers / Inverters", "C² Quintic Trajectory", "Gearbox jerk shock", "Jerk Continuity j ≤ j_max", BRONZE),
         ("ENERGY", "Dynamic Voltage Scaling", "Multi-Rate Observers", "Thermal throttling", "Junction Temp T_j ≤ 85°C", AMBER),
@@ -199,7 +199,7 @@ def gen_fig01_codesign_matrix():
         cur_x = start_x
         row_items = [r_title, r_sil, r_alg, r_fail, r_inv]
         for idx, (val, c_w) in enumerate(zip(row_items, col_widths)):
-            bg = f"{col}12" if idx == 0 else BG_LIGHT
+            bg = "#0F172A" if idx == 0 else BG_LIGHT
             f_col = col if idx == 0 else (CORAL if idx == 3 else (TEAL if idx == 4 else INK))
             weight = "700" if idx in [0, 3, 4] else "500"
             svg.append(f'<rect x="{cur_x}" y="{cur_y}" width="{c_w}" height="56" rx="4" fill="{bg}" stroke="{BORDER}" stroke-width="1"/>')
@@ -208,7 +208,7 @@ def gen_fig01_codesign_matrix():
         cur_y += 62
 
     # Bottom Callout
-    svg.append(f'<rect x="30" y="390" width="820" height="42" rx="6" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<rect x="30" y="390" width="820" height="42" rx="6" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1" filter="url(#shadow)"/>')
     svg.append(f'<text x="{W/2}" y="408" font-size="9.5" font-weight="700" fill="{NAVY}" text-anchor="middle">THE CO-DESIGN AXIOM</text>')
     svg.append(f'<text x="{W/2}" y="422" font-size="8.5" fill="{SLATE}" text-anchor="middle">Optimizing any single row in isolation without satisfying all 5 columns guarantees physical failure in closed-loop operation.</text>')
 

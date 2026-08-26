@@ -78,8 +78,8 @@ def gen_fig02_metrology_setup():
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
     svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">HARDWARE-TRIGGERED SENSE-TO-ACTUATION METROLOGY</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">End-to-End Latency Instrumentation: Optical LED Flash ⟶ Oscilloscope Digital Logic Analyzer</text>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">THE SENSE-TO-ACTUATION TESTBENCH</text>')
+    svg.append(f'<text x="{W/2}" y="44" class="subtitle">End-to-End Latency Instrumentation: Optical LED Flash → Oscilloscope Digital Logic Analyzer</text>')
 
     # Left: Stimulus (Optical LED)
     lx = 30

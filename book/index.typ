@@ -412,60 +412,6 @@
   inset: 6pt,
   stroke: none
 )
-// ===========================================================================
-// Physical AI Systems, Typst theme and show rules
-// ===========================================================================
-
-// Harvard Crimson & ETH Zurich Academic Semantic Palette
-#let harvardcrimson = rgb("#A51C30")
-#let ethdarkblue = rgb("#1F407A")
-#let ethblue = rgb("#215CAF")
-#let ethpetrol = rgb("#007A87")
-#let ethbronze = rgb("#B87333")
-#let ethpurple = rgb("#5B4B8A")
-#let ink = rgb("#1A202C")
-#let softink = rgb("#4A5568")
-#let muted = rgb("#64748B")
-#let cardbg = rgb("#F8FAFC")
-#let border = rgb("#CBD5E1")
-
-// Typography rules
-#set text(
-  font: "STIX Two Text",
-  size: 9.5pt,
-  fill: ink,
-  lang: "en",
-  region: "US"
-)
-
-#set par(
-  leading: 0.65em,
-  justify: true,
-  first-line-indent: 0pt
-)
-
-// Headings
-#show heading.where(level: 1): it => block(width: 100%, below: 1.5em)[
-  #v(1em)
-  #text(font: "Avenir Next", size: 9pt, weight: "bold", fill: ethpetrol)[#smallcaps[CHAPTER #counter(heading).display()]]
-  #v(0.3em)
-  #text(font: "STIX Two Text", size: 18pt, weight: "bold", fill: ethdarkblue)[#it.body]
-  #v(0.5em)
-  #line(length: 100%, stroke: 1pt + ethdarkblue)
-  #v(0.8em)
-]
-
-#show heading.where(level: 2): it => block(below: 1em)[
-  #v(0.8em)
-  #text(font: "Avenir Next", size: 12.5pt, weight: "bold", fill: ethdarkblue)[#it.body]
-  #v(0.2em)
-]
-
-#show heading.where(level: 3): it => block(below: 0.8em)[
-  #v(0.6em)
-  #text(font: "Avenir Next", size: 10.5pt, weight: "bold", fill: ink)[#it.body]
-  #v(0.2em)
-]
 #import "@preview/fontawesome:0.5.0": *
 #let brand-color = (:)
 #let brand-color-background = (:)
@@ -496,6 +442,90 @@
 )
 
 
+// ===========================================================================
+// Physical AI Systems, Custom Typst Theme & Architecture
+// ===========================================================================
+
+// Harvard Crimson & ETH Zurich Academic Semantic Palette
+#let harvardcrimson = rgb("#A51C30")
+#let ethdarkblue = rgb("#1F407A")
+#let ethblue = rgb("#215CAF")
+#let ethpetrol = rgb("#007A87")
+#let ethbronze = rgb("#B87333")
+#let ethpurple = rgb("#5B4B8A")
+#let ethgreen = rgb("#1B6B48")
+#let ink = rgb("#0F172A")
+#let softink = rgb("#334155")
+#let muted = rgb("#64748B")
+#let cardbg = rgb("#F8FAFC")
+#let border = rgb("#CBD5E1")
+
+// Typography & Paragraph Flow
+#set text(
+  font: ("STIX Two Text", "Times New Roman"),
+  size: 9.5pt,
+  fill: ink,
+  lang: "en",
+  region: "US"
+)
+
+#set par(
+  leading: 0.65em,
+  justify: true,
+  first-line-indent: 0pt
+)
+
+// Part Page Layout (Clean Harvard/ETH Style, No Blue Blobs or Overlaps)
+#let part-counter = counter("book-part")
+
+#let part(title) = {
+  pagebreak(to: "odd")
+  part-counter.step()
+  v(28%)
+  align(center)[
+    #text(font: "Avenir Next", size: 13pt, weight: "bold", fill: ethpetrol, tracking: 0.2em)[#smallcaps[PART #context part-counter.display("I")]]
+    #v(0.8em)
+    #text(font: "STIX Two Text", size: 24pt, weight: "bold", fill: harvardcrimson)[#title]
+    #v(1.2em)
+    #line(length: 35%, stroke: 1.5pt + harvardcrimson)
+  ]
+  v(2em)
+}
+
+// Heading Hierarchy
+#show heading.where(level: 1): it => block(width: 100%, below: 1.5em)[
+  #v(1em)
+  #text(font: "Avenir Next", size: 9pt, weight: "bold", fill: ethpetrol, tracking: 0.1em)[#smallcaps[CHAPTER #counter(heading).display()]]
+  #v(0.4em)
+  #text(font: "STIX Two Text", size: 19pt, weight: "bold", fill: ethdarkblue)[#it.body]
+  #v(0.6em)
+  #line(length: 100%, stroke: 1pt + ethdarkblue)
+  #v(0.8em)
+]
+
+#show heading.where(level: 2): it => block(width: 100%, below: 1em)[
+  #v(0.8em)
+  #text(font: "Avenir Next", size: 12.5pt, weight: "bold", fill: ethdarkblue)[#it.body]
+  #v(0.2em)
+]
+
+#show heading.where(level: 3): it => block(width: 100%, below: 0.8em)[
+  #v(0.6em)
+  #text(font: "Avenir Next", size: 10.5pt, weight: "bold", fill: ink)[#it.body]
+  #v(0.2em)
+]
+
+// Figure & Caption Styling
+#show figure.where(kind: "quarto-float-fig"): it => block(width: 100%, inset: (y: 0.8em))[
+  #set align(center)
+  #it.body
+  #v(0.5em)
+  #block(width: 95%)[
+    #set align(left)
+    #set text(size: 8.5pt, fill: softink)
+    #it.caption
+  ]
+]
 // Reset Quarto's custom figure counters at each chapter (level-1 heading).
 // Orange-book only resets kind:image and kind:table, but Quarto uses custom kinds.
 // This list is generated dynamically from crossref.categories.
@@ -902,21 +932,17 @@ Here, #strong[machine learning] designs the multimodal policy that identifies th
 <archetype-3-cybernetic-energy-and-processes>
 Physical AI is not limited to machines with moving joints; it governs cybernetic systems where learned models manage continuous flows of electrical energy, heat, and fluids. This archetype includes grid-tied battery storage inverters, high-density datacenter cooling loops, and chemical batch reactors.
 
-Consider a $1 upright(" MW")$ grid-forming battery storage inverter where a learned reinforcement learning policy optimizes power dispatch. The inverter switches solid-state power transistors at tens of kilohertz to synchronize with the alternating-current grid. In alternating-current power grids, active power transfer across line reactance $X_L$ follows:
+Consider a 1 MW grid-forming battery storage inverter where a learned reinforcement learning policy optimizes power dispatch. The inverter switches solid-state power transistors at tens of kilohertz to synchronize with the alternating-current grid. On a 60 Hz utility grid (where each electrical cycle lasts just sixteen milliseconds), an unbudgeted operating system interrupt latency induces an immediate AC phase angle error. Across grid line reactance, this phase mismatch drives thousands of amperes of reactive surge current, tripping substation circuit breakers or causing transformer saturation.
 
-$ P = frac(V_1 V_2, X_L) sin \( Delta phi.alt \) $
+Similarly, in high-rate electric vehicle charging, drawing high continuous current through battery interconnects generates substantial resistive Joule heating within seconds, risking thermal runaway if coolant valve controllers fail to respond.
 
-On a $60 upright(" Hz")$ utility grid ($16.67 upright(" ms")$ electrical cycle period), an unbudgeted $1.5 upright(" ms")$ operating system interrupt latency induces an AC phase angle error of $Delta phi.alt = frac(1.5 upright(" ms"), 16.67 upright(" ms")) times 360^compose = 32.4^compose$. Across grid line reactance $X_L$, this phase mismatch drives thousands of amperes of reactive surge current, tripping substation circuit breakers or causing transformer saturation.
-
-Similarly, in high-rate electric vehicle charging, drawing $I = 400 upright(" A")$ through battery interconnects with internal resistance $R_(upright("internal")) = 0.05 thin Omega$ generates $8000 upright(" W")$ of continuous resistive Joule heating ($Q = 80 upright(" kJ")$ in $10 upright(" s")$), risking thermal runaway within seconds if coolant valve controllers fail to respond.
-
-Across all three archetypes (whether guiding a quadruped along an alpine trail, driving a robotic manipulator toward a fixture, or switching high-voltage grid inverters), the central hazard is identical. High-level learned software can fault, hesitate, or misclassify, but the physical momentum and energy coupled to the hardware cannot be paused.
+Across all three archetypes---whether guiding a quadruped along an alpine trail, driving a robotic manipulator toward a fixture, or switching high-voltage grid inverters---the central hazard is identical. High-level learned software can fault, hesitate, or misclassify, but the physical momentum and energy coupled to the hardware cannot be paused.
 
 == Anatomy of an Embodied Crash
 <anatomy-of-an-embodied-crash>
 On a clear night in March 2018, an autonomous test vehicle traveling at forty-three miles per hour along a public roadway in Tempe, Arizona, detected an obstacle eighty-two meters ahead. Over the next five seconds, the vehicle's high-capacity deep learning perception system detected, classified, and reclassified the obstacle five separate times, yet the vehicle never engaged emergency braking before impact.
 
-In classical computer science education and cloud software engineering, an uncertain classification is benign: the application logs a warning, falls back to a default value, or catches the error in an exception block while the user waits. Sixty years of computing abstractions (from virtual memory paging to containerized microservices) have reinforced the implicit belief that software execution is decoupled from the physical universe. But when algorithmic predictions command physical actuators, this mental model collapses. The physical world possesses neither an exception handler nor an undo operation. The kinetic energy stored in a moving vehicle, the magnetic flux circulating through an electric motor, and the thermal energy accumulating in a power inverter do not pause when an application thread stalls or a neural model misclassifies an observation. The hardware continues executing the last command until the laws of physics violently intervene.
+In classical computer science education and cloud software engineering, an uncertain classification is benign: the application logs a warning, falls back to a default value, or catches the error in an exception block while the user waits. Sixty years of computing abstractions---from virtual memory paging to containerized microservices---have reinforced the implicit belief that software execution is decoupled from the physical universe. But when algorithmic predictions command physical actuators, this mental model collapses. The physical world possesses neither an exception handler nor an undo operation. The kinetic energy stored in a moving vehicle, the magnetic flux circulating through an electric motor, and the thermal energy accumulating in a power inverter do not pause when an application thread stalls or a neural model misclassifies an observation. The hardware continues executing the last command until the laws of physics violently intervene.
 
 #figure([
 #table(
@@ -3853,7 +3879,7 @@ where:
 - #strong[$upright(bold(u)) \( t \) in bb(R)^p$:] Commanded actuator inputs (e.g., motor torques in $upright("N") dot.op upright("m")$).
 - #strong[$upright(bold(w)) \( t \) tilde.op cal(N) \( upright(bold(0)) \, upright(bold(Q)) \( t \) \)$:] Zero-mean Gaussian process noise vector.
 - #strong[$upright(bold(P)) \( t \) in bb(R)^(n times n)$:] State estimation error covariance matrix ($bb(E) \[ \( upright(bold(x)) - hat(upright(bold(x))) \) \( upright(bold(x)) - hat(upright(bold(x))) \)^T \]$), with diagonal elements representing estimation variances $sigma_i^2$ in $\[ upright("unit") \( x_i \) \]^2$.
-- #strong[$upright(bold(F)) \( t \) = frac(partial f, partial upright(bold(x)))\|_(hat(upright(bold(x))) \, upright(bold(u))) in bb(R)^(n times n)$:] Continuous system dynamics Jacobian matrix, measured in $upright("s")^(- 1)$.
+- #strong[$upright(bold(F)) \( t \) = frac(partial f, partial upright(bold(x)))\|_(hat(upright(bold(x))) \, upright(bold(u))) in bb(R)^(n times n)$:] Continuous system dynamics Jacobian matrix, mapping how small velocity errors expand into future position errors.
 - #strong[$upright(bold(Q)) \( t \) in bb(R)^(n times n)$:] Continuous process noise spectral density matrix, representing unmodeled physical disturbances in $\[ \( upright("unit") \( x_i \) \)^2 \/ upright("s") \]$.
 
 #emph[Concrete Numerical Propagation Example:] Consider a 1D position-velocity tracking kinematic model ($dot(p) = v$, $dot(v) = u + w_v$) with state $upright(bold(x)) = \[ p \, v \]^T$. The system Jacobian is $upright(bold(F)) = mat(delim: "[", 0, 1; 0, 0)$, and continuous process noise is $upright(bold(Q)) = upright("diag") \( 0 \, 0.10 \) upright(" m")^2 \/ upright("s")^3$. Suppose the prior covariance at the start of a $1000 upright(" Hz")$ loop ($Delta t = 1.0 upright(" ms") = 0.001 upright(" s")$) is $upright(bold(P)) \( 0 \) = mat(delim: "[", 0.0100, 0.0000; 0.0000, 0.0400) upright(" m")^2$.
@@ -3969,7 +3995,7 @@ State histories are maintained in fixed-size circular ring buffers indexed by 64
 ] #label("callout-fallacy*-37")
 == Latent World Models
 <sec-latent-world-models>
-While classical Kalman filters excel at tracking parameterized rigid-body kinematics, they cannot scale to open-world physical scenes containing deformable fabrics, splashing fluids, granular media, or unstructured clutter. An embodied agent needs a world model capable of predicting how complex environments evolve under candidate action sequences.
+While classical Kalman filters excel at tracking rigid objects via 6-DoF state vectors, they collapse when confronted with the unconstrained physical world. How do you construct a 6-DoF state vector for a crumpled towel, a splashing liquid, or an unmodeled debris field? An embodied agent needs a world model capable of predicting how complex environments evolve under candidate action sequences without choking on raw pixel math.
 
 #block[
 #callout(
