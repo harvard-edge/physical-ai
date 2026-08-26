@@ -117,22 +117,25 @@ def gen_pipeline_locator(active_stage, active_pill, target_svg_path):
     save_svg_and_pdf(target_svg_path, "\n".join(svg))
     print(f"Generated clean 90-deg locator: {target_svg_path}")
 
-if __name__ == "__main__":
+def run_all():
     locators = [
         (0, "CHAPTER 01 · THE BOUNDARY", "book/chapters/01-boundary/figures/fig_pipeline_locator.svg"),
-        (0, "CHAPTER 02 · THE FIVE PHYSICAL CONSTRAINTS", "book/chapters/02-constraints/figures/fig_pipeline_locator.svg"),
-        (1, "CHAPTER 03 · FOUNDATIONS OF COGNITIVE AGENCY", "book/chapters/03-cognition/figures/fig_pipeline_locator.svg"),
-        (2, "CHAPTER 04 · MULTI-RATE SYSTEM HIERARCHY", "book/chapters/04-hierarchy/figures/fig_pipeline_locator.svg"),
-        (1, "CHAPTER 05 · SPATIAL PERCEPTION & TRANSDUCTION", "book/chapters/05-perception/figures/fig_pipeline_locator.svg"),
-        (2, "CHAPTER 06 · TEMPORAL MEMORY & WORLD MODELS", "book/chapters/06-state/figures/fig_pipeline_locator.svg"),
-        (3, "CHAPTER 07 · INTENT & SEMANTIC REASONING", "book/chapters/07-intent/figures/fig_pipeline_locator.svg"),
-        (4, "CHAPTER 08 · ACTION GENERATION & TRAJECTORY PLANNING", "book/chapters/08-planning/figures/fig_pipeline_locator.svg"),
-        (5, "CHAPTER 09 · REAL-TIME SAFETY ENFORCEMENT & REFLEXES", "book/chapters/09-enforcement/figures/fig_pipeline_locator.svg"),
-        (4, "CHAPTER 10 · HETEROGENEOUS COMPUTE PLACEMENT", "book/chapters/10-placement/figures/fig_pipeline_locator.svg"),
-        (5, "CHAPTER 11 · RUNTIME GOVERNANCE & HUMAN AUTHORITY", "book/chapters/11-governance/figures/fig_pipeline_locator.svg"),
-        (5, "CHAPTER 12 · WHOLE-SYSTEM QUALIFICATION & ASSURANCE", "book/chapters/12-assurance/figures/fig_pipeline_locator.svg"),
-        (6, "CHAPTER 13 · FRONTIER COGNITION & CAPSTONE INTEGRATION", "book/chapters/13-frontier/figures/fig_pipeline_locator.svg")
+        (0, "CHAPTER 02 · THE FIVE PHYSICAL CONSTRAINTS", "book/chapters/02-body/figures/fig_pipeline_locator.svg"),
+        (1, "CHAPTER 03 · FOUNDATIONS OF COGNITIVE AGENCY", "book/chapters/03-brain/figures/fig_pipeline_locator.svg"),
+        (2, "CHAPTER 04 · MULTI-RATE SYSTEM HIERARCHY", "book/chapters/04-nervous/figures/fig_pipeline_locator.svg"),
+        (1, "CHAPTER 05 · SPATIAL PERCEPTION & TRANSDUCTION", "book/chapters/05-data/figures/fig_pipeline_locator.svg"),
+        (2, "CHAPTER 06 · TEMPORAL MEMORY & WORLD MODELS", "book/chapters/06-training/figures/fig_pipeline_locator.svg"),
+        (3, "CHAPTER 07 · INTENT & SEMANTIC REASONING", "book/chapters/07-evaluation/figures/fig_pipeline_locator.svg"),
+        (4, "CHAPTER 08 · ACTION GENERATION & TRAJECTORY PLANNING", "book/chapters/08-perception/figures/fig_pipeline_locator.svg"),
+        (5, "CHAPTER 09 · REAL-TIME SAFETY ENFORCEMENT & REFLEXES", "book/chapters/09-memory/figures/fig_pipeline_locator.svg"),
+        (4, "CHAPTER 10 · HETEROGENEOUS COMPUTE PLACEMENT", "book/chapters/10-intent/figures/fig_pipeline_locator.svg"),
+        (5, "CHAPTER 11 · RUNTIME GOVERNANCE & HUMAN AUTHORITY", "book/chapters/11-planning/figures/fig_pipeline_locator.svg"),
+        (5, "CHAPTER 12 · WHOLE-SYSTEM QUALIFICATION & ASSURANCE", "book/chapters/12-enforcement/figures/fig_pipeline_locator.svg"),
+        (6, "CHAPTER 13 · FRONTIER COGNITION & CAPSTONE INTEGRATION", "book/chapters/13-placement/figures/fig_pipeline_locator.svg")
     ]
 
     for stage, pill, path in locators:
         gen_pipeline_locator(stage, pill, path)
+
+if __name__ == "__main__":
+    run_all()

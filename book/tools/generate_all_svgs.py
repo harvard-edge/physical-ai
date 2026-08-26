@@ -6,9 +6,14 @@ Pure vector SVG, unclipped typography, Harvard Crimson & ETH Zurich Academic Sem
 
 import os
 import subprocess
-from figures import (
-    ch01, ch02, ch03_04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, locator
-)
+try:
+    from .figures import (
+        ch01, ch02, ch03_04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, locator
+    )
+except ImportError:
+    from figures import (
+        ch01, ch02, ch03_04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, locator
+    )
 
 def main():
     print("=== Generating All Pure-Vector SVGs and Synchronizing PDFs ===")
