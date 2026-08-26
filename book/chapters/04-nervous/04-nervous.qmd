@@ -1,0 +1,201 @@
+# The Nervous System\chaptersubtitle{Who Is Allowed to Move the Motors} {#sec-nervous}
+
+![Locator: this chapter's stage in the machine.](figures/fig_locator.svg){#fig-locator-ch04 fig-pos="H" width=100%}
+
+*Who is allowed to move the motors?*
+
+<!-- HOOK: one substantive paragraph answering the question above. -->
+
+{{< pagebreak >}}
+
+::: {.callout-objective}
+After studying this chapter, you will be able to:
+
+1. Derive the rate of each execution path from a physical property rather than choosing it.
+2. State which component may write the registers that deliver energy, and justify the choice structurally.
+3. List what would have to be true for two paths to be genuinely independent, and name what would falsify each.
+4. Populate one row of the grid for a machine of your own and defend the squares that do not bind.
+
+:::
+
+## Introduction {#sec-nervous-4-1}
+
+<!-- SECTION 4.1 -->
+<!-- claim: Given a body that will not wait and a brain that cannot be relied on, the nervous system is what makes one machine out of them. -->
+<!-- covers: The reconciliation problem: bridging a deterministic physical plant that obeys mechanics (Chapter 2) with an unbounded, stochastic model that generates proposals (Chapter 3). -->
+<!-- covers: Why the two irreducible architectural decisions in physical AI systems are execution rate selection and authority allocation. -->
+<!-- covers: The nervous system defined: the deterministic hardware and software fabric that transports signals under physical deadlines and retains exclusive veto authority over actuators. -->
+<!-- covers: Why procedural software discipline and cooperative multitasking fail under compute starvation, memory corruption, or soft lockups. -->
+<!-- covers: Structural roadmap: deriving rates from mechanics, isolating hardware authority domains, handling boundary conditions (adversaries, fast policies, humans), and assembling the Part I synthesis grid. -->
+<!-- GROUNDING: number — the two kinds of work, and the rate each one needs -->
+<!-- FIGURE: A timeline comparing a deterministic 1 kHz physical plant deadline against a stochastic 5 to 20 Hz policy latency distribution with heavy-tailed jitter. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Two Kinds of Work in One Machine {#sec-nervous-4-2}
+
+<!-- SECTION 4.2 -->
+<!-- claim: Deliberation is slow and unpredictable, enforcement must be fast and predictable, and no single path can be both. -->
+<!-- covers: The profile of deliberate work: variable runtime, deep compute graphs, gigabyte-scale memory footprints, soft failure modes, and batch-oriented parallel hardware. -->
+<!-- covers: The profile of reactive work: bounded execution cycles on microsecond budgets, fixed memory footprints, zero runtime allocations, hard real-time deadlines, and cycle-counted processors. -->
+<!-- covers: Why general-purpose OS schedulers and preemptible kernels fail to convert deliberate hardware into hard real-time controllers. -->
+<!-- covers: Hardware floor differences: GPU/NPU memory hierarchies and PCIe DMA latencies versus bare-metal MCU and FPGA register-mapped I/O. -->
+<!-- covers: The dual-processor imperative: proving why deliberate and reactive execution paths cannot safely share a single compute core, cache hierarchy, or memory bus. -->
+<!-- GROUNDING: number — what each kind of work requires, in cycles and in predictability -->
+<!-- FIGURE: Side-by-side execution trace contrasting stochastic deliberation with heavy tail latency against a deterministic cycle-counted inner loop. -->
+<!-- DERIVE: The probability of missing a hard physical deadline as a function of inference runtime variance under log-normal compute distributions. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Multiple Rates in One System {#sec-nervous-4-3}
+
+<!-- SECTION 4.3 -->
+<!-- claim: Each rate is set by a physical property, and only one of them has an origin that is not negotiable. -->
+<!-- covers: Deriving the inner loop rate (100 to 1000 Hz): dictated by mechanical resonance, sensor bandwidth, and actuator electrical time constants $\tau = L/R$. -->
+<!-- covers: Deriving the perception rate (10 to 100 Hz): dictated by sensor integration times, camera exposure windows, and target velocity relative to sensor field of view. -->
+<!-- covers: Deriving the planning rate (1 to 10 Hz): dictated by the environmental state change horizon and available compute energy budgets. -->
+<!-- covers: Asynchronous data exchange across rate boundaries: lock-free single-producer single-consumer (SPSC) ring buffers, double-buffering, and atomic sequence counters without blocking either producer or consumer. -->
+<!-- covers: Failure modes of rate mismatches: phase lag accumulation eroding control stability margins, aliasing, and buffer starvation or overflow. -->
+<!-- covers: State this as an imported result rather than a derived one: name the source, the assumptions under which it holds, how this machine establishes that those assumptions hold, and what the machine does at the moment they stop holding. -->
+<!-- GROUNDING: number — each rate derived from a physical property, not chosen -->
+<!-- FIGURE: Multi-rate execution timeline showing asynchronous, non-blocking zero-copy handoffs across three rate tiers using atomic latching. -->
+<!-- DERIVE: The maximum permissible loop latency as a function of plant time constant $\tau$ before phase margin drops below stability thresholds. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Timing Guarantees in Silicon {#sec-nervous-4-4}
+
+<!-- SECTION 4.4 -->
+<!-- claim: A processor promises far less about timing than most software assumes, and the gap is where deadlines are missed. -->
+<!-- covers: Separate an observed latency percentile from a hard timing guarantee, which requires a bound on every execution, blocking, and interference term. -->
+<!-- covers: Express the timing condition as worst-case execution plus blocking and interference no greater than the deadline. -->
+<!-- covers: Measure the same workload unloaded and under representative memory, I/O, accelerator, and thermal contention. -->
+<!-- covers: Classify each source of variation as bounded, experimentally characterized, or presently unbounded. -->
+<!-- covers: Correct the allocation claim: unbounded dynamic allocation is incompatible with a hard path, while a bounded allocator can be included if its worst case is known. -->
+<!-- covers: Name deadline overrun as the failure and an independent timestamp or deadline monitor as the detector. -->
+<!-- GROUNDING: number — measured jitter, loaded and unloaded, against a deadline -->
+<!-- FIGURE: Loaded and unloaded complementary latency distributions must show the deadline crossing while clearly distinguishing empirical observations from a proved bound. -->
+<!-- DERIVE: Derive which guarantee is available by composing the bounded execution, blocking, and interference terms; do not infer a hard guarantee from a finite latency sample. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Authority Over Actuation {#sec-nervous-4-5}
+
+<!-- SECTION 4.5 -->
+<!-- claim: Which component may command energy is a hardware question, because software discipline does not survive a software failure. -->
+<!-- covers: The privilege model: treating energy delivery to coils, bridges, and hydraulic valves as privileged hardware operations. -->
+<!-- covers: The learned policy as a proposer: learned models emit unauthenticated candidate actions rather than raw PWM duty cycles or gate voltages. -->
+<!-- covers: The enforcer / permitter: a deterministic hardware or bare-metal execution block with exclusive write access to motor-drive registers. -->
+<!-- covers: Envelope clipping, dynamic braking, and hardware interlocks: validating velocity, acceleration, jerk, and thermal limits before committing register writes. -->
+<!-- covers: The state of no command: defining deterministic fail-safe actuator configurations (dynamic braking, high-impedance freewheeling, or mechanical locking) when proposal streams halt. -->
+<!-- covers: Invariant preservation under total compromise: a remote exploit, an adversarial sensor input, and a model hallucination are the same event at this boundary, an unauthorized proposal, and the physical limit is enforced at the register floor even when the host running the brain is fully compromised. -->
+<!-- covers: Out-of-band supervisory channels and physical disconnects: hardware paths that remove motor power independently of any software stack, and what they cost in availability. -->
+<!-- GROUNDING: mechanism — which component can write the registers that deliver energy -->
+<!-- FIGURE: Register access map contrasting an unsafe shared-bus design with an exclusive-access enforcer architecture controlling motor-drive registers. -->
+<!-- DERIVE: Stopping distance and thermal dissipation incurred when transitioning to a fail-safe state under worst-case payload momentum. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Separating the Two Paths {#sec-nervous-4-6}
+
+<!-- SECTION 4.6 -->
+<!-- claim: Independence is a claim about shared clocks, buses, rails, and memory, and it is usually wrong the first time it is checked. -->
+<!-- covers: The four dimensions of hardware isolation: independent execution cores, separate clocks and oscillators, isolated power rails, and segregated memory domains. -->
+<!-- covers: Shared-resource failure modes: PCIe bus contention, shared rail voltage sag during GPU compute bursts, crystal oscillator failure, and common-substrate thermal throttling. -->
+<!-- covers: Distinguishing brain unresponsiveness from brain corruption: monotonic heartbeat leases versus invalid proposal generation. -->
+<!-- covers: Degradation strategies: graceful handoffs from nominal trajectory tracking to envelope-bounded dead reckoning or controlled deceleration. -->
+<!-- covers: Falsification criteria: bench tests including fault injection, clock glitching, power-rail droop testing, and bus flooding to verify true independence. -->
+<!-- GROUNDING: mechanism — what independence requires: separate execution, timing, and failure -->
+<!-- FIGURE: Fault domain map showing physical, electrical, thermal, clock, and communication isolation boundaries between the brain and the nervous system. -->
+<!-- DERIVE: The maximum allowable watchdog timeout before an uncontrolled plant exceeds its dynamically safe state envelope. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## When the Brain Runs at Nervous-System Rates {#sec-nervous-4-7}
+
+<!-- SECTION 4.7 -->
+<!-- claim: A learned policy emitting torques at 500 Hz puts the brain and the nervous system on the same cycle, and the split has to survive that. -->
+<!-- covers: High-rate learned policies: end-to-end visuomotor models and reinforcement learning locomotion policies producing actuator setpoints at 100 to 500 Hz. -->
+<!-- covers: The architectural trap: assuming that matching the execution rate of the nervous system eliminates the need for separate proposal and permission layers. -->
+<!-- covers: Preserving structural authority: why high inference frequency does not grant register-level privilege to unverified model outputs. -->
+<!-- covers: Jitter, compute underrun, and out-of-distribution torque spikes occurring within high-rate inference loops. -->
+<!-- covers: Synchronous invariant checking: executing microsecond-scale boundary checks (energy conservation, joint torque limits, acceleration envelopes) inline with high-rate proposals. -->
+<!-- GROUNDING: failure — a learned policy inside the fast loop, and what must stay independent -->
+<!-- FIGURE: Dataflow diagram contrasting a standard multi-rate pipeline with a high-rate learned policy governed by a synchronous, inline invariant enforcer. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## The Place of a Human Operator {#sec-nervous-4-8}
+
+<!-- SECTION 4.8 -->
+<!-- claim: A person is a third holder of authority, arriving asynchronously with a latency of their own, and their commands are proposals like any other. -->
+<!-- covers: Establish the human as a third authority holder alongside the proposal path and the enforcement path, with a rate and a latency that belong on the same timing diagram as the other two. -->
+<!-- covers: Route operator input through the identical physical invariant checks before actuation, because a person can command something the body will not survive. -->
+<!-- covers: Note that authority states, transfer mechanics, authentication, and supervisory bandwidth are the subject of Chapter 14, and carry only the timing and privilege consequences into the grid that follows. -->
+<!-- GROUNDING: mechanism — a third authority holder placed on the same timing diagram as the other two -->
+<!-- FIGURE: Control multiplexer topology showing the arbitration hierarchy between autonomous policy proposals, human supervisory inputs, and physical enforcer vetoes. -->
+<!-- DERIVE: Maximum tolerable communications round-trip latency before a remote human teleoperation link must drop to an autonomous safe stop. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## The Grid of Handoffs and Limits {#sec-nervous-4-9}
+
+<!-- SECTION 4.9 -->
+<!-- claim: Five handoffs against five limits, assembled here because this is the first point at which both axes exist, and the record that carries them forward is defined once, here. -->
+<!-- covers: Defining the axes: five canonical system handoffs (Sensing $\to$ Perception, Perception $\to$ State, State $\to$ Plan, Plan $\to$ Enforcer, Enforcer $\to$ Actuator) evaluated against five physical limits (Latency, Bandwidth, Energy/Thermal, Determinism, Fault Domain). -->
+<!-- covers: Populating the matrix: identifying the primary binding constraint for each cell across the end-to-end pipeline. -->
+<!-- covers: Defending unbound squares: demonstrating why specific handoff-limit intersections do not bind due to structural architectural choices rather than oversight. -->
+<!-- covers: Using the grid as a diagnostic rubric: mapping real-world system failures back to unbudgeted limit crossings on specific handoff boundaries. -->
+<!-- covers: Synthesis of Part I: how Chapters 1 through 4 define the physical boundaries and structural rules before Part II constructs the learned policies. -->
+<!-- covers: Define the engineering notebook once: its entry schema, the provenance each field carries, how a value is versioned when it is remeasured, and the rule that a later chapter adds fields rather than restating the schema. -->
+<!-- GROUNDING: mechanism — five handoffs against five limits, and the one notebook schema every later chapter adds to -->
+<!-- FIGURE: The complete 5x5 Part I synthesis grid highlighting binding constraints, non-binding justifications, and corresponding chapter ownership. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Systems Stress-Tests {#sec-nervous-4-10}
+
+<!-- SECTION 4.10 -->
+<!-- claim: A separation that is correct on a block diagram and absent in the machine. -->
+<!-- covers: Anti-pattern 1 (The Shared Rail Trap): GPU transient current spikes causing voltage brownouts and unexpected resets on the real-time microcontroller rail. -->
+<!-- covers: Anti-pattern 2 (The Self-Feeding Watchdog): a software watchdog serviced by a high-priority timer ISR while the safety-critical control task is stalled. -->
+<!-- covers: Anti-pattern 3 (The Bypass Backdoor): maintenance interfaces (JTAG, UART, diagnostic sockets) allowing direct register manipulation that bypasses safety enforcers. -->
+<!-- covers: Anti-pattern 4 (The Phantom Feedback Loop): the safety enforcer evaluating state invariants using commanded actuator positions rather than isolated physical encoder readings. -->
+<!-- covers: Diagnostic bench protocol: a structured hardware-in-the-loop stress testing suite to uncover hidden couplings prior to deployment. -->
+<!-- FIGURE: Schematic comparing four common hardware-isolation anti-patterns with their corresponding verified isolation layouts. -->
+<!-- DERIVE: Total voltage drop $\Delta V = I R + L \frac{di}{dt}$ across a shared power distribution network during simultaneous compute burst and motor acceleration. -->
+
+<!-- BEGIN -->
+
+<!-- END -->
+
+## Summary {#sec-nervous-4-11}
+
+<!-- SECTION 4.11 -->
+<!-- claim: Part II fills in the grid, one row per chapter. -->
+<!-- covers: Part I synthesized: the body establishes physical constraints, the brain generates stochastic candidate actions, and the nervous system enforces deterministic arbitration. -->
+<!-- covers: The fundamental rule: proposal is never permission, and execution rates are dictated by physical time constants rather than computational convenience. -->
+<!-- covers: Preview of Part II: transitioning from structural hardware mechanics to training, simulating, and evaluating learned policies. -->
+<!-- covers: Mapping Part II to the synthesis grid: how Chapters 5 (Data), 6 (Training/Sim), and 7 (Evaluation) populate the deliberate layers of the architecture. -->
+
+<!-- BEGIN -->
+
+<!-- END -->

@@ -5,140 +5,71 @@
 
 ::: {.g-col-12 .g-col-md-6}
 ::: {.callout-note title="Start Reading" icon=false}
-Follow the thirteen-chapter cumulative spine, from physical boundary definitions and microsecond metrology to multi-rate runtimes, spatial belief, VLM reasoning, action chunks, and 1 kHz safety vetoes.
+Begin with the machine itself, and the line inside it where computation stops being advice and starts being force.
 
-[Chapter 1: The Causal Boundary](chapters/01-boundary/01-boundary.qmd){.btn .btn-primary .btn-sm role="button"}
+[Chapter 1: From Machine Learning Systems to Physical AI](chapters/01-boundary/01-boundary.qmd){.btn .btn-primary .btn-sm role="button"}
 :::
 :::
 
 ::: {.g-col-12 .g-col-md-6}
-::: {.callout-tip title="Reader Guide & Prerequisites" icon=false}
-Discover the foundational technical baseline, reader pathways by engineering background, and hands-on laboratory resources.
+::: {.callout-tip title="Reader Guide and Prerequisites" icon=false}
+What this book assumes you already know, what it builds from first principles, and what it deliberately leaves to other books.
 
-[Reader Guide & Prerequisites](front-matter/prerequisites.qmd){.btn .btn-outline-primary .btn-sm role="button"}
+[Reader Guide and Prerequisites](front-matter/prerequisites.qmd){.btn .btn-outline-primary .btn-sm role="button"}
 :::
 :::
 
 :::
 :::
 
-For more than sixty years, computer systems were engineered under a single, unspoken covenant: computation lives behind glass.
+A physical AI system is a machine with three parts.
 
-Inside the digital sandbox, software is blessed with the superpower of idempotency. If a thread encounters an unhandled null pointer, the operating system reclaims its virtual memory. If a network packet drops in transit, the transport layer transparently retries. If a database transaction encounters a write conflict, it rolls back to state $S_0$ as though the operation never began. In the digital world, errors are harmlessly contained behind glowing screens:
+It has a **body**, which moves mass through space, applies force through contact, or regulates a flow of energy. The body obeys mechanics and thermodynamics rather than instructions. It has momentum that must be arrested somewhere, windings that accumulate heat faster than they shed it, and transmissions that absorb whatever discontinuity a command hands them.
 
-$$\begin{aligned}
-\text{Software Exception} &\xrightarrow{\quad \text{try/catch} \quad} \text{HTTP 500 Retry} \\
-&\quad (\text{Physical World State } W_t \text{ Unchanged})
-\end{aligned}$$
+It has a **brain**, which perceives, remembers, reasons, and plans. Today that brain is built from learned models, and their value is precisely that nobody wrote down what they do. A learned component recognizes an object nobody enumerated and follows an instruction phrased in a way nobody anticipated. It also arrives at its answer after a delay that varies by an order of magnitude between one invocation and the next, and it cannot reliably say when it is wrong.
 
-The moment software is wired to a motor inverter, that sixty-year covenant vanishes.
+And it has a **nervous system**, which carries signals between the two. It runs on deadlines the body sets rather than the brain, it decides what reaches an actuator and what does not, and it is the only part of the machine that can refuse.
 
-A floating-point tensor written to a memory-mapped timer register becomes physical torque. Gate drivers pulse, switching amperes of phase current through copper stator windings. Magnetic flux accelerates kilograms of steel, aluminum, and glass through three-dimensional space, converting electrical energy into kinetic momentum ($\mathbf{p} = m\mathbf{v}$) and irreversible Joule heat ($I^2 R$).
+The engineering problem this book takes up is that these three parts have incompatible properties, and they have to work as one machine anyway. The brain is capable and unaccountable. The body is unforgiving and cannot be argued with. Between them sits a nervous system that must be fast enough to matter, predictable enough to trust, and independent enough to keep working when the brain does not.
 
-By the fundamental conservation laws of classical mechanics and thermodynamics, physical actions cannot be rewound:
+## What This Book Is
 
-$$\begin{aligned}
-\text{Physical Actuation } A_t &\implies \text{Matter \& Momentum Mutate } (W_t \longrightarrow W_{t+1}) \\
-&\implies \text{Altered Sensory Stream } O_{t+1}
-\end{aligned}$$
+This is a systems engineering book. It draws on machine learning, on real-time and embedded systems, and on control, but it is not a book about any of the three and it does not attempt to teach them. Its subject is composition: what each part of the machine must guarantee to the others, how authority over physical action is allocated, what happens to those guarantees when everything shares one piece of silicon, and what evidence would justify letting the result operate.
 
-Because physical actions permanently alter the state of the world, every subsequent sensor observation is an endogenous consequence of the system's own prior decisions. You cannot `ctrl+z` kinetic momentum, and you cannot catch a dropped workpiece with a software exception handler. The machine must live with the physical consequences of its choices.
+The question underneath every chapter is what the surrounding system must know, measure, enforce, and be able to show before an unverified proposal is permitted to move matter.
 
+That question is new. Machine learning systems engineering has spent a decade on training, serving, and deployment, and it has become a mature discipline, but almost all of it stops at a digital output. This book takes up what happens when the output is a current through a gate driver, and the error is not a wrong label but a sheared gear.
 
-## The Digital Agent Illusion versus Physical Reality
+## What This Book Is Not
 
-In recent years, artificial intelligence has popularized the concept of an *agent*. In modern software engineering, an agent is commonly conceptualized as a large language model operating in an interactive loop: it receives a text prompt, reflects across scratchpad tokens, executes a tool or API call, and observes the response before taking its next turn.
+It is not a robotics text. Kinematics, rigid-body dynamics, and manipulator geometry appear only where a systems decision rests on them, and readers who need those subjects properly should go to Craig, to Lynch and Park, or to Siciliano.
 
-That formulation is powerful, but it carries a dangerous hidden assumption: the assumption that time pauses while the model thinks.
+It is not a controls text. Stability analysis and frequency-domain methods appear only where they decide an engineering question, and Slotine and Åström remain the places to learn them.
 
-A digital software agent operates in a turn-based, synthetic timeline. If a cloud foundation model requires three seconds to deliberate, query a vector database, and generate tokens, the external software environment waits idly. When that same paradigm is connected to physical actuators, the illusion collapses.
+It is not a machine learning text. No model is discussed apart from what its use costs in time, memory, energy, and physical consequence, and Goodfellow, Bishop, and Murphy cover the rest.
 
-The physical universe does not pause while a neural network deliberates. While a high-capacity vision-language model evaluates self-attention over millions of parameters, a moving manipulator continues traveling along its kinematic vector ($d = v \cdot \Delta t$), winding temperatures rise, and sensor observations grow stale. In Physical AI, time is not an arbitrary turn counter; it is an unyielding dynamical state variable.
+It is also not a book about physical AI as the phrase is often used, which tends to mean generative models applied to robots and treats physical execution as a downstream detail. This book is about the engineering that execution demands.
 
+## Who This Book Is For
 
-## The Intellectual Collision: Two Crippled Paradigms
+Two readerships, and neither one is behind the other.
 
-Physical AI Systems exists because two foundational engineering cultures have reached their historical limits:
+Engineers from machine learning systems and edge AI arrive knowing what a model costs to serve and nothing about what a capture and compare register does. Engineers from robotics and cyber-physical systems arrive knowing how a machine is built and nothing about what a diffusion policy costs at inference. Every unfamiliar object in this book is introduced first by what it does and only then by its name, so that neither reader is asked to have known something already.
 
-The first paradigm is the *Closed-World Trap of Classical Robotics and Automation*. For decades, robotics and control engineering achieved astonishing precision within tightly controlled factory cages. By relying on hand-crafted rigid-body kinematics, pre-computed CAD models, and static finite-state machines, classical control provided deterministic Lyapunov stability and sub-millimeter repeatability. Yet the moment a machine is deployed into an unstructured, human-centric environment—where lighting shifts, object geometries vary, and friction is unpredictable—the rigid CAD assumptions fracture, and the system fails.
+The book is written for advanced undergraduates, master's students, and practicing engineers, and it assumes programming maturity, comfort with elementary calculus and probability, and no prior exposure to robotics.
 
-The second paradigm is the *Digital Sandbox Trap of Modern Machine Learning*. Modern deep learning brought high-capacity foundation models capable of breathtaking open-world semantic understanding. Yet machine learning practitioners routinely operate under the belief that high benchmark accuracy on a static test dataset or high episode reward in a domain-randomized physics simulator equates to real-world reliability. They deploy stochastic neural networks directly to motor drivers, ignoring worst-case tail latencies ($P_{99}$), unified memory bus contention, and the physical reality that an operating system kernel panic will leave motor phase coils latched in a high-power state.
+## How the Book Is Organized
 
-Physical AI Systems is the grand synthesis of these two worlds. It does not treat machine learning as a replacement for physical laws, nor does it dismiss learned foundation models out of fear of non-determinism. Instead, it introduces an explicit architectural privilege boundary: caging the open-world intelligence of foundation models within the deterministic, real-time mathematical safety invariants of cyber-physical systems.
+Part I establishes the three parts of the machine. One chapter takes up what the body demands of anything that acts in the physical world. One takes up what a learned component actually offers and what it costs. One takes up the nervous system that has to connect them, which is where execution rates and authority over actuation are decided.
 
+Part II builds the machine one part at a time, following what is handed from each stage to the next, through perception, memory, reasoning, planning, control, and enforcement, and ending by placing all of it on real silicon and asking whether the separations claimed along the way survive contact with a shared bus.
 
-## The Durable Systems Question
+Part III holds the result to account. It takes up human authority over a running machine, deliberate fault injection derived from what the earlier chapters claimed, and the argument that would justify operating.
 
-This textbook is neither a guide to training larger foundation models on cloud clusters nor a classical robotics survey deriving pages of coordinate transformations. The single question governing every architectural pattern, mathematical contract, and systems interface across these chapters is:
+The final chapter says what the method cannot settle.
 
-> *"What must the surrounding system know, measure, enforce, preserve, and prove before an unverified learned proposal may produce a physical consequence?"*
+## A Note on What Is Not Yet Known
 
+A book that teaches engineers to demand evidence cannot itself overclaim. Where a number in these pages was measured, the measurement is described. Where it was derived, the derivation is shown. Where it is illustrative, it says so. And where the honest answer is that the field does not yet know, the chapter says that instead of reaching for a citation that does not settle it.
 
-## The Systems Stance and Its Boundaries
-
-Being candid about our perspective means being equally clear about what this book is, what it is not, and the first-principles viewpoint we bring to the table:
-
-* **What this book is not:** It is not an exhaustive treatise on classical mechanical kinematics, Special Euclidean Lie algebra ($SE(3)$ screw theory), or nonlinear Lyapunov control proofs (readers seeking classical robotics mechanics should consult Craig, Spong, Lynch & Park, and Slotine). Nor is it a disembodied deep learning theory survey focused on loss landscapes and gradient optimization behind glass (for which Goodfellow, Bishop, and Murphy are standard).
-* **What this book is:** The missing systems architecture bridge. We focus squarely on the multi-rate software runtimes, heterogeneous silicon placement, memory bus contention, hardware-isolated privilege boundaries, empirical tail-latency metrology, and zero-heap safety contracts required to host high-capacity learned models on physical machines without risking hardware destruction.
-* **Our Equation Philosophy:** We pursue first principles. Equations throughout this book are intentionally canonical, simple, and clean. Rather than performative control theory notation, every mathematical relation in this text is a back-of-the-napkin SI invariant—translating computational delay into unguided physical travel, bus saturation into tail-latency blowouts, and motor current into thermal accumulation.
-
-By making these boundaries explicit, our aim is to move the systems needle forward—giving computer scientists, machine learning practitioners, and embedded roboticists the shared architectural foundation needed to build dependable Physical AI systems.
-
-
-## The Evolutionary Arc of Machine Learning Systems
-
-Physical AI represents the fourth major phase in the multi-decade evolution of machine learning systems:
-
-* **The Cloud Era (2012–2020):** Systems engineering concentrated on distributed training clusters, parameter servers, and low-latency serving engines for stateless perception and language models [@krizhevsky2012imagenet; @vaswani2017attention]. Computation remained entirely advisory software within digital sandboxes.
-* **The TinyML Era (2018–2023):** The community tackled a fundamental silicon barrier, compressing neural networks to fit microcontrollers with kilobytes of SRAM and milliwatts of power. This era established INT8 quantization and static memory arenas, yet deployments remained largely open-loop sensory triggers that did not close an autonomous physical control loop.
-* **The Foundation Model Era (2023–2026):** Large multimodal foundation models introduced open-world scene understanding and semantic reasoning. However, these models operate at slow deliberative cadences ($0.5\text{ to } 2\text{ Hz}$), draw significant power, exhibit heavy tail latency ($P_{99}$), and lack intrinsic awareness of physical inertia or microsecond safety bounds.
-* **The Physical AI Systems Era (2026+):** Learned models leave the digital sandbox to exercise delegated physical authority over matter and energy under hard real-time constraints. This era unifies high-level semantic reasoning, spatial perception, multi-rate planning, and bare-metal safety vetoes ($1000\text{ Hz}$) on heterogeneous silicon.
-
-![The Evolutionary Arc of Machine Learning Systems: From disembodied cloud models and edge micro-detectors to multimodal foundation models and Physical AI closing the real-time loop over matter and energy.](chapters/01-boundary/figures/fig01_eras_evolution.svg){#fig-eras-preface width=100%}
-
-
-## The Three Engineering Tribes
-
-Physical AI is the meeting ground of three distinct engineering cultures, each bringing indispensable strengths and dangerous blindspots:
-
-* **The Brain (Machine Learning):** Contributes high-capacity foundation models, spatial token representations, and generative trajectory policies. Engineers from this background learn to leave behind the illusion that simulation proves safety, mastering instead complete-path metrology, tail latency budgets, zero-copy Direct Memory Access, and the necessity of isolating neural proposals from physical power stages.
-* **The Nervous System (Embedded Systems and Electrical Engineering):** Contributes microsecond clock synchronization, lock-free memory rings, and deterministic scheduling. Engineers from this background learn to move beyond static, hardcoded rules, mastering multi-rate asynchronous message passing and shared SRAM protocols to host multi-gigabyte stochastic models safely alongside real-time loops.
-* **The Body (Robotics and Control):** Contributes rigid-body dynamics, invariant safe sets, and physical actuation limits. Engineers from this background learn to move beyond hand-crafted CAD models, mastering the grounding of Vision Transformers and diffusion policies in metric space while caging stochastic proposals within mathematical Control Barrier Functions and thermal energy envelopes.
-
-![The Three Engineering Tribes and the Physical AI Systems Synthesis: Unifying the Brain (Machine Learning), the Nervous System (Embedded Systems), and the Body (Robotics and Control) across the Proposal and Permission Boundary.](chapters/01-boundary/figures/fig01_three_tribes.svg){#fig-tribes-preface width=100%}
-
-
-## The Proposal and Permission (Dual-Brain) Core
-
-To reconcile stochastic artificial intelligence with deterministic physical safety, this book centers around an architectural foundation: the Proposal and Permission Privilege Split.
-
-The Host Brain (Linux MPU or neural accelerator) operates as an unprivileged proposal engine. It ingests raw sensor streams, tracks spatial belief, queries multimodal vision-language models, and decodes smooth trajectory action chunks, emitting time-bounded intent leases ($\mathcal{L}_{\text{intent}}$).
-
-The Reflex Brain (real-time microcontroller) operates as the privileged permission authority. Executing bare-metal C or FreeRTOS at $1000\text{ Hz}$ with strictly zero dynamic heap allocation, it continuously projects candidate proposals onto forward-invariant safe sets ($h(x) \ge 0$), evaluates dynamic stopping clearance ($d_{\text{stop}} \le d_{\text{clear}}$), and commands actuator power stages.
-
-If the Host Brain panics, encounters unified memory bus contention, or hallucinates an unsafe trajectory, the Reflex Brain intercepts the violation within one millisecond, overriding the proposal and transitioning the machine into a safe physical state.
-
-
-## The Physical AI Systems Curriculum Roadmap
-
-To navigate the synthesis of machine learning and physical systems, @fig-master-roadmap provides the master compass for the entire book. The curriculum progresses systematically across three parts:
-
-* **Part I: Foundations (The Four Bedrock Pillars):** @sec-boundary introduces the discipline, the Causal Boundary, and the Proposal–Permission boundary. @sec-constraints establishes the Five Physical Columns that bound intelligence in silicon and steel (Time, Inertia, Actuation, Energy, and Silicon). @sec-cognition deconstructs the Five Cognitive Stages of embodied agency (Perceive, Remember, Reason, Plan, Execute). @sec-hierarchy establishes the multi-rate temporal hierarchy decoupling cognitive deliberation from real-time bare-metal reflexes across heterogeneous silicon.
-* **Part II: The Embodied Lifecycle (Conquering the Matrix Row by Row):** @sec-perception through @sec-enforcement systematically construct and validate the five canonical sensory-motor organs—from spatial perception (@sec-perception) and latent world models (@sec-state) to semantic reasoning (@sec-intent), continuous trajectory planning (@sec-planning), and deterministic 1 kHz safety reflexes (@sec-enforcement).
-* **Part III: System Integration, Governance, and Defensible Release:** @sec-placement through @sec-frontier address whole-system deployment—placing workloads across heterogeneous SoC silicon (@sec-placement), governing human-machine authority handoffs and intervention flywheels (@sec-governance), authoring evidence-backed safety cases (@sec-assurance), and conducting the Capstone whole-system defense under live bench fault injection (@sec-frontier).
-
-![Physical AI Systems: The Co-Design Framework and Curriculum Roadmap. Tracing the four foundational pillars of Part I (the causal boundary, physical columns, cognitive stages, and multi-rate hierarchy), the five embodied lifecycle organs of Part II (Perceive, Remember, Reason, Plan, Execute), and whole-system deployment, placement, governance, and defensible release in Part III.](chapters/01-boundary/figures/fig00_master_roadmap.svg){#fig-master-roadmap width=100%}
-
-
-## The Pedagogical Journey: The Engineering Dossier
-
-This book is organized around a concrete, semester-long engineering progression. As you work through each chapter and companion hardware laboratory on the desk-bench Physical AI Kit (Arduino UNO Q), you do not simply complete disconnected exercises. You construct an eleven-artifact *Engineering Dossier*:
-
-* **Part I (Foundations):** You formulate the physical laws that bound intelligent action: tracing the Causal Boundary in the Loop Charter, measuring worst-case tail latencies and stopping distances in the Requirements Ledger, and defining the multi-rate execution hierarchy in the Workflow Charter.
-* **Part II (The Embodied Lifecycle):** You construct the five sensory-motor organs of the physical agent: designing zero-copy camera ingestion contracts, tracking spatial coordinate frame trees, bounding high-level VLM intent leases, synthesizing jerk-continuous action chunks, and implementing 1 kHz microcontroller safety enforcers.
-* **Part III (Integration and Release):** You place these components across heterogeneous silicon, configure memory bus Quality-of-Service priorities to prevent frame-buffer starvation, design bumpless human-machine authority handoffs, and assemble a formal Claim-Argument-Evidence safety case.
-
-The curriculum culminates in @sec-assurance and @sec-frontier: the *Whole-System Bench Defense* and oral capstone release gate. In this capstone milestone, your integrated physical machine operates under live, unannounced, cross-layer fault injection—surviving camera dropouts, clock skews, memory bus saturation, and operating system kernel panics—to justify an evidence-backed release verdict before a red-team review board.
-
-Welcome to Physical AI Systems. Let us bridge the digital mind and the physical machine.
-
+The separation of proposal from permission, which runs through the whole book, is a teaching architecture and an engineering discipline. It is not a claim of certified functional safety, and nothing here should be read as a certification method. What the book teaches is the reasoning that has to happen before any such process begins.
