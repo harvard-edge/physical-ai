@@ -1,0 +1,31 @@
+# Incident Autopsies & Statutory Standards Reference {.unnumbered #sec-appendix-standards}
+
+This appendix provides a structured reference summarizing the forensic incident autopsies and statutory functional safety standards analyzed throughout this text.
+
+---
+
+## 1. Master Compendium of Incident Autopsies
+
+Every engineering principle in Physical AI is illuminated by real-world physical failures where software abstractions collided with physical dynamics.
+
+| Case Name & Date | System & Application | Primary Root Cause | Critical Architectural Flaw | Provable Physical Lesson | Primary Reference |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Uber ATG Tempe Crash** (Mar 2018) | Autonomous Test Vehicle (Volvo XC90) | Semantic classification toggled between vehicle, bicycle, and unknown, resetting track history on each cycle | Automatic Emergency Braking (AEB) suppressed for $1.2\text{ s}$ to prevent false-alarm jerk; no deterministic low-level override | High-level perception must never gate or suppress the low-level kinematic stopping envelope ($d_{\text{stop}}$). | @sec-boundary, @sec-brain, @sec-intervention |
+| **Tesla Autopilot Williston Crash** (May 2016) | Semi-Autonomous Highway Autopilot | Monocular vision saturated against bright midday sky; radar reflection rejected as overhead sign | System lacked cross-modal sensor voting and failed to enforce human gaze attention invariants | Sensor fusion must explicitly bound epistemic uncertainty; vision cannot be assumed universally valid under high-dynamic-range illumination. | @sec-perception, @sec-intervention |
+| **Autonomous Gantry Milling Collision** (Industrial Autopsy) | 5-Axis Heavy CNC Gantry Milling Center | Flash trace logging triggered high-priority DMA bursts across shared AHB crossbar, starving real-time SPI bus | Emergency stop task suffered $600\,\mu\text{s}$ bus contention, missing $3.0\text{ ms}$ deceleration deadline | Safety-critical enforcer code and I/O registers must be isolated in zero-contention Data Tightly-Coupled Memory (DTCM). | @sec-nervous, @sec-enforcement, @sec-placement |
+| **Gas Turbine Hydraulic Manifold Rupture** (Energy Plant) | Closed-Loop Fuel Manifold Pressure Regulator | Low-pass anti-aliasing filter added $40\text{ ms}$ phase lag to pressure telemetry, causing PI controller windup | Control loop lacked dynamic saturation clamping and rate-of-rise barrier certificates | Low-pass filtering trades noise reduction for phase lag; transport latency consumes physical stability margin. | @sec-body, @sec-nervous |
+| **Mars Climate Orbiter Disintegration** (Sep 1999) | Interplanetary Spacecraft Trajectory Controller | Ground software emitted angular momentum thruster impulses in pound-force seconds ($\text{lbf}\cdot\text{s}$), while onboard software expected Newton-seconds ($\text{N}\cdot\text{s}$) | Lack of statically typed dimensional units and coordinate frame contracts in IPC schemas | Every data structure crossing an interface must explicitly bind physical SI units and reference frames into immutable schemas. | @sec-data, @sec-perception, @sec-intent |
+
+---
+
+## 2. Statutory Functional Safety Standards Alignment
+
+| Safety Standard | Target Industry & Domain | Core Architectural Requirements & Integrity Metrics | Physical AI Mapping & Implementation |
+| :--- | :--- | :--- | :--- |
+| **ISO 26262** | Road Vehicles (Functional Safety) | • Automotive Safety Integrity Levels (ASIL A to ASIL D)<br>• Single-Point Fault Metric (SPFM $\ge 99\%$ for ASIL D)<br>• Fault Tolerant Time Interval (FTTI $\le 50\text{ ms}$)<br>• E-Gas 3-Level Monitoring Architecture | Maps directly to the **Proposal–Permission Split**: Level 1 (Learned Brain proposal), Level 2 (Trajectory cross-check), Level 3 (Hardware MCU watchdog and galvanic E-Stop). |
+| **IEC 61508 / IEC 62061** | Industrial Automation & Safety-Critical E/E/PE | • Safety Integrity Levels (SIL 1 to SIL 4)<br>• Target failure rate $<10^{-9}\text{ failures/hour}$ (SIL 4)<br>• Safe Failure Fraction ($\text{SFF} \ge 99\%$) | Governs the hardware implementation of the deterministic safety enforcer and physical safe torque off (STO) stages. |
+| **ISO 21448 (SOTIF)** | Safety of the Intended Functionality | • Mitigating hazards caused by performance limitations, sensor blindness, and complex neural perception algorithms without hardware faults<br>• Shrinking Area 2 (Known Unsafe) and Area 3 (Unknown Unsafe) | Governs the **Envelope Trichotomy** and Claim-Argument-Evidence safety cases in @sec-release. |
+| **ISO 10218-1/2 & ISO/TS 15066** | Collaborative Robots (Cobots) | • Power and Force Limiting (PFL: Transient contact $<50\text{ N}$)<br>• Speed and Separation Monitoring (SSM: Dynamic distance $S \ge v_r T_r + v_h T_h + B$)<br>• 3-position enabling devices (teach pendants) | Supplies the quantitative force and velocity barrier bounds for Control Barrier Function (CBF-QP) filters in @sec-enforcement. |
+| **UL 4600** | Autonomous Products & Systems | • Goal Structuring Notation (GSN) safety cases<br>• Prohibits purely statistical / road-hour safety claims<br>• Mandates explicit residual-claims ledgers and proof of non-probabilistic safety envelopes | Provides the philosophical foundation for the **Astronomical Exposure Wall** and deductive Claim-Argument-Evidence safety cases. |
+| **IEC 60204-1** | Safety of Machinery (Electrical Equipment) | • **Stop Category 0:** Immediate power cutoff (Safe Torque Off / mechanical brake drop)<br>• **Stop Category 1:** Controlled deceleration to stop with power on, then cutoff<br>• **Stop Category 2:** Controlled position hold with power maintained | Defines the formal 3-tier physical fallback actions executed by the enforcer during anomaly escalation in @sec-enforcement. |
+
