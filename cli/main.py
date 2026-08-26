@@ -53,7 +53,7 @@ def main():
 
     # 1. BUILD COMMAND
     build_parser = subparsers.add_parser("build", help="Build the textbook or a single chapter")
-    build_parser.add_argument("--to", choices=["pdf", "html", "all"], default="pdf", help="Target output format (default: pdf)")
+    build_parser.add_argument("--to", choices=["pdf", "typst", "html", "all"], default="pdf", help="Target output format (default: pdf)")
     build_parser.add_argument("--chapter", type=str, help="Specific chapter to render (e.g. 01-boundary)")
     build_parser.add_argument("--clean", action="store_true", help="Clean build cache before rendering")
 

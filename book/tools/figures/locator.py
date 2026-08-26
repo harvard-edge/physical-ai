@@ -113,11 +113,8 @@ def gen_pipeline_locator(active_stage, active_pill, target_svg_path):
 
     svg.append('</svg>')
     
-    os.makedirs(os.path.dirname(target_svg_path), exist_ok=True)
-    with open(target_svg_path, "w") as f:
-        f.write("\n".join(svg))
-    pdf_path = target_svg_path.replace(".svg", ".pdf")
-    subprocess.run(["rsvg-convert", "-f", "pdf", "-o", pdf_path, target_svg_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    from .common import save_svg_and_pdf
+    save_svg_and_pdf(target_svg_path, "\n".join(svg))
     print(f"Generated clean 90-deg locator: {target_svg_path}")
 
 if __name__ == "__main__":

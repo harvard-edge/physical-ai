@@ -55,6 +55,8 @@ class BookBuilder:
         cmd = ["quarto", "render"]
         if fmt == "pdf":
             cmd.extend(["--to", "pdf"])
+        elif fmt == "typst":
+            cmd.extend(["--to", "typst"])
         elif fmt == "html":
             cmd.extend(["--to", "html"])
 
@@ -86,6 +88,8 @@ class BookBuilder:
         cmd = ["quarto", "render", str(rel_qmd)]
         if fmt == "pdf":
             cmd.extend(["--to", "pdf"])
+        elif fmt == "typst":
+            cmd.extend(["--to", "typst"])
         elif fmt == "html":
             cmd.extend(["--to", "html"])
 

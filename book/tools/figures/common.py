@@ -75,8 +75,24 @@ COMMON_DEFS = """
     </defs>
 """
 
+import re
+import xml.etree.ElementTree as ET
+
+def sanitize_svg_xml(svg_str):
+    def fix_text_body(match):
+        open_tag = match.group(1)
+        body = match.group(2)
+        close_tag = match.group(3)
+        body = re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)', '&amp;', body)
+        body = re.sub(r'<(?!\/?tspan\b)', '&lt;', body)
+        return f'{open_tag}{body}{close_tag}'
+
+    pattern = re.compile(r'(<text\b[^>]*>)(.*?)(</text>)', re.DOTALL)
+    return pattern.sub(fix_text_body, svg_str)
+
 def save_svg_and_pdf(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    content = sanitize_svg_xml(content)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content.strip() + "\n")
     pdf_path = os.path.splitext(path)[0] + ".pdf"
@@ -84,3 +100,4 @@ def save_svg_and_pdf(path, content):
     if res.returncode != 0:
         subprocess.run(["inkscape", "--export-filename=" + pdf_path, path], capture_output=True)
     print(f"Generated: {path} and {pdf_path}")
+
