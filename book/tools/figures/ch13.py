@@ -1,275 +1,439 @@
 """
 book/tools/figures/ch13.py
-Figures for Chapter 13: Capstone Whole-System Integration & Oral Defense.
+Figures for Chapter 13: Placement (Heterogeneous SoC Bus Contention, PDN Droop, Lock-Free Boundary Contract).
+Harvard Crimson & ETH Zurich Academic Semantic Palette.
 """
 
+import os
+import subprocess
 from .common import (
     NAVY, BLUE, PETROL, TEAL, BRONZE, AMBER, CRIMSON, CORAL, PURPLE,
     SLATE, MUTED, INK, BG_LIGHT, BG_WHITE, BORDER, BORDER_DARK,
     COMMON_STYLE, COMMON_DEFS, save_svg_and_pdf
 )
 
-def gen_ch13_dual_brain():
-    W = 900
-    H = 460
+def gen_ch13_soc_contention_droop():
+    W = 960
+    H = 580
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
     svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="30" class="title">CAPSTONE DUAL-BRAIN HETEROGENEOUS SYSTEM ARCHITECTURE</text>')
-    svg.append(f'<text x="{W/2}" y="46" class="subtitle">Arduino Uno Q / STM32 NPU: Cortex-A MPU Deliberation ⟷ Shared TCM SRAM ⟷ Real-Time Cortex-M MCU Reflex Enforcer</text>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">HETEROGENEOUS SOC RESOURCE CONTENTION &amp; POWER-RAIL INTERFERENCE</text>')
+    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Shared Memory Crossbar Burst Starvation and Transient PDN Voltage Droop on Shared Silicon</text>')
 
-    lx = 25
-    lw = 270
-    lh = 330
-    svg.append(f'<rect x="{lx}" y="68" width="{lw}" height="{lh}" rx="8" fill="{BG_WHITE}" stroke="{NAVY}" stroke-width="1.3" filter="url(#shadow)"/>')
-    svg.append(f'<rect x="{lx}" y="68" width="{lw}" height="26" rx="8" fill="{NAVY}" fill-opacity="0.12"/>')
-    svg.append(f'<text x="{lx+lw/2}" y="86" font-size="10" font-weight="700" fill="{NAVY}" text-anchor="middle">1. HOST PROCESSOR (Linux MPU / NPU)</text>')
-    svg.append(f'<text x="{lx+14}" y="115" font-size="11.5" font-weight="700" fill="{INK}">High-Throughput Deliberation</text>')
-    svg.append(f'<text x="{lx+14}" y="130" font-size="8.5" font-weight="600" fill="{NAVY}">Cadence: 20–50 Hz · Non-Real-Time</text>')
+    # -------------------------------------------------------------
+    # PANEL A: UNIFIED MEMORY CROSSBAR & DRAM ARBITRATION CONTENTION
+    # -------------------------------------------------------------
+    p1_x = 24
+    p1_y = 62
+    p1_w = 445
+    p1_h = 500
+    svg.append(f'<rect x="{p1_x}" y="{p1_y}" width="{p1_w}" height="{p1_h}" rx="8" fill="{BG_LIGHT}" stroke="{BORDER_DARK}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{p1_x}" y="{p1_y}" width="{p1_w}" height="28" rx="8" fill="{NAVY}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{p1_x+14}" y="{p1_y+19}" font-size="11" font-weight="700" fill="{NAVY}">(a) Memory Bus &amp; Cache Contention</text>')
+    svg.append(f'<text x="{p1_x+p1_w-14}" y="{p1_y+19}" font-size="9" font-weight="600" fill="{MUTED}" text-anchor="end">64-bit LPDDR4 · 12.8 GB/s</text>')
 
-    mpu_items = [
-        "MIPI CSI-2 Camera DMA Ingestion",
-        "Spatial Tokenizer (DINOv2 / MobileNet)",
-        "SE(3) Dynamic Kinematic Frame Tree",
-        "VLM Semantic Intent Grounding",
-        "Diffusion / ACT Action Chunks (H=16)",
-        "Asynchronous State Re-Anchoring"
-    ]
-    for idx, it in enumerate(mpu_items):
-        svg.append(f'<text x="{lx+14}" y="{154+idx*22}" font-size="8.5" fill="{SLATE}">• {it}</text>')
+    # Compute Masters
+    # 1. Neural Processing Unit (Host / NPU)
+    npu_x = p1_x + 14
+    npu_y = p1_y + 38
+    npu_w = 200
+    npu_h = 76
+    svg.append(f'<rect x="{npu_x}" y="{npu_y}" width="{npu_w}" height="{npu_h}" rx="6" fill="{BG_WHITE}" stroke="{BLUE}" stroke-width="1.3" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{npu_x}" y="{npu_y}" width="{npu_w}" height="20" rx="6" fill="{BLUE}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{npu_x+npu_w/2}" y="{npu_y+14}" font-size="9" font-weight="700" fill="{BLUE}" text-anchor="middle">PROPOSAL ENGINE (NPU / MPU)</text>')
+    svg.append(f'<text x="{npu_x+8}" y="{npu_y+34}" font-size="8.5" font-weight="600" fill="{INK}">50 Hz Policy Inference</text>')
+    svg.append(f'<text x="{npu_x+8}" y="{npu_y+47}" font-size="8" fill="{SLATE}">• 180 MB weights &amp; activations</text>')
+    svg.append(f'<text x="{npu_x+8}" y="{npu_y+60}" font-size="8" font-weight="700" fill="{CORAL}">• 256 kB burst @ 12.0 GB/s (94% bus)</text>')
 
-    svg.append(f'<rect x="{lx+10}" y="{68+lh-46}" width="{lw-20}" height="36" rx="5" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{lx+lw/2}" y="{68+lh-28}" font-size="8.5" font-weight="700" fill="{CORAL}" text-anchor="middle">STOCHASTIC / UNTRUSTED SUBSTRATE</text>')
-    svg.append(f'<text x="{lx+lw/2}" y="{68+lh-14}" font-size="7.5" fill="{MUTED}" text-anchor="middle">Subject to page faults, GC stalls, and tail spikes</text>')
+    # 2. Real-Time MCU (Safety Enforcer)
+    mcu_x = p1_x + p1_w - 214
+    mcu_y = p1_y + 38
+    mcu_w = 200
+    mcu_h = 76
+    svg.append(f'<rect x="{mcu_x}" y="{mcu_y}" width="{mcu_w}" height="{mcu_h}" rx="6" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.3" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{mcu_x}" y="{mcu_y}" width="{mcu_w}" height="20" rx="6" fill="{PETROL}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{mcu_x+mcu_w/2}" y="{mcu_y+14}" font-size="9" font-weight="700" fill="{PETROL}" text-anchor="middle">SAFETY ENFORCER (RT Core)</text>')
+    svg.append(f'<text x="{mcu_x+8}" y="{npu_y+34}" font-size="8.5" font-weight="600" fill="{INK}">1000 Hz Hard Real-Time Loop</text>')
+    svg.append(f'<text x="{mcu_x+8}" y="{npu_y+47}" font-size="8" fill="{SLATE}">• 64 kB sensor history &amp; invariants</text>')
+    svg.append(f'<text x="{mcu_x+8}" y="{npu_y+60}" font-size="8" font-weight="700" fill="{PETROL}">• Uncontended read budget: 5.0 µs</text>')
 
-    cx = 315
-    cw = 270
-    ch = 330
-    svg.append(f'<rect x="{cx}" y="68" width="{cw}" height="{ch}" rx="8" fill="{BG_LIGHT}" stroke="{BORDER_DARK}" stroke-width="1.3" stroke-dasharray="4,2"/>')
-    svg.append(f'<text x="{cx+cw/2}" y="92" font-size="11" font-weight="700" fill="{INK}" text-anchor="middle">SHARED MEMORY (TCM / SRAM)</text>')
-    svg.append(f'<text x="{cx+cw/2}" y="108" font-size="8.5" fill="{MUTED}" text-anchor="middle">Lock-Free Inter-Core Mailbox &amp; Seqlock</text>')
+    # Shared Interconnect / L3 Cache
+    ic_x = p1_x + 14
+    ic_y = p1_y + 124
+    ic_w = p1_w - 28
+    ic_h = 60
+    svg.append(f'<rect x="{ic_x}" y="{ic_y}" width="{ic_w}" height="{ic_h}" rx="6" fill="{BG_WHITE}" stroke="{PURPLE}" stroke-width="1.3" stroke-dasharray="4,2"/>')
+    svg.append(f'<text x="{ic_x+ic_w/2}" y="{ic_y+16}" font-size="9.5" font-weight="700" fill="{PURPLE}" text-anchor="middle">SHARED SYSTEM CROSSBAR (AXI4/5 QoS) &amp; 8MB LAST-LEVEL CACHE</text>')
+    svg.append(f'<text x="{ic_x+10}" y="{ic_y+34}" font-size="8" fill="{CORAL}">⚡ Matrix tile burst evicts enforcer sensor tables from L3 (t_refill = 20ns → 350ns)</text>')
+    svg.append(f'<text x="{ic_x+10}" y="{ic_y+48}" font-size="8" fill="{SLATE}">• Non-preemptive packet-atomic bursts (ARLEN ≤ 256 beats cannot be truncated)</text>')
 
-    channels = [
-        ("Candidate Action Buffer p_t", "H=16 Chunk Poses + Velocities (128 bytes)", BRONZE),
-        ("Expiring Intent Lease t_expire", "Monotonic Timestamp Dead-Man Switch (8 bytes)", PURPLE),
-        ("World Model State ẑ_t", "Fused SE(3) Bounding Primitives (64 bytes)", BLUE),
-        ("Hardware Heartbeat Counter", "20 Hz Monotonic Ping (4 bytes)", CORAL),
-        ("Proprioceptive Telemetry", "1 kHz Odometry &amp; Motor Currents (32 bytes)", PETROL)
-    ]
-    for idx, (t, d, col) in enumerate(channels):
-        by = 125 + idx * 44
-        svg.append(f'<rect x="{cx+12}" y="{by}" width="{cw-24}" height="36" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
-        svg.append(f'<rect x="{cx+12}" y="{by}" width="4" height="36" rx="2" fill="{col}"/>')
-        svg.append(f'<text x="{cx+22}" y="{by+15}" font-size="8.5" font-weight="700" fill="{col}">{t}</text>')
-        svg.append(f'<text x="{cx+22}" y="{by+28}" font-size="7.5" fill="{SLATE}">{d}</text>')
+    # Arrows to Interconnect
+    svg.append(f'<line x1="{npu_x+npu_w/2}" y1="{npu_y+npu_h}" x2="{npu_x+npu_w/2}" y2="{ic_y}" stroke="{BLUE}" stroke-width="1.8" marker-end="url(#arr-blue)"/>')
+    svg.append(f'<line x1="{mcu_x+mcu_w/2}" y1="{mcu_y+mcu_h}" x2="{mcu_x+mcu_w/2}" y2="{ic_y}" stroke="{PETROL}" stroke-width="1.8" marker-end="url(#arr-petrol)"/>')
 
-    rx = 605
-    rw = 270
-    rh = 330
-    svg.append(f'<rect x="{rx}" y="68" width="{rw}" height="{rh}" rx="8" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.4" filter="url(#shadow)"/>')
-    svg.append(f'<rect x="{rx}" y="68" width="{rw}" height="26" rx="8" fill="{PETROL}" fill-opacity="0.12"/>')
-    svg.append(f'<text x="{rx+rw/2}" y="86" font-size="10" font-weight="700" fill="{PETROL}" text-anchor="middle">2. REFLEX ENFORCER (Real-Time MCU)</text>')
-    svg.append(f'<text x="{rx+14}" y="115" font-size="11.5" font-weight="700" fill="{INK}">Deterministic Safety Enforcer</text>')
-    svg.append(f'<text x="{rx+14}" y="130" font-size="8.5" font-weight="600" fill="{PETROL}">Cadence: 1000 Hz · Hard Real-Time (Jitter &lt; 5 µs)</text>')
+    # DRAM Controller & Arbiter Queue
+    dq_x = p1_x + 14
+    dq_y = p1_y + 194
+    dq_w = p1_w - 28
+    dq_h = 110
+    svg.append(f'<rect x="{dq_x}" y="{dq_y}" width="{dq_w}" height="{dq_h}" rx="6" fill="{BG_WHITE}" stroke="{NAVY}" stroke-width="1.3" filter="url(#shadow)"/>')
+    svg.append(f'<text x="{dq_x+10}" y="{dq_y+16}" font-size="9.5" font-weight="700" fill="{NAVY}">DRAM CONTROLLER QUEUE &amp; ARBITER (Head-of-Line Blocking)</text>')
 
-    mcu_items = [
-        "1000 Hz FreeRTOS Strict Priority Task",
-        "Active-Set CBF QP Solver (h(x) ≥ 0)",
-        "Dynamic Stopping Clearance Veto (d_stop ≤ d_gap)",
-        "Watchdog Heartbeat Monitor (50 ms Timeout)",
-        "Bumpless C² Takeover Smoothing S(α)",
-        "PWM Gate Driver Current Loop Control"
-    ]
-    for idx, it in enumerate(mcu_items):
-        svg.append(f'<text x="{rx+14}" y="{154+idx*22}" font-size="8.5" fill="{SLATE}">• {it}</text>')
+    # Queue Slots
+    slot_y = dq_y + 26
+    # Slot 1: In-flight NPU burst
+    svg.append(f'<rect x="{dq_x+10}" y="{slot_y}" width="125" height="34" rx="4" fill="{CORAL}" fill-opacity="0.15" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{dq_x+72}" y="{slot_y+14}" font-size="8" font-weight="700" fill="{CORAL}" text-anchor="middle">In-Flight NPU Burst</text>')
+    svg.append(f'<text x="{dq_x+72}" y="{slot_y+26}" font-size="7.5" fill="{INK}" text-anchor="middle">256 kB Tile (20.0 µs)</text>')
 
-    svg.append(f'<rect x="{rx+10}" y="{68+rh-46}" width="{rw-20}" height="36" rx="5" fill="{TEAL}" fill-opacity="0.08" stroke="{TEAL}" stroke-width="1"/>')
-    svg.append(f'<text x="{rx+rw/2}" y="{68+rh-28}" font-size="8.5" font-weight="700" fill="{TEAL}" text-anchor="middle">CERTIFIED SAFETY GUARANTEE</text>')
-    svg.append(f'<text x="{rx+rw/2}" y="{68+rh-14}" font-size="7.5" fill="{SLATE}" text-anchor="middle">Zero dynamic malloc · Strict forward invariance</text>')
+    # Slot 2: Sensor DMA Burst
+    svg.append(f'<rect x="{dq_x+140}" y="{slot_y}" width="100" height="34" rx="4" fill="{AMBER}" fill-opacity="0.15" stroke="{AMBER}" stroke-width="1.1"/>')
+    svg.append(f'<text x="{dq_x+190}" y="{slot_y+14}" font-size="8" font-weight="700" fill="{AMBER}" text-anchor="middle">Sensor DMA Ingest</text>')
+    svg.append(f'<text x="{dq_x+190}" y="{slot_y+26}" font-size="7.5" fill="{INK}" text-anchor="middle">64 kB (5.0 µs)</text>')
 
-    svg.append(f'<line x1="{lx+lw}" y1="180" x2="{cx}" y2="180" stroke="{NAVY}" stroke-width="1.6" marker-end="url(#arr-navy)"/>')
-    svg.append(f'<line x1="{cx+cw}" y1="180" x2="{rx}" y2="180" stroke="{PETROL}" stroke-width="1.6" marker-end="url(#arr-petrol)"/>')
-    svg.append(f'<line x1="{rx}" y1="280" x2="{cx+cw}" y2="280" stroke="{PETROL}" stroke-width="1.6" marker-end="url(#arr-petrol)"/>')
-    svg.append(f'<line x1="{cx}" y1="280" x2="{lx+lw}" y2="280" stroke="{NAVY}" stroke-width="1.6" marker-end="url(#arr-navy)"/>')
+    # Slot 3: Logging DMA Burst
+    svg.append(f'<rect x="{dq_x+245}" y="{slot_y}" width="80" height="34" rx="4" fill="{SLATE}" fill-opacity="0.15" stroke="{SLATE}" stroke-width="1.1"/>')
+    svg.append(f'<text x="{dq_x+285}" y="{slot_y+14}" font-size="8" font-weight="700" fill="{SLATE}" text-anchor="middle">Log Dump</text>')
+    svg.append(f'<text x="{dq_x+285}" y="{slot_y+26}" font-size="7.5" fill="{INK}" text-anchor="middle">32 kB (2.5 µs)</text>')
 
-    by = 412
-    svg.append(f'<rect x="{lx}" y="{by}" width="{W-50}" height="38" rx="6" fill="{CRIMSON}" fill-opacity="0.06" stroke="{CRIMSON}" stroke-width="1.2"/>')
-    svg.append(f'<text x="{W/2}" y="{by+16}" font-size="10" font-weight="700" fill="{CRIMSON}" text-anchor="middle">ACTUATORS &amp; PHYSICAL ENVIRONMENT (W_t → W_t+1)</text>')
-    svg.append(f'<text x="{W/2}" y="{by+30}" font-size="8.5" fill="{SLATE}" text-anchor="middle">BLDC Motors · Inverter Bridges · Contact Friction · Mechanical Inertia · Thermal Dissipation</text>')
+    # Slot 4: Enforcer Read (BLOCKED)
+    svg.append(f'<rect x="{dq_x+330}" y="{slot_y}" width="78" height="34" rx="4" fill="{PETROL}" fill-opacity="0.2" stroke="{PETROL}" stroke-width="1.4" stroke-dasharray="2,2"/>')
+    svg.append(f'<text x="{dq_x+369}" y="{slot_y+14}" font-size="8" font-weight="700" fill="{PETROL}" text-anchor="middle">RT Enforcer</text>')
+    svg.append(f'<text x="{dq_x+369}" y="{slot_y+26}" font-size="7.5" font-weight="700" fill="{CORAL}" text-anchor="middle">WAITS in Q</text>')
 
-    svg.append(f'<line x1="{rx+rw/2}" y1="{68+rh}" x2="{rx+rw/2}" y2="{by}" stroke="{PETROL}" stroke-width="1.8" marker-end="url(#arr-petrol)"/>')
-    svg.append(f'<line x1="{lx+lw/2}" y1="{by}" x2="{lx+lw/2}" y2="{68+lh}" stroke="{NAVY}" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arr-navy)"/>')
+    svg.append(f'<line x1="{dq_x+ic_w/2}" y1="{ic_y+ic_h}" x2="{dq_x+ic_w/2}" y2="{dq_y}" stroke="{PURPLE}" stroke-width="1.5" marker-end="url(#arr-purple)"/>')
+
+    # Queue Annotation
+    svg.append(f'<text x="{dq_x+10}" y="{dq_y+74}" font-size="8" fill="{SLATE}">Total Queuing Delay: t_wait = 20.0 + 5.0 + 2.5 + 0.1 (bank conflict) = 27.6 µs</text>')
+    svg.append(f'<text x="{dq_x+10}" y="{dq_y+88}" font-size="8" font-weight="600" fill="{CORAL}">DRAM Page Reordering: Arbiter favors open row locality, starving real-time closed-bank reads.</text>')
+    svg.append(f'<text x="{dq_x+10}" y="{dq_y+101}" font-size="7.5" fill="{MUTED}">Result: Enforcer read latency explodes from nominal 5.0 µs to 27.6–80.0 µs under load.</text>')
+
+    # Latency Waterfall Comparison
+    wf_y = p1_y + 314
+    wf_w = p1_w - 28
+    wf_h = 176
+    svg.append(f'<rect x="{p1_x+14}" y="{wf_y}" width="{wf_w}" height="{wf_h}" rx="6" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{p1_x+24}" y="{wf_y+16}" font-size="9" font-weight="700" fill="{INK}">ENFORCEMENT TIMING SLACK COLLAPSE (1.0 ms Control Cycle)</text>')
+
+    # Timeline 1: Uncontended Baseline
+    svg.append(f'<text x="{p1_x+24}" y="{wf_y+36}" font-size="8" font-weight="700" fill="{PETROL}">1. Uncontended (Cold / Idle): Total = 100.0 µs (Slack = +20.0 µs ✓)</text>')
+    t1_y = wf_y + 44
+    svg.append(f'<rect x="{p1_x+24}" y="{t1_y}" width="20" height="18" rx="2" fill="{PETROL}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+34}" y="{t1_y+12}" font-size="7" fill="#FFF" text-anchor="middle">5µs</text>')
+    svg.append(f'<rect x="{p1_x+46}" y="{t1_y}" width="160" height="18" rx="2" fill="{BLUE}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+126}" y="{t1_y+12}" font-size="7" fill="#FFF" text-anchor="middle">Invariant Evaluation: 80 µs</text>')
+    svg.append(f'<rect x="{p1_x+208}" y="{t1_y}" width="30" height="18" rx="2" fill="{NAVY}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+223}" y="{t1_y+12}" font-size="7" fill="#FFF" text-anchor="middle">15µs</text>')
+    svg.append(f'<rect x="{p1_x+240}" y="{t1_y}" width="40" height="18" rx="2" fill="{TEAL}" fill-opacity="0.2" stroke="{TEAL}" stroke-dasharray="2,2"/>')
+    svg.append(f'<text x="{p1_x+260}" y="{t1_y+12}" font-size="7" font-weight="700" fill="{TEAL}" text-anchor="middle">+20µs</text>')
+
+    # Budget Line
+    svg.append(f'<line x1="{p1_x+280}" y1="{wf_y+28}" x2="{p1_x+280}" y2="{wf_y+130}" stroke="{CORAL}" stroke-width="1.2" stroke-dasharray="3,2"/>')
+    svg.append(f'<text x="{p1_x+282}" y="{wf_y+34}" font-size="7" font-weight="700" fill="{CORAL}">Max Compute Budget (120 µs)</text>')
+
+    # Timeline 2: Contended Under NPU Burst
+    svg.append(f'<text x="{p1_x+24}" y="{wf_y+78}" font-size="8" font-weight="700" fill="{CORAL}">2. Contended Under NPU Burst: Total = 127.6 µs (Slack = -7.6 µs ✕)</text>')
+    t2_y = wf_y + 86
+    # Stall segment
+    svg.append(f'<rect x="{p1_x+24}" y="{t2_y}" width="55" height="18" rx="2" fill="{CORAL}" fill-opacity="0.7"/>')
+    svg.append(f'<text x="{p1_x+51}" y="{t2_y+12}" font-size="6.5" font-weight="700" fill="#FFF" text-anchor="middle">Stall 27.6µs</text>')
+    # Read segment
+    svg.append(f'<rect x="{p1_x+81}" y="{t2_y}" width="20" height="18" rx="2" fill="{PETROL}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+91}" y="{t2_y+12}" font-size="7" fill="#FFF" text-anchor="middle">5µs</text>')
+    # Eval segment
+    svg.append(f'<rect x="{p1_x+103}" y="{t2_y}" width="160" height="18" rx="2" fill="{BLUE}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+183}" y="{t2_y+12}" font-size="7" fill="#FFF" text-anchor="middle">Invariant Evaluation: 80 µs</text>')
+    # Write segment
+    svg.append(f'<rect x="{p1_x+265}" y="{t2_y}" width="30" height="18" rx="2" fill="{NAVY}" fill-opacity="0.8"/>')
+    svg.append(f'<text x="{p1_x+280}" y="{t2_y+12}" font-size="7" fill="#FFF" text-anchor="middle">15µs</text>')
+
+    # Overrun Callout
+    svg.append(f'<rect x="{p1_x+24}" y="{wf_y+114}" width="{wf_w-20}" height="48" rx="4" fill="{CORAL}" fill-opacity="0.08" stroke="{CORAL}" stroke-width="1"/>')
+    svg.append(f'<text x="{p1_x+32}" y="{wf_y+128}" font-size="8" font-weight="700" fill="{CORAL}">DEADLINE BREACH: 7.6 µs Overrun into Valve Transit Margin</text>')
+    svg.append(f'<text x="{p1_x+32}" y="{wf_y+142}" font-size="7.5" fill="{SLATE}">Although average channel utilization is only 25%, instantaneous burst collisions</text>')
+    svg.append(f'<text x="{p1_x+32}" y="{wf_y+154}" font-size="7.5" fill="{SLATE}">exhaust timing margins and delay high-pressure shutoff command.</text>')
+
+    # -------------------------------------------------------------
+    # PANEL B: POWER DISTRIBUTION NETWORK (PDN) DROOP & VOLTAGE COLLAPSE
+    # -------------------------------------------------------------
+    p2_x = 485
+    p2_y = 62
+    p2_w = 450
+    p2_h = 500
+    svg.append(f'<rect x="{p2_x}" y="{p2_y}" width="{p2_w}" height="{p2_h}" rx="8" fill="{BG_LIGHT}" stroke="{BORDER_DARK}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{p2_x}" y="{p2_y}" width="{p2_w}" height="28" rx="8" fill="{CRIMSON}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{p2_x+14}" y="{p2_y+19}" font-size="11" font-weight="700" fill="{CRIMSON}">(b) PDN Transient Voltage Droop &amp; Clock Jitter</text>')
+    svg.append(f'<text x="{p2_x+p2_w-14}" y="{p2_y+19}" font-size="9" font-weight="600" fill="{MUTED}" text-anchor="end">ΔV = L(di/dt) + I·R</text>')
+
+    # PDN Schematic Circuit Model
+    sch_x = p2_x + 14
+    sch_y = p2_y + 38
+    sch_w = p2_w - 28
+    sch_h = 100
+    svg.append(f'<rect x="{sch_x}" y="{sch_y}" width="{sch_w}" height="{sch_h}" rx="6" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<text x="{sch_x+10}" y="{sch_y+15}" font-size="9" font-weight="700" fill="{INK}">POWER DISTRIBUTION NETWORK (PDN) EQUIVALENT CIRCUIT</text>')
+
+    # VRM block
+    svg.append(f'<rect x="{sch_x+10}" y="{sch_y+26}" width="70" height="42" rx="4" fill="{NAVY}" fill-opacity="0.1" stroke="{NAVY}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{sch_x+45}" y="{sch_y+42}" font-size="8" font-weight="700" fill="{NAVY}" text-anchor="middle">Off-Chip VRM</text>')
+    svg.append(f'<text x="{sch_x+45}" y="{sch_y+54}" font-size="7" fill="{MUTED}" text-anchor="middle">0.85V (τ=2µs)</text>')
+
+    # Inductance & Resistance parasitics
+    svg.append(f'<line x1="{sch_x+80}" y1="{sch_y+47}" x2="{sch_x+115}" y2="{sch_y+47}" stroke="{INK}" stroke-width="1.5"/>')
+    # Resistor R_pkg
+    svg.append(f'<rect x="{sch_x+115}" y="{sch_y+38}" width="40" height="18" rx="2" fill="{BG_WHITE}" stroke="{INK}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{sch_x+135}" y="{sch_y+50}" font-size="7.5" font-weight="700" fill="{INK}" text-anchor="middle">R=8mΩ</text>')
+    svg.append(f'<line x1="{sch_x+155}" y1="{sch_y+47}" x2="{sch_x+180}" y2="{sch_y+47}" stroke="{INK}" stroke-width="1.5"/>')
+    # Inductor L_pkg
+    svg.append(f'<rect x="{sch_x+180}" y="{sch_y+38}" width="42" height="18" rx="2" fill="{BG_WHITE}" stroke="{INK}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{sch_x+201}" y="{sch_y+50}" font-size="7.5" font-weight="700" fill="{INK}" text-anchor="middle">L=30pH</text>')
+    svg.append(f'<line x1="{sch_x+222}" y1="{sch_y+47}" x2="{sch_x+255}" y2="{sch_y+47}" stroke="{INK}" stroke-width="1.5"/>')
+
+    # Shared Internal Rail
+    svg.append(f'<line x1="{sch_x+255}" y1="{sch_y+26}" x2="{sch_x+255}" y2="{sch_y+84}" stroke="{CORAL}" stroke-width="2.5"/>')
+    svg.append(f'<text x="{sch_x+260}" y="{sch_y+34}" font-size="8" font-weight="700" fill="{CORAL}">V_core Rail</text>')
+
+    # Decoupling Cap (DTC)
+    svg.append(f'<line x1="{sch_x+255}" y1="{sch_y+58}" x2="{sch_x+285}" y2="{sch_y+58}" stroke="{INK}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{sch_x+285}" y="{sch_y+50}" width="36" height="16" rx="2" fill="{TEAL}" fill-opacity="0.15" stroke="{TEAL}" stroke-width="1"/>')
+    svg.append(f'<text x="{sch_x+303}" y="{sch_y+61}" font-size="7" font-weight="600" fill="{TEAL}" text-anchor="middle">C_die</text>')
+
+    # Load 1: NPU Step Current
+    svg.append(f'<line x1="{sch_x+255}" y1="{sch_y+38}" x2="{sch_x+345}" y2="{sch_y+38}" stroke="{BLUE}" stroke-width="1.5" marker-end="url(#arr-blue)"/>')
+    svg.append(f'<rect x="{sch_x+345}" y="{sch_y+26}" width="70" height="24" rx="3" fill="{BLUE}" fill-opacity="0.12" stroke="{BLUE}" stroke-width="1"/>')
+    svg.append(f'<text x="{sch_x+380}" y="{sch_y+38}" font-size="7.5" font-weight="700" fill="{BLUE}" text-anchor="middle">NPU Load</text>')
+    svg.append(f'<text x="{sch_x+380}" y="{sch_y+47}" font-size="6.5" fill="{CORAL}" text-anchor="middle">ΔI=6A (3A/ns)</text>')
+
+    # Load 2: RT MCU Victim
+    svg.append(f'<line x1="{sch_x+255}" y1="{sch_y+74}" x2="{sch_x+345}" y2="{sch_y+74}" stroke="{PETROL}" stroke-width="1.5" marker-end="url(#arr-petrol)"/>')
+    svg.append(f'<rect x="{sch_x+345}" y="{sch_y+64}" width="70" height="24" rx="3" fill="{PETROL}" fill-opacity="0.12" stroke="{PETROL}" stroke-width="1"/>')
+    svg.append(f'<text x="{sch_x+380}" y="{sch_y+76}" font-size="7.5" font-weight="700" fill="{PETROL}" text-anchor="middle">RT Core Victim</text>')
+    svg.append(f'<text x="{sch_x+380}" y="{sch_y+85}" font-size="6.5" fill="{CORAL}" text-anchor="middle">Suffers Droop</text>')
+
+    svg.append(f'<text x="{sch_x+10}" y="{sch_y+94}" font-size="7.5" fill="{SLATE}">Droop calculation: ΔV = L(di/dt) + I·R = 30pH·3A/ns + 6A·8mΩ = 90mV + 48mV = 138mV</text>')
+
+    # Oscilloscope Waveform Display
+    osc_x = p2_x + 14
+    osc_y = p2_y + 148
+    osc_w = p2_w - 28
+    osc_h = 342
+    svg.append(f'<rect x="{osc_x}" y="{osc_y}" width="{osc_w}" height="{osc_h}" rx="6" fill="#0F172A" stroke="{BORDER_DARK}" stroke-width="1.4"/>')
+
+    # Grid lines
+    for gx in range(osc_x+30, osc_x+osc_w, 48):
+        svg.append(f'<line x1="{gx}" y1="{osc_y+10}" x2="{gx}" y2="{osc_y+osc_h-15}" stroke="#1E293B" stroke-width="1"/>')
+    for gy in range(osc_y+25, osc_y+osc_h-15, 32):
+        svg.append(f'<line x1="{osc_x+10}" y1="{gy}" x2="{osc_x+osc_w-10}" y2="{gy}" stroke="#1E293B" stroke-width="1"/>')
+
+    # Event line: NPU activation
+    t_burst = osc_x + 90
+    svg.append(f'<line x1="{t_burst}" y1="{osc_y+10}" x2="{t_burst}" y2="{osc_y+osc_h-20}" stroke="{AMBER}" stroke-width="1.3" stroke-dasharray="3,2"/>')
+    svg.append(f'<text x="{t_burst}" y="{osc_y+20}" font-size="7.5" font-weight="700" fill="{AMBER}" text-anchor="middle">NPU Step (t₀)</text>')
+
+    # Waveform 1: I_NPU(t)
+    w1_y = osc_y + 55
+    svg.append(f'<text x="{osc_x+12}" y="{w1_y-14}" font-size="8.5" font-weight="700" fill="{BLUE}">CH1: NPU Current Draw I_NPU(t)</text>')
+    svg.append(f'<text x="{osc_x+osc_w-12}" y="{w1_y-14}" font-size="7.5" fill="#94A3B8" text-anchor="end">ΔI = +6.0 A in 2.0 ns</text>')
+    svg.append(f'<line x1="{osc_x+15}" y1="{w1_y}" x2="{t_burst}" y2="{w1_y}" stroke="{BLUE}" stroke-width="2"/>')
+    svg.append(f'<line x1="{t_burst}" y1="{w1_y}" x2="{t_burst+6}" y2="{w1_y-24}" stroke="{BLUE}" stroke-width="2"/>')
+    svg.append(f'<line x1="{t_burst+6}" y1="{w1_y-24}" x2="{osc_x+osc_w-15}" y2="{w1_y-24}" stroke="{BLUE}" stroke-width="2"/>')
+
+    # Waveform 2: V_core(t) Droop
+    w2_y = osc_y + 130
+    svg.append(f'<text x="{osc_x+12}" y="{w2_y-22}" font-size="8.5" font-weight="700" fill="{CORAL}">CH2: Supply Voltage V_core(t) on Shared Rail</text>')
+    svg.append(f'<text x="{osc_x+osc_w-12}" y="{w2_y-22}" font-size="7.5" fill="{CORAL}" text-anchor="end">16.2% Collapse (0.712 V &lt; V_min)</text>')
+
+    # Nominal level line (0.85V)
+    svg.append(f'<line x1="{osc_x+15}" y1="{w2_y-12}" x2="{osc_x+osc_w-15}" y2="{w2_y-12}" stroke="#64748B" stroke-width="1" stroke-dasharray="2,2"/>')
+    svg.append(f'<text x="{osc_x+16}" y="{w2_y-14}" font-size="6.5" fill="#94A3B8">Nominal 0.85V</text>')
+
+    # V_min limit line (0.78V)
+    svg.append(f'<line x1="{osc_x+15}" y1="{w2_y+8}" x2="{osc_x+osc_w-15}" y2="{w2_y+8}" stroke="{CORAL}" stroke-width="1.2" stroke-dasharray="3,2"/>')
+    svg.append(f'<text x="{osc_x+16}" y="{w2_y+6}" font-size="6.5" font-weight="700" fill="{CORAL}">V_min = 0.78V (Timing Fault / Brownout Limit)</text>')
+
+    # Droop curve
+    droop_path = f"M {osc_x+15} {w2_y-12} L {t_burst} {w2_y-12} C {t_burst+4} {w2_y+26}, {t_burst+12} {w2_y+28}, {t_burst+35} {w2_y+16} C {t_burst+80} {w2_y+8}, {t_burst+140} {w2_y-2}, {osc_x+osc_w-15} {w2_y-4}"
+    svg.append(f'<path d="{droop_path}" fill="none" stroke="{CORAL}" stroke-width="2.2"/>')
+
+    # Droop annotation arrow
+    svg.append(f'<line x1="{t_burst+14}" y1="{w2_y-12}" x2="{t_burst+14}" y2="{w2_y+26}" stroke="{AMBER}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{t_burst+20}" y="{w2_y+22}" font-size="7" font-weight="700" fill="{AMBER}">ΔV = -138 mV</text>')
+
+    # Waveform 3: RT Core Clock & Logic Delay
+    w3_y = osc_y + 220
+    svg.append(f'<text x="{osc_x+12}" y="{w3_y-16}" font-size="8.5" font-weight="700" fill="{PETROL}">CH3: RT Core Propagation Delay &amp; Clock Jitter</text>')
+    svg.append(f'<text x="{osc_x+osc_w-12}" y="{w3_y-16}" font-size="7.5" fill="{CORAL}" text-anchor="end">Gate delay t_prop stretches +38%</text>')
+
+    # Clock square pulses before and during droop
+    # Before droop: sharp, fast clock (1.2 GHz)
+    cx_pos = osc_x + 15
+    while cx_pos < t_burst:
+        svg.append(f'<line x1="{cx_pos}" y1="{w3_y}" x2="{cx_pos+6}" y2="{w3_y}" stroke="{PETROL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+6}" y1="{w3_y}" x2="{cx_pos+6}" y2="{w3_y-16}" stroke="{PETROL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+6}" y1="{w3_y-16}" x2="{cx_pos+12}" y2="{w3_y-16}" stroke="{PETROL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+12}" y1="{w3_y-16}" x2="{cx_pos+12}" y2="{w3_y}" stroke="{PETROL}" stroke-width="1.5"/>')
+        cx_pos += 12
+
+    # During droop: stretched clock / jitter / throttled to 600 MHz
+    while cx_pos < osc_x + osc_w - 20:
+        svg.append(f'<line x1="{cx_pos}" y1="{w3_y}" x2="{cx_pos+12}" y2="{w3_y}" stroke="{CORAL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+12}" y1="{w3_y}" x2="{cx_pos+12}" y2="{w3_y-16}" stroke="{CORAL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+12}" y1="{w3_y-16}" x2="{cx_pos+24}" y2="{w3_y-16}" stroke="{CORAL}" stroke-width="1.5"/>')
+        svg.append(f'<line x1="{cx_pos+24}" y1="{w3_y-16}" x2="{cx_pos+24}" y2="{w3_y}" stroke="{CORAL}" stroke-width="1.5"/>')
+        cx_pos += 24
+
+    # Explanatory bottom summary box
+    svg.append(f'<rect x="{osc_x+10}" y="{osc_y+osc_h-86}" width="{osc_w-20}" height="72" rx="4" fill="#1E293B" stroke="{BORDER_DARK}" stroke-width="1"/>')
+    svg.append(f'<text x="{osc_x+18}" y="{osc_y+osc_h-70}" font-size="8" font-weight="700" fill="{CORAL}">PHYSICAL CROSS-DOMAIN FAILURE COUPLING</text>')
+    svg.append(f'<text x="{osc_x+18}" y="{osc_y+osc_h-56}" font-size="7.5" fill="#E2E8F0">• VRM loop bandwidth (&lt;1 MHz) is 3 orders of magnitude too slow for nanosecond di/dt steps.</text>')
+    svg.append(f'<text x="{osc_x+18}" y="{osc_y+osc_h-44}" font-size="7.5" fill="#E2E8F0">• Logic propagation delay t_prop proportional to V_DD/(V_DD-V_th)^2 causes setup-time violations.</text>')
+    svg.append(f'<text x="{osc_x+18}" y="{osc_y+osc_h-32}" font-size="7.5" fill="#E2E8F0">• DVFS emergency throttle cuts clock to 600 MHz: t_exec = 0.70ms → 1.40ms &gt; 1.0ms deadline.</text>')
+    svg.append(f'<text x="{osc_x+18}" y="{osc_y+osc_h-20}" font-size="7.5" font-weight="700" fill="{AMBER}">Verdict: Software isolation is defeated by power grid impedance and thermal substrate coupling.</text>')
 
     svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/13-frontier/figures/fig99_dual_brain_integration.svg", "\n".join(svg))
+    save_svg_and_pdf("book/chapters/13-placement/figures/fig13_soc_contention_droop.svg", "\n".join(svg))
 
-def gen_ch13_defense_matrix():
-    W = 920
-    H = 460
+
+def gen_ch13_lockfree_boundary_contract():
+    W = 960
+    H = 530
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
     svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="30" class="title">THE CAPSTONE WHOLE-SYSTEM DEFENSE DOSSIER &amp; AUDIT MATRIX</text>')
-    svg.append(f'<text x="{W/2}" y="46" class="subtitle">The Complete 11-Artifact Engineering Portfolio Audited by 4 Interdisciplinary Examiners</text>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">LOCK-FREE SEQLOCK BOUNDARY CONTRACT &amp; PREEMPTION RECOVERY</text>')
+    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Asynchronous Inter-Core State Exchange with Zero Wait States and Deterministic Fallback Hierarchy</text>')
 
-    dossier_items = [
-        ("CHARTER-01", "Architecture Charter &amp; Boundary", NAVY),
-        ("REQ-01", "Metrology &amp; Latency Budget", NAVY),
-        ("ARCH-01", "Cognitive Pipeline &amp; Tension", BLUE),
-        ("IPC-01", "Multi-Rate SRAM IPC Contract", BLUE),
-        ("OBS-01", "Transduction &amp; Spatial Memory", BLUE),
-        ("STATE-01", "SE(3) Frame Tree &amp; World Model", BLUE),
-        ("INTENT-01", "Expiring Intent Lease Contract", BRONZE),
-        ("PLAN-01", "C² Quintic Action Chunking", BRONZE),
-        ("ENF-01", "1 kHz Zero-Malloc Barrier QP", PETROL),
-        ("AUTH-01", "Bumpless Transfer &amp; FSM", PURPLE),
-        ("QUAL-01", "CAE Safety Case &amp; HIL Logs", CRIMSON)
+    # -------------------------------------------------------------
+    # PANEL A: WRITER AND READER MEMORY BARRIER PROTOCOL
+    # -------------------------------------------------------------
+    p1_x = 24
+    p1_y = 62
+    p1_w = 460
+    p1_h = 450
+    svg.append(f'<rect x="{p1_x}" y="{p1_y}" width="{p1_w}" height="{p1_h}" rx="8" fill="{BG_LIGHT}" stroke="{BORDER_DARK}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{p1_x}" y="{p1_y}" width="{p1_w}" height="28" rx="8" fill="{BLUE}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{p1_x+14}" y="{p1_y+19}" font-size="11" font-weight="700" fill="{BLUE}">(a) Lock-Free Seqlock Publication Protocol</text>')
+    svg.append(f'<text x="{p1_x+p1_w-14}" y="{p1_y+19}" font-size="9" font-weight="600" fill="{MUTED}" text-anchor="end">Atomic Barriers · Zero Mutex</text>')
+
+    # Writer Column (Untrusted Host / NPU)
+    w_x = p1_x + 14
+    w_y = p1_y + 36
+    w_w = 205
+    w_h = 240
+    svg.append(f'<rect x="{w_x}" y="{w_y}" width="{w_w}" height="{w_h}" rx="6" fill="{BG_WHITE}" stroke="{BLUE}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{w_x}" y="{w_y}" width="{w_w}" height="22" rx="6" fill="{BLUE}" fill-opacity="0.1"/>')
+    svg.append(f'<text x="{w_x+w_w/2}" y="{w_y+15}" font-size="9.5" font-weight="700" fill="{BLUE}" text-anchor="middle">UNTRUSTED WRITER (NPU/MPU)</text>')
+
+    w_steps = [
+        ("1. atomic_store_release(S, 2k+1)", "Marks sequence counter ODD", CORAL),
+        ("2. Store-Release Barrier", "Flushes counter visibility", PURPLE),
+        ("3. Write Payload Fields", "m_cmd, k, t_prod, Δt_valid, CRC", INK),
+        ("4. Store-Release Barrier", "Ensures payload commits first", PURPLE),
+        ("5. atomic_store_release(S, 2k+2)", "Marks sequence counter EVEN", TEAL)
     ]
+    for idx, (st, desc, col) in enumerate(w_steps):
+        sy = w_y + 30 + idx * 41
+        svg.append(f'<rect x="{w_x+8}" y="{sy}" width="{w_w-16}" height="35" rx="4" fill="{col}" fill-opacity="0.08" stroke="{col}" stroke-width="0.9"/>')
+        svg.append(f'<text x="{w_x+12}" y="{sy+14}" font-size="8" font-weight="700" fill="{col}">{st}</text>')
+        svg.append(f'<text x="{w_x+12}" y="{sy+27}" font-size="7.5" fill="{SLATE}">{desc}</text>')
 
-    dx = 30
-    dy = 70
-    dw = 220
-    dh = 370
-    svg.append(f'<rect x="{dx}" y="{dy}" width="{dw}" height="{dh}" rx="8" fill="{BG_WHITE}" stroke="{NAVY}" stroke-width="1.3" filter="url(#shadow)"/>')
-    svg.append(f'<rect x="{dx}" y="{dy}" width="{dw}" height="26" rx="8" fill="{NAVY}" fill-opacity="0.12"/>')
-    svg.append(f'<text x="{dx+dw/2}" y="{dy+18}" font-size="9.5" font-weight="700" fill="{NAVY}" text-anchor="middle">11-ARTIFACT DOSSIER</text>')
+    # Reader Column (Deterministic Real-Time Enforcer)
+    r_x = p1_x + p1_w - 219
+    r_y = p1_y + 36
+    r_w = 205
+    r_h = 240
+    svg.append(f'<rect x="{r_x}" y="{r_y}" width="{r_w}" height="{r_h}" rx="6" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{r_x}" y="{r_y}" width="{r_w}" height="22" rx="6" fill="{PETROL}" fill-opacity="0.1"/>')
+    svg.append(f'<text x="{r_x+r_w/2}" y="{r_y+15}" font-size="9.5" font-weight="700" fill="{PETROL}" text-anchor="middle">SAFETY READER (Real-Time MCU)</text>')
 
-    for idx, (code, title, col) in enumerate(dossier_items):
-        by = dy + 32 + idx * 30
-        svg.append(f'<rect x="{dx+8}" y="{by}" width="{dw-16}" height="24" rx="4" fill="{col}" fill-opacity="0.08" stroke="{col}" stroke-width="0.8"/>')
-        svg.append(f'<text x="{dx+14}" y="{by+16}" font-size="8" font-weight="700" fill="{col}">{code}</text>')
-        svg.append(f'<text x="{dx+70}" y="{by+16}" font-size="7.5" fill="{INK}">{title}</text>')
-
-    ex = 270
-    ew = 370
-    eh = 370
-    svg.append(f'<rect x="{ex}" y="{dy}" width="{ew}" height="{eh}" rx="8" fill="{BG_WHITE}" stroke="{PURPLE}" stroke-width="1.3" filter="url(#shadow)"/>')
-    svg.append(f'<rect x="{ex}" y="{dy}" width="{ew}" height="26" rx="8" fill="{PURPLE}" fill-opacity="0.12"/>')
-    svg.append(f'<text x="{ex+ew/2}" y="{dy+18}" font-size="9.5" font-weight="700" fill="{PURPLE}" text-anchor="middle">4 INTERDISCIPLINARY EXAMINERS</text>')
-
-    examiners = [
-        ("Examiner A · Systems &amp; Hardware", "Embedded Systems Auditor", "Audits: Lock-free SRAM, AXI QoS, zero malloc, 1 kHz QP latency, watchdog timing", BRONZE),
-        ("Examiner B · AI &amp; Perception", "Machine Learning Auditor", "Audits: 3D tokenization, VLM grounding, world model covariance, action chunking", BLUE),
-        ("Examiner C · Controls &amp; Robotics", "Robotics & Dynamics Auditor", "Audits: Kinematic reachability, C² jerk bounds, CBF invariant h(x) ≥ 0, bumpless transfer", PETROL),
-        ("Examiner D · Safety &amp; Governance", "Safety & Assurance Regulator", "Audits: CAE safety case, cross-layer fault injection, DAgger flywheel, data privacy", CRIMSON)
+    r_steps = [
+        ("1. S1 = atomic_load_acquire(S)", "Sample initial sequence", PETROL),
+        ("2. if (S1 & 1) reject();", "Odd → Write in progress! Zero wait", CORAL),
+        ("3. Load-Acquire &amp; Copy", "Copy payload to private stack", INK),
+        ("4. S2 = atomic_load_acquire(S)", "Sample second sequence", PETROL),
+        ("5. if (S1 != S2) reject_torn();", "Torn write trap (zero blocking)", AMBER)
     ]
-    for idx, (ex_t, ex_sub, ex_d, col) in enumerate(examiners):
-        by = dy + 36 + idx * 80
-        svg.append(f'<rect x="{ex+10}" y="{by}" width="{ew-20}" height="70" rx="6" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
-        svg.append(f'<rect x="{ex+10}" y="{by}" width="4" height="70" rx="2" fill="{col}"/>')
-        svg.append(f'<text x="{ex+22}" y="{by+20}" font-size="10" font-weight="700" fill="{col}">{ex_t}</text>')
-        svg.append(f'<text x="{ex+22}" y="{by+36}" font-size="8.5" font-weight="600" fill="{INK}">{ex_sub}</text>')
-        svg.append(f'<text x="{ex+22}" y="{by+52}" font-size="8" fill="{SLATE}">{ex_d}</text>')
+    for idx, (st, desc, col) in enumerate(r_steps):
+        sy = r_y + 30 + idx * 41
+        svg.append(f'<rect x="{r_x+8}" y="{sy}" width="{r_w-16}" height="35" rx="4" fill="{col}" fill-opacity="0.08" stroke="{col}" stroke-width="0.9"/>')
+        svg.append(f'<text x="{r_x+12}" y="{sy+14}" font-size="8" font-weight="700" fill="{col}">{st}</text>')
+        svg.append(f'<text x="{r_x+12}" y="{sy+27}" font-size="7.5" fill="{SLATE}">{desc}</text>')
 
-    rx = 660
-    rw = 230
-    rh = 370
-    svg.append(f'<rect x="{rx}" y="{dy}" width="{rw}" height="{rh}" rx="8" fill="{BG_WHITE}" stroke="{BORDER_DARK}" stroke-width="1.3" filter="url(#shadow)"/>')
-    svg.append(f'<rect x="{rx}" y="{dy}" width="{rw}" height="26" rx="8" fill="{BORDER_DARK}" fill-opacity="0.12"/>')
-    svg.append(f'<text x="{rx+rw/2}" y="{dy+18}" font-size="9.5" font-weight="700" fill="{INK}" text-anchor="middle">DEFENSE VERDICT GATE</text>')
+    # Exchange Contract Details Box (Bottom of Panel A)
+    con_y = p1_y + 284
+    con_w = p1_w - 28
+    con_h = 154
+    svg.append(f'<rect x="{p1_x+14}" y="{con_y}" width="{con_w}" height="{con_h}" rx="6" fill="{BG_WHITE}" stroke="{NAVY}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<text x="{p1_x+24}" y="{con_y+16}" font-size="9" font-weight="700" fill="{NAVY}">SELF-CONTAINED BOUNDARY CONTRACT PAYLOAD (256 bytes)</text>')
 
-    verdicts = [
-        ("✓ DEPLOY", "Full Unconditional Release", "All 11 artifacts verified; 1000/1000 fault containment; P99.9 latency within budget.", TEAL),
-        ("⚠ CONDITION", "Restricted ODD Deployment", "Minor telemetry gaps; restricted velocity &lt; 0.5 m/s; mandatory human co-pilot.", AMBER),
-        ("✕ REFUSE", "Release Vetoed", "Single uncontained fault escape; seqlock overrun; memory leak; C² jerk violation.", CORAL)
+    fields = [
+        ("dot_m_cmd", "float32", "Commanded mass flow target (physical limits [0, 45 kg/s])"),
+        ("seq_id (k)", "uint64", "Monotonic proposal index (detects dropped/skipped frames)"),
+        ("t_prod", "uint64", "Monotonic hardware timestamp of inference completion"),
+        ("Δt_valid", "uint32", "Lease expiration duration (e.g. 45.0 ms maximum validity)"),
+        ("crc32_hash", "uint32", "Payload integrity checksum (detects corrupted bitflips)")
     ]
-    for idx, (v_t, v_sub, v_d, col) in enumerate(verdicts):
-        by = dy + 36 + idx * 105
-        svg.append(f'<rect x="{rx+10}" y="{by}" width="{rw-20}" height="95" rx="6" fill="{col}" fill-opacity="0.06" stroke="{col}" stroke-width="1.2"/>')
-        svg.append(f'<text x="{rx+20}" y="{by+22}" font-size="12" font-weight="700" fill="{col}">{v_t}</text>')
-        svg.append(f'<text x="{rx+20}" y="{by+38}" font-size="9" font-weight="600" fill="{INK}">{v_sub}</text>')
-        words = v_d.split()
-        l1 = " ".join(words[:4])
-        l2 = " ".join(words[4:8])
-        l3 = " ".join(words[8:])
-        svg.append(f'<text x="{rx+20}" y="{by+56}" font-size="8" fill="{SLATE}">{l1}</text>')
-        svg.append(f'<text x="{rx+20}" y="{by+68}" font-size="8" fill="{SLATE}">{l2}</text>')
-        svg.append(f'<text x="{rx+20}" y="{by+80}" font-size="8" fill="{SLATE}">{l3}</text>')
+    for idx, (fn, ft, fd) in enumerate(fields):
+        fy = con_y + 28 + idx * 24
+        svg.append(f'<rect x="{p1_x+24}" y="{fy}" width="80" height="20" rx="3" fill="{NAVY}" fill-opacity="0.08"/>')
+        svg.append(f'<text x="{p1_x+28}" y="{fy+13}" class="code-text">{fn}</text>')
+        svg.append(f'<text x="{p1_x+112}" y="{fy+13}" font-size="7.5" font-weight="700" fill="{PURPLE}">[{ft}]</text>')
+        svg.append(f'<text x="{p1_x+165}" y="{fy+13}" font-size="7.5" fill="{SLATE}">{fd}</text>')
 
-    svg.append(f'<line x1="{dx+dw}" y1="250" x2="{ex}" y2="250" stroke="{NAVY}" stroke-width="1.8" marker-end="url(#arr-navy)"/>')
-    svg.append(f'<line x1="{ex+ew}" y1="250" x2="{rx}" y2="250" stroke="{PURPLE}" stroke-width="1.8" marker-end="url(#arr-purple)"/>')
+    # -------------------------------------------------------------
+    # PANEL B: PREEMPTION FAULT MATRIX & DETERMINISTIC FALLBACKS
+    # -------------------------------------------------------------
+    p2_x = 495
+    p2_y = 62
+    p2_w = 440
+    p2_h = 450
+    svg.append(f'<rect x="{p2_x}" y="{p2_y}" width="{p2_w}" height="{p2_h}" rx="8" fill="{BG_LIGHT}" stroke="{BORDER_DARK}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{p2_x}" y="{p2_y}" width="{p2_w}" height="28" rx="8" fill="{PURPLE}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{p2_x+14}" y="{p2_y+19}" font-size="11" font-weight="700" fill="{PURPLE}">(b) Preemption Points &amp; Deterministic Fallbacks</text>')
+    svg.append(f'<text x="{p2_x+p2_w-14}" y="{p2_y+19}" font-size="9" font-weight="600" fill="{MUTED}" text-anchor="end">Guaranteed Bounded Response</text>')
+
+    # 4 Writer Preemption Scenarios
+    svg.append(f'<text x="{p2_x+14}" y="{p2_y+44}" font-size="9" font-weight="700" fill="{INK}">WRITER PREEMPTION / CRASH POINT ANALYSIS</text>')
+
+    preempt_cases = [
+        ("Point A · Crash Before Step 1", "S is even (2k)", "Reader sees intact prior record (2k==2k). Zero corruption. ✓", TEAL),
+        ("Point B · Preempted During Write", "S is odd (2k+1)", "Reader tests (S1 &amp; 1) != 0, drops buffer in &lt;5 µs. Zero blocking. ✓", AMBER),
+        ("Point C · Crashed Mid-Publication", "S stays odd", "Reader detects persistent odd sequence, trips fallback clamp. ✓", CORAL),
+        ("Point D · Write Fully Committed", "S is even (2k+2)", "Reader validates S1==S2==2k+2 and CRC. Accepts fresh packet. ✓", TEAL)
+    ]
+    for idx, (pt, state, res, col) in enumerate(preempt_cases):
+        py = p2_y + 54 + idx * 42
+        svg.append(f'<rect x="{p2_x+12}" y="{py}" width="{p2_w-24}" height="37" rx="5" fill="{BG_WHITE}" stroke="{col}" stroke-width="1.1"/>')
+        svg.append(f'<rect x="{p2_x+12}" y="{py}" width="4" height="37" rx="2" fill="{col}"/>')
+        svg.append(f'<text x="{p2_x+22}" y="{py+14}" font-size="8.5" font-weight="700" fill="{col}">{pt}</text>')
+        svg.append(f'<text x="{p2_x+200}" y="{py+14}" font-size="7.5" font-weight="600" fill="{MUTED}">[{state}]</text>')
+        svg.append(f'<text x="{p2_x+22}" y="{py+28}" font-size="7.5" fill="{SLATE}">{res}</text>')
+
+    # 4 Failure Classes & Deterministic Fallback Hierarchy
+    svg.append(f'<text x="{p2_x+14}" y="{p2_y+238}" font-size="9" font-weight="700" fill="{CRIMSON}">4 BOUNDARY FAILURE CLASSES &amp; DETERMINISTIC RESPONSES</text>')
+
+    fallbacks = [
+        ("1. MALFORMED", "CRC mismatch / Out-of-bounds dot_m_cmd", "Clamp valve immediately to last verified safe orifice position.", CORAL),
+        ("2. STALE", "t_now > t_prod + Δt_valid (Lease expired)", "Hold position for τ_hold = 10 ms; if persists, begin ramp-down.", AMBER),
+        ("3. MISSING", "Sequence gap (k_new > k_prev + 1)", "Flag queue-overrun; apply state extrapolation with rate limit.", PURPLE),
+        ("4. TORN / OVERRUN", "Seqlock mismatch (S1 != S2)", "Reject torn read instantly (&lt;5 µs); continue 1 kHz control tick.", BLUE)
+    ]
+    for idx, (fc, fsub, fresp, col) in enumerate(fallbacks):
+        fby = p2_y + 248 + idx * 48
+        svg.append(f'<rect x="{p2_x+12}" y="{fby}" width="{p2_w-24}" height="42" rx="5" fill="{col}" fill-opacity="0.06" stroke="{col}" stroke-width="1"/>')
+        svg.append(f'<text x="{p2_x+22}" y="{fby+14}" font-size="8.5" font-weight="700" fill="{col}">{fc}: <tspan font-weight="500" fill="{INK}">{fsub}</tspan></text>')
+        svg.append(f'<text x="{p2_x+22}" y="{fby+27}" font-size="7.5" font-weight="600" fill="{NAVY}">Fallback Action: <tspan font-weight="400" fill="{SLATE}">{fresp}</tspan></text>')
 
     svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/13-frontier/figures/fig99_defense_dossier_matrix.svg", "\n".join(svg))
+    save_svg_and_pdf("book/chapters/13-placement/figures/fig13_lockfree_boundary_contract.svg", "\n".join(svg))
 
-def gen_ch13_fault_timeline():
-    W = 880
-    H = 430
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
-    svg.append(COMMON_STYLE)
-    svg.append(COMMON_DEFS)
-    svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">ENDOGENOUS REAL-TIME INTERVENTION &amp; RECOVERY</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Digital Oscilloscope Logic Analyzer Trace: Host Linux MPU Panic → Deterministic Real-Time MCU Safe Halt</text>')
-
-    # Oscilloscope Display Box
-    ox = 40
-    oy = 64
-    ow = W - 80
-    oh = 345
-    svg.append(f'<rect x="{ox}" y="{oy}" width="{ow}" height="{oh}" rx="8" fill="#0F172A" stroke="{BORDER_DARK}" stroke-width="1.5"/>')
-
-    for gx in range(ox+40, ox+ow, 60):
-        svg.append(f'<line x1="{gx}" y1="{oy+10}" x2="{gx}" y2="{oy+oh-25}" stroke="#1E293B" stroke-width="1"/>')
-    for gy in range(oy+30, oy+oh-25, 40):
-        svg.append(f'<line x1="{ox+10}" y1="{gy}" x2="{ox+ow-10}" y2="{gy}" stroke="#1E293B" stroke-width="1"/>')
-
-    t_fault = ox + 220
-    svg.append(f'<line x1="{t_fault}" y1="{oy+10}" x2="{t_fault}" y2="{oy+oh-25}" stroke="{CORAL}" stroke-width="1.5" stroke-dasharray="3,3"/>')
-    svg.append(f'<rect x="{t_fault-60}" y="{oy+12}" width="120" height="18" rx="3" fill="{CORAL}"/>')
-    svg.append(f'<text x="{t_fault}" y="{oy+24}" font-size="8" font-weight="700" fill="#FFFFFF" text-anchor="middle">SEEDED FAULT (t₀)</text>')
-
-    t_detect = ox + 420
-    svg.append(f'<line x1="{t_detect}" y1="{oy+10}" x2="{t_detect}" y2="{oy+oh-25}" stroke="{AMBER}" stroke-width="1.5" stroke-dasharray="3,3"/>')
-    svg.append(f'<rect x="{t_detect-50}" y="{oy+12}" width="100" height="18" rx="3" fill="{AMBER}"/>')
-    svg.append(f'<text x="{t_detect}" y="{oy+24}" font-size="8" font-weight="700" fill="#FFFFFF" text-anchor="middle">WATCHDOG (50ms)</text>')
-
-    t_halt = ox + 580
-    svg.append(f'<line x1="{t_halt}" y1="{oy+10}" x2="{t_halt}" y2="{oy+oh-25}" stroke="{TEAL}" stroke-width="1.5" stroke-dasharray="3,3"/>')
-    svg.append(f'<rect x="{t_halt-45}" y="{oy+12}" width="90" height="18" rx="3" fill="{TEAL}"/>')
-    svg.append(f'<text x="{t_halt}" y="{oy+24}" font-size="8" font-weight="700" fill="#FFFFFF" text-anchor="middle">SAFE HALT (v=0)</text>')
-
-    traces = [
-        ("CH1: Host MPU Heartbeat", CORAL, [
-            (ox+30, 48, ox+70, 48), (ox+70, 48, ox+70, 32), (ox+70, 32, ox+110, 32), (ox+110, 32, ox+110, 48),
-            (ox+110, 48, ox+150, 48), (ox+150, 48, ox+150, 32), (ox+150, 32, ox+190, 32), (ox+190, 32, ox+190, 48),
-            (ox+190, 48, t_fault, 48), (t_fault, 48, t_fault, 48), (t_fault, 48, ox+ow-20, 48)
-        ], 38, "Heartbeat stops dead on Linux segfault / crash"),
-
-        ("CH2: Shared SRAM Seqlock", BRONZE, [
-            (ox+30, 108, t_fault, 108), (t_fault, 108, t_detect, 108), (t_detect, 108, ox+ow-20, 108)
-        ], 98, "Version counter freezes at v_last"),
-
-        ("CH3: MCU Authority FSM", AMBER, [
-            (ox+30, 168, t_detect, 168), (t_detect, 168, t_detect, 152), (t_detect, 152, ox+ow-20, 152)
-        ], 158, "Trips to CAT 1 Dynamic Braking State"),
-
-        ("CH4: Gate Driver PWM &amp; Current", PETROL, [
-            (ox+30, 228, t_detect, 228), (t_detect, 228, t_detect, 212), (t_detect, 212, t_halt, 236), (t_halt, 236, ox+ow-20, 244)
-        ], 218, "Regenerative reverse torque applied to zero speed"),
-
-        ("CH5: Vehicle Velocity v(t)", TEAL, [
-            (ox+30, 280, t_detect, 280), (t_detect, 280, t_halt, 305), (t_halt, 305, ox+ow-20, 305)
-        ], 278, "Smooth C² deceleration: d_stop = 8.4 cm ≤ 25 cm clearance ✓")
-    ]
-
-    for ch_name, col, segments, text_y, desc in traces:
-        svg.append(f'<text x="{ox+20}" y="{oy+text_y}" font-size="9.5" font-weight="700" fill="{col}">{ch_name}</text>')
-        svg.append(f'<text x="{ox+220}" y="{oy+text_y}" font-size="8.5" fill="#94A3B8">{desc}</text>')
-        for x1, y1, x2, y2 in segments:
-            svg.append(f'<line x1="{x1}" y1="{oy+y1+10}" x2="{x2}" y2="{oy+y2+10}" stroke="{col}" stroke-width="2"/>')
-
-    svg.append(f'<text x="{ox+ow/2}" y="{oy+oh-10}" font-size="9" font-weight="600" fill="#94A3B8" text-anchor="middle">Total Fault Containment Time: Δt = 42.8 ms &lt; 50.0 ms Hard Limit (Certified Release Criterion Met)</text>')
-
-    svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/13-frontier/figures/fig99_seeded_fault_timeline.svg", "\n".join(svg))
 
 def run_all():
-    gen_ch13_dual_brain()
-    gen_ch13_defense_matrix()
-    gen_ch13_fault_timeline()
+    gen_ch13_soc_contention_droop()
+    gen_ch13_lockfree_boundary_contract()
 
 if __name__ == "__main__":
     run_all()

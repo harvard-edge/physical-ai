@@ -7,7 +7,7 @@ Pure vector SVG, unclipped typography, Harvard Crimson & ETH Zurich Academic Sem
 import os
 import subprocess
 from figures import (
-    ch01, ch02, ch03_04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, locator
+    ch01, ch02, ch03_04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, locator
 )
 
 def main():
@@ -26,6 +26,10 @@ def main():
     ch11.run_all()
     ch12.run_all()
     ch13.run_all()
+    ch14.run_all()
+    ch15.run_all()
+    ch16.run_all()
+    ch17.run_all()
 
     print("\n=== Generating PNG Inspection Gallery in Brain Artifacts ===")
     png_dir = "/Users/VJ/.gemini/antigravity-cli/brain/40a33dd2-8620-49b6-9d24-5c26ad2ef085/svg_v2"

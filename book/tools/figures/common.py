@@ -91,6 +91,13 @@ def sanitize_svg_xml(svg_str):
     return pattern.sub(fix_text_body, svg_str)
 
 def save_svg_and_pdf(path, content):
+    # Ensure path correctly resolves to book/chapters
+    if not os.path.isabs(path):
+        cwd = os.getcwd()
+        if cwd.endswith("/book") and path.startswith("book/"):
+            path = path[5:]
+        elif not cwd.endswith("/book") and not path.startswith("book/"):
+            path = os.path.join("book", path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     content = sanitize_svg_xml(content)
     with open(path, "w", encoding="utf-8") as f:
@@ -100,4 +107,5 @@ def save_svg_and_pdf(path, content):
     if res.returncode != 0:
         subprocess.run(["inkscape", "--export-filename=" + pdf_path, path], capture_output=True)
     print(f"Generated: {path} and {pdf_path}")
+
 

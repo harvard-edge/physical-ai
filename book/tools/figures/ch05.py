@@ -1,191 +1,402 @@
 """
 book/tools/figures/ch05.py
-Figures for Chapter 5: Perception & Spatial Transduction.
+Figures for Chapter 5: Data & Demonstration Provenance.
+Harvard Crimson & ETH Zurich Academic Semantic Palette.
 """
 
+import os
+import math
 from .common import (
     NAVY, BLUE, PETROL, TEAL, BRONZE, AMBER, CRIMSON, CORAL, PURPLE,
     SLATE, MUTED, INK, BG_LIGHT, BG_WHITE, BORDER, BORDER_DARK,
     COMMON_STYLE, COMMON_DEFS, save_svg_and_pdf
 )
 
-def gen_fig04_spatial_tokenization():
-    W = 880
-    H = 430
+def gen_fig05_compounding_error_flywheel():
+    """
+    Figure 5.1: Covariate Shift Compounding Error Flywheel & Trajectory Phase Space.
+    Shows the O(T^2 epsilon) quadratic error compounding in naive behavioral cloning
+    vs O(T epsilon) linear bounded corridor in DAgger / Corrective Aggregation,
+    along with trajectory divergence, the lag window [t_div, t_takeover], and episode cutting.
+    """
+    W = 1000
+    H = 560
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
-    svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">SPATIAL AFFORDANCE TOKENIZATION VS 2D CLASSIFICATION</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Extracting SE(3) Contact Affordances &amp; Metric 3D Bounding Boxes for Downstream Kinematic Execution</text>')
-
-    # Left: 2D Classification (Insufficient)
-    lx = 30
-    lw = 380
-    svg.append(f'<rect x="{lx}" y="70" width="{lw}" height="320" rx="8" fill="{CORAL}" fill-opacity="0.04" stroke="{CORAL}" stroke-width="1.2"/>')
-    svg.append(f'<text x="{lx+lw/2}" y="92" font-size="11" font-weight="700" fill="{CORAL}" text-anchor="middle">✕ 2D PASSIVE SEMANTIC CLASSIFICATION</text>')
-    svg.append(f'<text x="{lx+lw/2}" y="108" font-size="9" fill="{MUTED}" text-anchor="middle">Disembodied Web Vision (e.g. ImageNet, CLIP)</text>')
-
-    svg.append(f'<rect x="{lx+30}" y="130" width="160" height="110" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<rect x="{lx+60}" y="150" width="100" height="70" rx="2" fill="{CORAL}" fill-opacity="0.15" stroke="{CORAL}" stroke-width="1.5"/>')
-    svg.append(f'<text x="{lx+110}" y="190" font-size="9" font-weight="700" fill="{CORAL}" text-anchor="middle">"mug" (99.4%)</text>')
     
-    flaws = [
-        "Zero metric depth (no distance z in meters)",
-        "No contact normal vectors n̂ for grasping",
-        "Scale ambiguity (toy mug vs industrial vessel)",
-        "Blind to robot end-effector kinematics"
+    # Background Card
+    svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">COVARIATE SHIFT COMPOUNDING ERROR FLYWHEEL &amp; RECOVERY DYNAMICS</text>')
+    svg.append(f'<text x="{W/2}" y="45" class="subtitle">Quadratic Divergence O(T²ε) in Naive Behavioral Cloning vs Linear Bounded Tube O(Tε) in DAgger Corrective Aggregation</text>')
+
+    # ==========================================
+    # LEFT PANEL: The Two Feedback Mechanisms (Flywheels)
+    # ==========================================
+    lx = 24
+    lw = 460
+    
+    # 1. Top Left: Naive Behavioral Cloning (Fatal Compounding Loop)
+    ty = 65
+    th = 230
+    svg.append(f'<rect x="{lx}" y="{ty}" width="{lw}" height="{th}" rx="8" fill="{CORAL}" fill-opacity="0.03" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{lx}" y="{ty}" width="{lw}" height="26" rx="8" fill="{CORAL}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{lx+14}" y="{ty+18}" font-size="10.5" font-weight="700" fill="{CORAL}">✕ NAIVE BEHAVIORAL CLONING (OPEN-LOOP DRIFT FLYWHEEL)</text>')
+    svg.append(f'<text x="{lx+lw-14}" y="{ty+18}" font-size="9.5" font-weight="700" fill="{CRIMSON}" text-anchor="end">Error: O(T²ε)</text>')
+
+    # 4 Cyclic Boxes for BC
+    # Box 1: Small Single-step error
+    b1_x, b1_y, bw, bh = lx + 16, ty + 38, 195, 42
+    svg.append(f'<rect x="{b1_x}" y="{b1_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{b1_x+8}" y="{b1_y+16}" font-size="8.5" font-weight="700" fill="{INK}">1. Single-Step Error ε</text>')
+    svg.append(f'<text x="{b1_x+8}" y="{b1_y+30}" font-size="7.5" fill="{SLATE}">Friction / noise perturbation</text>')
+
+    # Arrow 1->2
+    svg.append(f'<line x1="{b1_x+bw}" y1="{b1_y+21}" x2="{b1_x+bw+30}" y2="{b1_y+21}" stroke="{CORAL}" stroke-width="1.3" marker-end="url(#arr-coral)"/>')
+
+    # Box 2: Out of distribution state
+    b2_x, b2_y = lx + 245, ty + 38
+    svg.append(f'<rect x="{b2_x}" y="{b2_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{b2_x+8}" y="{b2_y+16}" font-size="8.5" font-weight="700" fill="{CORAL}">2. State Exits Support</text>')
+    svg.append(f'<text x="{b2_x+8}" y="{b2_y+30}" font-size="7.5" fill="{SLATE}">s_{{t+1}} ∉ supp(d^π*)</text>')
+
+    # Arrow 2->3 (down)
+    svg.append(f'<line x1="{b2_x+bw/2}" y1="{b2_y+bh}" x2="{b2_x+bw/2}" y2="{b2_y+bh+22}" stroke="{CORAL}" stroke-width="1.3" marker-end="url(#arr-coral)"/>')
+
+    # Box 3: Ungrounded action
+    b3_x, b3_y = lx + 245, ty + 102
+    svg.append(f'<rect x="{b3_x}" y="{b3_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{b3_x+8}" y="{b3_y+16}" font-size="8.5" font-weight="700" fill="{CORAL}">3. Arbitrary Action â</text>')
+    svg.append(f'<text x="{b3_x+8}" y="{b3_y+30}" font-size="7.5" fill="{SLATE}">Zero constraint from ERM loss</text>')
+
+    # Arrow 3->4 (left)
+    svg.append(f'<line x1="{b3_x}" y1="{b3_y+21}" x2="{b3_x-30}" y2="{b3_y+21}" stroke="{CORAL}" stroke-width="1.3" marker-end="url(#arr-coral)"/>')
+
+    # Box 4: Compounding error
+    b4_x, b4_y = lx + 16, ty + 102
+    svg.append(f'<rect x="{b4_x}" y="{b4_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{CRIMSON}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{b4_x+8}" y="{b4_y+16}" font-size="8.5" font-weight="700" fill="{CRIMSON}">4. Amplified Deviation</text>')
+    svg.append(f'<text x="{b4_x+8}" y="{b4_y+30}" font-size="7.5" fill="{SLATE}">Further away on next step</text>')
+
+    # Arrow 4->1 (up, loop)
+    svg.append(f'<line x1="{b4_x+bw/2}" y1="{b4_y}" x2="{b4_x+bw/2}" y2="{b1_y+bh}" stroke="{CRIMSON}" stroke-width="1.3" marker-end="url(#arr-crimson)"/>')
+
+    # BC Summary equation box
+    svg.append(f'<rect x="{lx+16}" y="{ty+154}" width="{lw-32}" height="{64}" rx="5" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{lx+24}" y="{ty+172}" font-size="8.5" font-weight="700" fill="{CRIMSON}">Mathematical Compounding Mechanism:</text>')
+    svg.append(f'<text x="{lx+24}" y="{ty+190}" font-size="8" font-family="monospace" fill="{INK}">E[Error_BC] ≤ ∑_{{t=1}}^T t·ε = [T(T+1)/2]·ε = O(T²ε)</text>')
+    svg.append(f'<text x="{lx+24}" y="{ty+206}" font-size="7.5" fill="{SLATE}">Example (T=500 steps, ε=0.01): Cumulative error multiplier = 2,500×</text>')
+
+    # 2. Bottom Left: DAgger / Corrective Aggregation (Stabilizing Loop)
+    by = 305
+    bh_p = 235
+    svg.append(f'<rect x="{lx}" y="{by}" width="{lw}" height="{bh_p}" rx="8" fill="{TEAL}" fill-opacity="0.03" stroke="{TEAL}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{lx}" y="{by}" width="{lw}" height="26" rx="8" fill="{TEAL}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{lx+14}" y="{by+18}" font-size="10.5" font-weight="700" fill="{PETROL}">✓ CORRECTIVE AGGREGATION / DAgger (STABILIZING FLYWHEEL)</text>')
+    svg.append(f'<text x="{lx+lw-14}" y="{by+18}" font-size="9.5" font-weight="700" fill="{TEAL}" text-anchor="end">Error: O(Tε)</text>')
+
+    # 4 Cyclic Boxes for DAgger
+    d1_x, d1_y = lx + 16, by + 38
+    svg.append(f'<rect x="{d1_x}" y="{d1_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{d1_x+8}" y="{d1_y+16}" font-size="8.5" font-weight="700" fill="{INK}">1. Policy Visits s ~ d^π̂</text>')
+    svg.append(f'<text x="{d1_x+8}" y="{d1_y+30}" font-size="7.5" fill="{SLATE}">Learner visits perturbed state</text>')
+
+    svg.append(f'<line x1="{d1_x+bw}" y1="{d1_y+21}" x2="{d1_x+bw+30}" y2="{d1_y+21}" stroke="{TEAL}" stroke-width="1.3" marker-end="url(#arr-teal)"/>')
+
+    d2_x, d2_y = lx + 245, by + 38
+    svg.append(f'<rect x="{d2_x}" y="{d2_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{d2_x+8}" y="{d2_y+16}" font-size="8.5" font-weight="700" fill="{PETROL}">2. Expert Labels π*(s)</text>')
+    svg.append(f'<text x="{d2_x+8}" y="{d2_y+30}" font-size="7.5" fill="{SLATE}">Recovery action demonstrated</text>')
+
+    svg.append(f'<line x1="{d2_x+bw/2}" y1="{d2_y+bh}" x2="{d2_x+bw/2}" y2="{d2_y+bh+22}" stroke="{TEAL}" stroke-width="1.3" marker-end="url(#arr-teal)"/>')
+
+    d3_x, d3_y = lx + 245, by + 102
+    svg.append(f'<rect x="{d3_x}" y="{d3_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{TEAL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{d3_x+8}" y="{d3_y+16}" font-size="8.5" font-weight="700" fill="{TEAL}">3. Retrain on Aggregate D</text>')
+    svg.append(f'<text x="{d3_x+8}" y="{d3_y+30}" font-size="7.5" fill="{SLATE}">supp(D) ⊇ recovery envelope</text>')
+
+    svg.append(f'<line x1="{d3_x}" y1="{d3_y+21}" x2="{d3_x-30}" y2="{d3_y+21}" stroke="{TEAL}" stroke-width="1.3" marker-end="url(#arr-teal)"/>')
+
+    d4_x, d4_y = lx + 16, by + 102
+    svg.append(f'<rect x="{d4_x}" y="{d4_y}" width="{bw}" height="{bh}" rx="5" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{d4_x+8}" y="{d4_y+16}" font-size="8.5" font-weight="700" fill="{PETROL}">4. Closed-Loop Recovery</text>')
+    svg.append(f'<text x="{d4_x+8}" y="{d4_y+30}" font-size="7.5" fill="{SLATE}">Corrective torque returns to tube</text>')
+
+    svg.append(f'<line x1="{d4_x+bw/2}" y1="{d4_y}" x2="{d4_x+bw/2}" y2="{d1_y+bh}" stroke="{PETROL}" stroke-width="1.3" marker-end="url(#arr-petrol)"/>')
+
+    # DAgger Summary equation box
+    svg.append(f'<rect x="{lx+16}" y="{by+154}" width="{lw-32}" height="{68}" rx="5" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{lx+24}" y="{by+172}" font-size="8.5" font-weight="700" fill="{PETROL}">Mathematical Linear Bounded Corridor:</text>')
+    svg.append(f'<text x="{lx+24}" y="{by+190}" font-size="8" font-family="monospace" fill="{INK}">E[Error_CA] ≤ T·ε = O(Tε)  [Ross &amp; Bagnell 2011]</text>')
+    svg.append(f'<text x="{lx+24}" y="{by+206}" font-size="7.5" fill="{SLATE}">Example (T=500 steps, ε=0.01): Cumulative error multiplier = 5.0× (500× reduction!)</text>')
+
+    # ==========================================
+    # RIGHT PANEL: Phase Space & Episode Cut Point
+    # ==========================================
+    rx = 504
+    rw = 472
+    ry = 65
+    rh = 475
+    svg.append(f'<rect x="{rx}" y="{ry}" width="{rw}" height="{rh}" rx="8" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{rx}" y="{ry}" width="{rw}" height="26" rx="8" fill="{NAVY}" fill-opacity="0.08"/>')
+    svg.append(f'<text x="{rx+14}" y="{ry+18}" font-size="10.5" font-weight="700" fill="{NAVY}">TRAJECTORY DIVERGENCE &amp; INTERVENTION CUT BOUNDARY</text>')
+
+    # Coordinate Plot inside Right Panel
+    px = rx + 55
+    py = ry + 220
+    pw = 390
+    ph = 160
+
+    # Shaded Zones
+    # 1. Nominal Envelope Corridor [-15mm, +15mm] -> y-range [py-25, py+25]
+    svg.append(f'<rect x="{px}" y="{py-25}" width="{pw}" height="50" fill="{TEAL}" fill-opacity="0.08" stroke="{TEAL}" stroke-width="0.8" stroke-dasharray="3,2"/>')
+    svg.append(f'<text x="{px+pw-8}" y="{py-14}" font-size="7.5" font-weight="700" fill="{TEAL}" text-anchor="end">Nominal Operating Corridor [±1.5 mm]</text>')
+
+    # 2. Hazard / E-Stop Boundary (Top & Bottom)
+    svg.append(f'<rect x="{px}" y="{py-ph+10}" width="{pw}" height="28" fill="{CORAL}" fill-opacity="0.1"/>')
+    svg.append(f'<line x1="{px}" y1="{py-ph+38}" x2="{px+pw}" y2="{py-ph+38}" stroke="{CORAL}" stroke-width="1" stroke-dasharray="4,2"/>')
+    svg.append(f'<text x="{px+8}" y="{py-ph+26}" font-size="7.5" font-weight="700" fill="{CORAL}">HARDWARE HAZARD / E-STOP BOUNDARY (+12.0 mm)</text>')
+
+    # Axes
+    svg.append(f'<line x1="{px}" y1="{py}" x2="{px+pw+15}" y2="{py}" stroke="{SLATE}" stroke-width="1.2" marker-end="url(#arr-slate)"/>')
+    svg.append(f'<text x="{px+pw+15}" y="{py+14}" font-size="8" font-weight="600" fill="{SLATE}" text-anchor="end">Time t (s) →</text>')
+
+    svg.append(f'<line x1="{px}" y1="{py+ph-30}" x2="{px}" y2="{py-ph+10}" stroke="{SLATE}" stroke-width="1.2" marker-end="url(#arr-slate)"/>')
+    svg.append(f'<text x="{px-35}" y="{py-ph+20}" font-size="8" font-weight="600" fill="{SLATE}" transform="rotate(-90 {px-35} {py-ph+20})" text-anchor="middle">Tracking Error e(t) (mm) →</text>')
+
+    # Nominal Trajectory (Center Line)
+    svg.append(f'<line x1="{px}" y1="{py}" x2="{px+pw}" y2="{py}" stroke="{PETROL}" stroke-width="2"/>')
+    svg.append(f'<text x="{px+10}" y="{py-6}" font-size="8" font-weight="700" fill="{PETROL}">π* Nominal Target</text>')
+
+    # Key Timestamps X coordinates
+    t_div_x = px + 95       # t_div = 1.2s
+    t_take_x = px + 175     # t_takeover = 2.0s (Δt = 800ms human delay)
+    t_rec_x = px + 280      # t_recovery = 3.5s
+
+    # Shaded Reaction Delay Region [t_div, t_takeover]
+    svg.append(f'<rect x="{t_div_x}" y="{py-ph+38}" width="{t_take_x-t_div_x}" height="{ph-38+60}" fill="{CORAL}" fill-opacity="0.12"/>')
+    svg.append(f'<line x1="{t_div_x}" y1="{py-ph+38}" x2="{t_div_x}" y2="{py+70}" stroke="{CORAL}" stroke-width="1.2" stroke-dasharray="3,3"/>')
+    svg.append(f'<line x1="{t_take_x}" y1="{py-ph+38}" x2="{t_take_x}" y2="{py+70}" stroke="{PURPLE}" stroke-width="1.2" stroke-dasharray="3,3"/>')
+
+    # Naive BC Divergent Path (Quadratic runaway to hazard)
+    bc_path = f"M {px} {py} L {t_div_x} {py} Q {t_take_x-20} {py-40} {t_take_x+80} {py-ph+38}"
+    svg.append(f'<path d="{bc_path}" fill="none" stroke="{CORAL}" stroke-width="2.2" stroke-dasharray="5,2"/>')
+    svg.append(f'<text x="{t_take_x+85}" y="{py-ph+50}" font-size="8" font-weight="700" fill="{CORAL}">Naive BC: O(T²) Collision</text>')
+
+    # Human Takeover & Expert Recovery Path
+    rec_path = f"M {t_div_x} {py} Q {t_take_x} {py-45} {t_take_x} {py-50} Q {t_take_x+45} {py-55} {t_rec_x} {py}"
+    svg.append(f'<path d="{rec_path}" fill="none" stroke="{TEAL}" stroke-width="2.5"/>')
+
+    # Mark Key Nodes
+    # 1. Divergence Point t_div
+    svg.append(f'<circle cx="{t_div_x}" cy="{py}" r="4.5" fill="{CORAL}" stroke="{BG_WHITE}" stroke-width="1.5"/>')
+    svg.append(f'<text x="{t_div_x}" y="{py+18}" font-size="8" font-weight="700" fill="{CORAL}" text-anchor="middle">t_div</text>')
+    svg.append(f'<text x="{t_div_x}" y="{py+28}" font-size="7" fill="{MUTED}" text-anchor="middle">(Divergence)</text>')
+
+    # 2. Takeover Point t_takeover
+    svg.append(f'<circle cx="{t_take_x}" cy="{py-50}" r="5" fill="{PURPLE}" stroke="{BG_WHITE}" stroke-width="1.5"/>')
+    svg.append(f'<text x="{t_take_x}" y="{py-62}" font-size="8" font-weight="700" fill="{PURPLE}" text-anchor="middle">t_takeover</text>')
+    svg.append(f'<text x="{t_take_x}" y="{py+18}" font-size="8" font-weight="700" fill="{PURPLE}" text-anchor="middle">t_take</text>')
+    svg.append(f'<text x="{t_take_x}" y="{py+28}" font-size="7" fill="{MUTED}" text-anchor="middle">(Override)</text>')
+
+    # 3. Recovery Complete t_rec
+    svg.append(f'<circle cx="{t_rec_x}" cy="{py}" r="4.5" fill="{TEAL}" stroke="{BG_WHITE}" stroke-width="1.5"/>')
+    svg.append(f'<text x="{t_rec_x}" y="{py+18}" font-size="8" font-weight="700" fill="{TEAL}" text-anchor="middle">t_rec</text>')
+
+    # Callout Bracket for [t_div, t_takeover] lag window
+    lag_mid = (t_div_x + t_take_x) / 2
+    svg.append(f'<line x1="{t_div_x+2}" y1="{py+45}" x2="{t_take_x-2}" y2="{py+45}" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<polyline points="{t_div_x+2},{py+42} {t_div_x+2},{py+48}" fill="none" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<polyline points="{t_take_x-2},{py+42} {t_take_x-2},{py+48}" fill="none" stroke="{CORAL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{lag_mid}" y="{py+57}" font-size="7.5" font-weight="700" fill="{CORAL}" text-anchor="middle">Human Reaction Lag (300-800 ms)</text>')
+
+    # Bottom Instructions: The 3 Rules of Episode Curation
+    iy = ry + 325
+    svg.append(f'<rect x="{rx+12}" y="{iy}" width="{rw-24}" height="{138}" rx="6" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{rx+22}" y="{iy+18}" font-size="9" font-weight="700" fill="{NAVY}">THE 3 DATA CURATION LAWS FOR PHYSICAL INTERVENTIONS:</text>')
+
+    rules = [
+        ("1. Truncate Autonomous Rollout at t_div (NOT t_takeover):", "Cut rollout where policy drifted. Prevents spurious correlation between drift and goal."),
+        ("2. Discard Corrupted Drift Interval [t_div, t_takeover]:", "Omit 30-80 execution frames recorded during human perception/reaction delay."),
+        ("3. Ingest Recovery Demonstration [t_takeover, t_rec] into DAgger Buffer:", "Treat rescue as expert feedback on policy-induced distribution d^π̂, collapsing error to O(Tε).")
     ]
-    for idx, fl in enumerate(flaws):
-        svg.append(f'<text x="{lx+20}" y="{270+idx*20}" font-size="8.5" fill="{SLATE}">• {fl}</text>')
-
-    # Right: 3D Spatial Tokenization (Sufficient)
-    rx = 470
-    rw = 380
-    svg.append(f'<rect x="{rx}" y="70" width="{rw}" height="320" rx="8" fill="{TEAL}" fill-opacity="0.04" stroke="{TEAL}" stroke-width="1.2"/>')
-    svg.append(f'<text x="{rx+rw/2}" y="92" font-size="11" font-weight="700" fill="{TEAL}" text-anchor="middle">✓ 3D SPATIAL AFFORDANCE TOKENIZATION</text>')
-    svg.append(f'<text x="{rx+rw/2}" y="108" font-size="9" fill="{MUTED}" text-anchor="middle">Metric Embodied Representation (e.g. DINOv2 3D / PointNet)</text>')
-
-    svg.append(f'<rect x="{rx+30}" y="130" width="160" height="110" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
-    # 3D Bounding box
-    svg.append(f'<polygon points="{rx+60},{190} {rx+110},{160} {rx+160},{170} {rx+110},{200}" fill="{TEAL}" fill-opacity="0.2" stroke="{TEAL}" stroke-width="1.2"/>')
-    svg.append(f'<polygon points="{rx+60},{190} {rx+60},{220} {rx+110},{230} {rx+110},{200}" fill="{TEAL}" fill-opacity="0.1" stroke="{TEAL}" stroke-width="1.2"/>')
-    svg.append(f'<polygon points="{rx+110},{200} {rx+110},{230} {rx+160},{200} {rx+160},{170}" fill="{TEAL}" fill-opacity="0.3" stroke="{TEAL}" stroke-width="1.2"/>')
-    svg.append(f'<text x="{rx+110}" y="{242}" font-size="8" font-weight="700" fill="{TEAL}" text-anchor="middle">p = [0.42, -0.15, 0.88] m</text>')
-
-    features = [
-        "Calibrated SE(3) centroid in world frame",
-        "Estimated surface normals &amp; friction cone",
-        "Bounding collision primitive for CBF safety filter",
-        "Metric affordance lease for trajectory planner"
-    ]
-    for idx, ft in enumerate(features):
-        svg.append(f'<text x="{rx+20}" y="{270+idx*20}" font-size="8.5" fill="{SLATE}">• {ft}</text>')
+    for idx, (rhdr, rtxt) in enumerate(rules):
+        ry_pos = iy + 36 + idx * 34
+        svg.append(f'<text x="{rx+22}" y="{ry_pos}" font-size="8" font-weight="700" fill="{INK}">{rhdr}</text>')
+        svg.append(f'<text x="{rx+32}" y="{ry_pos+14}" font-size="7.5" fill="{SLATE}">{rtxt}</text>')
 
     svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/05-perception/figures/fig04_spatial_tokenization.svg", "\n".join(svg))
+    save_svg_and_pdf("book/chapters/05-data/figures/fig05_compounding_error_flywheel.svg", "\n".join(svg))
 
-def gen_fig04_sensor_synchronization():
-    W = 880
-    H = 430
+
+def gen_fig05_collector_coverage_ledger():
+    """
+    Figure 5.2: Empirical State-Action Occupancy vs External Scenario Ledger.
+    Illustrates how cautious teleoperation leaves 98.7% of the required operational grid unvisited
+    despite low training/validation loss, compared with exploratory collection and relational ledger joins.
+    """
+    W = 1000
+    H = 500
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
     svg.append(COMMON_STYLE)
     svg.append(COMMON_DEFS)
+
+    # Background Card
     svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">SENSOR SYNCHRONIZATION: HARDWARE PTP VS SOFTWARE STAMP ILLUSION</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Why Linux User-Space Timestamping Corrupts Multi-Modal Fusion and Injects Spatial Drift</text>')
+    svg.append(f'<text x="{W/2}" y="28" class="title">COLLECTOR EMPIRICAL OCCUPANCY VS SCENARIO LEDGER SUPPORT</text>')
+    svg.append(f'<text x="{W/2}" y="45" class="subtitle">Why Low Validation Loss on Held-Out Demonstrations Conceals Critical Operational Blind Spots</text>')
 
-    # Top: Software Timestamping (Bad)
-    ty = 70
-    th = 150
-    svg.append(f'<rect x="40" y="{ty}" width="{W-80}" height="{th}" rx="8" fill="{CORAL}" fill-opacity="0.04" stroke="{CORAL}" stroke-width="1.2"/>')
-    svg.append(f'<text x="60" y="{ty+24}" font-size="11" font-weight="700" fill="{CORAL}">✕ THE SOFTWARE TIMESTAMP ILLUSION (gettimeofday / ROS Header)</text>')
-    svg.append(f'<text x="60" y="{ty+40}" font-size="8.5" fill="{MUTED}">Timestamps assigned after OS scheduling, driver context switches, and USB/Ethernet queue delays</text>')
+    # 3 Column Cards
+    # Col 1: Cautious Collector
+    c1_x = 24
+    cw = 295
+    cy = 65
+    ch = 415
 
-    # Timeline comparison
-    t_start = 80
-    t_w = 700
-    svg.append(f'<line x1="{t_start}" y1="{ty+90}" x2="{t_start+t_w}" y2="{ty+90}" stroke="{SLATE}" stroke-width="1"/>')
+    svg.append(f'<rect x="{c1_x}" y="{cy}" width="{cw}" height="{ch}" rx="8" fill="{BG_WHITE}" stroke="{CORAL}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{c1_x}" y="{cy}" width="{cw}" height="26" rx="8" fill="{CORAL}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{c1_x+cw/2}" y="{cy+18}" font-size="10" font-weight="700" fill="{CORAL}" text-anchor="middle">COLLECTOR A: CAUTIOUS TELEOP</text>')
+
+    # Grid 1: Cautious (Concentrated in 8 cells)
+    g1_x = c1_x + 35
+    g1_y = cy + 45
+    gw = 220
+    gh = 160
+
+    # Draw grid background
+    svg.append(f'<rect x="{g1_x}" y="{g1_y}" width="{gw}" height="{gh}" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
     
-    # Events
-    svg.append(f'<circle cx="{t_start+50}" cy="{ty+90}" r="5" fill="{NAVY}"/>')
-    svg.append(f'<text x="{t_start+50}" y="{ty+75}" font-size="8" font-weight="700" fill="{NAVY}" text-anchor="middle">Physical Flash (t₀)</text>')
+    # 30x20 cell representation: draw subtle lines
+    for i in range(1, 6):
+        svg.append(f'<line x1="{g1_x + i*gw/6}" y1="{g1_y}" x2="{g1_x + i*gw/6}" y2="{g1_y+gh}" stroke="{BORDER}" stroke-width="0.5" stroke-dasharray="2,2"/>')
+    for j in range(1, 4):
+        svg.append(f'<line x1="{g1_x}" y1="{g1_y + j*gh/4}" x2="{g1_x+gw}" y2="{g1_y + j*gh/4}" stroke="{BORDER}" stroke-width="0.5" stroke-dasharray="2,2"/>')
 
-    svg.append(f'<circle cx="{t_start+180}" cy="{ty+90}" r="5" fill="{BLUE}"/>')
-    svg.append(f'<text x="{t_start+180}" y="{ty+75}" font-size="8" font-weight="700" fill="{BLUE}" text-anchor="middle">IMU DMA Arrival (+1.2 ms)</text>')
+    # Highlight only center 8 cells (dense hotspot)
+    spot_x = g1_x + gw/2 - 18
+    spot_y = g1_y + gh/2 - 12
+    svg.append(f'<rect x="{spot_x}" y="{spot_y}" width="36" height="24" rx="3" fill="{CORAL}" fill-opacity="0.85" stroke="{CRIMSON}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{spot_x+18}" y="{spot_y+15}" font-size="7" font-weight="700" fill="#FFFFFF" text-anchor="middle">10⁶ pts</text>')
 
-    svg.append(f'<circle cx="{t_start+450}" cy="{ty+90}" r="5" fill="{CORAL}"/>')
-    svg.append(f'<text x="{t_start+450}" y="{ty+75}" font-size="8" font-weight="700" fill="{CORAL}" text-anchor="middle">Camera Frame Stamp (+38.5 ms!)</text>')
+    # Axis Labels for Grid 1
+    svg.append(f'<text x="{g1_x+gw/2}" y="{g1_y+gh+14}" font-size="7.5" fill="{SLATE}" text-anchor="middle">Contact Angle θ: [-15°, +15°]</text>')
+    svg.append(f'<text x="{g1_x-10}" y="{g1_y+gh/2}" font-size="7.5" fill="{SLATE}" transform="rotate(-90 {g1_x-10} {g1_y+gh/2})" text-anchor="middle">Force F_N: [0, 20 N]</text>')
 
-    svg.append(f'<rect x="{t_start+470}" y="{ty+105}" width="{t_w-470}" height="28" rx="4" fill="{CORAL}" fill-opacity="0.1"/>')
-    svg.append(f'<text x="{t_start+480}" y="{ty+122}" font-size="8.5" font-weight="700" fill="{CORAL}">Temporal Skew: Δt = 37.3 ms ⇒ Epipolar triangulation error &gt; 18 cm!</text>')
-
-    # Bottom: Hardware PTP (Good)
-    by = 240
-    bh = 160
-    svg.append(f'<rect x="40" y="{by}" width="{W-80}" height="{bh}" rx="8" fill="{TEAL}" fill-opacity="0.04" stroke="{TEAL}" stroke-width="1.2"/>')
-    svg.append(f'<text x="60" y="{by+24}" font-size="11" font-weight="700" fill="{TEAL}">✓ HARDWARE PTP / IEEE 1588 SYNCHRONIZATION (Cross-Triggered)</text>')
-    svg.append(f'<text x="60" y="{by+40}" font-size="8.5" fill="{MUTED}">Timestamps latched in silicon hardware registers directly at photonic / IMU sample strobe</text>')
-
-    svg.append(f'<line x1="{t_start}" y1="{by+90}" x2="{t_start+t_w}" y2="{by+90}" stroke="{SLATE}" stroke-width="1"/>')
+    # Metrics Card 1
+    my1 = g1_y + gh + 26
+    svg.append(f'<rect x="{c1_x+14}" y="{my1}" width="{cw-28}" height="165" rx="6" fill="{CORAL}" fill-opacity="0.04" stroke="{CORAL}" stroke-width="0.8"/>')
     
-    svg.append(f'<circle cx="{t_start+50}" cy="{by+90}" r="5" fill="{NAVY}"/>')
-    svg.append(f'<text x="{t_start+50}" y="{by+75}" font-size="8" font-weight="700" fill="{NAVY}" text-anchor="middle">Physical Event (t₀)</text>')
-
-    svg.append(f'<circle cx="{t_start+52}" cy="{by+90}" r="4" fill="{TEAL}"/>')
-    svg.append(f'<text x="{t_start+52}" y="{by+115}" font-size="8" font-weight="700" fill="{TEAL}" text-anchor="middle">Camera Strobe Latch</text>')
-
-    svg.append(f'<circle cx="{t_start+54}" cy="{by+90}" r="4" fill="{PETROL}"/>')
-    svg.append(f'<text x="{t_start+54}" y="{by+130}" font-size="8" font-weight="700" fill="{PETROL}" text-anchor="middle">IMU Timer Latch</text>')
-
-    svg.append(f'<rect x="{t_start+240}" y="{by+105}" width="360" height="28" rx="4" fill="{TEAL}" fill-opacity="0.1"/>')
-    svg.append(f'<text x="{t_start+250}" y="{by+122}" font-size="8.5" font-weight="700" fill="{TEAL}">Hardware PTP Skew: Δt &lt; 50 ns ⇒ Spatial triangulation error &lt; 0.2 mm ✓</text>')
-
-    svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/05-perception/figures/fig04_sensor_synchronization.svg", "\n".join(svg))
-
-def gen_fig04_uma_bus():
-    # Re-use the UMA bus generator from ch10
-    from .ch10 import gen_ch10_uma_bus
-    gen_ch10_uma_bus()
-    import shutil
-    shutil.copyfile("book/chapters/10-placement/figures/fig09_uma_bus_contention.svg", "book/chapters/05-perception/figures/fig04_uma_bus_contention.svg")
-    shutil.copyfile("book/chapters/10-placement/figures/fig09_uma_bus_contention.pdf", "book/chapters/05-perception/figures/fig04_uma_bus_contention.pdf")
-
-def gen_fig04_perception_pareto():
-    W = 880
-    H = 430
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
-    svg.append(COMMON_STYLE)
-    svg.append(COMMON_DEFS)
-    svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="10" stroke="{BORDER}" stroke-width="1"/>')
-    svg.append(f'<text x="{W/2}" y="28" class="title">SPATIAL PERCEPTION MULTI-OBJECTIVE PARETO FRONTIER</text>')
-    svg.append(f'<text x="{W/2}" y="44" class="subtitle">Operating Trade-Offs: Model Parameter Size vs Inference Latency vs 3D Metric Accuracy</text>')
-
-    # Plot Axes
-    ax_x = 100
-    ax_y = 350
-    pw = 680
-    ph = 260
-
-    svg.append(f'<line x1="{ax_x}" y1="{ax_y}" x2="{ax_x+pw}" y2="{ax_y}" stroke="{SLATE}" stroke-width="1.2" marker-end="url(#arr-slate)"/>')
-    svg.append(f'<text x="{ax_x+pw/2}" y="{ax_y+36}" font-size="10.5" font-weight="700" fill="{SLATE}" text-anchor="middle">Inference Latency Δt_infer (ms) → [Faster to Slower]</text>')
-
-    svg.append(f'<line x1="{ax_x}" y1="{ax_y}" x2="{ax_x}" y2="{ax_y-ph}" stroke="{SLATE}" stroke-width="1.2" marker-end="url(#arr-slate)"/>')
-    svg.append(f'<text x="{ax_x-45}" y="{ax_y-ph/2}" font-size="10.5" font-weight="700" fill="{SLATE}" transform="rotate(-90 {ax_x-45} {ax_y-ph/2})" text-anchor="middle">3D Metric Accuracy (mAP@0.25) →</text>')
-
-    # Pareto Curve
-    pareto_d = f"M {ax_x+40} {ax_y-40} Q {ax_x+220} {ax_y-200} {ax_x+580} {ax_y-240}"
-    svg.append(f'<path d="{pareto_d}" fill="none" stroke="{BLUE}" stroke-width="2.5" stroke-dasharray="6,3"/>')
-    svg.append(f'<text x="{ax_x+400}" y="{ax_y-230}" font-size="9" font-weight="700" fill="{BLUE}">Pareto Optimal Frontier</text>')
-
-    # Models on plot
-    models = [
-        ("MobileNetV4-3D", 5.2, 0.62, NAVY, ax_x+60, ax_y-65),
-        ("DINOv2-Small", 14.8, 0.81, TEAL, ax_x+180, ax_y-160),
-        ("DINOv2-Base", 28.5, 0.89, BRONZE, ax_x+340, ax_y-215),
-        ("PaliGemma-3B", 78.0, 0.94, PURPLE, ax_x+540, ax_y-245)
+    m1_items = [
+        ("Total Transitions:", "1,000,000 samples (100 Hz)"),
+        ("Scenario Grid Coverage:", "8 / 600 cells (1.3%)"),
+        ("Zero-Count Blind Spots:", "592 / 600 cells (98.7%!)"),
+        ("Validation Loss:", "L_val = 0.001 rad (Deceptive)"),
+        ("Compounding Drift Risk:", "CATASTROPHIC at ±2.5°"),
+        ("Verdict:", "REFUSE / REQUIRE DAgger")
     ]
+    for idx, (lbl, val) in enumerate(m1_items):
+        svg.append(f'<text x="{c1_x+22}" y="{my1+18+idx*24}" font-size="8" font-weight="700" fill="{INK}">{lbl}</text>')
+        col_val = CRIMSON if "98.7" in val or "CATASTROPHIC" in val or "REFUSE" in val else SLATE
+        svg.append(f'<text x="{c1_x+22}" y="{my1+30+idx*24}" font-size="7.5" font-weight="600" fill="{col_val}">{val}</text>')
 
-    for name, lat, acc, col, px, py in models:
-        svg.append(f'<circle cx="{px}" cy="{py}" r="7" fill="{col}" stroke="#FFFFFF" stroke-width="2" filter="url(#shadow)"/>')
-        bw = 145
-        svg.append(f'<rect x="{px+12}" y="{py-14}" width="{bw}" height="24" rx="4" fill="{BG_WHITE}" stroke="{col}" stroke-width="1"/>')
-        svg.append(f'<text x="{px+18}" y="{py+2}" font-size="8.5" font-weight="700" fill="{col}">{name} <tspan font-weight="500" fill="{MUTED}">({lat} ms)</tspan></text>')
 
-    # Shaded Sweet Spot
-    svg.append(f'<rect x="{ax_x+120}" y="{ax_y-200}" width="160" height="90" rx="6" fill="{TEAL}" fill-opacity="0.08" stroke="{TEAL}" stroke-dasharray="3,3"/>')
-    svg.append(f'<text x="{ax_x+200}" y="{ax_y-115}" font-size="8.5" font-weight="700" fill="{TEAL}" text-anchor="middle">Physical AI Sweet Spot</text>')
-    svg.append(f'<text x="{ax_x+200}" y="{ax_y-100}" font-size="7.5" fill="{SLATE}" text-anchor="middle">Latency ≤ 20 ms, mAP ≥ 0.80</text>')
+    # Col 2: Exploratory Collector
+    c2_x = 352
+    svg.append(f'<rect x="{c2_x}" y="{cy}" width="{cw}" height="{ch}" rx="8" fill="{BG_WHITE}" stroke="{TEAL}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{c2_x}" y="{cy}" width="{cw}" height="26" rx="8" fill="{TEAL}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{c2_x+cw/2}" y="{cy+18}" font-size="10" font-weight="700" fill="{PETROL}" text-anchor="middle">COLLECTOR B: EXPLORATORY POLICY</text>')
+
+    # Grid 2: Exploratory (Broad coverage)
+    g2_x = c2_x + 35
+    g2_y = cy + 45
+
+    svg.append(f'<rect x="{g2_x}" y="{g2_y}" width="{gw}" height="{gh}" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    for i in range(1, 6):
+        svg.append(f'<line x1="{g2_x + i*gw/6}" y1="{g2_y}" x2="{g2_x + i*gw/6}" y2="{g2_y+gh}" stroke="{BORDER}" stroke-width="0.5" stroke-dasharray="2,2"/>')
+    for j in range(1, 4):
+        svg.append(f'<line x1="{g2_x}" y1="{g2_y + j*gh/4}" x2="{g2_x+gw}" y2="{g2_y + j*gh/4}" stroke="{BORDER}" stroke-width="0.5" stroke-dasharray="2,2"/>')
+
+    # Broad multi-cell coverage blobs
+    svg.append(f'<rect x="{g2_x+15}" y="{g2_y+15}" width="{gw-30}" height="{gh-30}" rx="6" fill="{TEAL}" fill-opacity="0.25" stroke="{TEAL}" stroke-width="1"/>')
+    svg.append(f'<rect x="{g2_x+40}" y="{g2_y+35}" width="{gw-80}" height="{gh-70}" rx="4" fill="{TEAL}" fill-opacity="0.45"/>')
+    svg.append(f'<text x="{g2_x+gw/2}" y="{g2_y+gh/2+4}" font-size="7.5" font-weight="700" fill="{NAVY}" text-anchor="middle">510 Visited Cells (~1,961 pts/cell)</text>')
+
+    # Axis Labels for Grid 2
+    svg.append(f'<text x="{g2_x+gw/2}" y="{g2_y+gh+14}" font-size="7.5" fill="{SLATE}" text-anchor="middle">Contact Angle θ: [-15°, +15°]</text>')
+    svg.append(f'<text x="{g2_x-10}" y="{g2_y+gh/2}" font-size="7.5" fill="{SLATE}" transform="rotate(-90 {g2_x-10} {g2_y+gh/2})" text-anchor="middle">Force F_N: [0, 20 N]</text>')
+
+    # Metrics Card 2
+    my2 = g2_y + gh + 26
+    svg.append(f'<rect x="{c2_x+14}" y="{my2}" width="{cw-28}" height="165" rx="6" fill="{TEAL}" fill-opacity="0.04" stroke="{TEAL}" stroke-width="0.8"/>')
+    
+    m2_items = [
+        ("Total Transitions:", "1,000,000 samples (100 Hz)"),
+        ("Scenario Grid Coverage:", "510 / 600 cells (85.0%)"),
+        ("Unmonitored Edge Cells:", "90 / 600 cells (15.0%)"),
+        ("Validation Loss:", "L_val = 0.012 rad (Realistic)"),
+        ("Compounding Drift Risk:", "BOUNDED by recovery data"),
+        ("Verdict:", "ADMIT / PROCEED TO TRAINING")
+    ]
+    for idx, (lbl, val) in enumerate(m2_items):
+        svg.append(f'<text x="{c2_x+22}" y="{my2+18+idx*24}" font-size="8" font-weight="700" fill="{INK}">{lbl}</text>')
+        col_val = TEAL if "85.0" in val or "BOUNDED" in val or "ADMIT" in val else SLATE
+        svg.append(f'<text x="{c2_x+22}" y="{my2+30+idx*24}" font-size="7.5" font-weight="600" fill="{col_val}">{val}</text>')
+
+
+    # Col 3: The Scenario Ledger Relational Join
+    c3_x = 680
+    c3_w = 295
+    svg.append(f'<rect x="{c3_x}" y="{cy}" width="{c3_w}" height="{ch}" rx="8" fill="{BG_WHITE}" stroke="{NAVY}" stroke-width="1.2" filter="url(#shadow)"/>')
+    svg.append(f'<rect x="{c3_x}" y="{cy}" width="{c3_w}" height="26" rx="8" fill="{NAVY}" fill-opacity="0.1"/>')
+    svg.append(f'<text x="{c3_x+c3_w/2}" y="{cy+18}" font-size="10" font-weight="700" fill="{NAVY}" text-anchor="middle">SCENARIO LEDGER RELATIONAL JOIN</text>')
+
+    # Flowchart / Table Schema Join
+    jy = cy + 40
+    svg.append(f'<text x="{c3_x+14}" y="{jy+12}" font-size="8.5" font-weight="700" fill="{NAVY}">External Specification S_req:</text>')
+    
+    # Box: S_req
+    svg.append(f'<rect x="{c3_x+14}" y="{jy+20}" width="{c3_w-28}" height="42" rx="4" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{c3_x+22}" y="{jy+36}" font-size="7.5" font-weight="700" fill="{SLATE}">Operational Envelope Grid: 600 Bins</text>')
+    svg.append(f'<text x="{c3_x+22}" y="{jy+50}" font-size="7" fill="{MUTED}">θ ∈ [-15°, +15°], F_N ∈ [0, 20 N], μ ∈ [0.1, 0.4]</text>')
+
+    # Relational Join Operator (Circle)
+    svg.append(f'<circle cx="{c3_x+c3_w/2}" cy="{jy+80}" r="12" fill="{BLUE}" stroke="{BG_WHITE}" stroke-width="1.5"/>')
+    svg.append(f'<text x="{c3_x+c3_w/2}" y="{jy+84}" font-size="10" font-weight="700" fill="#FFFFFF" text-anchor="middle">⋈</text>')
+
+    # Box: Empirical Log d^π_col
+    svg.append(f'<rect x="{c3_x+14}" y="{jy+100}" width="{c3_w-28}" height="42" rx="4" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{c3_x+22}" y="{jy+116}" font-size="7.5" font-weight="700" fill="{SLATE}">Empirical Dataset Visitation: N_cell</text>')
+    svg.append(f'<text x="{c3_x+22}" y="{jy+130}" font-size="7" fill="{MUTED}">Count occurrences per discretized scenario cell</text>')
+
+    # Down arrow
+    svg.append(f'<line x1="{c3_x+c3_w/2}" y1="{jy+144}" x2="{c3_x+c3_w/2}" y2="{jy+164}" stroke="{NAVY}" stroke-width="1.3" marker-end="url(#arr-navy)"/>')
+
+    # Output Decision Matrix
+    dy = jy + 170
+    svg.append(f'<rect x="{c3_x+14}" y="{dy}" width="{c3_w-28}" height="185" rx="5" fill="{BG_LIGHT}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{c3_x+22}" y="{dy+18}" font-size="8.5" font-weight="700" fill="{INK}">Support Classification Rules:</text>')
+
+    decisions = [
+        ("N_cell ≥ 500:", "Supported Nominal Regime", "Policy trained under dense supervision.", TEAL),
+        ("0 < N_cell < 50:", "High-Variance Regime", "Insufficient sample count; wide epistemic variance.", AMBER),
+        ("N_cell = 0:", "Zero-Support Blind Spot", "Zero empirical constraints. Triggers autonomous safety gate refusal.", CORAL)
+    ]
+    for idx, (cond, cat, exp, dcol) in enumerate(decisions):
+        d_pos = dy + 36 + idx * 48
+        svg.append(f'<circle cx="{c3_x+26}" cy="{d_pos-3}" r="4" fill="{dcol}"/>')
+        svg.append(f'<text x="{c3_x+36}" y="{d_pos}" font-size="8" font-weight="700" fill="{dcol}">{cond} <tspan font-weight="600" fill="{INK}">{cat}</tspan></text>')
+        svg.append(f'<text x="{c3_x+36}" y="{d_pos+14}" font-size="7" fill="{SLATE}">{exp}</text>')
 
     svg.append('</svg>')
-    save_svg_and_pdf("book/chapters/05-perception/figures/fig04_perception_pareto.svg", "\n".join(svg))
+    save_svg_and_pdf("book/chapters/05-data/figures/fig05_collector_coverage_ledger.svg", "\n".join(svg))
+
 
 def run_all():
-    gen_fig04_spatial_tokenization()
-    gen_fig04_sensor_synchronization()
-    gen_fig04_uma_bus()
-    gen_fig04_perception_pareto()
+    print("Generating Chapter 5 Data figures...")
+    gen_fig05_compounding_error_flywheel()
+    gen_fig05_collector_coverage_ledger()
+    print("Chapter 5 figures generated successfully.")
 
 if __name__ == "__main__":
     run_all()
+
