@@ -32,54 +32,66 @@ This is the systems course for that transition: not a kinematics survey, not Tin
 
 ## The curriculum sandwich
 
-Eleven chapters + capstone. Same spine as the book. Labs track the chapters; contracts live in [`labs/`](../labs/).
+Seventeen chapters organized into three parts + capstone. Same spine as the book. Labs track the chapters; formal specifications and code live in [`labs/`](../labs/).
 
-### Part I — Foundations
+### Part I — The Laws of Physical Action
 
-| # | Topic |
+| # | Chapter & Core Focus |
 | ---: | --- |
-| 1 | Causal boundary — when is it Physical AI? |
-| 2 | Physical constraints — freshness, $P_{99}$, stopping, energy |
-| 3 | Cognitive dimensions — co-design, multi-rate lifecycle |
+| 1 | **Boundary** — When ML becomes Physical AI: closed-loop causal dynamics & the loop charter |
+| 2 | **Body** — Reflected inertia ($N^2 J_{\text{rotor}}$), heat dissipation, and electric actuator limits |
+| 3 | **Brain** — What a learned component gives you (VLM / VLA) and the proposal–permission boundary |
+| 4 | **Nervous System** — Multi-rate execution hierarchy, zero-allocation SRAM, and real-time IPC |
+| 5 | **Data** — Demonstrations, compounding covariate shift, and teleoperation physics |
+| 6 | **Training** — Multimodal policies (Diffusion / ACT), contact mechanics, and sim-to-real transfer |
+| 7 | **Evaluation** — The astronomical exposure wall, non-asymptotic bounds, and offline disconnects |
 
 ### Materials (the filling)
 
 | | |
 | --- | --- |
 | **Book** | *Physical AI: Machine Learning Systems That Sense and Act* — chapter text, figures, contracts |
-| **Labs** | Kit bring-up → measure both brains → **MCU enforcer** → ship gate → capstone |
-| **Notebook** | Short chapter checkpoints you freeze as you go (no classical written exam) |
+| **Labs** | Kit bring-up → measure both brains → VLM intent → **1 kHz MCU enforcer** → ship gate → capstone |
+| **Notebook** | Short chapter checkpoints frozen in the engineering notebook (no classical written exam) |
 | **Baseline** | [mlsysbook.ai](https://mlsysbook.ai) for quantize / prune / serve (not re-taught here) |
 
-### Part II — Agent architecture
+### Part II — The Architectural Spine (Perceive $\to$ Intend $\to$ Enforce)
 
-| # | Topic |
+| # | Chapter & Core Focus |
 | ---: | --- |
-| 4 | Perception & spatial encoders |
-| 5 | Memory & world models |
-| 6 | Intent as expiring proposal |
-| 7 | Planning — trajectories / action chunks |
-| 8 | Enforcement — independent MCU permission |
+| 8 | **Perception** — Spatial encoders (DINOv2, SAM), 3D feature fields, and sensor latency waterfalls |
+| 9 | **Memory** — $SE(3)$ frame trees, world models, volumetric raycasting, and epistemic drift |
+| 10 | **Intent** — Open-vocabulary 3D grounding, spatial affordances, and expiring intent leases |
+| 11 | **Planning** — Action chunking, receding horizons, jerk bounds, and $C^2$ spline continuity |
+| 12 | **Enforcement** — Independent MCU safety filters, Control Barrier Functions (CBF-QP), and minimal intervention |
 
-### Part III — Integration & release
+### Part III — Systems Realization, Governance & The Frontier
 
-| # | Topic |
+| # | Chapter & Core Focus |
 | ---: | --- |
-| 9 | Heterogeneous placement |
-| 10 | Governance — human authority, governed data |
-| 11 | Assurance — evidence → release verdict |
-| — | Capstone — whole-system defense |
+| 13 | **Placement** — Heterogeneous silicon partitioning, memory crossbars, and PDN voltage droop |
+| 14 | **Intervention** — Shared autonomy, bumpless control transfer, and human takeover dynamics |
+| 15 | **Verification** — The 4-stage HIL ladder, synthetic fault injection, and temporal logic falsification |
+| 16 | **Release** — Claim-Argument-Evidence (CAE) safety cases, GSN, and UL 4600 / ISO deployment gates |
+| 17 | **Frontier** — Observational indistinguishability, shortcut representations, and epistemic limits |
+| — | **Capstone** — Whole-system defense under unannounced seeded hardware/model faults |
 
-### Labs (outline)
+### Labs (Hardware Studio Track)
 
-| Labs | Focus |
-| ---: | --- |
-| 00–01 | Bring-up · close the loop |
-| 02–04 | Freshness · measure both brains · fault containment |
-| 05–07 | Perception · belief · intent |
-| **08** | **MCU enforcer** *(signature)* |
-| 09–13 | Placement · authority · ship gate |
-| Capstone | Seeded-fault defense |
+| Lab Module | Core Systems Focus | Deliverable / Gate |
+| :--- | :--- | :--- |
+| `00-kit-bringup/` | Dual-brain bring-up, inter-processor link, and safe idle | Hardware Bring-Up |
+| `01-close-the-loop/` | Advisory mode vs. closed-loop state mutation | Loop Charter |
+| `02-freshness-wall/` & `03-measure-both-brains/` | Information age ($\Delta t$), $P_{99}$ latency tails, bus contention | Requirements Ledger |
+| `04-runtime-fault-containment/` | Multi-rate IPC, lock-free seqlocks, MPU crash survival | Runtime Skeleton |
+| `05-perception-frontier/` | MIPI CSI-2 DMA ring buffers, ViT patch tokenization | Observation Contract |
+| `06-belief-drift/` | $SE(3)$ transform trees, timestamp skew, TTL belief leases | State & Timing Model |
+| `07-two-speed-intent/` | Edge VLM bounding boxes, affordances, expiring intent leases | Intent Schema |
+| **`08-mcu-enforcer/`** | **Signature Lab:** 1 kHz MCU Control Barrier Function vetoes | Enforcement Design |
+| `09-placement-ripple/` | Heterogeneous resource partitioning (FLOPs, SRAM, Watts, QoS) | Placement Ledger |
+| `10-shadow-and-faults/` & `11-authority-paths/` | Bumpless joystick override and shadow runtime auditing | Authority Design |
+| `12-learning-turn/` & `13-ship-gate/` | Cross-layer seeded fault injection & safety case argument | Release Case |
+| **`99-design-review/`** | **Capstone Jury:** Live unannounced fault defense & release verdict | **Final Release** |
 
 
 ## The kit

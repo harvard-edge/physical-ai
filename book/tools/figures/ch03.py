@@ -354,3 +354,157 @@ def run_all():
 
 if __name__ == "__main__":
     run_all()
+
+def gen_fig03_vla_architecture():
+    """
+    Figure 3.3: Vision-Language-Action (VLA) Model Architecture & Action Tokenization Pipeline.
+    Details multimodal ingestion, visual patch projection, autoregressive transformer backbone,
+    discrete action binning vs. continuous diffusion action chunking, and edge hardware execution.
+    """
+    W = 960
+    H = 560
+    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="100%" height="100%">']
+    svg.append(COMMON_STYLE)
+    svg.append(COMMON_DEFS)
+    svg.append(f'<rect width="{W}" height="{H}" fill="{BG_WHITE}" rx="8" stroke="{BORDER}" stroke-width="1"/>')
+
+    # Header
+    svg.append(f'<text x="{W/2}" y="26" class="title">VISION-LANGUAGE-ACTION (VLA) ARCHITECTURE &amp; PROPOSAL PIPELINE</text>')
+    svg.append(f'<text x="{W/2}" y="42" class="subtitle">Multimodal Ingestion · Visual Patch Tokenization · Autoregressive Transformer Backbone · Action Tokenization Paradigms</text>')
+
+    # =========================================================================
+    # STAGE 1: MULTIMODAL SENSORY INGESTION & TOKENIZATION
+    # =========================================================================
+    s1_x = 24
+    s1_y = 60
+    s1_w = 210
+    s1_h = 420
+    svg.append(f'<rect x="{s1_x}" y="{s1_y}" width="{s1_w}" height="{s1_h}" rx="6" fill="{BG_LIGHT}" stroke="{BLUE}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{s1_x}" y="{s1_y}" width="{s1_w}" height="24" rx="6" fill="{BLUE}" fill-opacity="0.12"/>')
+    svg.append(f'<text x="{s1_x+10}" y="{s1_y+16}" font-size="9.5" font-weight="700" fill="{BLUE}">1. MULTIMODAL INGESTION</text>')
+
+    # 1.1 Overhead Camera Card
+    svg.append(f'<rect x="{s1_x+10}" y="{s1_y+34}" width="{s1_w-20}" height="75" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+50}" font-size="9" font-weight="700" fill="{INK}">Overhead RGB Camera</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+64}" font-size="8" fill="{SLATE}">224 x 224 x 3 @ 30 Hz</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+78}" font-size="8" fill="{MUTED}">ViT Patch: 14x14 -&gt; 256 tokens</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+92}" font-size="7.5" font-weight="600" fill="{BLUE}">Linear Projection z_vis</text>')
+
+    # 1.2 Wrist Camera Card
+    svg.append(f'<rect x="{s1_x+10}" y="{s1_y+118}" width="{s1_w-20}" height="75" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+134}" font-size="9" font-weight="700" fill="{INK}">Wrist RGB Camera</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+148}" font-size="8" fill="{SLATE}">224 x 224 x 3 (Gripper View)</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+162}" font-size="8" fill="{MUTED}">Fine-contact visual alignment</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+176}" font-size="7.5" font-weight="600" fill="{BLUE}">Linear Projection z_wrist</text>')
+
+    # 1.3 Natural Language Instruction
+    svg.append(f'<rect x="{s1_x+10}" y="{s1_y+202}" width="{s1_w-20}" height="80" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+218}" font-size="9" font-weight="700" fill="{PURPLE}">Task Instruction (Text)</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+232}" font-size="8" fill="{SLATE}">"pick red cup, place on tray"</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+246}" font-size="8" fill="{MUTED}">BPE Tokenizer / SentencePiece</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+260}" font-size="7.5" font-weight="600" fill="{PURPLE}">Text Tokens: [t_1, t_2, ..., t_L]</text>')
+
+    # 1.4 Proprioceptive State
+    svg.append(f'<rect x="{s1_x+10}" y="{s1_y+290}" width="{s1_w-20}" height="70" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+306}" font-size="9" font-weight="700" fill="{TEAL}">Proprioceptive State</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+320}" font-size="8" fill="{SLATE}">Joint Angles q, Velocities q_dot</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+334}" font-size="8" fill="{MUTED}">Gripper state g in [0, 1]</text>')
+    svg.append(f'<text x="{s1_x+18}" y="{s1_y+348}" font-size="7.5" font-weight="600" fill="{TEAL}">State Token: z_state</text>')
+
+    # =========================================================================
+    # STAGE 2: AUTOREGRESSIVE MULTIMODAL TRANSFORMER BACKBONE
+    # =========================================================================
+    s2_x = 260
+    s2_y = 60
+    s2_w = 320
+    s2_h = 420
+    svg.append(f'<rect x="{s2_x}" y="{s2_y}" width="{s2_w}" height="{s2_h}" rx="6" fill="{BG_LIGHT}" stroke="{AMBER}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{s2_x}" y="{s2_y}" width="{s2_w}" height="24" rx="6" fill="{AMBER}" fill-opacity="0.15"/>')
+    svg.append(f'<text x="{s2_x+10}" y="{s2_y+16}" font-size="9.5" font-weight="700" fill="{AMBER}">2. VLA TRANSFORMER BACKBONE (7B–55B)</text>')
+
+    # Transformer Details Card
+    svg.append(f'<rect x="{s2_x+12}" y="{s2_y+34}" width="{s2_w-24}" height="140" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+50}" font-size="9" font-weight="700" fill="{INK}">Multimodal Fusion &amp; Self-Attention</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+66}" font-size="8" fill="{SLATE}">Concatenated Tokens: [z_vis | z_wrist | z_text | z_state]</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+80}" font-size="8" fill="{SLATE}">32–80 Transformer Layers · Multi-Head Attention</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+94}" font-size="8" fill="{MUTED}">Web-scale pretraining + Robot Trajectory co-fine-tuning</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+108}" font-size="8" fill="{MUTED}">Exemplars: OpenVLA (7B), RT-2 (55B), PaLM-E (562B)</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+124}" font-size="7.5" font-weight="700" fill="{AMBER}">Memory Bound: Streams ~7 GB weights per action step</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+138}" font-size="7.5" fill="{MUTED}">Inference Latency: 150–350 ms on Edge NPU (3–5 Hz)</text>')
+
+    # Edge Silicon Execution Card
+    svg.append(f'<rect x="{s2_x+12}" y="{s2_y+184}" width="{s2_w-24}" height="110" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+200}" font-size="9" font-weight="700" fill="{NAVY}">Edge Silicon Resource Footprint</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+216}" font-size="8" fill="{SLATE}">Precision: INT4 / FP8 Quantized Weights</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+230}" font-size="8" fill="{SLATE}">Memory: 5.6 GB DRAM (Weights) + 1.2 GB KV Cache</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+244}" font-size="8" fill="{SLATE}">Bus Bandwidth: 204.8 GB/s LPDDR5 Memory Wall</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+258}" font-size="8" fill="{CRIMSON}">Thermal Draw: 35W–50W sustained on SoC</text>')
+    svg.append(f'<text x="{s2_x+20}" y="{s2_y+272}" font-size="7.5" font-weight="600" fill="{NAVY}">Hardware: NVIDIA Jetson AGX Orin / Apple Silicon</text>')
+
+    # Unprivileged Banner
+    svg.append(f'<rect x="{s2_x+12}" y="{s2_y+304}" width="{s2_w-24}" height="55" rx="4" fill="{AMBER}" fill-opacity="0.10" stroke="{AMBER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s2_x+s2_w/2}" y="{s2_y+322}" font-size="8.5" font-weight="700" fill="{AMBER}" text-anchor="middle">UNPRIVILEGED CANDIDATE PROPOSALS</text>')
+    svg.append(f'<text x="{s2_x+s2_w/2}" y="{s2_y+336}" font-size="7.5" fill="{SLATE}" text-anchor="middle">Outputs are stochastic samples a_hat ~ pi_theta(o_t)</text>')
+    svg.append(f'<text x="{s2_x+s2_w/2}" y="{s2_y+348}" font-size="7.5" fill="{CRIMSON}" text-anchor="middle">ZERO direct actuator register write authority</text>')
+
+    # Arrow S1 -> S2
+    svg.append(f'<line x1="{s1_x+s1_w}" y1="{s2_y+100}" x2="{s2_x}" y2="{s2_y+100}" stroke="{BLUE}" stroke-width="1.8" marker-end="url(#arr-blue)"/>')
+    svg.append(f'<line x1="{s1_x+s1_w}" y1="{s2_y+240}" x2="{s2_x}" y2="{s2_y+240}" stroke="{PURPLE}" stroke-width="1.8" marker-end="url(#arr-purple)"/>')
+
+    # =========================================================================
+    # STAGE 3: ACTION TOKENIZATION PARADIGMS
+    # =========================================================================
+    s3_x = 605
+    s3_y = 60
+    s3_w = 330
+    s3_h = 420
+    svg.append(f'<rect x="{s3_x}" y="{s3_y}" width="{s3_w}" height="{s3_h}" rx="6" fill="{BG_LIGHT}" stroke="{TEAL}" stroke-width="1.2"/>')
+    svg.append(f'<rect x="{s3_x}" y="{s3_y}" width="{s3_w}" height="24" rx="6" fill="{TEAL}" fill-opacity="0.15"/>')
+    svg.append(f'<text x="{s3_x+10}" y="{s3_y+16}" font-size="9.5" font-weight="700" fill="{TEAL}">3. ACTION TOKENIZATION &amp; EMISSION</text>')
+
+    # Paradigm A: Discrete Bins
+    svg.append(f'<rect x="{s3_x+12}" y="{s3_y+34}" width="{s3_w-24}" height="100" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+50}" font-size="9" font-weight="700" fill="{BLUE}">Paradigm A: Discrete Action Binning (RT-2 / OpenVLA)</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+66}" font-size="8" fill="{SLATE}">Quantize 7-DoF action space into K=256 uniform bins</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+80}" font-size="8" fill="{SLATE}">Delta coords: [dx, dy, dz, droll, dpitch, dyaw, grip]</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+94}" font-size="8" fill="{MUTED}">Emits 7 text vocabulary tokens sequentially</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+108}" font-size="7.5" fill="{MUTED}">Single-step delta proposal: a_t in R^7 @ 3–5 Hz</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+122}" font-size="7.5" font-weight="600" fill="{BLUE}">Artifact: Discrete Waypoint / Single-Step Goal</text>')
+
+    # Paradigm B: Continuous Action Chunking & Diffusion
+    svg.append(f'<rect x="{s3_x+12}" y="{s3_y+144}" width="{s3_w-24}" height="105" rx="4" fill="{BG_WHITE}" stroke="{BORDER}" stroke-width="1"/>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+160}" font-size="9" font-weight="700" fill="{TEAL}">Paradigm B: Diffusion Action Chunking (Octo / ACT)</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+176}" font-size="8" fill="{SLATE}">Transformer features condition lightweight diffusion head</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+190}" font-size="8" fill="{SLATE}">Predicts continuous action chunk A_t:t+H (H = 16 steps)</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+204}" font-size="8" fill="{MUTED}">Temporal ensembling eliminates single-step Markov error</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+218}" font-size="7.5" fill="{MUTED}">Continuous trajectory horizon: 320 ms preview window</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+232}" font-size="7.5" font-weight="600" fill="{TEAL}">Artifact: C^2 Continuous Spline / Action Chunk</text>')
+
+    # Downstream Nervous Enforcer Integration Card
+    svg.append(f'<rect x="{s3_x+12}" y="{s3_y+258}" width="{s3_w-24}" height="105" rx="4" fill="{BG_WHITE}" stroke="{PETROL}" stroke-width="1.2"/>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+274}" font-size="9" font-weight="700" fill="{PETROL}">4. Downstream Nervous System Gating (MCU @ 1 kHz)</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+290}" font-size="8" fill="{SLATE}">RPMSG / PCIe DMA across isolation boundary</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+304}" font-size="8" fill="{SLATE}">Control Barrier Function (CBF-QP): h_dot(x,u) + gamma h(x) &gt;= 0</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+318}" font-size="8" fill="{SLATE}">Stopping distance invariant: d_stop(v) &lt;= d_clearance</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+334}" font-size="8" font-weight="700" fill="{PETROL}">Permitted Motor Commits u_t* Latch at 1000 Hz</text>')
+    svg.append(f'<text x="{s3_x+20}" y="{s3_y+348}" font-size="7.5" fill="{MUTED}">Fallback: Safe Stop 1 (SS1) / Zero-torque if lease expires</text>')
+
+    # Arrow S2 -> S3
+    svg.append(f'<line x1="{s2_x+s2_w}" y1="{s3_y+85}" x2="{s3_x}" y2="{s3_y+85}" stroke="{AMBER}" stroke-width="1.8" marker-end="url(#arr-amber)"/>')
+    svg.append(f'<line x1="{s2_x+s2_w}" y1="{s3_y+195}" x2="{s3_x}" y2="{s3_y+195}" stroke="{AMBER}" stroke-width="1.8" marker-end="url(#arr-amber)"/>')
+
+    # Bottom Summary Ribbon
+    svg.append(f'<rect x="24" y="495" width="{W-48}" height="45" rx="5" fill="{NAVY}" fill-opacity="0.08" stroke="{NAVY}" stroke-width="1"/>')
+    svg.append(f'<text x="{W/2}" y="514" font-size="9" font-weight="700" fill="{NAVY}" text-anchor="middle">THE PHYSICAL AI DILEMMA: HIGH CAPACITY (7B–55B) INFERENCE RUNS SLOW (3–5 Hz); PHYSICAL DYNAMICS REQUIRE FAST (1 kHz) SUPERVISION</text>')
+    svg.append(f'<text x="{W/2}" y="528" font-size="8" fill="{SLATE}" text-anchor="middle">VLAs operate strictly as unauthenticated proposal engines across the slow cognitive tier, gated by bare-metal MCU barrier enforcers.</text>')
+
+    svg.append('</svg>')
+    save_svg_and_pdf("book/chapters/03-brain/figures/fig03_vla_architecture.svg", "\n".join(svg))
+
+
+def run_all():
+    gen_fig03_two_speed_brain()
+    gen_fig03_vla_architecture()
+
+if __name__ == "__main__":
+    run_all()
