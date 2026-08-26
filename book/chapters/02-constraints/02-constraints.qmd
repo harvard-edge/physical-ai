@@ -320,49 +320,51 @@ As summarized in @tbl-thermal-domains, thermal dynamics and failure thresholds g
 
 ## Compute and Determinism {#sec-compute-determinism}
 
-Just as physical motors and power switches are bounded by thermodynamics and current rise times, the computing engine itself is an embodied physical machine. In Physical AI, computation is not an abstract logical operation executing in zero time on an idealized Turing machine; it is an embodied physical process governed by the speed of light in dielectric substrates, the spatial geometry of the memory hierarchy, the finite cross-section of physical conductors, and the thermodynamics of shuttling charge.
+Just as physical motors and power stages are bounded by thermodynamics and inductive current rise times, the computing engine itself is an embodied physical machine. In Physical AI, computation is not an abstract mathematical operation executing in zero time on an idealized Turing machine; it is an embodied physical process governed by the speed of light in dielectric substrates, the parasitic resistance and capacitance of physical wires, and the geometry of the memory hierarchy.
 
-To architect deterministic computing engines for embodied intelligence, engineers must master four foundational physical constraints: **Spatial Geometry and Propagation Delay**, **Silicon Density and the Data Movement Energy Wall**, **Conductor Cross-Sections and Shared Bus Contention**, and **Spatial Memory Search vs. Temporal Determinism**.
+From a computer architect's perspective, all hardware organization—from multi-level caches to heterogeneous interconnects—is a structural response to physical wire limits. To build deterministic computing engines for embodied intelligence, engineers must understand computing from the **wire level to the system level** across four foundational principles: **Wire-Level Parasitics and Data Movement Energy**, **The Principle of Locality and the Memory Hierarchy**, **Parallelism and Shared Interconnect Contention**, and **Spatial Memory Search vs. Temporal Determinism**.
 
-### Propagation Speed and the Euclidean Geometry of Memory
+### Wire-Level Realities: Parasitics, Propagation Delays, and the Energy of Moving Data
 
-Software abstractions routinely treat computer memory as a flat, uniform address space where any memory location can be accessed in negligible time. On real silicon, physical signals do not propagate instantaneously. Signal propagation speed through silicon metal layers and printed circuit board (PCB) copper traces is bounded by Maxwell's equations and the dielectric constant ($\epsilon_r$) of the insulating substrate: $v_{\text{prop}} = c / \sqrt{\epsilon_r} \approx 15\text{ cm/ns}$.
+Software abstractions treat electrical wires as instantaneous, zero-cost conduits. On real silicon and printed circuit boards (PCBs), a physical wire is a distributed transmission line with parasitic resistance ($R$) and capacitance ($C$). 
 
-Every centimeter of physical PCB trace adds approximately $67\text{ picoseconds}$ of electromagnetic flight delay. While picoseconds seem negligible in isolation, modern processors operate at gigahertz clock frequencies where a single clock cycle spans less than $0.5\text{ nanoseconds}$ ($500\text{ ps}$). In that single clock cycle, light in copper travels barely $7.5\text{ cm}$. Consequently, the memory hierarchy is an inescapable geometric consequence of Euclidean space and the finite speed of light:
+Signal propagation speed through silicon interconnect metal layers and PCB copper traces is bounded by Maxwell's equations and the dielectric constant ($\epsilon_r$) of the insulating substrate ($v_{\text{prop}} = c / \sqrt{\epsilon_r} \approx 15\text{ cm/ns}$, or approximately $67\text{ picoseconds}$ per centimeter). In a modern processor operating at a $2\text{ GHz}$ clock frequency, a single clock cycle spans just $0.5\text{ nanoseconds}$ ($500\text{ ps}$). In that single clock cycle, an electromagnetic wave in copper travels barely $7.5\text{ cm}$.
 
-* **On-Chip Registers ($< 0.05\text{ mm}$ distance):** Located immediately adjacent to arithmetic execution units, register flight times are sub-picosecond, delivering single-cycle access ($< 0.5\text{ ns}$).
-* **On-Chip Static SRAM ($1\text{ to } 5\text{ mm}$ distance):** Integrated directly onto the silicon die, static RAM delivers deterministic, single-digit nanosecond latency ($1\text{ to } 3\text{ ns}$).
-* **Off-Chip Dynamic RAM (DRAM) ($50\text{ to } 100\text{ mm}$ distance):** Separated from the processor across PCB copper traces, package solder balls, and memory bus receivers, external DRAM access requires traversing tens of physical millimeters, demanding $50\text{ to } 100\text{ ns}$ per transaction—a **$100\times$ physical latency penalty** dictated purely by physical distance and trace capacitive charging.
+Furthermore, charging and discharging the parasitic capacitance of physical conductors ($E = \frac{1}{2} C V^2$) dissipates real energy:
 
-Hard real-time safety supervisors must therefore execute strictly within on-chip static SRAM within millimeters of the processor core. Routing high-frequency $1000\text{ Hz}$ reflex loops across centimeters of PCB copper to off-chip DRAM injects a $100\times$ latency penalty and exposes the safety loop to board-level electrical bus contention.
+* Executing a 32-bit arithmetic floating-point operation within local ALU registers consumes approximately $1\text{--}5\text{ pJ}$.
+* Traversing PCB traces to fetch a 32-bit word from off-chip dynamic RAM (DRAM) consumes $1000\text{--}2000\text{ pJ}$.
 
-### Silicon Density and the Data Movement Energy Wall
+Shuttling data across physical distance consumes **one thousand times more physical energy** than performing arithmetic on that data. Compute is thermodynamically cheap; data movement across physical distance is slow, power-hungry, and generates the heat that forces silicon thermal downclocking.
 
-Machine learning researchers often ask: if on-chip static SRAM is so fast and deterministic, why not load the entire Vision-Language-Action (VLA) foundation model directly into SRAM? The barrier is physical real estate on the silicon wafer. Fast on-chip static RAM requires six transistors per bit ($6\text{T}$, cell area $>100\,F^2$), consuming massive silicon die area and capping on-die capacity to tens of megabytes ($<32\text{--}64\text{ MB}$). In contrast, dynamic RAM achieves dense storage by packing charge into a single transistor and trench capacitor per bit ($1\text{T-1C}$, cell area $\approx 6\,F^2$), enabling multi-gigabyte capacities ($>16\text{ GB}$) at the expense of volatility, periodic refresh cycles, and capacitive line charging.
+### The Principle of Locality: Geometry of the Memory Hierarchy
 
-This physical density trade-off creates the **Weight-Shuttling Wall**: modern vision-language-action policies require gigabytes of parameter weights and activation maps, far exceeding fast on-chip SRAM capacity. The neural accelerator cannot hold the model on-chip; it must continuously stream hundreds of megabytes of neural weights across external PCB buses on every single forward evaluation pass.
+To mitigate the physical latency and energy penalties of long wires, computer architects organize storage around the **Principle of Locality**: keeping data physically close in space (spatial locality) and reusing it quickly in time (temporal locality). The memory hierarchy is an inescapable geometric consequence of Euclidean distance and the finite speed of light:
 
-Furthermore, shuttling charge across physical conductors is thermodynamically expensive: performing a 32-bit ALU floating-point operation consumes only $1\text{--}5\text{ pJ}$, whereas fetching a 32-bit word from off-chip DRAM consumes $1000\text{--}2000\text{ pJ}$. Shuttling data consumes **one thousand times more physical energy** than arithmetic computation, generating substantial Joule heat that directly accelerates silicon thermal derating.
+* **On-Chip Registers ($< 0.05\text{ mm}$ distance):** Located immediately adjacent to arithmetic units, register flight times are sub-picosecond, delivering single-cycle access ($< 0.5\text{ ns}$).
+* **On-Chip Static SRAM ($1\text{ to } 5\text{ mm}$ distance):** Integrated directly on the silicon die, static RAM uses six-transistor cells ($6\text{T}$) to deliver deterministic, single-digit nanosecond latency ($1\text{ to } 3\text{ ns}$). However, $6\text{T}$ cells require large silicon area ($>100\,F^2$), physically capping on-die capacity to tens of megabytes ($<32\text{--}64\text{ MB}$).
+* **Off-Chip Dynamic DRAM ($50\text{ to } 100\text{ mm}$ distance):** Dynamic RAM packs charge into a dense single-transistor trench capacitor ($1\text{T-1C}$, cell area $\approx 6\,F^2$), providing multi-gigabyte capacity ($>16\text{ GB}$). But accessing DRAM requires traversing package pins, solder balls, and PCB traces, demanding $50\text{ to } 100\text{ ns}$ per transaction—a **$100\times$ physical latency penalty** compared to on-chip SRAM.
 
-Because large foundation models operate with low arithmetic operational intensity ($\text{FLOPs/Byte}$) at real-time batch size 1, edge neural policy execution is fundamentally **memory-bandwidth bound** (Bytes/second) rather than arithmetic compute throughput (FLOP/s):
+This physical trade-off creates two direct implications for Physical AI:
 
-$$t_{\text{infer}} \ge \frac{\text{Parameter Footprint (Bytes)}}{B_{\text{mem}} (\text{Bytes/s})}$$
+1. **Reflex Locality:** Hard real-time safety supervisors must execute strictly within on-chip static SRAM within millimeters of the core. Routing a $1000\text{ Hz}$ reflex loop across centimeters of PCB copper to off-chip DRAM injects a $100\times$ latency penalty and exposes safety checks to off-chip bus contention.
+2. **The Memory-Bandwidth Wall:** High-capacity vision-language-action (VLA) foundation models require gigabytes of parameter weights, far exceeding on-chip SRAM capacity. Because edge neural policies evaluate at real-time batch size 1 with low arithmetic operational intensity ($\text{FLOPs/Byte}$), neural inference is fundamentally **memory-bandwidth bound** ($B_{\text{mem}}$ in Bytes/s) rather than compute bound ($\text{FLOP/s}$):
+   $$t_{\text{infer}} \ge \frac{\text{Parameter Footprint (Bytes)}}{B_{\text{mem}} (\text{Bytes/s})}$$
 
-Real-time policy architectures must be co-designed around parameter footprint and memory bus bandwidth limits to prevent weight-shuttling stalls from breaching the physical Freshness Wall.
+### Parallelism and the Contention Hazard: Shared Interconnects
 
-### Conductor Cross-Sections and Shared Bus Contention
+Embodied systems exploit hardware parallelism by executing multiple specialized processing engines concurrently: camera image signal processors, Direct Memory Access (DMA) ingestion channels, neural network accelerators, general-purpose CPU cores, and real-time microcontroller safety supervisors.
 
-Modern embedded edge platforms almost universally adopt heterogeneous System-on-Chip (SoC) architectures based on a Unified Memory Architecture (UMA). Multi-core application CPUs, high-throughput Neural Processing Units (NPUs), GPUs, image signal processors, and autonomous Direct Memory Access (DMA) engines all share access to a common physical dynamic RAM subsystem through an on-die interconnect crossbar.
+On modern edge System-on-Chips (SoCs), these parallel engines share a common physical dynamic memory subsystem across a single on-die crossbar interconnect. When parallel streams execute concurrently, they compete for the exact same physical wires:
 
-Software frameworks advertise UMA as a "zero-cost" abstraction because CPU, GPU, and NPU can share memory pointers without copying data across PCIe links. On physical hardware, however, a memory bus is a finite bundle of physical metal conductors with parasitic electrical resistance ($R$) and capacitance ($C$). Each trace possesses a physical $RC$ charging time constant that establishes a hard upper ceiling on transmission frequency. You cannot push infinite charge packets through finite physical conductors simultaneously.
+* High-bandwidth perception sensors (such as multi-camera stereo rigs streaming at $60\text{ FPS}$) continuously blast between $0.75\text{ and } 1.5\text{ GB/s}$ of uncompressed pixel DMA write bursts into DRAM.
+* Concurrently, the neural accelerator streams tens of gigabytes of model weights per second ($20\text{--}50\text{ GB/s}$) from DRAM to evaluate trajectory actions.
 
-When high-bandwidth perception sensors (such as multi-camera stereo rigs) stream uncompressed pixel data at $60\text{ FPS}$, autonomous DMA receivers blast between $0.75\text{ and } 1.5\text{ GB/s}$ of raw charge transfers across the shared memory crossbar directly into DRAM buffers. Concurrently, the NPU must stream tens of gigabytes of weights per second ($20\text{--}50\text{ GB/s}$). 
+When these asynchronous streams collide, memory controller queues saturate. Read transactions stall behind queued DMA write bursts, slashing effective bus efficiency by $40\text{ to } 60\%$. NPU compute pipelines suffer extensive stall cycles, inflating neural inference latency from a nominal median of $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
 
-When these asynchronous streams collide, memory controller queues saturate. Read transactions stall behind queued DMA writes, slashing effective bus efficiency by 40 to 60 percent. NPU compute pipelines suffer extensive stall cycles, inflating neural inference latency from a nominal median of $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
+In an embodied machine, unmanaged parallelism creates interconnect contention that directly converts into physical collision hazard by breaching the Freshness Wall ($\tau_{\text{world}}$).
 
-In an embodied system, perceptual ingestion and policy inference compete for the exact same physical wires. An unexpected burst of sensory data can starve the neural policy of memory bandwidth, causing an unpredicted latency spike that violates the real-time world reaction deadline ($\tau_{\text{world}}$).
-
-::: {.callout-fallacy title="The Zero-Cost Unified Memory Architecture (UMA) Abstraction"}
+::: {.callout-fallacy title="The Zero-Cost Shared Memory Abstraction"}
 * **The Common Assumption:** On modern edge System-on-Chips (SoCs), connecting CPU, GPU, NPU, and camera DMA engines to a shared physical DRAM bus allows zero-copy data sharing without PCIe latency, guaranteeing high-throughput and deterministic neural execution.
 * **The Physical Reality:** A shared physical memory bus is a shared physical crossbar with finite bandwidth and finite queuing capacity. When multi-camera DMA write bursts (streaming $0.75\text{--}1.5\text{ GB/s}$ of uncompressed pixel data) collide with dense NPU weight-streaming read transactions (demanding $20\text{--}50\text{ GB/s}$), the DRAM memory controller's internal arbiter saturates. Read transactions stall behind queued DMA writes, slashing effective memory bus efficiency by $40\text{--}60\%$ and causing neural inference latency to blow out from $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
 * **The Systems Invariant:** Physical memory conduits must enforce strict traffic isolation and priority arbitration—guaranteeing that time-critical control updates and neural weight reads are never starved by bulk perceptual sensor ingestion.
@@ -370,19 +372,23 @@ In an embodied system, perceptual ingestion and policy inference compete for the
 
 ### Spatial Memory Search vs. Temporal Determinism: Zero Dynamic Allocation
 
-In standard software development, dynamic memory allocation (`malloc`, `free`, `new`, `delete`, and dynamically resizing vectors) is ubiquitous. Programmers allocate objects on the heap as needed, assuming the runtime allocator operates in negligible time.
+In standard software engineering, dynamic memory allocation (`malloc`, `free`, `new`, `delete`, and auto-resizing vectors) is standard practice. Programmers allocate objects on the heap at runtime, assuming memory allocation takes negligible time.
 
 In real-time embedded safety systems, dynamic heap allocation is a fatal physical hazard [@kopetz2011real; @wilhelm2008worst]. Searching through a fragmented dynamic heap to find a free memory block is a spatial linked-list traversal process that takes variable, non-deterministic physical time. 
 
-Permitting dynamic heap allocation within real-time control silicon introduces three severe physical failure modes. First, standard free-list allocators exhibit non-deterministic execution times during spatial linked-list traversal, causing timing stalls that miss hard real-time control deadlines. Second, continuous dynamic allocation and deallocation over multi-hour physical missions fragments the heap, eventually triggering catastrophic out-of-memory allocation failures even when aggregate free memory appears sufficient. Third, real-time microcontrollers lack memory management units (MMUs) to catch memory boundary violations; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing unhandled processor lockups that leave actuators completely unguided.
+Permitting dynamic heap allocation within real-time control silicon introduces three severe physical failure modes:
 
-This establishes the Iron Law of Zero Dynamic Heap Allocation: zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing data structures) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines (enforcing NASA JPL Rule 3 and MISRA C:2012 Rule 21.3). All memory structures on the real-time safety microcontroller must therefore be statically declared at compile time. Every ring buffer, state vector, transformation matrix, and quadratic program workspace resides in dedicated, fixed-size global SRAM sections. Compile-time static allocation guarantees that the total memory footprint is mathematically verifiable prior to flashing firmware, ensuring absolute temporal determinism.
+1. **Timing Jitter and Deadline Misses:** Standard free-list allocators exhibit non-deterministic execution times during spatial linked-list traversal, causing timing stalls that miss hard real-time control deadlines.
+2. **Long-Mission Heap Fragmentation:** Continuous allocation and deallocation over multi-hour physical missions fragments the heap, eventually triggering catastrophic out-of-memory allocation failures even when aggregate free memory appears sufficient.
+3. **Silent Stack-Heap Collisions:** Real-time microcontrollers lack memory management units (MMUs) to catch memory boundary violations; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing unhandled processor lockups that leave actuators completely unguided.
+
+This establishes the **Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`)**: zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing data structures) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines (enforcing NASA JPL Rule 3 and MISRA C:2012 Rule 21.3). All memory structures on the real-time safety microcontroller must be statically declared at compile time. Every ring buffer, state vector, transformation matrix, and quadratic program workspace resides in dedicated, fixed-size global SRAM sections, guaranteeing mathematically verifiable temporal determinism.
 
 ### The Physical Invariants of Real-Time Compute
 
-To summarize Column 5, deterministic computation for Physical AI is governed by three non-negotiable physical laws:
+To summarize Column 5, deterministic computation for Physical AI is governed by three non-negotiable architectural laws:
 
-1. **Spatial Proximity:** Hard real-time safety loops must execute strictly within on-chip static SRAM within millimeters of the core, eliminating the $100\times$ off-chip DRAM latency penalty.
+1. **Spatial Locality:** Hard real-time safety loops must execute strictly within on-chip static SRAM within millimeters of the core, eliminating the $100\times$ off-chip DRAM latency penalty.
 2. **Interconnect Isolation:** Time-critical state updates and neural weight reads must never be starved behind bulk sensory DMA transfers on shared memory crossbars.
 3. **Static Memory Layouts:** Real-time safety paths must enforce the Iron Law of Zero Dynamic Heap Allocation (`malloc = 0`).
 
