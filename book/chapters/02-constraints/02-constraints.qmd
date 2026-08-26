@@ -173,13 +173,7 @@ During Phase 1 (**Linear Reaction Drift**, $v_0 \cdot \Delta t_{\text{delay}}$),
 
 Once braking torque physically builds in the actuators, Phase 2 (**Quadratic Kinetic Braking**, $\frac{v_0^2}{2 a_{\text{max}}}$) engages. The machine decelerates at maximum available deceleration $a_{\text{max}}$, dissipating its kinetic energy across a quadratic braking distance. Physical braking onsets are further bounded by finite jerk rise times ($\Delta t_{\text{jerk}} = a_{\text{max}} / j_{\text{max}}$), governed by the electromagnetic coil rise times and transmission shear limits derived in @sec-actuation-jerk.
 
-::: {.callout-case title="The Dynamic Stopping Overrun"}
-* **Physical Scenario:** An autonomous mobile platform operates in a warehouse with initial velocity $v_0 = 1.0\text{ m/s}$, maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and available obstacle clearance $d_{\text{clearance}} = 0.350\text{ m}$ ($35\text{ cm}$).
-
-* **Nominal Execution ($P_{50} = 30\text{ ms}$):** Reaction drift is $1.0 \times 0.030 = 3\text{ cm}$ and kinetic braking distance is $\frac{1.0^2}{2 \times 2.0} = 25\text{ cm}$, yielding a total stopping distance of $d_{\text{stop}} = 28\text{ cm}$. The robot halts safely with a $+7\text{ cm}$ clearance margin.
-
-* **Tail Latency Spike ($P_{99.9} = 230\text{ ms}$):** Memory bus contention and OS thread preemption expand reaction drift from $3\text{ cm}$ to $23\text{ cm}$, while braking distance remains fixed at $25\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, producing a $+13\text{ cm}$ barrier breach. A $200\text{ ms}$ computational stall adds exactly $20\text{ cm}$ of unguided projectile travel.
-:::
+For example, an autonomous mobile platform operating in a warehouse with initial velocity $v_0 = 1.0\text{ m/s}$, maximum braking deceleration $a_{\text{max}} = 2.0\text{ m/s}^2$, and nominal latency ($P_{50} = 30\text{ ms}$) exhibits a reaction drift of $3\text{ cm}$ and kinetic braking distance of $25\text{ cm}$, yielding a total stopping distance of $d_{\text{stop}} = 28\text{ cm}$. But if memory bus contention or thread preemption causes a tail latency spike to $P_{99.9} = 230\text{ ms}$, reaction drift expands from $3\text{ cm}$ to $23\text{ cm}$. Total stopping distance explodes to $48\text{ cm}$, breaching a $35\text{ cm}$ clearance envelope and demonstrating how a $200\text{ ms}$ compute stall adds $20\text{ cm}$ of unguided physical travel.
 
 ### Dynamic Safety Clearance Invariants and the Speed Governor
 
@@ -254,15 +248,7 @@ $$\tau_{\text{shock}} = N^2 J_{\text{rotor}} \Delta \ddot{\mathbf{q}}$$
 
 Due to the $N^2$ scaling factor, even a lightweight rotor generates massive dynamic shock loads under step acceleration commands. This triggers a destructive mechanical failure cascade. First, transmission components experience peak shear stress ($\tau_{\text{shear}} = T/W_p$, where $W_p$ is the polar section modulus of the gear tooth or flexspline cup). Impulsive jerk spikes easily exceed the material shear yield strength ($\tau_{\text{yield}}$), causing tooth pitting, fatigue micro-fractures, and catastrophic tooth stripping. Second, impulsive shock waves excite unmodeled high-frequency mechanical resonance modes ($1\text{--}2\text{ kHz}$) in the robot's physical linkages. Third, these mechanical vibration transients propagate directly into the chassis, saturating MEMS accelerometers and gyroscopes and corrupting the state estimation pipeline.
 
-To protect mechanical hardware from impulsive shock loads, autonomy architectures must enforce **$\mathcal{C}^2$ differential jerk continuity** ($\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$). The planning layer must synthesize kinodynamically smooth trajectory splines across time horizons (as formulated in Chapter 8), while the real-time microcontroller reflex layer enforces microsecond torque slew rate and current clamping (as detailed in Chapter 9).
-
-::: {.callout-case title="The Sheared Harmonic Flexspline"}
-* **Physical Setup:** An articulated six-axis manipulator tracks high-speed trajectory setpoints updated at $50\text{ Hz}$ by a discrete neural policy.
-
-* **The Impulsive Event:** At an aggressive direction reversal, commanded joint acceleration stepped discontinuously from $+12\text{ rad/s}^2$ to $-12\text{ rad/s}^2$ across a $10\text{ ms}$ interpolator tick ($\Delta \ddot{q}/\Delta t = 24 / 0.01$), producing an impulsive jerk spike exceeding $2400\text{ rad/s}^3$.
-
-* **The Hardware Consequence:** Transmitted through a $100:1$ harmonic gearhead ($N=100$), the reflected rotor inertia generated a shock torque that exceeded the shear yield limit ($\tau_{\text{yield}}$) of the titanium-alloy flexspline cup, stripping the precision gear teeth and permanently destroying the joint actuator.
-:::
+To protect mechanical hardware from impulsive shock loads, autonomy architectures must enforce **$\mathcal{C}^2$ differential jerk continuity** ($\|\dddot{\mathbf{q}}(t)\| \le \dddot{q}_{\text{max}}$). The planning layer must synthesize kinodynamically smooth trajectory splines across time horizons (as formulated in Chapter 8), while the real-time microcontroller reflex layer enforces microsecond torque slew rate and current clamping (as detailed in Chapter 9). Without these guarantees, an aggressive direction reversal stepping commanded joint acceleration from $+12\text{ rad/s}^2$ to $-12\text{ rad/s}^2$ across a single $10\text{ ms}$ interpolator tick produces an impulsive jerk spike exceeding $2400\text{ rad/s}^3$. Transmitted through a $100:1$ harmonic gearhead, the reflected rotor inertia generates shock torques that can easily shear the gear teeth and permanently destroy the joint actuator.
 
 
 ## Energy and Thermal Limits {#sec-energy-thermal}
@@ -311,15 +297,7 @@ When $E_{\text{thermal}}$ crosses the safe capacity threshold ($E_{\text{thermal
 
 Thermal accumulation also governs the embedded edge silicon executing neural models ($P_{\text{SoC}} \propto V_{\text{core}}^2 f_{\text{clk}} + I_{\text{leak}} V_{\text{core}}$). When silicon junction temperatures exceed safe thermal thresholds ($85\text{--}95^\circ\text{C}$), on-die Dynamic Thermal Management automatically triggers Dynamic Voltage and Frequency Scaling (DVFS), cutting processor clock frequencies to prevent thermal runaway.
 
-In enclosed robot chassis without active fan cooling, thermal downclocking halves neural accelerator throughput mid-mission, causing inference latency to double. Autonomy architectures must account for this **Cold Bench Fallacy**: intent leases and execution timeouts must be co-designed with thermal derating to prevent stale neural proposals from triggering false-positive safety aborts.
-
-::: {.callout-case title="The Cold Bench Fallacy: Thermal Throttling in a Sealed Enclosure"}
-* **The Cold Bench Baseline:** A vision-language-action policy benchmarked on an open laboratory bench executes in $22\text{ ms}$, comfortably satisfying its $50\text{ ms}$ real-time intent lease.
-
-* **The Thermal Build-up:** After twenty minutes of continuous mission execution inside a sealed robot chassis, junction temperature exceeds the silicon throttling threshold ($85\text{--}95^\circ\text{C}$). On-die Dynamic Thermal Management downclocks the neural accelerator core frequency by half.
-
-* **The Operational Collapse:** Inference latency inflates to $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy still produces mathematically valid trajectories, but they arrive after the intent lease has expired. The real-time safety supervisor rejects the stale proposals and engages emergency dynamic braking, collapsing platform availability.
-:::
+In enclosed robot chassis without active fan cooling, thermal accumulation within the enclosure pushes junction temperatures beyond safe limits ($85\text{--}95^\circ\text{C}$). When Dynamic Thermal Management cuts the neural accelerator clock frequency by half, inference latency inflates from a benchtop median of $22\text{ ms}$ to over $48\text{ ms}$ ($P_{50}$) and $120\text{ ms}$ ($P_{99}$). The neural policy still produces mathematically valid trajectories, but they arrive after the intent lease has expired, prompting the real-time safety supervisor to reject the stale proposals and trigger emergency braking. Autonomy architectures must account for this **Cold Bench Fallacy**: intent leases and execution timeouts must be co-designed with thermal derating to prevent false-positive safety aborts.
 
 As summarized in @tbl-thermal-domains, thermal dynamics and failure thresholds govern both mechanical actuation components and embedded edge silicon across distinct physical time scales.
 
@@ -384,14 +362,6 @@ When these asynchronous streams collide, memory controller queues saturate. Read
 
 In an embodied system, perceptual ingestion and policy inference compete for the exact same physical wires. An unexpected burst of sensory data can starve the neural policy of memory bandwidth, causing an unpredicted latency spike that violates the real-time world reaction deadline ($\tau_{\text{world}}$).
 
-::: {.callout-case title="The UMA Bus Ingestion Blackout"}
-* **The Shared Resource:** On a Unified Memory Architecture (UMA) System-on-Chip, the neural accelerator, CPU cores, GPU, and dual-camera DMA receivers all share a single physical DRAM crossbar interconnect.
-
-* **The Ingestion Collision:** During high-speed visual navigation, multi-camera DMA write bursts ($1.5\text{ GB/s}$) coincide with dense NPU weight-streaming read transactions ($30\text{ GB/s}$), exceeding physical crossbar throughput.
-
-* **The Latency Fallout:** Memory controller read queues stall behind queued DMA writes, slashing effective memory bus efficiency by 40 to 60 percent. NPU compute pipelines suffer extensive stall cycles, inflating inference latency from a nominal median of $P_{50} = 22\text{ ms}$ to extreme tail spikes exceeding $P_{99} > 135\text{ ms}$.
-:::
-
 ::: {.callout-fallacy title="The Zero-Cost Unified Memory Architecture (UMA) Abstraction"}
 * **The Common Assumption:** On modern edge System-on-Chips (SoCs), connecting CPU, GPU, NPU, and camera DMA engines to a shared physical DRAM bus allows zero-copy data sharing without PCIe latency, guaranteeing high-throughput and deterministic neural execution.
 * **The Physical Reality:** A shared physical memory bus is a shared physical crossbar with finite bandwidth and finite queuing capacity. When multi-camera DMA write bursts (streaming $0.75\text{--}1.5\text{ GB/s}$ of uncompressed pixel data) collide with dense NPU weight-streaming read transactions (demanding $20\text{--}50\text{ GB/s}$), the DRAM memory controller's internal arbiter saturates. Read transactions stall behind queued DMA writes, slashing effective memory bus efficiency by $40\text{--}60\%$ and causing neural inference latency to blow out from $P_{50} = 22\text{ ms}$ to severe tail spikes exceeding $P_{99} > 135\text{ ms}$.
@@ -406,11 +376,7 @@ In real-time embedded safety systems, dynamic heap allocation is a fatal physica
 
 Permitting dynamic heap allocation within real-time control silicon introduces three severe physical failure modes. First, standard free-list allocators exhibit non-deterministic execution times during spatial linked-list traversal, causing timing stalls that miss hard real-time control deadlines. Second, continuous dynamic allocation and deallocation over multi-hour physical missions fragments the heap, eventually triggering catastrophic out-of-memory allocation failures even when aggregate free memory appears sufficient. Third, real-time microcontrollers lack memory management units (MMUs) to catch memory boundary violations; an expanding dynamic heap silently overwrites descending execution call stack frames, destroying return addresses and causing unhandled processor lockups that leave actuators completely unguided.
 
-::: {.callout-important title="The Iron Law of Real-Time Safety: Zero Dynamic Heap Allocation"}
-Zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing data structures) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines (enforcing NASA JPL Rule 3 and MISRA C:2012 Rule 21.3).
-:::
-
-All memory structures on the real-time safety microcontroller must therefore be statically declared at compile time. Every ring buffer, state vector, transformation matrix, and quadratic program workspace resides in dedicated, fixed-size global SRAM sections. Compile-time static allocation guarantees that the total memory footprint is mathematically verifiable prior to flashing firmware, ensuring absolute temporal determinism.
+This establishes the Iron Law of Zero Dynamic Heap Allocation: zero dynamic memory allocations (`malloc`, `free`, `new`, `delete`, or dynamically resizing data structures) are permitted inside the $1000\text{ Hz}$ safety supervisor loop, the Control Barrier Function solver, or high-frequency motor control interrupt service routines (enforcing NASA JPL Rule 3 and MISRA C:2012 Rule 21.3). All memory structures on the real-time safety microcontroller must therefore be statically declared at compile time. Every ring buffer, state vector, transformation matrix, and quadratic program workspace resides in dedicated, fixed-size global SRAM sections. Compile-time static allocation guarantees that the total memory footprint is mathematically verifiable prior to flashing firmware, ensuring absolute temporal determinism.
 
 ### The Physical Invariants of Real-Time Compute
 
