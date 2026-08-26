@@ -97,6 +97,10 @@ insertPreamble = function(doc, classDefs, fmt)
       local iconFormat = str(config["icon-format"] or "png")
 
       if fmt == "html" then
+        local baseIconPath = iconPath
+        if quarto.project and quarto.project.offset then
+          baseIconPath = quarto.project.offset .. iconPath
+        end
         -- Generate dynamic CSS for icon paths - generic version using classDefs
         iconCSS = "<style>\n"
         if classDefs then
@@ -104,7 +108,7 @@ insertPreamble = function(doc, classDefs, fmt)
             -- Convert hyphens to underscores for icon filename (e.g., callout-quiz-question -> callout_quiz_question)
             local iconFileName = calloutType:gsub("-", "_")
             iconCSS = iconCSS .. "details." .. calloutType .. " > summary::before {\n"
-            iconCSS = iconCSS .. "  background-image: url(\"" .. iconPath .. "/icon_" .. iconFileName .. "." .. iconFormat .. "\");\n"
+            iconCSS = iconCSS .. "  background-image: url(\"" .. baseIconPath .. "/icon_" .. iconFileName .. "." .. iconFormat .. "\");\n"
             iconCSS = iconCSS .. "}\n"
           end
         end
