@@ -226,9 +226,9 @@ def gen_fig01_three_tribes():
     svg.append(f'<text x="{W/2}" y="44" class="subtitle">Bridging the Disciplinary Divides Between Computer Science, Embedded Systems, and Mechanical Robotics</text>')
 
     tribes = [
-        ("TRIBE 1: COMPUTER SCIENCE / AI", "Maya's Perspective", "Loss functions · Transformers · Latent world models\nPython abstractions · Generative policies · Tokenization", BLUE, 40, 70),
-        ("TRIBE 2: EMBEDDED SYSTEMS / ECE", "Carlos's Perspective", "Microsecond jitter · DMA memory buses · Interrupt service routines\nStatic SRAM (malloc=0) · Watchdogs · AXI QoS priorities", BRONZE, 480, 70),
-        ("TRIBE 3: ROBOTICS &amp; MECHANICS", "Alex's Perspective", "Kinetic momentum · Friction cones · Contact compliance\nStopping distance d_stop · Gearbox backlash · Dynamic stability", CRIMSON, 260, 255)
+        ("DISCIPLINE 1: COMPUTER SCIENCE / AI", "Machine Learning Perspective", "Loss functions · Transformers · Latent world models\nPython abstractions · Generative policies · Tokenization", BLUE, 40, 70),
+        ("DISCIPLINE 2: EMBEDDED SYSTEMS / ECE", "Silicon & Firmware Perspective", "Microsecond jitter · DMA memory buses · Interrupt service routines\nStatic SRAM (malloc=0) · Watchdogs · AXI QoS priorities", BRONZE, 480, 70),
+        ("DISCIPLINE 3: ROBOTICS &amp; MECHANICS", "Kinematics & Dynamics Perspective", "Kinetic momentum · Friction cones · Contact compliance\nStopping distance d_stop · Gearbox backlash · Dynamic stability", CRIMSON, 260, 255)
     ]
 
     tw = 360

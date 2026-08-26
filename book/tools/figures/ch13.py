@@ -150,10 +150,10 @@ def gen_ch13_defense_matrix():
     svg.append(f'<text x="{ex+ew/2}" y="{dy+18}" font-size="9.5" font-weight="700" fill="{PURPLE}" text-anchor="middle">4 INTERDISCIPLINARY EXAMINERS</text>')
 
     examiners = [
-        ("Examiner A · Systems &amp; Hardware", "Carlos's Auditor", "Audits: Lock-free SRAM, AXI QoS, zero malloc, 1 kHz QP latency, watchdog timing", BRONZE),
-        ("Examiner B · AI &amp; Perception", "Maya's Auditor", "Audits: 3D tokenization, VLM grounding, world model covariance, action chunking", BLUE),
-        ("Examiner C · Controls &amp; Robotics", "Alex's Auditor", "Audits: Kinematic reachability, C² jerk bounds, CBF invariant h(x) ≥ 0, bumpless transfer", PETROL),
-        ("Examiner D · Safety &amp; Governance", "Safety Regulator", "Audits: CAE safety case, cross-layer fault injection, DAgger flywheel, data privacy", CRIMSON)
+        ("Examiner A · Systems &amp; Hardware", "Embedded Systems Auditor", "Audits: Lock-free SRAM, AXI QoS, zero malloc, 1 kHz QP latency, watchdog timing", BRONZE),
+        ("Examiner B · AI &amp; Perception", "Machine Learning Auditor", "Audits: 3D tokenization, VLM grounding, world model covariance, action chunking", BLUE),
+        ("Examiner C · Controls &amp; Robotics", "Robotics & Dynamics Auditor", "Audits: Kinematic reachability, C² jerk bounds, CBF invariant h(x) ≥ 0, bumpless transfer", PETROL),
+        ("Examiner D · Safety &amp; Governance", "Safety & Assurance Regulator", "Audits: CAE safety case, cross-layer fault injection, DAgger flywheel, data privacy", CRIMSON)
     ]
     for idx, (ex_t, ex_sub, ex_d, col) in enumerate(examiners):
         by = dy + 36 + idx * 80
