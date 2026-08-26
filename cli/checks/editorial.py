@@ -25,6 +25,10 @@ class BannedTerminologyCheck(BaseCheck):
 
     def run(self, ctx: BookContext, report: LintReport):
         for file_path in ctx.qmd_files:
+            try:
+                file_path.relative_to(ctx.chapters_dir)
+            except ValueError:
+                continue
             rel_path = str(file_path.relative_to(ctx.repo_root))
             lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
             in_code_block = False

@@ -54,8 +54,8 @@ class BookContext:
             for p in self.chapters_dir.glob(f"*{self.chapter_filter}*.qmd"):
                 files.append(p)
         else:
-            files.extend(sorted(self.chapters_dir.rglob("*.qmd")))
-        return [f for f in files if not f.name.startswith(".")]
+            files.extend(sorted(self.book_dir.rglob("*.qmd")))
+        return [f for f in files if not f.name.startswith(".") and not f.name.startswith("_")]
 
     def _discover_disk_assets(self) -> List[Path]:
         assets: List[Path] = []
@@ -102,15 +102,15 @@ class BookContext:
                     continue
 
                 # 1. Definitions
-                for match in re.finditer(r"\{#(fig-[\w-]+)", line):
+                for match in re.finditer(r"\{[^}]*#(fig-[\w-]+)", line):
                     self.fig_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{#(tbl-[\w-]+)", line):
+                for match in re.finditer(r"\{[^}]*#(tbl-[\w-]+)", line):
                     self.tbl_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{#(sec-[\w-]+)", line):
+                for match in re.finditer(r"\{[^}]*#(sec-[\w-]+)", line):
                     self.sec_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{#(eq-[\w-]+)", line):
+                for match in re.finditer(r"\{[^}]*#(eq-[\w-]+)", line):
                     self.eq_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{#(callout-[\w-]+|def-[\w-]+|law-[\w-]+|contract-[\w-]+|autopsy-[\w-]+)", line):
+                for match in re.finditer(r"\{[^}]*#(callout-[\w-]+|def-[\w-]+|law-[\w-]+|contract-[\w-]+|autopsy-[\w-]+)", line):
                     self.callout_defs[match.group(1)] = (file_path, line_idx)
 
                 # 2. Markdown image inclusions: ![alt](path)
