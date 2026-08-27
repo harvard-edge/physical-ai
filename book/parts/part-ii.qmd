@@ -1,21 +1,15 @@
 # Part II: Data and Learning Systems {.unnumbered}
 
-With the physical container, physical limits, and arbitration hardware established in Part I, Part II focuses on how the machine acquires the capacity to act. Where Part I derived the physical constraints of the body and nervous system, Part II tackles the data collection, training systems, and evaluation pipelines required to build robust embodied models.
+In conventional machine learning, data is passive. Datasets are gathered, curated, partitioned into training and validation sets, and treated as an exogenous ground truth ($x \sim P_{\text{data}}$). A vision classifier or language model simply inspects this data; its inferences have no causal power to alter the distribution of the images or documents it will encounter tomorrow. If a model misclassifies an image, that error is isolated—it does not change the physical world.
 
-In disembodied machine learning, models are trained on static, independently distributed datasets where errors manifest as classification errors or text hallucinations. In Physical AI, the data distribution is endogenous: every action taken by the policy alters the state of the physical plant, directly dictating what the sensors observe next. A small tracking error compounds dynamically ($O(T^2 \epsilon)$), driving the machine into out-of-distribution physical states. Part II teaches engineers how to collect multi-modal demonstration data, train continuous action-chunking policies, and evaluate closed-loop physical deployments.
+In Physical AI, this assumption collapses entirely. The data distribution of a physical machine is **endogenous**: the machine participates in a closed causal loop where every action changes the state of the physical plant, directly dictating what its sensors will observe next ($s_{t+1} \sim P(s \mid s_t, a_t)$). 
 
-### The Pillars of Part II
+Because the policy creates its own future sensory inputs, errors in physical AI are inherently dynamic and compounding. A minor tracking deviation of two millimeters at step $t$ does not merely produce a single suboptimal step; it shifts the camera's visual perspective, alters the contact mechanics of the gripper, and pushes the machine into unfamiliar physical states. Under standard supervised learning, the policy has never seen demonstrations of how to recover from these perturbed states. As a result, small initial errors compound quadratically over time ($O(T^2 \epsilon)$), rapidly driving the system off its demonstration manifold into catastrophic physical failure.
 
-Part II develops the lifecycle of physical learning systems across three foundational chapters:
+Part II explores how to engineer data pipelines and training systems that can master this closed causal loop:
 
-* **Chapter 5: Data Systems (*Collection, Teleoperation & Ingestion Pipelines*):** Analyzes the physical origins of robotic datasets, comparing leader-follower teleoperation, kinesthetic teaching, and autonomous collection. Quantifies multi-camera timestamp synchronization, proprioceptive sensor drift, and Open X-Embodiment dataset schemas.
-* **Chapter 6: Training Systems (*Imitation Learning, Diffusion Policies & Sim-to-Real*):** Details how to train continuous control policies, analyzing behavioral cloning, Action Chunking with Transformers (ACT), Diffusion Policies, and reinforcement learning. Examines physics simulators as systems components and decomposes the sim-to-real gap into contact friction, backlash, and actuator phase lag.
-* **Chapter 7: Evaluation Systems (*Closed-Loop Benchmarking & Physical Failure Modes*):** Formulates the systems boundaries of offline validation versus closed-loop physical rollouts. Proves why open-loop test loss is decoupled from physical task success, constructs selective execution curves, and establishes statistical bounds on physical reliability.
+* **Data as Physical Experience:** Moving beyond web scrapes to physical demonstration collection. We examine the systems physics of bilateral teleoperation, multi-camera SerDes timestamp synchronization, proprioceptive sensor drift, and why logging human recovery interventions is mandatory to bound compounding covariate shift.
+* **Training for Continuous Action:** Formulating policy architectures that can generate high-dimensional continuous trajectories without collapsing into the mean of multi-modal demonstrations. We analyze why Action Chunking with Transformers (ACT) and Diffusion Policies succeed where naive step-by-step imitation fails, and decompose the sim-to-real gap into friction hysteresis, compliance, and actuator phase lag.
+* **Evaluation as Closed-Loop Reality:** Confronting why offline test-set accuracy is fundamentally decoupled from physical task success. We establish the systems discipline of closed-loop evaluation—measuring real task completion, intervention frequencies, and worst-case execution percentiles under dynamic distribution shift.
 
-### What You Will Master in Part II
-
-By the conclusion of Part II, you will be equipped to build end-to-end data and training pipelines for physical machines:
-
-1. **Handling Compounding Errors:** Overcoming the $O(T^2 \epsilon)$ compounding covariate shift in behavioral cloning through recovery demonstration logging and action chunking.
-2. **Bridging the Sim-to-Real Gap:** Sizing domain randomization budgets and system identification parameters to transfer policies from simulation to physical hardware.
-3. **Closed-Loop Evaluation:** Designing standardized physical benchmarking protocols that measure true task completion, cycle times, intervention rates, and worst-case failure modes.
+Training an embodied policy is not an exercise in abstract curve fitting. It is the systems engineering of teaching an algorithm how to act, recover, and persist in an unforgiving physical world.

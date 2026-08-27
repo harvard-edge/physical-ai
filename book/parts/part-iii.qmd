@@ -1,24 +1,14 @@
 # Part III: The Runtime Embodied Stack {.unnumbered}
 
-Part III walks the full-stack runtime pipeline that transforms raw physical sensor photons into coordinated motor currents, alongside the heterogeneous silicon that hosts each stage. Where Part II explored data curation and training, Part III details how to build and orchestrate the runtime subsystems on physical hardware in real time.
+Building a physical AI machine is fundamentally an exercise in **reconciling disparate timescales and representations**.
 
-Each chapter in Part III details exactly one subsystem of the embodied stack: what representations it processes, what mathematical transformations it performs, what cadences it executes at, how it manages memory and bus bandwidth, and how it hands data forward to downstream modules.
+No single algorithm, model, or hardware core can span the vast continuum between high-level reasoning and low-level physical dynamics. At the highest level, human goals and task semantics are symbolic and linguistic, evolving over seconds. In the middle, physical space is volumetric and continuous, requiring 3D spatial representations and smooth kinematic trajectories generated at tens of hertz. At the lowest level, motor torque control is electromagnetic and immediate, demanding cycle-deterministic execution at kilohertz frequencies to prevent mechanical instability.
 
-### The Pillars of Part III
+Part III details the complete runtime architecture that transforms raw physical sensor photons into coordinated motor currents:
 
-Part III constructs the complete runtime pipeline across six core subsystems:
+* **From Photons to Spatial Belief:** How raw, uncompressed sensor streams from SerDes lanes are ingested, calibrated, and fused into durable 3D spatial representations ($SE(3)$ transform trees, TSDF voxel grids, 3D Gaussian Splats) that persist even through dynamic occlusions.
+* **From Grounded Intent to Motion:** How high-level semantic intent is grounded into reachable physical goals, and how continuous planning models generate smooth, jerk-bounded action chunks across receding planning horizons.
+* **From Action Proposals to Physical Force:** How candidate trajectories pass through microsecond-scale invariant enforcers and Control Barrier Functions on dedicated real-time silicon before any power stage is energized.
+* **The Silicon Substrate:** How these multi-rate subsystems co-exist on shared heterogeneous System-on-Chip (SoC) architectures—isolating memory crossbars, preventing DRAM bank contention, and managing power delivery network ($L \frac{dI}{dt}$) voltage droop.
 
-* **Chapter 8: Perception Systems (*Sensor Ingestion, Calibration & 3D Representations*):** Ingests multi-camera and IMU streams over SerDes/MIPI buses, manages exposure integration and rolling shutter distortion, performs spatial/temporal sensor calibration, and runs 3D visual foundation models.
-* **Chapter 9: Spatial Memory & State (*Coordinate Trees, TSDFs & Scene Graphs*):** Fuses observations across time and reference frames using $SE(3)$ transform trees, maintains spatial state through dynamic occlusions via 3D Gaussian Splats and voxel grids, and bounds belief validity decay.
-* **Chapter 10: Intent & Task Reasoning (*Grounding, Task Decomposition & Leases*):** Translates high-level natural language and task prompts into grounded spatial goals (SayCan, VoxPoser, Code as Policies), verifying geometric reachability and assigning expiring intent leases.
-* **Chapter 11: Trajectory Planning (*Action Chunking, Jerk Bounds & Splines*):** Generates dynamically feasible, continuous reference trajectories from expiring goals, resolving chunk seam discontinuities via receding-horizon diffusion/transformer policies and $\mathcal{C}^2$ cubic splines.
-* **Chapter 12: Real-Time Reflexes (*Microsecond Invariants & Barrier Functions*):** Executes the fast, deterministic enforcer loop on dedicated microcontroller silicon, evaluating Control Barrier Functions ($h(\mathbf{x}) \ge 0$) and Simplex switching mechanisms at $1000\text{ Hz}$.
-* **Chapter 13: Heterogeneous Placement (*SoC Partitioning, Memory QoS & Power Rails*):** Analyzes the physical co-location of slow neural accelerators and hard real-time safety cores on a single chip, solving memory crossbar contention, DRAM bank conflicts, and power delivery network ($L \frac{dI}{dt}$) voltage droop.
-
-### What You Will Master in Part III
-
-By the conclusion of Part III, you will understand how to architect and implement the complete runtime software and hardware stack:
-
-1. **End-to-End Latency Budgeting:** Allocating time budgets across perception ($16.7\text{ ms}$), memory state updates ($30\text{ ms}$), neural policy chunking ($50\text{--}100\text{ ms}$), and motor fieldbuses ($1\text{ ms}$).
-2. **Deterministic Reflex Filtering:** How Control Barrier Functions provide formal guarantees of physical limits while giving learned models full freedom within the safe operating envelope.
-3. **Heterogeneous Silicon Architecture:** Isolating critical real-time execution loops from memory-saturating neural accelerators on shared System-on-Chip hardware.
+A physical AI runtime is not a loose collection of independent scripts. It is a tightly synchronized, multi-rate systems pipeline engineered to keep high-level intelligence grounded in physical reality.
