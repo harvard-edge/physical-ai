@@ -11,13 +11,14 @@ In digital software systems, execution speed is treated as an elastic resource: 
 ::: {.callout-objective}
 After studying this chapter, you will be able to:
 
-1. Measure the sense-to-actuation delay of a real loop and report it as a distribution rather than a mean.
-2. Compute how stopping distance responds to a change in speed and to a change in delay, and explain why the two differ in shape.
-3. Derive a duty cycle from a thermal limit rather than from a torque requirement.
-4. State, for a given processor and workload, which timing guarantees are available and which are not.
+1. Measure the 8-stage sense-to-actuation latency waterfall and enforce the physical freshness deadline $\Delta t_{\text{fresh}} \le e_{\max}/v_{\max}$ using hardware timestamps.
+2. Solve the dynamic clearance quadratic to bound machine velocity against linear reaction lag and quadratic braking distance.
+3. Calculate reflected rotor inertia ($J_{\text{ref}} = N^2 J_{\text{rotor}}$) and apply $C^2$ spline rate limits to protect transmissions from destructive torque shock.
+4. Derive sustainable motor duty cycles ($D$) from thermodynamic Joulean heating and real-time $I^2 t$ thermal observers.
+5. Budget electrical rail transients ($\Delta V_{\text{droop}}$) and kinetic regenerative surges ($V_{\text{final}}$) across shared power delivery networks.
+6. Apply the Cross-Archetype Physical Constraint Matrix to diagnose multi-variable failure avalanches across mobile, manipulation, and thermal systems.
 
-**Core Chapter Takeaway:** The limits that matter are measured on the machine in front of you, not read from a datasheet, and it is the tail of the distribution that decides whether the machine is safe.
-
+*Core chapter takeaway.* The limits that matter are measured on the machine in front of you, not read from a datasheet, and it is the tail of the empirical distribution ($P_{99.9}$) that decides whether the machine survives in the physical world.
 :::
 
 ## Introduction: What the Physical World Will Not Allow {#sec-body-2-1}
@@ -453,6 +454,17 @@ To design a system around these constraints, an engineer must replace qualitativ
 Every physical limit is conditional on a declared operating configuration and loses authority when that configuration changes. A measured stopping distance or thermal time constant is not a static property of a component, and it cannot be transferred from a component datasheet into a safety case without qualification. In an analytical example of a robotic mobile base carrying a $50.0\text{ kg}$ payload at $2.0\text{ m/s}$, the stopping distance doubles if the payload mass increases to $100.0\text{ kg}$ on the same friction surface, or if surface contaminants reduce the tire traction coefficient by half. Similarly, a motor winding that operates at a steady-state temperature of $75.0^{\circ}\text{C}$ in a $20.0^{\circ}\text{C}$ laboratory reaches its thermal destruction threshold if deployed in a $45.0^{\circ}\text{C}$ industrial facility under the same duty cycle. When ambient temperature rises, payload mass increases, supply voltage drops near battery depletion cutoff, or structural wear degrades mechanical stiffness, the physical boundaries contract. Operating outside declared environmental and mechanical baselines invalidates every timing, force, and energy budget derived from those baselines.
 
 Maintaining integrity across a physical system requires preserving a complete engineering record for every limit before integrating software components. That record specifies six mandatory elements for each boundary. It documents the numerical value or empirical distribution, such as a $P_{99.9}$ latency of $4.2\text{ ms}$ or a maximum deceleration torque of $120.0\text{ N}\cdot\text{m}$. It specifies the exact operating conditions under which that number was established, including payload, ambient temperature, supply voltage, and surface properties. It records the measurement uncertainty, identifying the error bounds of the bench instrumentation used to capture the data. It allocates a deliberate engineering margin that separates normal operating targets from absolute physical breakdown thresholds. It designates a hardware or low-level software detector, such as a phase-current sensor, optical interrupter, or supply-rail voltage monitor, responsible for catching boundary excursions in real time. It records provenance, distinguishing whether a bound is derived from analytical mechanics or measured directly on physical hardware under stress.
+
+::: {.callout-important}
+## Key Chapter Takeaways
+
+- **Freshness is Measured at Transduction:** Observation age begins at photon capture on sensor silicon, not at model inference. Carry hardware timestamps to the motor register boundary and reject stale commands ($t_{\text{now}} - t_{\text{transduction}} \le \Delta t_{\text{fresh}}$).
+- **Velocity is the Master Risk Multiplier:** Travel speed scales reaction travel linearly ($d_{\text{react}} \propto v$), braking distance quadratically ($d_{\text{brake}} \propto v^2$), and stator heat dissipation quadratically ($I^2 R$).
+- **Gearboxes Reflect Rotor Inertia Quadratically:** Gear ratio $N$ multiplies rotor inertia by $N^2$, turning rapid motor acceleration into violent mechanical shock unless filtered with $C^2$ continuous splines.
+- **Thermal Heat Accumulates Silently:** Joulean dissipation ($I^2 R$) creates positive thermal feedback ($\alpha_{\text{Cu}}$). Enforce cyclic duty cycles ($D$) and real-time $I^2 t$ thermal observers.
+- **Electrical Power is a Shared Resource:** Simultaneous compute and motor acceleration transients collapse DC bus voltages, triggering brownout resets at the moment of peak kinematic momentum.
+- **Tail Distributions Rule Physical Safety:** Physical safety is governed by tail percentiles ($P_{99.9}$) and zero-failure statistical bounds ($p_{\max} \approx 3/n$), not by median bench performance.
+:::
 
 @sec-brain takes custody of this constrained physical body and addresses the machine from the inside out. With physical envelopes established, the engineering objective is not to modify the physical laws that govern the machine, but to build a nervous system and a learned brain that respect them under all operating conditions. A neural network policy possesses high representational capacity, but it has no innate awareness of winding temperatures, bus saturation, or stopping distances. The nervous system must enforce these five limits deterministically, providing the safety and timing guarantees that the learned model cannot provide for itself. The chapters ahead examine what a learned component contributes to physical autonomy once its authority is bounded within these measured physical limits.
 <!-- END -->
