@@ -195,13 +195,18 @@
    \color{consequence}\MakeUppercase{Chapter~\thechapter}}\par
   \vspace{0.30\baselineskip}%
 }
+\newif\ifiscontentstoc
+\iscontentstocfalse
+
 \renewcommand*{\chapterlinesformat}[3]{%
-  \vspace*{0.22in}%
+  \vspace*{0.20in}%
   #2%
-  {\normalfont\bfseries\fontsize{17pt}{21pt}\selectfont\color{ink}\raggedright #3}\par\nobreak
+  {\normalfont\bfseries\fontsize{18pt}{22pt}\selectfont\color{ink}\raggedright #3}\par\nobreak
   \vspace{0.45\baselineskip}%
-  {\color{consequence}\hrule height 1.2pt width 1.4in}\par
-  \vspace{0.80\baselineskip}%
+  \ifiscontentstoc\else
+    {\color{consequence}\hrule height 1.2pt width 1.4in}\par
+    \vspace{0.80\baselineskip}%
+  \fi
 }
 
 % Part opener: centered, elegant small uppercase label and title.
@@ -218,79 +223,235 @@
 \RedeclareSectionCommand[beforeskip=0.75\baselineskip,afterskip=0.18\baselineskip]{subsection}
 \RedeclareSectionCommand[beforeskip=0.6\baselineskip,afterskip=0.14\baselineskip]{subsubsection}
 
+% Ensure section numbers include chapter number prefix (e.g. 1.1, 1.2)
+\renewcommand*{\thesection}{\thechapter.\arabic{section}}
+\renewcommand*{\thesubsection}{\thesection.\arabic{subsection}}
+
 % --- Lists ----------------------------------------------------------------
 
 \setlist[itemize]{leftmargin=1.1em,topsep=2pt,itemsep=1pt,parsep=0pt}
 \setlist[enumerate]{leftmargin=1.3em,topsep=2pt,itemsep=1pt,parsep=0pt}
 
-% --- Table of contents ----------------------------------------------------
+% --- Table of Contents & Structure Dividers (MLSysBook Modern Layout) ------
 
 \makeatletter
-\renewcommand*{\addchaptertocentry}[2]{%
-  \begingroup
-    \let\chaptersubtitle\@gobble
-    \let\newline\space
-    \ifstr{#1}{}{%
-      \addtocentrydefault{chapter}{}{#2}%
+% State flags for TOC divisions
+\newif\ifmlsysinbackmatter
+\mlsysinbackmatterfalse
+\newif\ifsynthesiswritten
+\synthesiswrittenfalse
+\newif\if@firstnumbered
+\@firstnumberedtrue
+\newcounter{mlsysappendixcount}
+
+% Pure TeX helper to distinguish Chapter numbers (1..17) from Appendix letters (A..G)
+\newcommand{\format@toc@number}[1]{%
+  \if\relax\detokenize\expandafter{\romannumeral-0#1}\relax
+    Chapter~#1%
+  \else
+    Appendix~#1%
+  \fi
+}
+
+% Start frontmatter with Roman numerals and suppress subsection noise in frontmatter
+\AtBeginDocument{%
+  \pagenumbering{roman}%
+  \renewcommand{\thepage}{\roman{page}}%
+  \renewcommand*\contentsname{{\normalfont\bfseries\fontsize{18pt}{22pt}\selectfont\color{consequence}Contents}}%
+  \addtocontents{toc}{\protect\setcounter{tocdepth}{0}}%
+  % Hook addcontentsline AFTER hyperref initialization
+  \let\orig@addcontentsline\addcontentsline
+  \renewcommand{\addcontentsline}[3]{%
+    \ifstr{#1}{toc}{%
+      \ifstr{#2}{part}{%
+        \ifmlsysinbackmatter
+          % Suppress Appendices part divider; Back Matter division handles it
+        \else
+          \orig@addcontentsline{#1}{#2}{#3}%
+        \fi
+      }{%
+        \ifstr{#2}{chapter}{%
+          \ifmlsysinbackmatter
+            \ifstr{#3}{References}{%
+              \orig@addcontentsline{#1}{#2}{#3}%
+            }{%
+              \ifstr{#3}{Index}{%
+                \orig@addcontentsline{#1}{#2}{#3}%
+              }{%
+                \stepcounter{mlsysappendixcount}%
+                \orig@addcontentsline{toc}{chapter}{\protect\numberline{\Alph{mlsysappendixcount}}#3}%
+              }%
+            }%
+          \else
+            \orig@addcontentsline{#1}{#2}{#3}%
+          \fi
+        }{%
+          \orig@addcontentsline{#1}{#2}{#3}%
+        }%
+      }%
     }{%
-      \addtocentrydefault{chapter}{#1}{#2}%
+      \orig@addcontentsline{#1}{#2}{#3}%
     }%
+  }%
+}
+
+\let\orig@appendix\appendix
+\renewcommand{\appendix}{%
+  \orig@appendix
+  \global\mlsysinbackmattertrue
+  \addtocontents{toc}{\protect\tocdivisionentry{Back Matter}}%
+  \addtocontents{toc}{\protect\setcounter{tocdepth}{0}}%
+}
+
+% Patch \mainmatter so Quarto does not prematurely switch to Arabic before Chapter 1
+\let\orig@mainmatter\mainmatter
+\renewcommand{\mainmatter}{%
+  % Defer pagenumbering{arabic} until Chapter 1 is reached
+}
+
+% Patch \tableofcontents to guarantee Crimson "Contents" heading without underline and suppress subtitles
+\let\orig@tableofcontents\tableofcontents
+\renewcommand{\tableofcontents}{%
+  \begingroup
+    \iscontentstoctrue
+    \DeclareRobustCommand{\chaptersubtitle}[1]{}%
+    \renewcommand*\contentsname{{\normalfont\bfseries\fontsize{18pt}{22pt}\selectfont\color{consequence}Contents}}%
+    \orig@tableofcontents
   \endgroup
 }
+
+% Major division banners in TOC (e.g. "Main Text", "Synthesis", "Back Matter")
+\DeclareRobustCommand{\tocdivisionentry}[1]{%
+  \par\addvspace{18pt}%
+  \noindent\hfil{\normalfont\sffamily\bfseries\fontsize{10.5pt}{13.5pt}\selectfont\color{ink}#1}\hfil\par%
+  \vspace{3pt}%
+  \noindent\hfil{\color{paleink!80!softink}\rule{0.45\textwidth}{0.45pt}}\hfil\par%
+  \addvspace{8pt}%
+}
+
+% Part banners in TOC (e.g. "Part I: The Machine")
+\DeclareRobustCommand{\tocpartentry}[1]{%
+  \par\addvspace{16pt}%
+  \noindent\hfil{\normalfont\sffamily\bfseries\fontsize{10pt}{13pt}\selectfont\color{consequence}#1}\hfil\par%
+  \addvspace{7pt}%
+}
+
+% Hook into \addparttocentry to emit clean centered Crimson Part entries and division lines
+\renewcommand*{\addparttocentry}[2]{%
+  \ifstr{#1}{}{%
+    \ifstr{#2}{Appendices}{}{%
+      \addtocontents{toc}{\protect\tocdivisionentry{#2}}%
+    }%
+  }{%
+    \ifstr{#2}{}{%
+      \addtocontents{toc}{\protect\tocpartentry{Part~#1}}%
+    }{%
+      \addtocontents{toc}{\protect\tocpartentry{#2}}%
+    }%
+  }%
+}
+
+% Suppress raw Appendices part entry and format part lines cleanly in TOC
+\renewcommand*{\l@part}[2]{%
+  \in@{Part}{#1}%
+  \ifin@
+    \par\addvspace{16pt}%
+    \noindent\hfil{\normalfont\sffamily\bfseries\fontsize{10pt}{13pt}\selectfont\color{consequence}%
+      \begingroup
+        \renewcommand{\numberline}[1]{}%
+        #1%
+      \endgroup
+    }\hfil\par%
+    \addvspace{7pt}%
+  \fi
+}
+
+% Intercept \chapter command to cleanly handle frontmatter vs mainmatter transitions
+\let\old@chapter\chapter
+\renewcommand{\chapter}{%
+  \@ifstar{\unnumbered@chapter}{\numbered@chapter}%
+}
+
+\newcommand{\unnumbered@chapter}[1]{%
+  \old@chapter*{#1}%
+}
+
+\newcommand{\numbered@chapter}[2][]{%
+  \if@firstnumbered
+    \cleardoublepage
+    \pagenumbering{arabic}%
+    \renewcommand{\thepage}{\arabic{page}}%
+    \setcounter{page}{1}%
+    \addtocontents{toc}{\protect\tocdivisionentry{Main Text}}%
+    \addtocontents{toc}{\protect\setcounter{tocdepth}{1}}%
+    \global\@firstnumberedfalse
+  \fi
+  \ifnum\value{chapter}=16
+    \ifsynthesiswritten\else
+      \addtocontents{toc}{\protect\tocdivisionentry{Synthesis}}%
+      \global\synthesiswrittentrue
+    \fi
+  \fi
+  \refstepcounter{chapter}%
+  \setcounter{section}{0}%
+  \if\relax\detokenize{#1}\relax
+    \old@chapter*{#2}%
+    \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#2}%
+  \else
+    \old@chapter*[#1]{#2}%
+    \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}%
+  \fi
+}
+
+% Definitive Chapter Entry layout in TOC (MLSysBook layout)
+\renewcommand*{\l@chapter}[2]{%
+  \ifnum \c@tocdepth >\m@ne
+    \addpenalty{-\@highpenalty}%
+    \vskip 0.60em\relax
+    {%
+      \leftskip 0pt\relax
+      \rightskip \@tocrmarg
+      \parfillskip -\rightskip
+      \parindent 0pt\relax
+      \@afterindenttrue
+      \interlinepenalty\@M
+      \leavevmode
+      \begingroup
+        \renewcommand{\numberline}[1]{{\normalfont\sffamily\bfseries\fontsize{8.8pt}{11.5pt}\selectfont\color{ink}\format@toc@number{##1}\hspace{0.55em}}}%
+        {\normalfont\sffamily\bfseries\fontsize{8.8pt}{11.5pt}\selectfont\color{ink}#1}\nobreak
+      \endgroup
+      \TOCLineLeaderFill
+      \nobreak
+      {\normalfont\sffamily\bfseries\fontsize{8.8pt}{11.5pt}\selectfont\color{ink}#2}%
+      \par
+    }%
+  \fi
+}
+
+% Definitive Section Entry layout in TOC (MLSysBook layout)
+\renewcommand*{\l@section}[2]{%
+  \ifnum \c@tocdepth >\z@
+    \vskip 0.10em\relax
+    {%
+      \leftskip 1.4em\relax
+      \rightskip \@tocrmarg
+      \parfillskip -\rightskip
+      \parindent 0pt\relax
+      \@afterindenttrue
+      \interlinepenalty\@M
+      \leavevmode
+      \begingroup
+        \renewcommand{\numberline}[1]{\makebox[2.9em][l]{##1\hspace{0.4em}}}%
+        {\normalfont\sffamily\fontsize{8.0pt}{10.2pt}\selectfont\color{softink}#1}\nobreak
+      \endgroup
+      \TOCLineLeaderFill
+      \nobreak
+      {\normalfont\sffamily\fontsize{8.0pt}{10.2pt}\selectfont\color{softink}#2}%
+      \par
+    }%
+  \fi
+}
 \makeatother
-
-\newcommand{\parttocnumberformat}[1]{\makebox[3.2em][l]{{\color{consequence}Part~#1:}}}
-
-\DeclareTOCStyleEntry[
-  level=-1,
-  beforeskip=1.3em,
-  entryformat=\normalfont\sffamily\bfseries\fontsize{9.2pt}{12pt}\selectfont\color{structural},
-  entrynumberformat=\parttocnumberformat,
-  numwidth=3.4em,
-  indent=0pt,
-  linefill=\TOCLineLeaderFill,
-  pagenumberformat=\normalfont\sffamily\bfseries\fontsize{9.2pt}{12pt}\selectfont\color{consequence}
-]{tocline}{part}
-
-\DeclareTOCStyleEntry[
-  level=0,
-  beforeskip=0.22em,
-  entryformat=\normalfont\sffamily\bfseries\fontsize{8.6pt}{11.2pt}\selectfont\color{structural},
-  numwidth=1.6em,
-  indent=0.8em,
-  linefill=\TOCLineLeaderFill,
-  pagenumberformat=\normalfont\sffamily\bfseries\fontsize{8.6pt}{11.2pt}\selectfont\color{consequence}
-]{tocline}{chapter}
-
-\DeclareTOCStyleEntry[
-  level=1,
-  beforeskip=0.08em,
-  entryformat=\normalfont\sffamily\fontsize{7.8pt}{10pt}\selectfont\color{structural},
-  numwidth=2.0em,
-  indent=2.4em,
-  linefill=\TOCLineLeaderFill,
-  pagenumberformat=\normalfont\sffamily\fontsize{7.8pt}{10pt}\selectfont\color{softink}
-]{tocline}{section}
-
-\DeclareTOCStyleEntry[
-  level=2,
-  beforeskip=0.03em,
-  entryformat=\normalfont\sffamily\fontsize{7.0pt}{9.0pt}\selectfont\color{softink},
-  numwidth=2.6em,
-  indent=4.4em,
-  linefill=\TOCLineLeaderFill,
-  pagenumberformat=\normalfont\sffamily\fontsize{7.0pt}{9.0pt}\selectfont\color{softink}
-]{tocline}{subsection}
-
-\DeclareTOCStyleEntry[
-  level=3,
-  beforeskip=0.02em,
-  entryformat=\normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{paleink!80!softink},
-  numwidth=3.0em,
-  indent=7.0em,
-  linefill=\TOCLineLeaderFill,
-  pagenumberformat=\normalfont\sffamily\fontsize{6.6pt}{8.4pt}\selectfont\color{paleink!80!softink}
-]{tocline}{subsubsection}
 
 
 % ---------------------------------------------------------------------------
