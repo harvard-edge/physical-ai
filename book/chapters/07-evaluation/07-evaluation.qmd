@@ -2,9 +2,9 @@
 
 ![**Systems Organ Focus: Brain.** Exact one-sided $95\%$ lower confidence bounds on true success probability as a function of zero-failure physical trial count $n$, illustrating how statistical confidence scales from $86.1\%$ at $n=20$ to $99.9\%$ at $n=2{,}995$ and exposing the wide tail risk that remains under small testing budgets.](figures/fig_locator.svg){#fig-locator fig-pos="H" width=100%}
 
-*How good is this policy, and what does that claim actually cover?*
+*Why does passing twenty consecutive physical trials without failure tell you surprisingly little about whether the machine is safe to deploy?*
 
-Standard machine learning workflows evaluate models by measuring average accuracy or mean squared error across static, held-out test splits. In physical systems, open-loop prediction metrics are almost completely uncorrelated with closed-loop survival. A policy with negligible offline tracking error can diverge catastrophically in physical execution because its own actions shift the observation stream into unfamiliar territory. Physical AI demands closed-loop evaluation methodologies grounded in non-asymptotic statistics and extreme-value tail analysis. Verifying an embodied agent requires measuring performance across worst-case operating envelope boundaries, quantifying the risk of rare catastrophic excursions, and enforcing selective prediction mechanisms that halt execution before spatial clearance is lost.
+Standard machine learning workflows evaluate models by measuring average accuracy or loss across static, held-out test splits. In physical systems, open-loop prediction metrics are almost completely uncorrelated with closed-loop survival. A policy with negligible offline tracking error can diverge catastrophically in physical execution because its own actions shift the observation stream into unfamiliar territory. Physical AI demands closed-loop evaluation methodologies grounded in non-asymptotic statistics and extreme-value tail analysis. Verifying an embodied agent requires measuring performance across worst-case operating envelope boundaries, calculating exact Clopper-Pearson binomial coverage bounds ($86.1\%$ at $n=20$), and enforcing pre-registered stopping oracles to expose heavy-tailed physical risks.
 
 {{< pagebreak >}}
 
@@ -40,21 +40,17 @@ To determine what twenty clean trials actually prove, we model the sequence of p
 $$p_{\text{lower}}^{20} = 0.05 \implies p_{\text{lower}} = 0.05^{1/20} = \exp\left(\frac{\ln 0.05}{20}\right) \approx 0.86089 \approx 86.1\%$$
 This calculation—the exact Clopper-Pearson lower bound—reveals the stark evidentiary deficit of small testing budgets.[^fn-math-clopper-pearson] If the true operational reliability of the vehicle were $86.1\%$, the probability of observing twenty straight successes would be exactly $5\%$. If the true reliability were below $86.1\%$, the probability of observing twenty clean runs would fall below $5\%$, allowing us to reject the hypothesis $p < 0.861$ at the $95\%$ confidence level.
 
-::: {.callout-definition}
-## Clopper-Pearson Non-Asymptotic Bound
+::: {.callout-definition title="Clopper-Pearson Non-Asymptotic Bound"}
 The **Clopper-Pearson non-asymptotic bound** is an exact statistical lower confidence limit on true operational success probability derived from the inverted cumulative binomial distribution (evaluating to $p_{\text{lower}} = \alpha^{1/n}$ for zero failures across $n$ independent trials at confidence level $1-\alpha$), establishing the mathematical ceiling of empirical testing without assuming asymptotic normality.
 :::
 
 Crucially, twenty successes in twenty trials does not prove that the robot is $100\%$ reliable, nor even $95\%$ reliable. It proves only that the true success probability is at least $86.1\%$ at $95\%$ confidence. A physical system that fails once in every eight attempts ($p = 87.5\%$) will successfully complete twenty consecutive test runs more than $6.9\%$ of the time ($0.875^{20} \approx 0.0692$). A flawless score in twenty runs is entirely consistent with a physical machine that suffers a catastrophic boundary violation nearly once every seven deployments.
 
-::: {.callout-tip}
-## Architect's Rule of Thumb: Twenty Clean Runs
+::: {.callout-rule title="Twenty Clean Runs"}
 Twenty consecutive successes in a laboratory test cell establish an $86.1\%$ lower confidence bound, not a $100\%$ reliability certificate. A flawless score in twenty runs is mathematically consistent with a physical system that fails once in every seven deployments.
 :::
 
-::: {.callout-note appearance="minimal"}
-## Back-of-the-Envelope Math: Derivation of the 20-Run Lower Bound
-
+::: {.callout-math title="Derivation of the 20-Run Lower Bound"}
 **Problem:** An autonomous robot completes $n = 20$ physical navigation runs with zero collisions or human interventions ($k = 20$). What is the exact one-sided $95\%$ lower confidence bound on its true operational success probability $p$?
 
 **Mathematical Derivation:**
@@ -158,8 +154,7 @@ Over the $10\text{ m}$ transit ($10\text{ s}$ duration), this velocity produces 
 $$y(10\text{ s}) = \int_0^{10} v \sin(\epsilon_\theta) \, dt = 10\text{ s} \times 0.01745\text{ m/s} \approx 0.1745\text{ m} = 17.5\text{ cm}$$
 If the corridor provides $15.0\text{ cm}$ of clearance to a side boundary, the platform collides with the wall at $t = 8.6\text{ s}$ after traveling $8.6\text{ m}$ ($y(8.6\text{ s}) = 8.6 \times 0.01745 = 0.150\text{ m}$). The policy achieves an open-loop error of $0.0175\text{ rad}$ and a closed-loop task success rate of zero percent.
 
-::: {.callout-tip}
-## Architect's Rule of Thumb: Open-Loop Blindness
+::: {.callout-rule title="Open-Loop Blindness"}
 Open-loop loss measures dataset mimicry; closed-loop dynamics decide physical survival. A policy with near-zero offline prediction error will diverge catastrophically the instant an uncorrected action bias integrates through the physical plant.
 :::
 
@@ -178,7 +173,7 @@ The relationship between offline and online metrics is directional. Open-loop ev
 
 As illustrated in @fig-07-open-vs-closed-loop, open-loop evaluation evaluates candidate actions only on demonstrator states where errors are immediately discarded, obscuring the cumulative trajectory divergence that drives closed-loop physical execution into catastrophic wall collisions.
 
-![**Open-Loop Error Masking versus Closed-Loop Compounding State Divergence.** (a) In open-loop evaluation (dataset trace replay), a candidate policy is scored exclusively against recorded demonstrator states $s_t^* \in \mathcal{D}_{\mathrm{demo}}$, where a constant $1.0^\circ$ ($0.0175\text{ rad}$) heading bias produces an apparent $99.7\%$ directional accuracy ($\text{MSE} = 3.05 \times 10^{-4}\text{ rad}^2$) because the evaluation harness resets the platform to the centerline at every step. (b) In closed-loop physical execution, the unmodeled angular bias continuously integrates through kinematic state transitions ($\dot{y} = v \sin \theta$), causing cumulative lateral displacement that breaches the $15\text{ cm}$ clearance boundary at $t = 8.6\text{ s}$ ($x = 8.6\text{ m}$), reducing closed-loop task success to $0\%$.](figures/fig07_open_vs_closed_loop.svg){#fig-07-open-vs-closed-loop fig-pos="t" width=100%}
+![**Open-Loop Error Masking versus Closed-Loop Compounding State Divergence.** (a) In open-loop evaluation (dataset trace replay), a candidate policy is scored exclusively against recorded demonstrator states $s_t^* \in \mathcal{D}_{\mathrm{demo}}$, where a constant $1.0^\circ$ ($0.0175\text{ rad}$) heading bias produces an apparent $99.7\%$ directional accuracy ($\text{MSE} = 3.05 \times 10^{-4}\text{ rad}^2$) because the evaluation harness resets the platform to the centerline at every step. (b) In closed-loop physical execution, the unmodeled angular bias continuously integrates through kinematic state transitions ($\dot{y} = v \sin \theta$), causing cumulative lateral displacement that breaches the $15\text{ cm}$ clearance boundary at $t = 8.6\text{ s}$ ($x = 8.6\text{ m}$), reducing closed-loop task success to $0\%$.](figures/fig07_open_vs_closed_loop.svg){#fig-07-open-vs-closed-loop fig-pos="H" width=100%}
 
 This fundamental disconnect between open-loop statistical agreement and physical closed-loop survival is systematized in @tbl-07-offline-closed-loop-disconnect, which maps common machine learning validation metrics to their underlying physical failure modes and corresponding closed-loop evaluators.
 
@@ -272,7 +267,7 @@ While the Central Limit Theorem (CLT) governs the average operational energy of 
 
 Attempting to bypass these physical bottlenecks by distributing trials across a fleet of identical machines introduces spatial and environmental correlation. When ten mobile robots run concurrently across different bays of a testing warehouse, their operational histories are not independent. The machines share identical manufacturing tolerances from the same production batch, run on identical concrete floor finishes, share ambient temperature profiles governed by a single building ventilation system, and interact with human operators trained under identical protocols. If an environmental anomaly such as floor glazing or ambient lighting glare is absent from the facility, none of the ten machines will experience it. As illustrated by the multi-bay robotic qualification test facility in @fig-07-nist-test-arena, standardized physical test fixtures allow teams to isolate specific locomotion or perception capabilities under repeatable physical geometry, but they also bound the state space to that precise fixture envelope. Accumulating ten thousand fleet hours across ten machines in one facility yields ten parallel observations of a narrow environmental distribution, not ten thousand hours of independent operational diversity. Treating aggregated fleet hours as a direct substitute for independent statistical exposure obscures the common-mode biases that dominate physical operations.
 
-![**Standardized Robotic Evaluation Facility and Obstacle Bays.** Standardized physical test arenas—such as the National Institute of Standards and Technology (NIST) Robot Test Facility configured under ASTM E54.09 test methods—provide repeatable physical obstacle stations (including calibrated step fields, pitch and roll ramps, drop-offs, and constrained passages) to benchmark mobile robot locomotion, sensor payload stability, and operator control across discrete, repeatable trials. While such structured arenas isolate mechanical and algorithmic variables under controlled geometry and lighting, they bound the state space the robot encounters: zero-failure runs across standardized bays do not establish out-of-distribution robustness or cover environmental anomalies (such as specular glare, surface contaminants, or novel obstacle dynamics) present in unconstrained operational domains.](figures/fig07_real_nist_test_arena.jpg){#fig-07-nist-test-arena fig-pos="t" width=75%}
+![**Standardized Robotic Evaluation Facility and Obstacle Bays.** Standardized physical test arenas—such as the National Institute of Standards and Technology (NIST) Robot Test Facility configured under ASTM E54.09 test methods—provide repeatable physical obstacle stations (including calibrated step fields, pitch and roll ramps, drop-offs, and constrained passages) to benchmark mobile robot locomotion, sensor payload stability, and operator control across discrete, repeatable trials. While such structured arenas isolate mechanical and algorithmic variables under controlled geometry and lighting, they bound the state space the robot encounters: zero-failure runs across standardized bays do not establish out-of-distribution robustness or cover environmental anomalies (such as specular glare, surface contaminants, or novel obstacle dynamics) present in unconstrained operational domains.](figures/fig07_real_nist_test_arena.jpg){#fig-07-nist-test-arena fig-pos="H" width=75%}
 
 The resulting mismatch between what physical trials yield and what statistical confidence requires exposes the fundamental inadequacy of classical estimation tools when applied to physical autonomy. In standard machine learning benchmarks, practitioners frequently compute confidence intervals using the asymptotic Wald normal approximation:
 $$\hat{p} \pm z_{1-\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}$$
@@ -281,9 +276,7 @@ When testing high-reliability physical systems where zero failures are observed 
 Valid statistical inference requires exact, non-asymptotic interval estimation via the Clopper-Pearson method [@clopper1934use]. Inverting the binomial relation determines the minimum number of consecutive zero-failure trials $n$ required to certify a target success probability $p_{\text{target}}$ at confidence level $1-\alpha$:
 $$n = \frac{\ln \alpha}{\ln p_{\text{target}}}$$
 
-::: {.callout-note appearance="minimal"}
-## Back-of-the-Envelope Math: High-Assurance Physical Trial Scaling
-
+::: {.callout-math title="Statistical Scaling of High-Reliability Assurance"}
 **Problem:** An industrial qualification standard mandates certifying a robotic policy with $P_{99.9}$ reliability ($p_{\text{target}} = 0.999$, allowing a failure probability at most $10^{-3}$) at $95\%$ confidence ($\alpha = 0.05$). If each physical trial requires $T_{\text{trial}} = 260\text{ s}$, how many zero-failure runs and how much wall-clock testing time are required?
 
 **Calculations:**
@@ -304,9 +297,7 @@ $$T \approx \frac{3.0}{\lambda}$$
 
 The **Butler & Finelli infeasibility bound** is the mathematical theorem establishing that certifying ultra-high cyber-physical reliability (e.g., catastrophic failure rates $\lambda \le 10^{-6}$ to $10^{-9}\text{ h}^{-1}$) through black-box operational exposure alone is physically impossible due to astronomical duration requirements ($T = -\ln(1-C)/\lambda$), mathematically necessitating deterministic runtime invariant enforcement and structured fault injection.
 
-::: {.callout-note}
-## Real-World Landmark Study: Butler & Finelli Flight Control Software Reliability Infeasibility (NASA Langley)
-
+::: {.callout-incident title="Butler & Finelli Flight Control Software Reliability Infeasibility Study"}
 **Study Overview:** In their landmark NASA Langley investigation, Ricky W. Butler and George B. Finelli proved mathematically that validating ultra-high reliability requirements for life-critical cyber-physical systems (such as commercial fly-by-wire flight control software requiring a catastrophic failure rate $\lambda \le 10^{-9}\text{ failures/hour}$) through empirical operational testing alone is physically impossible [@butler1993infeasibility] [^fn-inc-butler-finelli].
 
 **Mathematical Proof & Exposure Deficit:** Under a continuous-time Poisson failure process with failure rate $\lambda$, the probability of observing zero catastrophic failures over test duration $T$ is $P(0 \text{ failures in } T) = e^{-\lambda T}$. To certify that the true failure rate is at most $\lambda$ at confidence level $C = 1 - \alpha$, the required zero-failure physical exposure time is:
@@ -323,14 +314,13 @@ Evaluating this bound across safety integrity standards reveals an insurmountabl
 **Systems Engineering Impact:** The Butler & Finelli Infeasibility Theorem proves that ultra-reliability cannot be tested into a machine through operational burn-in, fleet mileage accumulation, or passive sampling. High-assurance physical AI systems must instead enforce safety through deterministic runtime architectural supervisors, formal invariant filtering, and active unannounced fault injection.
 :::
 
-::: {.callout-tip}
-## Architect's Rule of Thumb: The Butler-Finelli Invariant
+::: {.callout-rule title="The Butler-Finelli Invariant"}
 Ultra-reliability cannot be tested into a machine; it must be architected into its deterministic safety supervisor. When certifying failure rates below $10^{-6}\text{ h}^{-1}$, empirical testing establishes nothing; deterministic runtime invariant filtering guarantees survival.
 :::
 
 The mathematical scaling of these exact confidence lower bounds across trial counts and confidence levels is visualized in @fig-07-confidence-bounds, highlighting the widening gap between achievable testing budgets and high-assurance reliability targets.
 
-![**Non-Asymptotic Confidence Lower Bounds and Physical Testing Budget Scaling.** Exact Clopper-Pearson one-sided lower confidence bounds on operational success probability $p$ as a function of zero-failure physical trial count $n$ across confidence levels $1-\alpha \in \{0.90, 0.95, 0.99\}$. While twenty clean trials ($n=20$) yield only an $86.1\%$ lower bound at $95\%$ confidence (permitting a $13.9\%$ failure rate), establishing high-assurance industrial reliability ($P_{99.9}$, $p \ge 0.999$) demands $2{,}995$ consecutive zero-failure runs ($216.3\text{ hours}$ of test cell occupancy at $260\text{ s}$/trial), exceeding the mechanical wear life of physical actuators and demonstrating why statistical certification alone cannot replace deterministic runtime safeguards.](figures/fig07_confidence_bounds.svg){#fig-07-confidence-bounds fig-pos="t" width=100%}
+![**Non-Asymptotic Confidence Lower Bounds and Physical Testing Budget Scaling.** Exact Clopper-Pearson one-sided lower confidence bounds on operational success probability $p$ as a function of zero-failure physical trial count $n$ across confidence levels $1-\alpha \in \{0.90, 0.95, 0.99\}$. While twenty clean trials ($n=20$) yield only an $86.1\%$ lower bound at $95\%$ confidence (permitting a $13.9\%$ failure rate), establishing high-assurance industrial reliability ($P_{99.9}$, $p \ge 0.999$) demands $2{,}995$ consecutive zero-failure runs ($216.3\text{ hours}$ of test cell occupancy at $260\text{ s}$/trial), exceeding the mechanical wear life of physical actuators and demonstrating why statistical certification alone cannot replace deterministic runtime safeguards.](figures/fig07_confidence_bounds.svg){#fig-07-confidence-bounds fig-pos="H" width=100%}
 
 As summarized in @tbl-07-confidence-bounds, the non-asymptotic scaling of confidence bounds reveals the severe evidentiary deficit of small testing budgets across common trial sample sizes, establishing the mathematical ceiling of empirical certification.
 
@@ -356,9 +346,7 @@ These physical and statistical ceilings force an unavoidable architectural concl
 
 The complete operational protocol for executing physical trials, enforcing full-denominator accounting, and evaluating the exact non-asymptotic stopping rule without falling into the optional stopping fallacy is formalized in Algorithm 7.1.
 
-::: {.callout-note icon=false}
-## Algorithm 7.1: Closed-Loop Physical Trial Exposure and Stopping Oracle
-
+::: {.callout-algorithm title="Closed-Loop Physical Trial Exposure and Stopping Oracle"}
 **Execution Context:** Automated Physical Test Cell / Hardware-in-the-Loop (HIL) Qualification Rig.  
 **Statistical Invariant:** Pre-registered required sample size $N_{\text{req}} = \lceil \ln(\alpha) / \ln(p_{\text{target}}) \rceil$; zero informal looks to prevent optional stopping inflation ($P(\text{false alarm}) \le \alpha$).  
 **Physical Invariant:** Complete-denominator ledger accounting; every trial initiated under policy authority increments $n_{\text{attempted}}$ and cannot be discarded.
@@ -497,9 +485,7 @@ The **censored trial fallacy** is the systematic artificial inflation of empiric
 
 The temptation to substitute visual plausibility for statistical sampling represents a pervasive vulnerability in physical systems engineering. A single video recording of a robotic arm grasping an irregular workpiece or a mobile robot navigating a cluttered room is a demonstration, not a measurement. A visually convincing demonstration proves that the system state trajectory intersects the success set for at least one sequence of initial conditions and environmental disturbances, but it provides no information about the volume of that success set. Because human perception is tuned to smooth motion and coordinated kinematics, an observer easily mistakes kinematic fluidity for policy competence. An execution that appears deliberate and smooth can operate within $10\text{ mm}$ of a catastrophic kinematic singularity or carry an unmeasured $P_{95}$ tracking error that produces a collision in nine out of ten repeats. A representative demonstration has no statistical standing. A representative sample requires randomized initial poses, stratified environmental conditions spanning the full operational envelope, and a pre-calculated sample size capable of bounding tail failure rates.
 
-::: {.callout-note}
-## Incident Autopsy: Tow-Tractor Sidewall Collision from Censored Acceptance Testing
-
+::: {.callout-incident title="Tow-Tractor Sidewall Collision from Censored Acceptance Testing"}
 **System:** Autonomous $450\text{ kg}$ industrial electric tow-tractor with forward stereo vision, 2D planar lidar, and end-to-end vision-action policy running at $50\text{ Hz}$ in factory material handling.
 
 **Incident:** High-speed sidewall collision against a steel structural column at $1.6\text{ m/s}$ in a production corridor, shearing the sensor mast, bending the steering knuckle, and causing $\$14{,}000$ in hardware damage within 48 hours of commissioning.
@@ -513,7 +499,7 @@ The temptation to substitute visual plausibility for statistical sampling repres
 **Provenance:** Factory automation logistics vehicle commissioning post-mortem report and sensor log audit.
 :::
 
-![**Rigid Barrier Impact Testing and Destructive Physical Limits.** High-speed photometric capture of a full-scale vehicle impact against a load-cell instrumented rigid concrete crash barrier during dynamic qualification testing (NHTSA / Calspan facility). High-contrast optical fiducials along the vehicle flank track chassis deceleration profiles and structural crumple dynamics at millisecond resolution. In Physical AI systems, physical impact testing reveals the catastrophic consequence when learned perception or control policies fail at dynamical boundaries: unmodeled latency, perceptual blinding, or compounding steering drift rapidly consumes spatial clearance margins, converting kinetic energy ($E_k = \frac{1}{2}mv^2$) into structural deformation that software runtime monitors cannot mitigate once physical contact occurs.](figures/fig07_real_crash_barrier_test.jpg){#fig-07-crash-barrier-test fig-pos="t" width=85%}
+![**Rigid Barrier Impact Testing and Destructive Physical Limits.** High-speed photometric capture of a full-scale vehicle impact against a load-cell instrumented rigid concrete crash barrier during dynamic qualification testing (NHTSA / Calspan facility). High-contrast optical fiducials along the vehicle flank track chassis deceleration profiles and structural crumple dynamics at millisecond resolution. In Physical AI systems, physical impact testing reveals the catastrophic consequence when learned perception or control policies fail at dynamical boundaries: unmodeled latency, perceptual blinding, or compounding steering drift rapidly consumes spatial clearance margins, converting kinetic energy ($E_k = \frac{1}{2}mv^2$) into structural deformation that software runtime monitors cannot mitigate once physical contact occurs.](figures/fig07_real_crash_barrier_test.jpg){#fig-07-crash-barrier-test fig-pos="H" width=85%}
 
 As captured in full-scale impact barrier testing (@fig-07-crash-barrier-test), physical kinetic energy transfers into destructive structural deformation within milliseconds when spatial clearance is lost. Pre-deployment evaluations that censor near-misses or test only benign, high-contrast environments leave physical machinery vulnerable to unrecoverable collisions the moment real-world operating conditions diverge from the tested envelope.
 

@@ -2,9 +2,9 @@
 
 ![**Systems Organ Focus: Nervous.** Revoking authority from an autonomous policy requires an independent real-time arbitration layer to manage discrete state handshakes and enforce bumpless actuator transitions. Without a deterministic nervous-system arbiter, concurrent human and machine commands produce split-brain execution and catastrophic mechanical shock.](figures/fig_locator.svg){#fig-locator fig-pos="H" width=100%}
 
-*Who can take authority away from the machine, and what happens to what it was already doing?*
+*When a human grabs the controls of a running machine, how do you transfer kinetic authority without causing the very collision you meant to prevent?*
 
-No autonomous physical machine operates in total isolation from human authority. Whether through an onboard operator grabbing a steering wheel, a factory technician hitting an emergency stop, or a remote supervisor asserting teleoperation, authority over physical actuators must transition dynamically between human and machine. If this transfer is handled as an informal software blend, the resulting hybrid command represents neither intent and leads to immediate collision. Runtime intervention requires deterministic state-machine arbitration, synchronized four-phase handshakes, and higher-order bumpless transfer that respects physical inertia, while cryptographically isolating intervention traces so that human corrections do not contaminate autonomous training data.
+No autonomous physical machine operates in total isolation from human authority. Whether through an onboard operator taking a steering wheel, a technician hitting an emergency stop, or a remote operator engaging teleoperation, authority over physical actuators must transition dynamically between human and machine. If this takeover is handled as an informal software blend, the resulting hybrid command represents neither intent and risks instant collision. Runtime intervention requires deterministic state-machine arbitration, synchronized four-phase handshakes, and higher-order $\mathcal{C}^1$ bumpless transfer that respects physical inertia, while cryptographically isolating intervention traces so that human corrections do not contaminate autonomous training data.
 
 {{< pagebreak >}}
 
@@ -67,9 +67,7 @@ Throughout this reaction budget, the machine continues moving under the unchecke
 $$d_{\text{intervene}} = v \cdot T_{\text{reaction}} + \frac{v^2}{2 a_{\text{max}}}.$$
 For the same machine operating at $5.0\text{ m/s}$ with a maximum plant braking deceleration of $a_{\text{max}} = 2.5\text{ m/s}^2$, the physical braking phase requires an additional $5.0\text{ m}$. The total physical distance required for a human operator to detect an obstacle, actuate an override, and bring the plant to rest is $12.5\text{ m}$, of which sixty percent is consumed entirely by human neurological and muscular delay before the brakes engage. Because the reaction distance scales linearly with velocity while the deceleration distance scales quadratically, human intervention becomes physically incapable of averting close-range collisions as operational speed increases.
 
-::: {.callout-note appearance="simple"}
-## Back-of-the-Envelope Math: Operator Takeover Budget and Spatial Clearance Margin
-
+::: {.callout-math title="Operator Takeover Budget and Spatial Clearance Margin"}
 **Question:** An autonomous transport vehicle ($m = 2200\text{ kg}$) travels at $v_0 = 22.0\text{ m/s}$ ($79.2\text{ km/h}$) on a dry asphalt roadway ($\mu = 0.80$, maximum braking deceleration $a_{\text{max}} = 6.0\text{ m/s}^2$). An attentive human safety driver monitors the forward path. If an unmapped obstacle is perceived at a forward sensing horizon of $d_{\text{sense}} = 65.0\text{ m}$, can a human takeover avert collision if the driver has an active reaction budget $T_{\text{react}} = 1.0\text{ s}$, the real-time safety enforcer requires a four-phase handshake $T_{\text{handshake}} = 20\text{ ms}$, and the drive-by-wire steering/braking system uses a $\mathcal{C}^1$ bumpless blend window $\tau_{\text{blend}} = 75\text{ ms}$?
 
 **1. Reaction Drift Distance ($T_{\text{react}} = 1.00\text{ s}$):**
@@ -94,8 +92,7 @@ $$\Delta d_{\text{clearance}} = d_{\text{sense}} - d_{\text{total}} = 65.00\text
 **Verdict:** The vehicle stops with a razor-thin safety clearance margin of $1.40\text{ m}$. If human situational awareness decays by even $100\text{ ms}$ (increasing $T_{\text{react}}$ to $1.10\text{ s}$), the vehicle travels an additional $2.20\text{ m}$, striking the obstacle at $v_{\text{impact}} = 5.1\text{ m/s}$ ($18.4\text{ km/h}$).
 :::
 
-::: {.callout-note appearance="simple"}
-## Architect's Rule of Thumb: The Spatial Takeover Budget Law
+::: {.callout-rule title="The Spatial Takeover Budget Law"}
 Handover is an allocation of physical distance, not digital clock cycles. If the spatial travel during human reaction time $v \cdot T_{\text{reaction}}$ plus the kinematic braking distance $\frac{v^2}{2 a_{\text{max}}}$ exceeds the sensing clearance margin, no software handshake or arbitration algorithm can avert collision. The handover deadline $T_{\text{timeout}}$ must be dynamically bounded by physical stopping distance, not fixed in configuration files.
 :::
 
@@ -192,8 +189,7 @@ When authority transfers between controllers at time $t_0$, the learned policy o
 
 Eliminating this step discontinuity requires dynamic blending across a finite time window $\tau_{\text{blend}}$, a technique known as **bumpless transfer**. The blended command routed to the actuator driver is expressed as $\mathbf{u}(t) = (1 - \alpha(t))\mathbf{u}_{\text{policy}}(t) + \alpha(t)\mathbf{u}_{\text{human}}(t)$, where $\alpha(t)$ is an interpolation factor defined over the interval $t \in [t_0, t_0 + \tau_{\text{blend}}]$ satisfying the boundary conditions $\alpha(t_0) = 0$ and $\alpha(t_0 + \tau_{\text{blend}}) = 1$. A linear interpolation ramp produces discontinuous derivatives at both endpoints, injecting secondary jerk spikes at the onset and conclusion of the handover. To preserve mechanical smoothness, the schedule must form a **$\mathcal{C}^1$ bumpless transfer ramp** possessing continuous first derivatives with vanishing boundaries, $\dot{\alpha}(t_0) = 0$ and $\dot{\alpha}(t_0 + \tau_{\text{blend}}) = 0$. A standard polynomial that satisfies these boundary conditions is the cubic smoothstep $\alpha(t) = 3\left(\frac{t - t_0}{\tau_{\text{blend}}}\right)^2 - 2\left(\frac{t - t_0}{\tau_{\text{blend}}}\right)^3$, which yields a continuous derivative $\dot{\alpha}(t) = \frac{6}{\tau_{\text{blend}}}\left(\frac{t - t_0}{\tau_{\text{blend}}} - \left(\frac{t - t_0}{\tau_{\text{blend}}}\right)^2\right)$.[^fn-math-bumpless-smoothstep]
 
-::: {.callout-definition}
-## $\mathcal{C}^1$ Bumpless Authority Transfer Ramp
+::: {.callout-definition title="C^1 Bumpless Authority Transfer Ramp"}
 A continuous dynamic interpolation schedule $\alpha(t)$ possessing continuous first derivatives ($\dot{\alpha}(t_0) = 0$ and $\dot{\alpha}(t_0 + \tau_{\text{blend}}) = 0$) that smoothly transitions commanded actuator torques, joint velocities, or pressure setpoints over a finite blending window $\tau_{\text{blend}} \ge \frac{1.5 |\Delta \mathbf{u}|}{j_{\text{allowable}}}$ to prevent infinite jerk spikes, driveline mechanical shock, structural resonance excitation, and tire traction loss during controller handover.
 :::
 
@@ -203,8 +199,7 @@ This first-principles bound establishes that no moving machine can transfer cont
 
 The derivation exposes a latency-jerk tradeoff that governs every physical takeover. Increasing $\tau_{\text{blend}}$ reduces peak jerk and keeps driveline stress within safe margins, but it delays full human authority and lengthens the stopping trajectory. Consider an analytical example of an autonomous vehicle moving at $v_0 = 10.0\text{ m/s}$ along a flat surface. The learned policy is commanding cruising acceleration $u_{\text{policy}} = 0.0\text{ m/s}^2$ when an operator abruptly intervenes with full emergency braking, commanding $u_{\text{human}} = -6.0\text{ m/s}^2$, creating a command gap $|\Delta u| = 6.0\text{ m/s}^2$. If the vehicle chassis has a traction jerk limit of $j_{\text{allowable}} = 12.0\text{ m/s}^3$ to prevent tire breakaway, the minimum blending window is $\tau_{\text{blend}} = \frac{1.5 \times 6.0\text{ m/s}^2}{12.0\text{ m/s}^3} = 0.750\text{ s}$, or $750\text{ ms}$. Over this transition window, integrating the acceleration trajectory under cubic blending yields a total velocity reduction of $\Delta v = \int_{0}^{\tau_{\text{blend}}} \alpha(t) u_{\text{human}} dt = \frac{1}{2} u_{\text{human}} \tau_{\text{blend}} = \frac{1}{2}(-6.0\text{ m/s}^2)(0.750\text{ s}) = -2.25\text{ m/s}$. The distance traversed during the handover window is $d_{\text{blend}} = v_0 \tau_{\text{blend}} + \int_{0}^{\tau_{\text{blend}}} \left(\int_{0}^{t} \alpha(\sigma) u_{\text{human}} d\sigma\right) dt = (10.0\text{ m/s})(0.750\text{ s}) + 0.15 u_{\text{human}} \tau_{\text{blend}}^2 = 7.50\text{ m} + (0.15)(-6.0\text{ m/s}^2)(0.5625\text{ s}^2) = 7.50\text{ m} - 0.51\text{ m} = 6.99\text{ m}$. At the end of the blend window, the vehicle reaches $v(\tau_{\text{blend}}) = 7.75\text{ m/s}$, after which full manual deceleration of $-6.0\text{ m/s}^2$ brings it to rest over an additional distance of $d_{\text{post}} = \frac{(7.75\text{ m/s})^2}{2(6.0\text{ m/s}^2)} = 5.01\text{ m}$, giving a total stopping distance of $12.00\text{ m}$. In contrast, a theoretical step transition that achieved $-6.0\text{ m/s}^2$ with zero transition delay would require $d_{\text{step}} = \frac{(10.0\text{ m/s})^2}{2(6.0\text{ m/s}^2)} = 8.33\text{ m}$. The $750\text{ ms}$ jerk-limited blend therefore adds $3.67\text{ m}$ to the stopping distance. However, attempting to apply the $-6.0\text{ m/s}^2$ step over a single $1\text{ ms}$ control cycle would demand a jerk of $6000\text{ m/s}^3$, which exceeds tire adhesion, locks the wheels, and induces sliding friction that lengthens the stopping distance far beyond the blended path.
 
-::: {.callout-note appearance="simple"}
-## Architect's Rule of Thumb: The Smoothstep Jerk-Latency Invariant
+::: {.callout-rule title="The Smoothstep Jerk-Latency Invariant"}
 Actuator continuity enforces a hard lower bound on takeover rate: $\tau_{\text{blend}} \ge \frac{1.5 |\Delta \mathbf{u}|}{j_{\text{allowable}}}$. Shortening the blending window below this physical floor does not grant the operator faster physical authority; it excites mechanical driveline resonances, triggers tire slip breakaway, or trips motor current limits, lengthening the actual physical stopping envelope.
 :::
 
@@ -218,9 +213,7 @@ The physical waveforms comparing an unblended step handover against $\mathcal{C}
 
 The complete algorithmic governor executing discrete four-phase state handshakes, integrator pre-biasing, and continuous $\mathcal{C}^1$ cubic smoothstep blending on bare-metal microcontroller silicon is formalized in Algorithm 14.1.
 
-::: {.callout-note icon=false}
-## Algorithm 14.1: Four-Phase Authority Handshake and Bumpless Transfer Governor
-
+::: {.callout-algorithm title="Four-Phase Authority Handshake and Bumpless Transfer Governor"}
 **Execution Cadence:** Hard real-time periodic timer interrupt ($f = 1000\text{ Hz}$, period $T_{\text{loop}} = 1.0\text{ ms}$, hardware timing jitter $< 1.0\,\mu\text{s}$).  
 **Memory Invariant:** Zero dynamic heap allocation (`malloc`/`free` strictly forbidden; all state variables, mailboxes, and circular log buffers statically pre-allocated in DTCM SRAM).  
 **Hardware Authority:** Exclusive direct register write lock to motor inverter PWM compare registers (`TIMx_CCR` / `ePWM CMPA`), hydraulic proportional valve DACs, and Safe Torque Off (STO) hardware cutoffs.
@@ -381,9 +374,7 @@ The damage from an uncoordinated handover extends beyond the physical interactio
 
 An autopsy of physical handover collisions reveals the compound failure when these mechanisms align in a single event (@fig-14-ntsb-telemetry). In an analytical reconstruction of a high-speed mobile platform approaching an unmapped stationary barrier, the timeline decomposes into four distinct phases. In Phase 1, the learned vision policy fails to segment the barrier under low-contrast illumination, maintaining nominal speed while the safety margin shrinks. In Phase 2, the onboard monitoring loop detects kinematic divergence $1.8\text{ s}$ before projected impact and issues an acoustic takeover alert, but passive supervisory gaze decay delays operator perception by $1.2\text{ s}$. In Phase 3, with only $0.6\text{ s}$ remaining, the operator applies emergency manual steering torque, but the active low-level stability enforcer clamps the rate of change and applies counter-torque to prevent chassis slip. The resulting $6\text{ Hz}$ torque fighting locks the steering assembly, preventing lateral evasion. In Phase 4, the vehicle strikes the obstacle at $22\text{ m/s}$, shearing the front suspension and fracturing the steering gearbox drive pins. The failure occurred not because the operator was absent or because the safety enforcer was inactive, but because the architecture possessed no unified contract governing how authority transfers between them under deadlines.
 
-::: {.callout-note}
-## Landmark Incident: Boeing 737 MAX MCAS and Airbus A320 Warsaw Mode Confusion & Authority Contention
-
+::: {.callout-incident title="Boeing 737 MAX MCAS and Airbus A320 Warsaw Mode Confusion & Authority Contention"}
 **Systems:** 
 1. Boeing 737 MAX 8 Flight Control Computer with Maneuvering Characteristics Augmentation System (MCAS) [@jatr2019boeing].
 2. Airbus A320-211 Flight Augmentation and Braking Computer on Lufthansa Flight 2904 [@bfu1994warsaw].
@@ -400,8 +391,7 @@ An autopsy of physical handover collisions reveals the compound failure when the
 Mode confusion and automated lockout of human authority transform transient sensor errors into fatal kinetic catastrophes. If an automated policy can repeatedly override human manual inputs without clear state annunciation, or if hardware interlocks refuse human emergency stopping commands based on faulty environmental estimation, the machine enters a fatal authority deadlock. Actuator arbitration layers must enforce deterministic, mutually exclusive state transitions, provide active tactile feedback on control surfaces, and guarantee that physical emergency stopping paths remain fail-safe and human-accessible regardless of software sensor classification.
 :::
 
-::: {.callout-note appearance="simple"}
-## Architect's Rule of Thumb: The Invariant Priority Invariant
+::: {.callout-rule title="The Invariant Priority Invariant"}
 Manual takeover grants authority to select among safe physical trajectories, never authority to command the plant outside its physical survival envelope. Human inputs remain unprivileged proposals subject to deterministic barrier gating and kinematic floor limits.
 :::
 

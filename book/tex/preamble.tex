@@ -279,20 +279,20 @@
   % Hook addcontentsline AFTER hyperref initialization
   \let\orig@addcontentsline\addcontentsline
   \renewcommand{\addcontentsline}[3]{%
-    \ifstr{#1}{toc}{%
-      \ifstr{#2}{part}{%
+    \Ifstr{#1}{toc}{%
+      \Ifstr{#2}{part}{%
         \ifmlsysinbackmatter
           % Suppress Appendices part divider; Back Matter division handles it
         \else
           \orig@addcontentsline{#1}{#2}{#3}%
         \fi
       }{%
-        \ifstr{#2}{chapter}{%
+        \Ifstr{#2}{chapter}{%
           \ifmlsysinbackmatter
-            \ifstr{#3}{References}{%
+            \Ifstr{#3}{References}{%
               \orig@addcontentsline{#1}{#2}{#3}%
             }{%
-              \ifstr{#3}{Index}{%
+              \Ifstr{#3}{Index}{%
                 \orig@addcontentsline{#1}{#2}{#3}%
               }{%
                 \stepcounter{mlsysappendixcount}%
@@ -355,12 +355,12 @@
 
 % Hook into \addparttocentry to emit clean centered Crimson Part entries and division lines
 \renewcommand*{\addparttocentry}[2]{%
-  \ifstr{#1}{}{%
-    \ifstr{#2}{Appendices}{}{%
+  \Ifstr{#1}{}{%
+    \Ifstr{#2}{Appendices}{}{%
       \addtocontents{toc}{\protect\tocdivisionentry{#2}}%
     }%
   }{%
-    \ifstr{#2}{}{%
+    \Ifstr{#2}{}{%
       \addtocontents{toc}{\protect\tocpartentry{Part~#1}}%
     }{%
       \addtocontents{toc}{\protect\tocpartentry{#2}}%
@@ -390,6 +390,7 @@
 }
 
 \newcommand{\unnumbered@chapter}[1]{%
+  \cleardoublepage
   \old@chapter*{#1}%
   \begingroup
     \let\chaptersubtitle\@gobble
@@ -400,8 +401,8 @@
 }
 
 \newcommand{\numbered@chapter}[2][]{%
+  \cleardoublepage
   \if@firstnumbered
-    \cleardoublepage
     \pagenumbering{arabic}%
     \renewcommand{\thepage}{\arabic{page}}%
     \setcounter{page}{1}%
@@ -604,7 +605,7 @@
 {%
   \IfNoValueOrEmptyTF{#1}%
     {%
-      \@sidenotes@placemarginal{#2}{%
+      \marginnote{%
         \RaggedRight\normalfont\sffamily\fontsize{6.8pt}{8.8pt}\selectfont\color{softink}%
         {\bfseries\color{consequence}\textsuperscript{\thesidenote}}\nobreakspace
         {\let\footnotesize\relax #3}\par
@@ -612,7 +613,7 @@
       \refstepcounter{sidenote}%
     }%
     {%
-      \@sidenotes@placemarginal{#2}{%
+      \marginnote{%
         \RaggedRight\normalfont\sffamily\fontsize{6.8pt}{8.8pt}\selectfont\color{softink}%
         {\bfseries\color{consequence}\textsuperscript{#1}}\nobreakspace
         {\let\footnotesize\relax #3}\par
@@ -635,6 +636,9 @@
 }
 
 \AtBeginDocument{%
+  \renewcommand*{\@sidenotes@placemarginal}[2]{%
+    \IfNoValueOrEmptyTF{#1}{\marginnote{#2}}{\marginnote[#1]{#2}}%
+  }%
   \let\sidenotetext\customsidenotetext
   \let\@sidenotes@thesidenotemark\customsidenotemark
 }
