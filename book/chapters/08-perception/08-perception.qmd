@@ -1,4 +1,4 @@
-# Perception\chaptersubtitle{What an Observation Must Carry} {#sec-perception}
+# Sensor Perception\chaptersubtitle{What an Observation Must Carry} {#sec-perception}
 
 ![**Systems Organ Focus: Brain.** Transduction to memory as a temporal progression, illustrating cumulative latency along the perception pipeline from CMOS photodiodes across MIPI CSI-2 serialization, DMA transfer, ISP debayering, and neural backbone evaluation. Attribution: Textbook team (CC BY 4.0).](figures/fig_locator.svg){#fig-locator fig-pos="H" width=100%}
 
@@ -57,7 +57,8 @@ $$\Delta x = \int_{t_0}^{t_0+\tau_{\text{age}}} v(t)\,dt$$
 as the embodied platform traverses physical space.
 :::
 
-[^fn-math-marr-levels]: David Marr's foundational computational theory of vision [@marr1982vision] proposed that visual processing decomposes into three distinct levels of analysis: computational theory (what is the goal and why), representation and algorithm (how the input and output are represented and transformed), and hardware implementation (the physical realization in neurobiology or silicon). While Marr's classical formulation modeled vision as a passive, feedforward reconstruction of a 2.5D and 3D sketch from static scene radiance, Physical AI redefines perception as an active, closed-loop pipeline where transport latency, Direct Memory Access (DMA) contention, and compute jitter directly erode dynamic stability margins.
+[^fn-math-marr-levels]: David Marr's computational theory of vision (1982) decomposed vision into computational theory, algorithm, and hardware implementation. In Physical AI, perception is not passive 3D reconstruction; it is a closed-loop real-time pipeline where transport latency and DMA bus contention directly erode physical stability margins.
+
 <!-- END -->
 
 ## What Perception Hands Over {#sec-perception-8-2}
@@ -107,7 +108,7 @@ Never pass a perception tensor downstream without an acquisition timestamp latch
 
 These three properties define the formal handoff contract between perception and the remainder of the autonomy stack. Downstream state estimators, planners, and safety watchdogs must reject any observation packet that lacks an explicit capture timestamp $t_0$, a verified coordinate frame $\mathcal{F}_{\text{sensor}}$, and an uncertainty covariance $\mathbf{\Sigma}_z$. Dropping an incomplete or unbounded observation allows a downstream estimator to propagate its state forward using physical dynamics, degrading uncertainty smoothly over time. Accepting an ungrounded packet, by contrast, injects unmodeled delays, spatial distortions, and false confidence directly into the control loop. Enforcing this contract requires tracing how an observation originates, beginning at the hardware interface where physical phenomena are first sampled.
 
-[^fn-std-rep105-frames]: In mobile robotics and autonomous systems, ROS Enhancement Proposal 105 (REP 105: *Coordinate Frames for Mobile Platforms*) formalizes the standard spatial transform tree ($\mathcal{F}_{\text{earth}} \to \mathcal{F}_{\text{map}} \to \mathcal{F}_{\text{odom}} \to \mathcal{F}_{\text{body}} \to \mathcal{F}_{\text{sensor}}$), building on the foundational uncertain spatial representation principles established by Smith and Cheeseman [@smith1986estimating]. REP 105 explicitly isolates short-term, continuous, drift-prone dead reckoning ($\mathcal{F}_{\text{odom}}$) from discrete, discontinuous global map localization corrections ($\mathcal{F}_{\text{map}}$), ensuring that high-frequency control loops never encounter instantaneous mathematical step-discontinuities during map relocalization.
+[^fn-std-rep105-frames]: REP 105 (*Coordinate Frames for Mobile Platforms*) standardizes transform trees ($\mathcal{F}_{\text{earth}} \to \mathcal{F}_{\text{map}} \to \mathcal{F}_{\text{odom}} \to \mathcal{F}_{\text{body}} \to \mathcal{F}_{\text{sensor}}$). It isolates high-frequency continuous odometry from discrete map corrections, preventing step discontinuities in low-level motor controllers during global relocalization.
 <!-- END -->
 
 ## Transduction, Hardware Sampling, and Temporal Calibration {#sec-perception-8-3}
@@ -231,15 +232,15 @@ Tracing this latency progression across the entire perception and inference pipe
 | **7. Covariance Packaging & IPC Dispatch**<br>Spatial bounding, bitfield check, shmem ring | $0.5 \pm 0.1\text{ ms}$ | $4.5\text{ ms}$ | $0.5\text{--}4.5\text{ ms}$ | **$38.0\text{--}110.0\text{ ms}$** | **$76\text{--}220\text{ mm}$** | **$380\text{--}1100\text{ mm}$** | Downstream lock contention; deploy lock-free POSIX shared memory and enforce hard age-drop rules |
 : **End-to-End Information Age Accumulation and Physical Displacement Budget.** Stage-by-stage temporal accounting from initial photon arrival at the sensor photosite through hardware deserialization, direct memory access (DMA), neural backbone inference, and inter-process communication (IPC) dispatch. Information age $\Delta t$ reflects the elapsed time from physical energy integration midpoint ($t_{\text{exp}}/2$) to downstream availability. Nominal metrics reflect optimized embedded hardware pipelines (e.g., $60\text{ Hz}$ global-shutter camera, hardware ISP, INT8 NPU acceleration); worst-case bounds ($P_{99.9}$) reflect thermal clock throttling, memory bus saturation, and OS scheduling jitter. Physical displacement $\Delta x = v \cdot t_{\text{age}}$ demonstrates how latency converts directly into unrecoverable spatial drift across operational speeds. {#tbl-08-latency-budget}
 
-[^fn-hw-rolling-shutter]: In CMOS active-pixel sensors (APS) employing electronic rolling shutter readout, each horizontal row is cleared, exposed, and digitized sequentially via correlated double sampling (CDS) column converters. The time differential between the top row ($y = 0$) and bottom row ($y = H - 1$) is $t_{\text{readout}} = (H - 1) t_{\text{row}}$. Under high-rate angular velocity $\boldsymbol{\omega}$ or linear velocity $\mathbf{v}$, this row-dependent delay warps epipolar lines into continuous curves, breaking rigid-body multi-view geometry unless compensated via high-rate inertial pose interpolation $\mathbf{T}_{wb}(t(y))$.
+[^fn-hw-rolling-shutter]: In CMOS rolling shutter sensors, sequential row readout ($t_{\text{readout}} = (H-1)t_{\text{row}}$) warps epipolar lines under angular velocity $\boldsymbol{\omega}$. Straight features become curved hyperbolas, breaking rigid multi-view geometry unless continuous-time pose interpolation $\mathbf{T}_{wb}(t(y))$ is integrated into the estimator.
 
-[^fn-inc-rolling-shutter]: For detailed empirical investigations of rolling-shutter induced geometric instability and factor graph divergence in visual-inertial odometry during high-rate robotic maneuvers, see Forster et al. [@forster2017onmanifold] and Li et al. [@li2014online].
+[^fn-inc-rolling-shutter]: For empirical investigations of rolling-shutter induced geometric instability and factor graph divergence in visual-inertial odometry during high-rate robotic maneuvers, see Forster et al. [@forster2017onmanifold] and Li et al. [@li2014online].
 
-[^fn-hw-mipi-csi]: The MIPI CSI-2 specification defines high-speed packetized serial transmission over differential D-PHY (up to $4.5\text{ Gbps/lane}$) or C-PHY (up to $3.5\text{ Gsym/s/lane}$) lanes. Data packets carry short headers with 1-byte Data Types and 16-bit word counts protected by 24-bit Error Correcting Codes (ECC), while the video payload is verified via a 16-bit CRC checksum.
+[^fn-hw-mipi-csi]: The MIPI CSI-2 specification defines high-speed packetized serial transmission over differential D-PHY (up to $4.5\text{ Gbps/lane}$) or C-PHY (up to $3.5\text{ Gsym/s/lane}$) lanes, protected by 24-bit ECC packet headers and 16-bit payload CRC checksums.
 
-[^fn-hw-tim-pwm]: In embedded silicon, hardware synchronization is enforced by configuring dedicated timer peripherals (such as `TIMx_CCR` capture/compare registers on ARM Cortex-M or `ePWM CMPA` on C2000 DSPs) to generate periodic PWM trigger strobes at microsecond precision. Concurrently, network-attached sensors utilize IEEE 1588 Precision Time Protocol (PTP) hardware timestamp units (e.g., DP83640 PHY or Ethernet MAC timestamp registers) to latch packet transmission and reception at the physical layer, bounding master-slave clock drift below $1.0\text{ }\mu\text{s}$.
+[^fn-hw-tim-pwm]: Hardware synchronization configures MCU timer compare registers (`TIMx_CCR`, `ePWM CMPA`) to emit microsecond-precise PWM strobes. Networked sensors use IEEE 1588 PTP hardware timestamping units at the Ethernet PHY layer to latch packet arrival, bounding clock drift below $1.0\ \mu\text{s}$.
 
-[^fn-hw-v4l2-dma]: In embedded Linux and real-time operating systems, minimizing frame transport latency requires bypassing user-space memory copies via the Video4Linux2 (`v4l2`) API using zero-copy Direct Memory Access buffer sharing (`V4L2_MEMORY_MMAP` or `V4L2_MEMORY_DMABUF`). Pointers to physically contiguous or IOMMU-mapped DRAM pages are passed directly to downstream accelerator engines, avoiding $O(N)$ CPU cache pollution. However, interrupt handling jitter and PCIe scatter-gather descriptor ring stalls can still inject non-deterministic millisecond tail latencies under memory bus contention.
+[^fn-hw-v4l2-dma]: Zero-copy V4L2 DMA buffer sharing (`V4L2_MEMORY_DMABUF`) maps sensor frames directly to accelerator DRAM, bypassing user-space copies and CPU cache pollution. However, memory bus contention and PCIe descriptor stalls can still inject non-deterministic millisecond tail latencies under heavy load.
 <!-- END -->
 
 ## The Cost of Ingestion {#sec-perception-8-4}
@@ -415,9 +416,9 @@ The complete operational protocol for metric unprojection, kinematic covariance 
 A nominal clearance boundary that has not been expanded by the ninety-ninth percentile propagated perception covariance is an optical fiction that guarantees physical collision.
 :::
 
-[^fn-math-inverse-depth]: Although subpixel disparity matching noise $\delta d \sim \mathcal{N}(0, \sigma_d^2)$ is approximately Gaussian in the 2D image plane, the non-linear unprojection $z = fb / d$ maps this error into an asymmetric, heavy-tailed distribution in 3D Euclidean space. At long ranges where disparity approaches zero ($d \to 0$), the depth variance $\sigma_z^2$ diverges, violating standard linear Kalman filter assumptions. Robust spatial estimators address this nonlinearity by parameterizing landmark states in inverse depth coordinates ($\rho = 1/z$), where the measurement equation remains approximately linear across the operational volume.
+[^fn-math-inverse-depth]: While image disparity error is Gaussian ($\delta d \sim \mathcal{N}(0, \sigma_d^2)$), non-linear unprojection $z = fb/d$ creates asymmetric heavy tails in 3D Euclidean space. At long ranges ($d \to 0$), depth variance diverges, requiring estimators to parameterize landmarks in inverse depth ($\rho = 1/z$).
 
-[^fn-math-dinov2-patches]: Self-supervised Vision Transformers such as DINOv2 [@oquab2023dinov2] partition an $H \times W$ image into non-overlapping $P \times P$ pixel patches (typically $14 \times 14\text{ px}$), projecting them into a sequence of $N = (H/P)(W/P)$ patch tokens. Because self-attention layers maintain dense all-to-all spatial correlations across all token positions, the resulting latent embeddings preserve high-resolution spatial correspondences and part-level geometric semantics without explicit task supervision.
+[^fn-math-dinov2-patches]: Vision Transformers (DINOv2) partition images into $P \times P$ patches ($14 \times 14\text{ px}$), projecting them into $N = (HW)/P^2$ patch tokens. All-to-all self-attention preserves fine geometric correspondences and part-level semantics across views without requiring explicit task-specific supervised training.
 <!-- END -->
 
 ## How Observations Go Wrong {#sec-perception-8-6}
@@ -518,14 +519,14 @@ The **observation record** is the immutable engineering notebook schema extensio
 | **`health_bitmask`** | $64\text{-bit}$ unpadded bitmask: lower $32\text{ b}$ hardware health, upper $32\text{ b}$ perceptual validity | Real-time hardware watchdog monitors, single-instruction bit check | Reflexive rejection of saturated, desynchronized, or occluded frames |
 : **Physical AI Observation Record Schema.** Immutable schema fields added to the base engineering notebook to record physical transduction epochs, coordinate frame bindings, spatial uncertainty covariances, temperature compensation parameters, and hardware health flags. {#tbl-08-observation-record-schema}
 
-Five mandatory fields constitute the primary physical measurement:
-1. **Capture Timestamp Epoch ($t_{\text{exp-mid}}$)**: A $64\text{-bit}$ fixed-point integer representing elapsed nanoseconds on the synchronized system master clock (synchronized via IEEE 1588 PTP or hardware trigger strobes). The timestamp records the physical midpoint of the exposure or integration window, rather than the instant when the direct memory access transfer completed or when the host CPU received an interrupt.
-2. **Sequence Index ($N_{\text{seq}}$)**: A $64\text{-bit}$ monotonically increasing integer that increments by one for every generated frame. Downstream consumers compare consecutive sequence indices to detect dropped frames across the interconnect bus without relying on wall-clock time differences.
-3. **Sensor Frame Identifier ($\mathcal{F}_{\text{sensor}}$)**: An enumerated $32\text{-bit}$ key that binds the observation to a specific coordinate frame within the kinematic transform tree (@tbl-08-rep105-tree).
-4. **Tensor / Latent Token Payload**: Stored as a typed multi-dimensional array carrying calibrated geometric measurements (e.g., rectified depth maps, 3D point clusters) or extracted foundation model latent representations (e.g., DINOv2 visual patch tokens $\mathbf{z} \in \mathbb{R}^{N_{\text{patches}} \times D_{\text{embed}}}$ and SAM instance mask bitmasks).
-5. **Spatial Covariance Matrix ($\mathbf{\Sigma}_z$)**: A packed upper-triangular array of $32\text{-bit}$ floats that bounds measurement uncertainty in the reference frame $\mathcal{F}_{\text{sensor}}$.
+An observation record is not an ephemeral message passed between software threads. It is a formal, immutable contract that specifies the physical validity of a sensory measurement before any downstream process is permitted to trust it. Where @sec-nervous defines the base schema for all run records, this section details the specific fields that the perception subsystem adds to that foundation. The observation record combines raw perceptual data with its spatial frame, uncertainty bounds, and hardware health state in a single contiguous memory layout.
 
-In an analytical example where a stereo perception module estimates an obstacle centroid at a range of $4.0\text{ m}$, the longitudinal variance in $\mathbf{\Sigma}_z$ reflects disparity quantization and baseline geometry, scaling quadratically with range according to $\sigma_z^2 = (z^2 / (f \cdot b))^2 \cdot \sigma_d^2$. For an analytical camera baseline of $0.12\text{ m}$, a focal length of $600\text{ pixels}$, and a disparity error $\sigma_d = 0.5\text{ pixels}$, the resulting range variance is $(4.0^2 / (600 \times 0.12))^2 \times 0.5^2 \approx 0.012\text{ m}^2$. A state estimator reading $\mathbf{\Sigma}_z$ incorporates this computed variance directly into its Kalman gain calculation, preventing noisy long-range detections from corrupting the vehicle trajectory estimate.
+The formal schema of the observation record contains five mandatory fields:
+1. **Exposure Midpoint Timestamp** ($t_{\text{exp-mid}}$): A $64\text{-bit}$ integer recording nanoseconds since the UNIX epoch, latched at the midpoint of physical exposure by a hardware timer.
+2. **Monotonic Sequence Index** ($k$): A $64\text{-bit}$ unsigned integer incremented by the hardware capture engine on every frame, allowing downstream nodes to detect frame drops and out-of-order delivery.
+3. **Reference Frame Identifier** ($\mathcal{F}_{\text{sensor}}$): A $16\text{-bit}$ enumerated identifier that indexes into the spatial transform tree, resolving the sensor's physical mounting location relative to the body origin.
+4. **Perceptual Payload**: The raw sensor tensor or spatial embedding, stored in a contiguous buffer with fixed byte alignment.
+5. **Spatial Covariance Matrix** ($\mathbf{\Sigma}_z$): A $6 \times 6$ positive semi-definite matrix encoding the spatial and angular uncertainty of the measurement in the sensor frame.
 
 Three metadata structures follow the mandatory physical fields to preserve calibration provenance across varying operating environments:
 1. **Active Optical Intrinsics**: Records focal lengths $(f_x, f_y)$, optical center coordinates $(c_x, c_y)$, and radial distortion coefficients.
@@ -538,13 +539,12 @@ The explicit byte structure of the observation record defines the fault injectio
 
 An observation record provides the complete spatial, physical, and operational context of a measurement at a single instant in time. Yet having a fully formed, mathematically validated observation record does not guarantee that the measurement can be acted upon. Once the record is committed to memory, its value decays with every microsecond of transport delay, queuing stall, and processing latency across the system bus.
 
-[^fn-hw-thermal-drift]: For precision multi-camera and LiDAR suites, thermal expansion of mounting brackets ($\alpha_{\text{Al}} = 23\times 10^{-6}\text{ K}^{-1}$ vs low-expansion carbon fiber $\alpha_{\text{CFRP}} \approx 1.2\times 10^{-6}\text{ K}^{-1}$) shifts the extrinsic baseline $b(T) = b_0(1 + \alpha \Delta T)$. In long-range stereo triangulation, a $0.1\text{ mm}$ unmodeled baseline expansion at $z = 20\text{ m}$ induces a range estimation bias $\Delta z = \frac{z^2}{fb}\Delta b \approx 0.69\text{ m}$, demanding continuous online extrinsic estimation within the joint factor graph.
+[^fn-hw-thermal-drift]: Thermal expansion of aluminum sensor brackets ($\alpha_{\text{Al}} = 23\times 10^{-6}\text{ K}^{-1}$) alters extrinsic baseline ($b(T) = b_0(1+\alpha \Delta T)$). In long-range stereo, an uncorrected $0.1\text{ mm}$ shift at $20\text{ m}$ induces a $0.69\text{ m}$ range bias, requiring online extrinsic tracking.
 <!-- END -->
 <!-- END -->
 
 ## Systems Stress-Tests {#sec-perception-8-8}
 
-<!-- SECTION 8.8 -->
 <!-- claim: An observation that is accurate and useless because of when it arrived. -->
 <!-- covers: Stress-test 1: The high-confidence stale observation — demonstrate how an accurate but delayed frame causes an obstacle avoidance planner to clear a collision path that has already closed. -->
 <!-- covers: Stress-test 2: Inter-sensor clock skew — demonstrate how two cameras with a $15\text{ ms}$ clock offset observing a target moving at $30\text{ m/s}$ generate phantom duplicate obstacles in downstream state estimators. -->
