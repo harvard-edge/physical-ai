@@ -531,61 +531,6 @@ $$p_{\max} \approx \frac{-\ln \alpha}{n} \quad \left(p_{\max} \approx \frac{3}{n
 This mathematical bound remains valid only while operating conditions (temperature, battery state of charge, and mechanical wear) remain strictly stationary across trials.
 :::
 
-::: {.callout-algorithm title="Physical Budget Specification Data Schema (`PhysicalBudgetSpecification`)"}
-**Description:** Canonical hardware specification schema defining calibrated physical budgets, measurement percentiles, and hardware invariants enforced at the real-time microcontroller reflex floor.
-
-```yaml
-PhysicalBudgetSpecification:
-  schema_version: "2.1.0"
-  system_identity:
-    machine_archetype: "Class 1: Mobile Manipulator"
-    target_hardware_id: "HW-AGV-ARM-V3"
-    firmware_build_hash: "0x8F3D7B02"
-    calibration_timestamp_utc: "2026-08-28T08:00:00Z"
-  
-  freshness_budget:
-    optical_transduction_to_motor_p50_ms: 35.0
-    optical_transduction_to_motor_p99_ms: 46.2
-    optical_transduction_to_motor_p999_ms: 68.4
-    strict_freshness_deadline_delta_t_fresh_ms: 40.0
-    stale_frame_action_policy: "HOLD_LAST_CERTIFIED_TORQUE_AND_DECEL"
-    
-  momentum_stopping_budget:
-    total_effective_chassis_mass_kg: 150.0
-    nominal_operating_velocity_m_s: 1.80
-    maximum_emergency_brake_decel_m_s2: 3.00
-    localization_uncertainty_bound_cm: 5.0
-    statutory_clearance_margin_cm: 10.0
-    quadratic_governor_loop_rate_hz: 1000
-    
-  actuator_transmission_budget:
-    gear_reduction_ratio_N: 50.0
-    reflected_rotor_inertia_multiplier_N2: 2500.0
-    phase_inductance_L_mH: 1.50
-    phase_resistance_R0_ohms: 0.50
-    electrical_time_constant_tau_e_ms: 3.00
-    inverter_peak_current_ceiling_A: 25.0
-    maximum_continuous_torque_Nm: 85.0
-    spline_continuity_requirement: "C2_CONTINUOUS_JERK_BOUNDED"
-    
-  thermal_duty_budget:
-    stator_lumped_thermal_capacitance_Cth_J_K: 134.75
-    installed_thermal_resistance_theta_JA_K_W: 2.20
-    ambient_internal_chassis_temp_amb_C: 40.0
-    continuous_insulation_rating_ceiling_C: 140.0
-    hard_trip_dielectric_cutoff_temp_C: 155.0
-    discrete_thermal_observer_rate_hz: 1000
-    
-  power_integrity_budget:
-    nominal_bus_voltage_V: 48.0
-    source_loop_resistance_Rbus_mOhms: 65.0
-    bulk_decoupling_capacitance_Cbus_uF: 2200.0
-    undervoltage_brownout_reset_threshold_V: 38.0
-    overvoltage_brake_chopper_trip_V: 58.0
-    maximum_combined_current_slew_rate_A_ms: 20.0
-```
-:::
-
 [^fn-math-zero-failure-bounds]: In non-parametric reliability estimation, zero failures across $n$ i.i.d. Bernoulli trials yields the rule-of-three upper bound $p_{\max} \approx 3/n$ at $95\%$ confidence (exact Clopper-Pearson: $p = 1 - \alpha^{1/n}$). This bound collapses if thermal drift or wear introduces non-stationary confounding.
 
 For the physical AI systems engineer, empirical characterization is not a one-time validation checkbox, but the creation of an immutable physical contract. Every parameter stored in a machine specification—whether a current ceiling, thermal time constant, or braking deceleration—must record its physical units, observation points, instrument bandwidth, sample count, tail percentiles ($P_{99}$ and $P_{99.9}$), and provenance. When downstream control loops, neural policy limiters, and runtime safety verifiers consume these numbers, they rely on a defensible empirical foundation. Without this rigorous physical grounding, safety envelopes remain analytical fictions that dissolve under the unyielding dynamics of the real world. Yet even perfectly characterized limits do not remain isolated in operation; on an integrated machine, physical constraints couple together, creating compounding stress cascades.
