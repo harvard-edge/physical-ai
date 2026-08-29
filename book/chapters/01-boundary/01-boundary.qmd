@@ -240,69 +240,14 @@ To bridge the asynchronous Linux OS and deterministic bare-metal firmware withou
 
 ![**The Physical AI Dual-Brain Privilege Separation Architecture.** Heterogeneous silicon partitioning between the untrusted proposal engine (Linux MPU / Edge NPU) executing high-capacity foundation models and the trusted permission authority (bare-metal real-time MCU) executing zero-allocation 1 kHz safety filters over shared SRAM mailboxes. The permission authority exercises sole veto over actuator phase current setpoints, guaranteeing physical invariants even during total model stalls or numerical divergence.](figures/fig01_dual_brain_soc.svg){#fig-01-dual-brain fig-pos="H" width=100%}
 
-### Abstract Data Schema: Inter-Processor Proposal–Permission Mailbox {#sec-boundary-schema}
+::: {.callout-rule title="The Proposal–Permission Architectural Contract"}
+*A machine learning model running on an application processor is strictly a proposal generator; exclusive authority to commit physical register writes belongs to an independent real-time referee.*
 
-To enforce strict spatial and temporal privilege separation between the unprivileged Linux MPU and the hard real-time MCU, the inter-processor communication channel is structured as a fixed-size, zero-allocation mailbox in non-cached dual-port SRAM (@tbl-01-mailbox-schema).
+The referee operates on dedicated microcontroller silicon at a fixed $1\text{ kHz}$ interrupt cadence ($1.0\text{ ms}$ deadline) and enforces three mandatory gates before latching any command to motor drivers:
 
-| Field Name | Scalar / Vector Type | Physical SI Units | Structural Invariant & Memory Validation Constraint |
-|:---|:---|:---|:---|
-| `seq_version` | `uint64_t` (atomic) | dimensionless | Strictly monotonically increasing sequence counter; odd values indicate write-in-progress (seqlock protocol). |
-| `timestamp_ns` | `uint64_t` (PTP) | nanoseconds ($\text{ns}$) | Hardware gPTP master timestamp of source sensor capture; must satisfy freshness deadline. |
-| `horizon_steps` | `uint16_t` | dimensionless | Number of planned future time steps ($H \in [1, 50]$); execution duration per step $\Delta t_{\text{step}} = 20\text{ ms}$ ($50\text{ Hz}$). |
-| `target_positions` | `float32_t[H][DOF]` | radians ($\text{rad}$) or $\text{m}$ | Kinematic joint/chassis positions; bounded strictly within physical joint limits. |
-| `target_velocities` | `float32_t[H][DOF]` | $\text{rad/s}$ or $\text{m/s}$ | Kinematic joint/chassis velocities; bounded by transmission velocity ceilings. |
-| `target_torques` | `float32_t[H][DOF]` | $\text{N}\cdot\text{m}$ or $\text{N}$ | Feedforward actuator torques; bounded by thermal continuous rating. |
-| `cbf_barrier_val` | `float32_t` | dimensionless | Deliberative obstacle clearance barrier estimate; must satisfy safe non-negative invariant. |
-| `status_flags` | `uint32_t` (bitmask) | dimensionless | Health bitmask: `BIT(0)` = Heartbeat OK, `BIT(1)` = No NaNs/Infs, `BIT(2)` = Policy Verified. |
-| `crc32_checksum` | `uint32_t` | dimensionless | CRC-32 IEEE 802.3 checksum computed over payload bytes; verified by MCU before parse. |
-: **Abstract Data Schema: Inter-Processor Proposal–Permission Mailbox.** Formal data schema for the shared non-cached SRAM mailbox mediating candidate action chunks between the unprivileged Linux MPU (proposer) and the bare-metal real-time MCU (permission referee). All fields enforce static memory sizing, explicit physical SI units, and hardware-checked boundary invariants. {#tbl-01-mailbox-schema}
-
-### Structured Pseudocode: Deterministic 1 kHz MCU Permission Referee Loop {#sec-boundary-algo}
-
-The deterministic permission referee executes on isolated microcontroller silicon at a fixed $1000\text{ Hz}$ cadence ($1.0\text{ ms}$ deadline). The referee does not perform neural network inference; instead, it enforces hard physical invariance, temporal freshness, and kinematic safety boundaries over incoming proposals before committing register writes.
-
-::: {.callout-algorithm title="Deterministic 1 kHz Real-Time Permission Referee Loop"}
-**Execution Cadence:** Hard real-time periodic interrupt ($f = 1000\text{ Hz}$, period $T = 1.0\text{ ms}$, maximum allowable jitter $< 50\text{ }\mu\text{s}$).  
-**Memory Invariant:** Zero dynamic heap allocation (`malloc` is strictly forbidden at runtime; all state is statically allocated).  
-**Hardware Authority:** Exclusive electrical write access to PWM compare registers (`TIMx_CCR` / `ePWM CMPA`) and DAC latches.
-
-**Inputs:**
-- Raw sensor telemetry sampled at the $1\text{ kHz}$ hardware interrupt (encoder counts, current shunts, raw LiDAR range vectors).
-- Shared SRAM Mailbox buffer populated asynchronously by the Linux MPU.
-- Static physical safety parameter envelope (joint limits, velocity ceilings, torque limits, freshness threshold).
-
-**Outputs:**
-- Latched motor drive duty-cycle setpoint vector committed to hardware timers.
-- Synchronous non-volatile telemetry log record for post-incident audit.
-
-**Algorithm Steps:**
-
-1. **State Estimation & Timestamping (Stage 1):**
-   - Read local hardware timer from PTP clock.
-   - Transduce encoder lines and current shunts; synthesize current kinematic state estimate.
-
-2. **Atomic Mailbox Acquisition & Seqlock Verification (Stage 2):**
-   - Read sequence version counter from shared SRAM.
-   - If write is in progress or packet is stale, increment stale count and jump to **Step 5 (Fallback Intervention)**.
-   - Copy payload chunk via memory-mapped word transfers and verify CRC-32 checksum. If corrupted, jump to **Step 5**.
-
-3. **Temporal Freshness Evaluation (Stage 3):**
-   - Compute observation age against local hardware clock.
-   - If proposal age exceeds freshness threshold or status flag is abnormal, jump to **Step 5 (Fallback Intervention)**.
-
-4. **Forward Invariant & Geometric Stopping Check (Stage 4):**
-   - Extract candidate step setpoint from chunk at current sub-index.
-   - Evaluate dynamic stopping distance and clearance envelope against raw telemetry.
-   - If proposed action stays within safe physical envelope, accept proposal; otherwise, project the command to the nearest safe boundary.
-
-5. **Fallback Intervention on Failure (Stage 5):**
-   - If mailbox is stale, corrupted, or unrecoverably unsafe, engage deterministic physical fallback (controlled regenerative dynamic braking or passive centering).
-
-6. **Actuator Register Latch & Hardware Commit (Stage 6):**
-   - Convert admissible setpoint into PWM timer compare values (`TIMx_CCR`) and commit hardware shadow registers.
-
-7. **Synchronous Non-Volatile Telemetry Logging (Stage 7):**
-   - Commit complete telemetry record into tamper-evident ring buffer for synchronous accountability.
+1. **Temporal Freshness Gate:** If the proposal timestamp is older than the strict freshness deadline ($\Delta t > \Delta t_{\text{fresh}}$), the referee drops the stale proposal.
+2. **Physical Invariant Gate:** If the commanded torque, velocity, or trajectory breaches dynamic stopping clearance ($d_{\text{stop}}$) or current limits, the referee projects the command back to the safe boundary.
+3. **Deterministic Fallback Gate:** If the neural proposer crashes, hangs, or outputs numerical anomalies ($\text{NaNs} / \pm\infty$), the referee autonomously engages verified regenerative braking or passive dynamic centering.
 :::
 
 ::: {.callout-lab title="The Educational Desktop Twin"}
