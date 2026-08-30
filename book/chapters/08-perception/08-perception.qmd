@@ -57,7 +57,7 @@ $$\Delta x = \int_{t_0}^{t_0+\tau_{\text{age}}} v(t)\,dt$$
 as the embodied platform traverses physical space.
 :::
 
-[^fn-math-marr-levels]: David Marr's computational theory of vision (1982) decomposed vision into computational theory, algorithm, and hardware implementation. In Physical AI, perception is not passive 3D reconstruction; it is a closed-loop real-time pipeline where transport latency and DMA bus contention directly erode physical stability margins.
+[^fn-math-marr-levels]: Marr (1982) decomposed vision into theory, algorithm, and hardware. In Physical AI, perception is a real-time pipeline where transport latency directly erodes stability margins.
 
 <!-- END -->
 
@@ -150,7 +150,7 @@ With an exposure duration of $t_{\text{exp}} = 10.0\text{ ms}$, each individual 
 
 **Root Cause & Physics of Failure:** Rolling shutter line-by-line electronic scanning exposed the top scanline ($y = 0$) $33.3\text{ ms}$ earlier than the bottom scanline ($y = 1079$). During the $2.4\text{ rad/s}$ yaw maneuver, vertical pallet uprights suffered a differential rotational skew of:
 $$\Delta \theta = \omega_z \cdot t_{\text{readout}} = 2.4\text{ rad/s} \times 0.0333\text{ s} \approx 0.080\text{ rad} = 4.58^\circ$$
-This angular skew bent straight vertical shelf beams into tilted hyperbolas across the image plane. The visual frontend extracted 2D feature tracks under the assumption of a rigid pinhole projection. Because the factor graph optimizer lacked scanline-level continuous-time pose interpolation ($\mathbf{T}_{wb}(t(y))$), the epipolar reprojection residuals exploded. To minimize reprojection error across warped features, the non-linear solver forced the scale factor to collapse and estimated a false lateral translation of $0.52\text{ m}$, pulling the vehicle's belief away from the real physical obstacle.[^fn-inc-rolling-shutter]
+This angular skew bent straight vertical shelf beams into tilted hyperbolas across the image plane. The visual frontend extracted 2D feature tracks under the assumption of a rigid pinhole projection. Because the factor graph optimizer lacked scanline-level continuous-time pose interpolation ($\mathbf{T}_{wb}(t(y))$), the epipolar reprojection residuals exploded. To minimize reprojection error across warped features, the non-linear solver forced the scale factor to collapse and estimated a false lateral translation of $0.52\text{ m}$, pulling the vehicle's belief away from the real physical obstacle [@forster2017onmanifold; @li2014online].
 
 **Systems Resolution:** Replaced rolling-shutter sensors with global-shutter CMOS imagers equipped with hardware GPIO exposure strobing synchronized to the IMU sampling register (`TIMx_CCR`), and integrated continuous-time B-spline trajectory compensation into the VIO factor graph to interpolate exact scanline poses during transient sensor exposure.
 
@@ -161,10 +161,8 @@ This angular skew bent straight vertical shelf beams into tilted hyperbolas acro
 
 Once analog-to-digital converters on the sensor die digitize the pixel charges, the frame must travel across a physical interconnect to host memory. In a canonical heterogeneous System-on-Chip (SoC) comprising an unprivileged application processor (Linux MPU) and an isolated hard real-time safety microcontroller (bare-metal MCU), camera streams enter via the **Mobile Industry Processor Interface Camera Serial Interface (MIPI CSI-2)** bus.[^fn-hw-mipi-csi] 
 
-::: {.column-margin}
-**Silicon Ingestion Dataflow**
-
-1. **D-PHY / C-PHY Physical Layer**: Differential data lanes transmit high-speed serialized pixel packets (typically $1.5\text{--}2.5\text{ Gbps}$ per lane), protected by header error correction.
+::: {.callout-tip title="Silicon Ingestion Dataflow Architecture"}
+1. **D-PHY / C-PHY Physical Layer**: Differential data lanes transmit high-speed serialized pixel packets ($1.5\text{--}2.5\text{ Gbps}$ per lane), protected by header error correction.
 2. **SoC CSI-2 Host Controller**: Deserializes byte packets, strips headers, and validates CRC integrity.
 3. **Scatter-Gather DMA Controller**: A dedicated DMA engine transfers pixel byte words directly into DRAM over the internal system interconnect (e.g., AXI crossbar).
 4. **Kernel DMA Ring Buffers**: Under Linux (`v4l2`), the driver allocates pre-mapped non-cacheable DMA buffers (`V4L2_MEMORY_MMAP`). The DMA populates pages without user-space copies.[^fn-hw-v4l2-dma]
@@ -240,15 +238,13 @@ Tracing this latency progression across the entire perception and inference pipe
 | **7. Covariance Packaging & IPC Dispatch**<br>Spatial bounding, bitfield check, shmem ring | $0.5 \pm 0.1\text{ ms}$ | $4.5\text{ ms}$ | $0.5\text{--}4.5\text{ ms}$ | **$38.0\text{--}110.0\text{ ms}$** | **$76\text{--}220\text{ mm}$** | **$380\text{--}1100\text{ mm}$** | Downstream lock contention; deploy lock-free POSIX shared memory and enforce hard age-drop rules |
 : **End-to-End Information Age Accumulation and Physical Displacement Budget.** Stage-by-stage temporal accounting from initial photon arrival at the sensor photosite through hardware deserialization, direct memory access (DMA), neural backbone inference, and inter-process communication (IPC) dispatch. Information age $\Delta t$ reflects the elapsed time from physical energy integration midpoint ($t_{\text{exp}}/2$) to downstream availability. Nominal metrics reflect optimized embedded hardware pipelines (e.g., $60\text{ Hz}$ global-shutter camera, hardware ISP, INT8 NPU acceleration); worst-case bounds ($P_{99.9}$) reflect thermal clock throttling, memory bus saturation, and OS scheduling jitter. Physical displacement $\Delta x = v \cdot t_{\text{age}}$ demonstrates how latency converts directly into unrecoverable spatial drift across operational speeds. {#tbl-08-latency-budget}
 
-[^fn-hw-rolling-shutter]: In CMOS rolling shutter sensors, sequential row readout ($t_{\text{readout}} = (H-1)t_{\text{row}}$) warps epipolar lines under angular velocity $\boldsymbol{\omega}$. Straight features become curved hyperbolas, breaking rigid multi-view geometry unless continuous-time pose interpolation $\mathbf{T}_{wb}(t(y))$ is integrated into the estimator.
+[^fn-hw-rolling-shutter]: In rolling shutter sensors, sequential row readout ($t_{\text{readout}} = (H-1)t_{\text{row}}$) warps epipolar lines under angular velocity $\boldsymbol{\omega}$, breaking rigid multi-view geometry unless continuous-time pose interpolation $\mathbf{T}_{wb}(t(y))$ is modeled.
 
-[^fn-inc-rolling-shutter]: For empirical investigations of rolling-shutter induced geometric instability and factor graph divergence in visual-inertial odometry during high-rate robotic maneuvers, see Forster et al. [@forster2017onmanifold] and Li et al. [@li2014online].
+[^fn-hw-mipi-csi]: MIPI CSI-2 transmits serial packets over D-PHY (up to $4.5\text{ Gbps/lane}$) or C-PHY ($3.5\text{ Gsym/s/lane}$), protected by ECC headers and CRC checksums.
 
-[^fn-hw-mipi-csi]: The MIPI CSI-2 specification defines high-speed packetized serial transmission over differential D-PHY (up to $4.5\text{ Gbps/lane}$) or C-PHY (up to $3.5\text{ Gsym/s/lane}$) lanes, protected by 24-bit ECC packet headers and 16-bit payload CRC checksums.
+[^fn-hw-tim-pwm]: Hardware synchronization uses MCU timer registers (`TIMx_CCR`, `ePWM CMPA`) to emit microsecond-precise PWM strobes. Networked sensors use IEEE 1588 PTP timestamping units at the PHY layer, bounding clock drift below $1.0\ \mu\text{s}$.
 
-[^fn-hw-tim-pwm]: Hardware synchronization configures MCU timer compare registers (`TIMx_CCR`, `ePWM CMPA`) to emit microsecond-precise PWM strobes. Networked sensors use IEEE 1588 PTP hardware timestamping units at the Ethernet PHY layer to latch packet arrival, bounding clock drift below $1.0\ \mu\text{s}$.
-
-[^fn-hw-v4l2-dma]: Zero-copy V4L2 DMA buffer sharing (`V4L2_MEMORY_DMABUF`) maps sensor frames directly to accelerator DRAM, bypassing user-space copies and CPU cache pollution. However, memory bus contention and PCIe descriptor stalls can still inject non-deterministic millisecond tail latencies under heavy load.
+[^fn-hw-v4l2-dma]: Zero-copy V4L2 DMA (`V4L2_MEMORY_DMABUF`) maps frames to accelerator DRAM, bypassing CPU copies. Memory bus contention can still inject millisecond tail latencies under heavy load.
 <!-- END -->
 
 ## The Cost of Ingestion {#sec-perception-8-4}
@@ -289,7 +285,7 @@ This relationship establishes that sensor resolution, frame rate, and sensor cou
 
 The hardware mechanisms governing how frames move into memory, including PCIe scatter-gather descriptor rings, I/O memory management unit (IOMMU) page tables, and DRAM bank conflict schedulers, are standard computer systems topics treated in depth by Hennessy and Patterson [@hennessy2019computer] as well as Bryant and O'Hallaron [@bryant2015computer]. For the physical AI architect, the implementation details of descriptor rings sit below the floor. The quantity to budget is the latency penalty that sensory ingress inflicts on safety-critical memory transactions. When perception traffic claims the bus, the delay propagates directly into the physical domain. Every millisecond that memory contention steals from the enforcement loop is a millisecond during which the body continues along its existing trajectory without permission, converting a digital stall in the memory controller into an irrevocable loss of physical stopping distance.
 
-[^fn-std-iso26262-mpam]: To bound worst-case memory access latencies under sensory DMA bursts, safety-critical SoCs implement hardware Memory System Resource Partitioning and Monitoring (ARM MPAM, ISO 26262 ASIL D). System interconnects assign dedicated AXI Quality-of-Service (`ARQOS`/`AWQOS`) priority levels and partition L3 cache ways, ensuring that real-time safety monitor reads pre-empt background camera ingestion streams and preserve bounded service times.
+[^fn-std-iso26262-mpam]: To bound memory access latency under DMA bursts, SoCs implement ARM MPAM (ISO 26262 ASIL D) and AXI QoS priority levels to ensure safety monitor reads preempt camera streams.
 <!-- END -->
 
 ## Spatial Error, 3D Foundation Models, and Physical Clearance {#sec-perception-8-5}
@@ -383,7 +379,11 @@ The complete operational protocol for metric unprojection, kinematic covariance 
 
    - Compute 3D optical coordinates: $x_s \leftarrow \frac{(u - c_x) z}{f_x}, \quad y_s \leftarrow \frac{(v - c_y) z}{f_y}, \quad z_s \leftarrow z$.
    - For passive stereo triangulation ($z = f b / d$):
-     $$\sigma_{z,s}^2 \leftarrow \left( \frac{z^2}{f_x b} \right)^2 \sigma_d^2, \quad \sigma_{x,s}^2 \leftarrow \left(\frac{u - c_x}{f_x}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_x}\right)^2 \sigma_u^2, \quad \sigma_{y,s}^2 \leftarrow \left(\frac{v - c_y}{f_y}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_y}\right)^2 \sigma_v^2.$$
+     $$\begin{aligned}
+     \sigma_{z,s}^2 &\leftarrow \left( \frac{z^2}{f_x b} \right)^2 \sigma_d^2, \\
+     \sigma_{x,s}^2 &\leftarrow \left(\frac{u - c_x}{f_x}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_x}\right)^2 \sigma_u^2, \\
+     \sigma_{y,s}^2 &\leftarrow \left(\frac{v - c_y}{f_y}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_y}\right)^2 \sigma_v^2.
+     \end{aligned}$$
      Construct diagonal sensor covariance: $\mathbf{\Sigma}_{\text{sensor}} \leftarrow \operatorname{diag}(\sigma_{x,s}^2, \sigma_{y,s}^2, \sigma_{z,s}^2)$.
 
    - For time-of-flight LiDAR ($z = c \Delta t / 2$): set range variance $\sigma_{z,s}^2 \leftarrow \sigma_{\text{ToF}}^2$ and construct beam covariance $\mathbf{\Sigma}_{\text{sensor}}$.
@@ -507,7 +507,7 @@ The **observation record** is the immutable engineering notebook schema extensio
 | **`health_bitmask`** | $64\text{-bit}$ unpadded bitmask: lower $32\text{ b}$ hardware health, upper $32\text{ b}$ perceptual validity | Real-time hardware watchdog monitors, single-instruction bit check | Reflexive rejection of saturated, desynchronized, or occluded frames |
 : **Physical AI Observation Record Schema.** Immutable schema fields added to the base engineering notebook to record physical transduction epochs, coordinate frame bindings, spatial uncertainty covariances, temperature compensation parameters, and hardware health flags. {#tbl-08-observation-record-schema}
 
-An observation record is not an ephemeral message passed between software threads. It is a formal, immutable contract that specifies the physical validity of a sensory measurement before any downstream process is permitted to trust it. Where @sec-nervous defines the base schema for all run records, this section details the specific fields that the perception subsystem adds to that foundation. The observation record combines raw perceptual data with its spatial frame, uncertainty bounds, and hardware health state in a single contiguous memory layout.
+As formalized in the observation record schema (@tbl-08-observation-record-schema), an observation record is not an ephemeral message passed between software threads. It is a formal, immutable contract that specifies the physical validity of a sensory measurement before any downstream process is permitted to trust it. Where @sec-nervous defines the base schema for all run records, this section details the specific fields that the perception subsystem adds to that foundation. The observation record combines raw perceptual data with its spatial frame, uncertainty bounds, and hardware health state in a single contiguous memory layout.
 
 The formal schema of the observation record contains five mandatory fields:
 

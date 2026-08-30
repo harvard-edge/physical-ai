@@ -95,7 +95,7 @@ Assigning these tasks to separate processor cores does not establish independent
 
 Evaluating candidate placements reveals how physical coupling governs system feasibility. In a unified placement where proposal, enforcement, and logging execute as threads under a single symmetric multiprocessing operating system on shared application cores, communication between paths takes less than $1\text{ }\mu\text{s}$ via shared pointer passing. However, cache eviction and kernel preemption cause the tail latency of the enforcement path to reach $2.8\text{ ms}$ at $P_{99.9}$, repeatedly missing the $1.0\text{ ms}$ hard deadline and risking pipe overpressure. In a heterogeneous single-die placement (e.g., dual-brain SoC with Linux MPU + Real-Time MCU on one chip), proposal runs on the MPU/NPU and enforcement runs on an isolated MCU core; communication across on-chip shared static random-access memory requires $12\text{ }\mu\text{s}$. Under synthetic worst-case memory contention, enforcement latency rises to $380\text{ }\mu\text{s}$, which still fits within the $400\text{ }\mu\text{s}$ compute budget. However, when the accelerator dissipates sustained peak power, local thermal elevation triggers automatic clock frequency halving, stretching enforcement execution to $540\text{ }\mu\text{s}$ and violating the physical deadline. In a dual-die placement where enforcement resides on a physically isolated microcontroller with its own power regulation, crystal oscillator, and memory, communication across an external serialized peripheral interface costs $150\text{ }\mu\text{s}$. Because the failure domains are physically decoupled, the enforcement execution time remains invariant at $135\text{ }\mu\text{s}$, guaranteeing that if the proposal path stalls, crashes, or overheats, the enforcement core detects the missing heartbeat and transitions the flow valve to a safe mechanical relief position within a single $1.0\text{ ms}$ cycle.
 
-[^fn-std-cast-32a]: FAA AC 20-193 / CAST-32A mandates multicore interference analysis in safety avionics. Introducing multicore chips into safety-critical flight control requires proving bounded worst-case execution time (WCET) under synthetic contention across shared caches, memory controllers, and interconnects.
+[^fn-std-cast-32a]: FAA AC 20-193 / CAST-32A mandates multicore interference analysis, requiring bounded WCET proofs under contention across shared caches, buses, and memory controllers.
 <!-- END -->
 
 ## Contention for Shared Resources {#sec-placement-13-3}
@@ -180,11 +180,11 @@ When contention is budgeted through measured burst times, queue structures, and 
 
 The interaction between two paths on one die cannot be left to uncoordinated arbitration. What crosses the physical boundary must be defined by explicit guarantees on production time, validity, and failure response.
 
-[^fn-hw-axi-qos]: AMBA AXI Quality-of-Service (`AxQOS`) prioritizes transactions, but crossbar arbitration is packet-atomic; in-flight bursts cannot be preempted. Furthermore, DRAM controllers optimize for row-buffer locality, allowing low-priority burst reads to repeatedly starve high-priority real-time accesses.
+[^fn-hw-axi-qos]: AMBA AXI Quality-of-Service (`AxQOS`) prioritizes transactions, but crossbar arbitration is packet-atomic; in-flight bursts cannot be preempted. DRAM reordering can still starve real-time accesses.
 
-[^fn-hw-dram-bank-conflict]: Dynamic RAM reorders requests (FR-FCFS) to maximize row-buffer hits. Consecutive accesses by neural accelerators to open rows defer real-time microcontroller reads to closed banks ($t_{\text{RP}} + t_{\text{RCD}} \approx 28\text{ ns}$ penalty per conflict), injecting latency jitter.
+[^fn-hw-dram-bank-conflict]: FR-FCFS scheduling prioritizes open DRAM rows. Neural accelerator bursts defer microcontroller reads to closed banks ($t_{\text{RP}} + t_{\text{RCD}} \approx 28\text{ ns}$ penalty), injecting jitter.
 
-[^fn-hw-pdn-droop]: When parallel neural MAC units switch simultaneously ($dI/dt > 10\text{ A/ns}$), loop inductance ($L_{\text{die}}$, $L_{\text{pkg}}$) causes supply voltage droop ($\Delta V = L(dI/dt) + IR$). If decoupling capacitors deplete before regulators respond, adjacent real-time cores suffer logic setup failures or brownout resets.
+[^fn-hw-pdn-droop]: When MAC units switch ($dI/dt > 10\text{ A/ns}$), loop inductance causes voltage droop ($\Delta V = L\frac{dI}{dt} + IR$). Depleted decoupling capacitors trigger core brownout resets.
 <!-- END -->
 
 ## The Boundary Contract {#sec-placement-13-4}
@@ -296,7 +296,7 @@ Diagnosing execution-time expansion requires separating thermal degradation from
 
 Relocating the proposal model to a physically separate processor or discrete companion accelerator eliminates on-die thermal interference, but it alters the timing and resource balance of the entire machine. Moving the neural workload off-chip replaces intra-die shared memory transfers with board-level serial buses such as PCIe or Ethernet. Serialization delays, packet framing, and bus arbitration add tens of milliseconds of latency to proposal delivery, increasing the required validity window $\Delta t_{\text{valid}}$ defined in the boundary contract. Off-chip transceivers also increase board-level power consumption, shift heat dissipation toward peripheral power converters, and introduce new contention points on external memory buses. Partitioning computation to resolve a thermal deadline violation redistributes electrical, communication, and timing constraints, requiring the complete placement budget to be recalculated from physical measurements.
 
-[^fn-hw-thermal-throttling]: When junction temperature exceeds $T_{\text{trip}}$, hardware thermal controllers force PLL clock dividers downward within $<10\ \mu\text{s}$. Hysteresis thresholds ($T_{\text{clear}} = T_{\text{trip}} - \Delta T$) lock clocks at degraded tiers until the package cools, inflating real-time execution times.
+[^fn-hw-thermal-throttling]: When junction temperature exceeds $T_{\text{trip}}$, hardware forces PLL clock dividers down ($<10\,\mu\text{s}$). Hysteresis ($T_{\text{clear}} = T_{\text{trip}} - \Delta T$) locks degraded clocks until cooled, inflating execution times.
 <!-- END -->
 
 ## Testing the Separation {#sec-placement-13-6}
@@ -413,32 +413,18 @@ Every placement choice settles a trade-off between communication latency and res
 
 The **placement record** is the formal systems specification contract and empirical verification ledger that documents the physical execution domain, privilege level, activation period, loaded execution bounds, shared resource inventory, hardware arbitration mechanisms, and pre-declared falsification criteria across co-located silicon domains. As formalized in the memory-mapped specification contract in @tbl-13-placement-record-schema (`struct HeterogeneousPlacementRecord_t`), the placement record binds ten core hardware and timing descriptors across every function in the machine, spanning both the high-level policy regulating flow demand and the hard-real-time monitor managing valve safety.
 
-::: {.column-margin}
-**Placement Record Memory Map**
-`0x00`: `execution_domain_id`
-`0x08`: `privilege_and_ring`
-`0x10`: `nominal_period_ns`
-`0x18`: `hard_deadline_ns`
-`0x20`: `wcet_unloaded_ns`
-`0x28`: `wcet_loaded_synthetic_ns`
-`0x30`: `shared_axi_channel_qos`
-`0x38`: `max_pdn_droop_thermal_trip`
-`0x40`: `hardware_mitigation_flags`
-`0x60`: `model_firmware_sha256`
-:::
-
-| Field Name | Data Type & Size | Physical Units & Topology | Structural Invariant & Worst-Case Bound | Hardware Audit Substrate & Safety Consumer |
+| Offset & Field Name | Type & Size | Units & Topology | Structural Invariant & Bound | Hardware Audit Substrate |
 |:---|:---|:---|:---|:---|
-| `execution_domain_id` | `uint64_t`<br>(8 bytes) | Hardware Core Enum (dimensionless) | `domain_id` $\in \{\text{MPU}, \text{NPU}, \text{GPU}, \text{MCU}, \text{LOCKSTEP}\}$ | Memory Protection Unit (MPU) domain register verification |
-| `privilege_and_ring` | `uint64_t`<br>(8 bytes) | Privilege Level (ARM EL0..EL3 / Ring) | Hard separation: Proposal $\le \text{EL0}$, Enforcer $\ge \text{EL1}/\text{Secure}$ | ARM TrustZone / Hardware Security Module (HSM) gating |
-| `nominal_period_ns` | `uint64_t`<br>(8 bytes) | Nanoseconds ($\text{ns}$) | $T_s \in [10^6, 5 \times 10^7]\text{ ns}$ ($1.0\text{ ms}$ enforcer, $20\text{ ms}$ proposal) | Free-running monotonic hardware timer (`TIMx` counter) |
-| `hard_deadline_ns` | `uint64_t`<br>(8 bytes) | Nanoseconds ($\text{ns}$) | $t_{\text{deadline}} = T_{\text{period}} - t_{\text{actuator\_transit}}$ ($1.0\text{ ms}$ physical limit) | Independent hardware watchdog timer (WDT timeout trip) |
-| `wcet_unloaded_ns` | `uint64_t`<br>(8 bytes) | Nanoseconds ($\text{ns}$) | $t_{\text{exec,nom}} \le 135\,000\text{ ns}$ ($135\text{ }\mu\text{s}$ baseline uncontended execution) | Performance Monitor Unit (PMU) cycle counter (`PMCCNTR`) |
-| `wcet_loaded_synthetic_ns` | `uint64_t`<br>(8 bytes) | Nanoseconds ($\text{ns}$) | $t_{\text{exec,max}} \le 380\,000\text{ ns}$ (under full synthetic AXI/DRAM load) | Factorial contention test harness; verified against $t_{\text{deadline}}$ |
-| `shared_axi_channel_qos` | `uint64_t`<br>(8 bytes) | AMBA `AxQOS` Tag + Rate Limit ($\text{MB/s}$) | $\text{QoS}_{\text{MCU}} = \text{0xF}$ (critical), $\text{QoS}_{\text{NPU}} \le \text{0x4}$ (rate-limited) | Interconnect crossbar arbiter QoS priority registers |
-| `max_pdn_droop_thermal_trip` | `uint32_t[2]`<br>(8 bytes) | Millivolts ($\text{mV}$) and $\text{deg C}$ ($Q8.8$) | $\Delta V_{\text{droop}} \le 70\text{ mV}$, $T_{\text{trip}} \le 95.0^\circ\text{C}$, $T_{\text{clear}} \le 85.0^\circ\text{C}$ | On-die analog comparator & thermal diode interrupt logic |
-| `hardware_mitigation_flags` | `uint8_t[32]`<br>(32 bytes) | Bitfield & Resource Region Maps | Active: TCM SRAM, MPAM Way-Partitioning, Isolated PMIC Rail | Hardware register lock (`SYSCON_LOCK`) prevent runtime alteration |
-| `model_firmware_sha256` | `uint8_t[32]`<br>(32 bytes) | SHA-256 Digest (dimensionless) | Cryptographic digest binding weights, MPU OS kernel, MCU RTOS | Secure Boot ROM / Hardware Root-of-Trust (RoT) signature |
+| `0x00`: `execution_domain_id` | `uint64_t` (8B) | Core Enum | `domain_id` $\in \{\text{MPU}, \text{NPU}, \text{GPU}, \text{MCU}, \text{LOCKSTEP}\}$ | Memory Protection Unit (MPU) |
+| `0x08`: `privilege_and_ring` | `uint64_t` (8B) | Privilege Level | Proposal $\le \text{EL0}$, Enforcer $\ge \text{EL1}/\text{Secure}$ | ARM TrustZone / HSM |
+| `0x10`: `nominal_period_ns` | `uint64_t` (8B) | $\text{ns}$ | $T_s \in [10^6, 5 \times 10^7]\text{ ns}$ ($1.0\text{ ms}$ enforcer) | Free-running monotonic timer |
+| `0x18`: `hard_deadline_ns` | `uint64_t` (8B) | $\text{ns}$ | $t_{\text{deadline}} = T_{\text{period}} - t_{\text{actuator\_transit}}$ ($1.0\text{ ms}$) | Hardware watchdog timer (WDT) |
+| `0x20`: `wcet_unloaded_ns` | `uint64_t` (8B) | $\text{ns}$ | $t_{\text{exec,nom}} \le 135\,000\text{ ns}$ ($135\,\mu\text{s}$ baseline) | PMU cycle counter (`PMCCNTR`) |
+| `0x28`: `wcet_loaded_synthetic_ns` | `uint64_t` (8B) | $\text{ns}$ | $t_{\text{exec,max}} \le 380\,000\text{ ns}$ (under full AXI load) | Factorial contention test harness |
+| `0x30`: `shared_axi_channel_qos` | `uint64_t` (8B) | AMBA `AxQOS` | $\text{QoS}_{\text{MCU}} = \text{0xF}$, $\text{QoS}_{\text{NPU}} \le \text{0x4}$ | Crossbar QoS priority registers |
+| `0x38`: `max_pdn_droop_thermal_trip` | `uint32_t[2]` (8B) | $\text{mV}$ & $^\circ\text{C}$ | $\Delta V_{\text{droop}} \le 70\text{ mV}$, $T_{\text{trip}} \le 95.0^\circ\text{C}$ | On-die comparator & thermal diode |
+| `0x40`: `hardware_mitigation_flags` | `uint8_t[32]` (32B) | Bitfield | Active: TCM SRAM, MPAM, Isolated Rail | Register lock (`SYSCON_LOCK`) |
+| `0x60`: `model_firmware_sha256` | `uint8_t[32]` (32B) | SHA-256 | Cryptographic digest (weights, kernel, RTOS) | Secure Boot ROM / RoT signature |
 : **Abstract Data Schema for the Heterogeneous SoC Placement Record (`HeterogeneousPlacementRecord_t`).** Formal systems specification contract and empirical verification ledger layout ($128\text{ bytes}$ total), field types, physical SI units, structural invariants, and hardware audit substrates. This record establishes Freedom From Interference (FFI) across co-located silicon domains and is passed directly to the verification and release pipelines. {#tbl-13-placement-record-schema}
 
 These parameters define the physical execution domain (such as a neural processing unit cluster, an application processor core, or a discrete lockstep microcontroller), the hardware privilege level, the nominal activation period, the hard physical deadline, and the measured loaded execution bound. When an analytical example allocates an upstream pipeline pressure estimator to a core running at $1000\text{ Hz}$ with a $1.0\text{ ms}$ deadline, the record documents both the unloaded execution time of $0.18\text{ ms}$ and the worst-case bound of $0.62\text{ ms}$ observed when all co-located execution units operate under maximum synthetic contention.
