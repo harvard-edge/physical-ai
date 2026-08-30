@@ -96,7 +96,7 @@ The formal mathematical specifications, continuity classes, and covariance growt
 
 The **REP 105 spatial transform tree** formalizes this standardized, acyclic kinematic coordinate hierarchy ($\mathcal{F}_{\text{earth}} \to \mathcal{F}_{\text{map}} \to \mathcal{F}_{\text{odom}} \to \mathcal{F}_{\text{body}} \to \mathcal{F}_{\text{sensor}}$), strictly isolating continuous, high-rate local dead reckoning ($\mathcal{F}_{\text{odom}}$) used in inner control loops from discrete, discontinuous global map relocalization corrections ($\mathcal{F}_{\text{map}}$) used by global planners, preventing step-discontinuity shocks in physical tracking controllers.
 
-![**REP 105 Spatial Transform Tree and Uncertainty Composition.** The spatial coordinate frame hierarchy formalizes the separation between continuous local dead reckoning ($\mathcal{F}_{\text{odom}} \to \mathcal{F}_{\text{body}}$) consumed by high-frequency tracking loops and discontinuous global map corrections ($\mathcal{F}_{\text{map}} \to \mathcal{F}_{\text{odom}}$) consumed by global planners. Spatial covariance compounds across the kinematic chain ($\mathbf{\Sigma}_{\text{map}} \approx \mathbf{J}_{\text{odom}}\mathbf{\Sigma}_{\text{drift}}\mathbf{J}_{\text{odom}}^T + \mathbf{R}_{\text{body}}\mathbf{\Sigma}_{\text{ext}}\mathbf{R}_{\text{body}}^T + \mathbf{R}_{\text{tot}}\mathbf{\Sigma}_z\mathbf{R}_{\text{tot}}^T$), requiring downstream consumers to reject observations that lack an explicit coordinate key $\mathcal{F}_{\text{sensor}}$, acquisition epoch $t_0$, and covariance envelope $\mathbf{\Sigma}_z$. Attribution: Book kinematic systems diagram, CC BY 4.0.](figures/fig08_coordinate_frame_tree.svg){#fig-08-coordinate-frame-tree fig-pos="H" width=95%}
+![**REP 105 Spatial Transform Tree and Uncertainty Composition.** The spatial coordinate frame hierarchy formalizes the separation between continuous local dead reckoning ($\mathcal{F}_{\text{odom}} \to \mathcal{F}_{\text{body}}$) consumed by high-frequency tracking loops and discontinuous global map corrections ($\mathcal{F}_{\text{map}} \to \mathcal{F}_{\text{odom}}$) consumed by global planners. Spatial covariance compounds across the kinematic chain ($\mathbf{\Sigma}_{\text{map}} \approx \mathbf{J}_{\text{odom}}\mathbf{\Sigma}_{\text{drift}}\mathbf{J}_{\text{odom}}^T + \mathbf{R}_{\text{body}}\mathbf{\Sigma}_{\text{ext}}\mathbf{R}_{\text{body}}^T + \mathbf{R}_{\text{tot}}\mathbf{\Sigma}_z\mathbf{R}_{\text{tot}}^T$), requiring downstream consumers to reject observations that lack an explicit coordinate key $\mathcal{F}_{\text{sensor}}$, acquisition epoch $t_0$, and covariance envelope $\mathbf{\Sigma}_z$. Attribution: Book kinematic systems diagram, CC BY 4.0.](figures/fig08_coordinate_frame_tree.svg){#fig-08-coordinate-frame-tree fig-pos="t" width=95%}
 
 The third mandatory property is the **uncertainty envelope** $\mathbf{\Sigma}_z$. A physical measurement without a variance is an assertion of absolute certainty. Environmental degradation such as low illumination, atmospheric scattering, surface specularities, and model epistemic uncertainty mean that perception outputs are stochastic estimates. The uncertainty envelope $\mathbf{\Sigma}_z$, parameterized as a covariance matrix over the observation dimensions, bounds the spread of the measurement error. State estimators such as Kalman filters and nonlinear factor graph optimizers rely on $\mathbf{\Sigma}_z$ to weight sensory innovations against the internal dynamic model of the body. If perception hands over an observation without $\mathbf{\Sigma}_z$, downstream algorithms must assume a static noise parameter or treat the measurement as ground truth. When the physical sensor degrades, treating a noisy or out-of-distribution perception output as certain forces the optimizer to pull state estimates toward spurious measurements. The resulting high-frequency corrections propagate directly to motor drives, causing severe torque chatter, rapid thermal rise in actuator windings, and mechanical wear.
 
@@ -159,12 +159,16 @@ This angular skew bent straight vertical shelf beams into tilted hyperbolas acro
 
 ### MIPI CSI-2 DMA Ingress on the Linux MPU
 
-Once analog-to-digital converters on the sensor die digitize the pixel charges, the frame must travel across a physical interconnect to host memory. In an embedded physical AI platform (such as a heterogeneous System-on-Chip pairing an application MPU with an on-chip tensor accelerator), camera streams enter via the **Mobile Industry Processor Interface Camera Serial Interface (MIPI CSI-2)** bus.[^fn-hw-mipi-csi] The physical silicon ingestion dataflow proceeds through four discrete stages:
+Once analog-to-digital converters on the sensor die digitize the pixel charges, the frame must travel across a physical interconnect to host memory. In a canonical heterogeneous System-on-Chip (SoC) comprising an unprivileged application processor (Linux MPU) and an isolated hard real-time safety microcontroller (bare-metal MCU), camera streams enter via the **Mobile Industry Processor Interface Camera Serial Interface (MIPI CSI-2)** bus.[^fn-hw-mipi-csi] 
 
-1. **D-PHY / C-PHY Physical Layer**: Differential data lanes transmit high-speed serialized pixel packets (typically $1.5\text{--}2.5\text{ Gbps}$ per lane across 2 to 4 lanes), protected by packet header error correction and payload CRC checksums.
-2. **SoC CSI-2 Host Controller**: The on-chip receiver deserializes byte packets, strips protocol headers, and validates CRC integrity.
-3. **Scatter-Gather DMA Controller**: A dedicated Direct Memory Access engine transfers pixel byte words directly into physical Dynamic Random-Access Memory (DRAM) over the internal system interconnect (such as an AXI crossbar).
-4. **Kernel Circular DMA Ring Buffers**: Under the Linux Video4Linux2 (`v4l2`) subsystem, the driver allocates a pre-mapped ring of non-cacheable DMA buffers (`V4L2_MEMORY_MMAP` or `V4L2_MEMORY_DMABUF`).[^fn-hw-v4l2-dma] The DMA engine cycles through this ring, populating memory pages without invoking user-space memory copies or polluting CPU L1/L2 caches.
+::: {.column-margin}
+**Silicon Ingestion Dataflow**
+
+1. **D-PHY / C-PHY Physical Layer**: Differential data lanes transmit high-speed serialized pixel packets (typically $1.5\text{--}2.5\text{ Gbps}$ per lane), protected by header error correction.
+2. **SoC CSI-2 Host Controller**: Deserializes byte packets, strips headers, and validates CRC integrity.
+3. **Scatter-Gather DMA Controller**: A dedicated DMA engine transfers pixel byte words directly into DRAM over the internal system interconnect (e.g., AXI crossbar).
+4. **Kernel DMA Ring Buffers**: Under Linux (`v4l2`), the driver allocates pre-mapped non-cacheable DMA buffers (`V4L2_MEMORY_MMAP`). The DMA populates pages without user-space copies.[^fn-hw-v4l2-dma]
+:::
 
 Once DMA write completion occurs, the kernel driver issues an interrupt. Pointers to these contiguous memory regions are shared as zero-copy file descriptors (`dma_buf`) directly with the hardware Image Signal Processor (ISP) and Neural Processing Unit (NPU), bypassing CPU memory bus hops. By contrast, interfaces relying on Universal Serial Bus (USB3) or GigE Vision over Ethernet package pixel streams into discrete packets, incurring frame assembly, kernel network stack traversal, and driver memory copies that inflate transport latency from $t_{\text{transport}} < 0.5\text{ ms}$ (MIPI CSI-2) up to $5\text{--}20\text{ ms}$ (USB3/GigE), with tail latencies exceeding $P_{99} > 35\text{ ms}$ under CPU thread scheduling contention.
 
@@ -185,7 +189,7 @@ This artificial $200\text{ mm}$ displacement corrupts visual feature triangulati
 
 **Camera-to-IMU spatial-temporal calibration** is the joint determination of the rigid 6-DoF extrinsic transformation $\mathbf{T}_{\text{imu}}^{\text{cam}} \in SE(3)$ and the temporal latency offset $\tau_{\text{cam-imu}} = t_{\text{cam}} - t_{\text{imu}}$, bounding lever-arm centripetal accelerations and rotational misalignment errors ($\Delta p \approx z \omega \Delta t$) during dynamic motion.
 
-![**Physical Multi-Modal Perception Sensor Suite on an Autonomous Testbed.** Close-up view of an integrated perception pod mounted on an autonomous vehicle chassis. The assembly houses multiple high-dynamic-range CMOS cameras with distinct focal lengths and fields of view alongside solid-state and spinning time-of-flight LiDAR modules on a rigid machined aluminum mounting bracket. Each physical transducer defines its own local reference frame ($\mathcal{F}_{\text{sensor}}$), requiring precise extrinsic geometric calibration ($\mathbf{T}_{\text{sensor}\to\text{body}}$) and thermal compensation to prevent angular deviations ($\theta$) from projecting into severe lateral errors ($\Delta y \approx d \cdot \sin\theta$) at operating distance. Shielded coaxial serializers (GMSL2/FPD-Link) and dedicated hardware sync lines route synchronized microsecond triggers to prevent inter-sensor phase skew. Attribution: Open-source robotics testbed platform, CC BY-SA 4.0.](figures/fig08_real_sensor_suite.jpg){#fig-08-sensor-suite fig-pos="H" width=85%}
+![**Physical Multi-Modal Perception Sensor Suite on an Autonomous Testbed.** Close-up view of an integrated perception pod mounted on an autonomous vehicle chassis. The assembly houses multiple high-dynamic-range CMOS cameras with distinct focal lengths and fields of view alongside solid-state and spinning time-of-flight LiDAR modules on a rigid machined aluminum mounting bracket. Each physical transducer defines its own local reference frame ($\mathcal{F}_{\text{sensor}}$), requiring precise extrinsic geometric calibration ($\mathbf{T}_{\text{sensor}\to\text{body}}$) and thermal compensation to prevent angular deviations ($\theta$) from projecting into severe lateral errors ($\Delta y \approx d \cdot \sin\theta$) at operating distance. Shielded coaxial serializers (GMSL2/FPD-Link) and dedicated hardware sync lines route synchronized microsecond triggers to prevent inter-sensor phase skew. Attribution: Open-source robotics testbed platform, CC BY-SA 4.0.](figures/fig08_real_sensor_suite.jpg){#fig-08-sensor-suite fig-pos="t" width=85%}
 
 ### The Latency Waterfall
 
@@ -193,9 +197,10 @@ Summing these physical stages yields the total age of the sensory data as it cas
 $$t_{\text{age}} = \frac{t_{\text{exp}}}{2} + t_{\text{readout}} + t_{\text{transport}} + t_{\text{DMA}} + t_{\text{ISP}} + t_{\text{backbone}} + t_{\text{IPC}}$$
 
 ::: {.callout-math title="Sensor Transduction Latency and Spatial Information Age Budget"}
-**Scenario:** An embodied platform navigates a dynamic workspace. We evaluate the cumulative information age $\tau_{\text{age}}$ across the complete sensory-to-inference pipeline and compute the resulting unmodeled physical displacement $\Delta x = v \cdot \tau_{\text{age}} + \frac{1}{2} a \cdot \tau_{\text{age}}^2$ across three distinct physical machine archetypes.
+*The scenario.* An embodied platform navigates a dynamic workspace. We evaluate the cumulative information age $\tau_{\text{age}}$ across the complete sensory-to-inference pipeline and compute the resulting unmodeled physical displacement $\Delta x = v \cdot \tau_{\text{age}} + \frac{1}{2} a \cdot \tau_{\text{age}}^2$ across three distinct physical machine archetypes.
 
 **Stage-by-Stage Latency Waterfall:**
+
 1. *Exposure Integration Midpoint ($t_{\text{exp}}/2$):* CMOS camera running at $30\text{ Hz}$ with auto-exposure $t_{\text{exp}} = 16.0\text{ ms} \implies \Delta t_1 = 8.0\text{ ms}$.
 2. *Rolling Shutter Line Readout ($t_{\text{readout}}$):* Column parallel ADC scanning across 1080 rows $\implies \Delta t_2 = 16.6\text{ ms}$ (average scanline).
 3. *MIPI CSI-2 Serialization & Transport ($t_{\text{transport}}$):* 4-lane D-PHY at $2.5\text{ Gbps/lane} \implies \Delta t_3 = 0.8\text{ ms}$.
@@ -208,12 +213,15 @@ $$t_{\text{age}} = \frac{t_{\text{exp}}}{2} + t_{\text{readout}} + t_{\text{tran
 $$\tau_{\text{age}} = 8.0 + 16.6 + 0.8 + 1.2 + 2.5 + 22.0 + 0.5 = 51.6\text{ ms}$$
 
 **Archetype Displacement Analysis:**
+
 - **Mobile Systems (Autonomous Mobile Robot):** At nominal cruising speed $v = 2.5\text{ m/s}$ under acceleration $a = 0\text{ m/s}^2$:
   $$\Delta x_{\text{AMR}} = 2.5\text{ m/s} \times 0.0516\text{ s} = 0.129\text{ m} = 129\text{ mm}$$
   *Systems Impact:* Consumes $>60\%$ of the nominal $200\text{ mm}$ safety corridor clearance before the policy evaluates the frame.
+
 - **Manipulators (High-Speed Industrial Arm):** At end-effector Cartesian velocity $v = 1.8\text{ m/s}$ during precision peg-in-hole assembly:
   $$\Delta x_{\text{arm}} = 1.8\text{ m/s} \times 0.0516\text{ s} = 0.0929\text{ m} = 92.9\text{ mm}$$
   *Systems Impact:* Exceeds standard chamfer insertion tolerances ($1\text{--}5\text{ mm}$) by nearly two orders of magnitude, guaranteeing tool collision without historical pose interpolation.
+
 - **Process / Energy Systems (Laser Metal Additive Melt-Pool Scanner):** Galvanometer scan mirror traversing at $v_{\text{scan}} = 0.8\text{ m/s}$ with thermal pyrometry:
   $$\Delta x_{\text{melt}} = 0.8\text{ m/s} \times 0.0516\text{ s} = 0.0413\text{ m} = 41.3\text{ mm}$$
   *Systems Impact:* The thermal feedback loop controls laser power against a melt-pool position that has shifted by $>80$ melt-pool diameters ($d_{\text{pool}} \approx 0.5\text{ mm}$), causing thermal runaway or void formation.
@@ -313,7 +321,7 @@ At a distance of $z = 10.0\text{ m}$, the same disparity uncertainty yields:
 $$\delta z = \frac{(10.0\text{ m})^2}{800\text{ px} \times 0.20\text{ m}} \times 0.5\text{ px} = 0.3125\text{ m} = 312.5\text{ mm}$$
 At ten meters, the depth uncertainty alone exceeds the total physical envelope of many small mobile robots.
 
-![**Registered 3D LiDAR Point Cloud in an Urban Environment.** High-resolution orthographic projection of 23 million time-of-flight points acquired by an Ouster OS1-64 multi-beam LiDAR mounted on a moving vehicle navigating an urban intersection (Folsom and Dore St, San Francisco). Points are registered in real time into the global coordinate frame ($\mathcal{F}_{\text{world}}$) via simultaneous localization and mapping (SLAM) and colorized by calibrated return intensity scaled by range. Because time-of-flight ranging uncertainty ($z = c \Delta t / 2$) remains approximately constant across operating range, LiDAR generates dense metric surfaces for physical clearance estimation without the quadratic depth degradation ($\delta z \propto z^2$) characteristic of passive stereo triangulation. Continuous motion compensation across sweeping scanlines is essential to prevent vehicle velocity from shearing the reconstructed geometry. Attribution: Ouster Inc. public dataset, CC BY 4.0.](figures/fig08_real_lidar_pointcloud.jpg){#fig-08-lidar-pointcloud fig-pos="H" width=85%}
+![**Registered 3D LiDAR Point Cloud in an Urban Environment.** High-resolution orthographic projection of 23 million time-of-flight points acquired by an Ouster OS1-64 multi-beam LiDAR mounted on a moving vehicle navigating an urban intersection (Folsom and Dore St, San Francisco). Points are registered in real time into the global coordinate frame ($\mathcal{F}_{\text{world}}$) via simultaneous localization and mapping (SLAM) and colorized by calibrated return intensity scaled by range. Because time-of-flight ranging uncertainty ($z = c \Delta t / 2$) remains approximately constant across operating range, LiDAR generates dense metric surfaces for physical clearance estimation without the quadratic depth degradation ($\delta z \propto z^2$) characteristic of passive stereo triangulation. Continuous motion compensation across sweeping scanlines is essential to prevent vehicle velocity from shearing the reconstructed geometry. Attribution: Ouster Inc. public dataset, CC BY 4.0.](figures/fig08_real_lidar_pointcloud.jpg){#fig-08-lidar-pointcloud fig-pos="t" width=85%}
 
 ### 3D Foundation Models in Physical AI: DINOv2, SAM, and ConceptGraphs
 
@@ -332,6 +340,7 @@ Modern physical AI architectures do not rely solely on classical hand-engineered
 From an ML Systems perspective, deploying foundation models on physical machines introduces a fundamental compute and latency trade-off. Running DINOv2 and SAM requires between $10^9$ and $10^{11}\text{ FLOPs}$ per forward pass, consuming hundreds of megabytes of memory bandwidth and exhibiting execution latencies of $100\text{--}300\text{ ms}$ on embedded NPUs [@lin2018architectural]. An autonomous machine moving at $2.0\text{ m/s}$ cannot close high-rate feedback loops over a $300\text{ ms}$ foundation model cycle.
 
 Physical AI architectures solve this by partitioning perception into a **multi-rate hierarchy**:
+
 - **High-Rate Metric Ingress ($30\text{--}60\text{ Hz}$)**: The Linux MPU runs hardware ISP debayering and fast metric depth unprojection directly from MIPI CSI-2 DMA buffers, generating instantaneous 3D obstacle point sets and occupancy grids.
 - **Asynchronous Foundation Graph Updates ($1\text{--}5\text{ Hz}$)**: In parallel worker threads, the NPU evaluates DINOv2 patch embeddings and SAM segmentation masks on keyframes, incrementally updating the semantic nodes of the 3D ConceptGraph.
 - **Deterministic Real-Time Enforcement ($1000\text{ Hz}$)**: The real-time MCU queries the metric clearance envelope defended around the robot, verifying that no physical obstacle intrudes into the clearance inset, completely decoupled from the execution jitter of the MPU foundation model pipeline.
@@ -348,73 +357,52 @@ where $\|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$ represents the ninet
 
 The **clearance inset margin** is the mathematically enforced buffer expansion ($C_{\text{inset}} = C_{\text{safe}} + \|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$) added to nominal obstacle clearance boundaries to account for upstream spatial perception uncertainty, uncalibrated extrinsic lever arms ($\delta x \approx z\theta$), and quadratic depth degradation ($\delta z \propto z^2$), ensuring physical safety limits ($C_{\text{safe}}$) are never breached.
 
-![**Metric Grounding, Depth Error Scaling, and Clearance Inset Geometry.** (A) Depth uncertainty $\delta z$ as a function of target distance $z$, contrasting quadratic stereo vision divergence ($\delta z \approx \frac{z^2}{fb}\delta d$) with constant pulsed LiDAR time-of-flight error ($\delta z \approx \frac{c\Delta t}{2}$). (B) Overhead geometric clearance diagram of a mobile platform approaching an obstacle. The propagated spatial uncertainty ellipsoid $\|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$ (depth axis error $\delta z$ and transverse lever-arm error $\delta x \approx z\theta$) directly subtracts from nominal clearance, requiring the safety enforcer to defend an expanded inset margin $C_{\text{inset}} = C_{\text{safe}} + \|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$ to guarantee the physical collision threshold $C_{\text{safe}}$ is never breached. Attribution: Book geometric error analysis, CC BY 4.0.](figures/fig08_depth_uncertainty_clearance.svg){#fig-08-depth-uncertainty-clearance fig-pos="H" width=95%}
+![**Metric Grounding, Depth Error Scaling, and Clearance Inset Geometry.** (A) Depth uncertainty $\delta z$ as a function of target distance $z$, contrasting quadratic stereo vision divergence ($\delta z \approx \frac{z^2}{fb}\delta d$) with constant pulsed LiDAR time-of-flight error ($\delta z \approx \frac{c\Delta t}{2}$). (B) Overhead geometric clearance diagram of a mobile platform approaching an obstacle. The propagated spatial uncertainty ellipsoid $\|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$ (depth axis error $\delta z$ and transverse lever-arm error $\delta x \approx z\theta$) directly subtracts from nominal clearance, requiring the safety enforcer to defend an expanded inset margin $C_{\text{inset}} = C_{\text{safe}} + \|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$ to guarantee the physical collision threshold $C_{\text{safe}}$ is never breached. Attribution: Book geometric error analysis, CC BY 4.0.](figures/fig08_depth_uncertainty_clearance.svg){#fig-08-depth-uncertainty-clearance fig-pos="t" width=95%}
 
 Because clearance depends on propagated error, downstream planners and safety monitors cannot consume raw coordinate tuples. An observation crossing the perception boundary must satisfy an explicit interface contract defining its metric meaning. Every spatial estimate must specify its target coordinate frame, its acquisition epoch timestamp, and its bounded uncertainty representation, such as a spatial covariance matrix $\mathbf{\Sigma} \in \mathbb{R}^{3 \times 3}$ or a bounding radius. An observation that delivers $(x, y, z) = (4.2, -1.1, 0.8)$ without stating the reference frame, the time at which the photons struck the detector, and the confidence ellipsoid cannot be integrated into a safety case. Downstream control loops cannot deduce whether the measurement warrants a $10\text{ mm}$ inset or a $500\text{ mm}$ inset.
 
 When spatial error is bounded and quantified, the nervous system can compensate by expanding the clearance inset, trading vehicle speed or workspace volume for physical separation. However, when spatial error is unbounded or unknown, widening the margin is mathematically undefined. If a stereo camera encounters a textureless wall, optical glare that causes sensor saturation, or a lost calibration parameter, the disparity variance diverges. Under unbounded or unquantified uncertainty, the perception subsystem cannot furnish a valid spatial bound, and the system must immediately revoke permission for autonomous motion. Expanding a clearance margin assumes that the error distribution has a known tail; when that assumption fails, continuing motion relies on chance rather than engineering.
 
-The complete operational protocol for metric unprojection, kinematic covariance propagation, and dynamic clearance inset sizing is formalized in Algorithm 8.1.
+The complete operational protocol for metric unprojection, kinematic covariance propagation, and dynamic clearance inset sizing is formalized below:
 
-::: {.callout-algorithm title="Spatial Clearance Inset and Depth Covariance Projection"}
-**Execution Cadence:** Synchronous with perception frame ingress ($30\text{--}60\text{ Hz}$ on Linux MPU / Hardware ISP).  
-**Memory Invariant:** Zero dynamic heap allocation in inner unprojection loop; bounded matrix scratchpad buffers.  
-**Interface Contract:** Emits bounded spatial claims $(\mathbf{p}_{\text{body}}, \mathbf{\Sigma}_{\text{body}}, C_{\text{inset}}, \tau_{\text{age}})$ to the shared-memory spatial scene graph.
+### Spatial Clearance Inset and Depth Covariance Projection Protocol
 
-**Inputs:**
-- Raw/triangulated depth point set $\mathcal{P}_{\text{sensor}} = \{ (u_i, v_i, z_i, \sigma_{d,i}^2) \}_{i=1}^N$ in sensor optical frame $\mathcal{F}_{\text{sensor}}$.
-- Acquisition timestamp epoch $t_0 = t_{\text{exp-mid}}$ and current monotonic master clock $t_{\text{curr}}$.
-- Calibrated camera intrinsics $\mathbf{K} = \begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix}$ and baseline $b$ (or LiDAR time-of-flight constant $\sigma_{\text{ToF}}$).
-- Extrinsic transform $\mathbf{T}_{\text{sensor}}^{\text{body}} = (\mathbf{R}_{\text{sensor}}^{\text{body}}, \mathbf{p}_{\text{sensor}}^{\text{body}})$ with mounting covariance $\mathbf{\Sigma}_{\text{ext}} \in \mathbb{R}^{6\times 6}$.
-- Platform velocity vector $\mathbf{v} = [v_x, v_y, v_z]^T$ in $\mathcal{F}_{\text{body}}$ and nominal safety envelope $C_{\text{safe}}$.
+**Cadence & Invariants:**
 
-**Outputs:**
-- Grounded spatial claim set $\mathcal{C}_{\text{body}} = \{ (\mathbf{p}_{\text{body},i}, \mathbf{\Sigma}_{\text{body},i}, C_{\text{inset},i}) \}_{i=1}^N$ in body frame $\mathcal{F}_{\text{body}}$.
-- Health status word $\mathcal{S}_{\text{perception}} \in \{ \text{VALID}, \text{DEGRADED}, \text{UNBOUNDED\_ERROR\_FAULT} \}$.
+- *Execution Cadence:* Synchronous with perception frame ingress ($30\text{--}60\text{ Hz}$ on Linux MPU / Hardware ISP).
+- *Memory Invariant:* Zero dynamic heap allocation in inner unprojection loops; bounded matrix scratchpad buffers.
+- *Interface Contract:* Emits bounded spatial claims $(\mathbf{p}_{\text{body}}, \mathbf{\Sigma}_{\text{body}}, C_{\text{inset}}, \tau_{\text{age}})$ to the shared-memory spatial scene graph.
 
-**Algorithm Steps:**
+**Execution Protocol:**
 
 1. **Information Age & Temporal Freshness Verification (Stage 1):**
-   - Compute total information age: $\tau_{\text{age}} \leftarrow t_{\text{curr}} - t_0$.
-   - If $\tau_{\text{age}} > \tau_{\text{max\_admissible}}$:
-     - Set $\mathcal{S}_{\text{perception}} \leftarrow \text{UNBOUNDED\_ERROR\_FAULT}$; trigger stale-frame refusal.
-   - Compute unmodeled kinematic displacement vector: $\Delta \mathbf{p}_{\text{age}} \leftarrow \mathbf{v} \cdot \tau_{\text{age}}$.
+   Compute total information age $\tau_{\text{age}} \leftarrow t_{\text{curr}} - t_0$. If $\tau_{\text{age}} > \tau_{\text{max\_admissible}}$, assert `UNBOUNDED_ERROR_FAULT` and trigger stale-frame refusal. Otherwise, compute unmodeled kinematic displacement vector $\Delta \mathbf{p}_{\text{age}} \leftarrow \mathbf{v} \cdot \tau_{\text{age}}$.
 
 2. **Optical Metric Unprojection & Sensor Covariance Synthesis (Stage 2):**
-   - For each measurement point $(u, v, z, \sigma_d^2) \in \mathcal{P}_{\text{sensor}}$:
-     - Compute 3D optical coordinates: $x_s \leftarrow \frac{(u - c_x) z}{f_x}, \quad y_s \leftarrow \frac{(v - c_y) z}{f_y}, \quad z_s \leftarrow z$.
-     - If passive stereo triangulation ($z = f b / d$):
-       - Compute longitudinal depth variance: $\sigma_{z,s}^2 \leftarrow \left( \frac{z^2}{f_x b} \right)^2 \sigma_d^2$.
-       - Compute transverse variances: $\sigma_{x,s}^2 \leftarrow \left(\frac{u - c_x}{f_x}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_x}\right)^2 \sigma_u^2, \quad \sigma_{y,s}^2 \leftarrow \left(\frac{v - c_y}{f_y}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_y}\right)^2 \sigma_v^2$.
-       - Construct diagonal sensor covariance: $\mathbf{\Sigma}_{\text{sensor}} \leftarrow \operatorname{diag}(\sigma_{x,s}^2, \sigma_{y,s}^2, \sigma_{z,s}^2)$.
-     - Else if time-of-flight LiDAR ($z = c \Delta t / 2$):
-       - Set range variance $\sigma_{z,s}^2 \leftarrow \sigma_{\text{ToF}}^2$; construct angular beam covariance $\mathbf{\Sigma}_{\text{sensor}}$.
+   For each measurement point $(u, v, z, \sigma_d^2) \in \mathcal{P}_{\text{sensor}}$:
+
+   - Compute 3D optical coordinates: $x_s \leftarrow \frac{(u - c_x) z}{f_x}, \quad y_s \leftarrow \frac{(v - c_y) z}{f_y}, \quad z_s \leftarrow z$.
+   - For passive stereo triangulation ($z = f b / d$):
+     $$\sigma_{z,s}^2 \leftarrow \left( \frac{z^2}{f_x b} \right)^2 \sigma_d^2, \quad \sigma_{x,s}^2 \leftarrow \left(\frac{u - c_x}{f_x}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_x}\right)^2 \sigma_u^2, \quad \sigma_{y,s}^2 \leftarrow \left(\frac{v - c_y}{f_y}\right)^2 \sigma_{z,s}^2 + \left(\frac{z}{f_y}\right)^2 \sigma_v^2.$$
+     Construct diagonal sensor covariance: $\mathbf{\Sigma}_{\text{sensor}} \leftarrow \operatorname{diag}(\sigma_{x,s}^2, \sigma_{y,s}^2, \sigma_{z,s}^2)$.
+
+   - For time-of-flight LiDAR ($z = c \Delta t / 2$): set range variance $\sigma_{z,s}^2 \leftarrow \sigma_{\text{ToF}}^2$ and construct beam covariance $\mathbf{\Sigma}_{\text{sensor}}$.
 
 3. **Rigid Kinematic Transform & Spatial Covariance Projection (Stage 3):**
-   - Transform position to body coordinates: $\mathbf{p}_{\text{body}} \leftarrow \mathbf{R}_{\text{sensor}}^{\text{body}} \mathbf{p}_{\text{sensor}} + \mathbf{p}_{\text{sensor}}^{\text{body}} + \Delta \mathbf{p}_{\text{age}}$.
-   - Compute transform Jacobian with respect to sensor coordinates: $\mathbf{J}_p = \mathbf{R}_{\text{sensor}}^{\text{body}}$.
-   - Compute transform Jacobian with respect to mounting extrinsics: $\mathbf{J}_{\text{ext}} = \begin{bmatrix} \mathbf{I}_{3\times 3} & -[\mathbf{R}_{\text{sensor}}^{\text{body}} \mathbf{p}_{\text{sensor}}]_\times \end{bmatrix}$.
-   - Project spatial covariance via first-order error propagation:
-     $$\mathbf{\Sigma}_{\text{body}} \leftarrow \mathbf{J}_p \mathbf{\Sigma}_{\text{sensor}} \mathbf{J}_p^T + \mathbf{J}_{\text{ext}} \mathbf{\Sigma}_{\text{ext}} \mathbf{J}_{\text{ext}}^T + \|\mathbf{v}\|^2 \sigma_{\tau}^2 \mathbf{I}_{3\times 3}$$
+   Transform position to body coordinates $\mathbf{p}_{\text{body}} \leftarrow \mathbf{R}_{\text{sensor}}^{\text{body}} \mathbf{p}_{\text{sensor}} + \mathbf{p}_{\text{sensor}}^{\text{body}} + \Delta \mathbf{p}_{\text{age}}$.
+   Project spatial covariance via first-order error propagation across mounting extrinsics ($\mathbf{J}_{\text{ext}} = [\mathbf{I}_{3\times 3}, -[\mathbf{R}_{\text{sensor}}^{\text{body}} \mathbf{p}_{\text{sensor}}]_\times]$):
+   $$\mathbf{\Sigma}_{\text{body}} \leftarrow \mathbf{J}_p \mathbf{\Sigma}_{\text{sensor}} \mathbf{J}_p^T + \mathbf{J}_{\text{ext}} \mathbf{\Sigma}_{\text{ext}} \mathbf{J}_{\text{ext}}^T + \|\mathbf{v}\|^2 \sigma_{\tau}^2 \mathbf{I}_{3\times 3}.$$
 
 4. **Bounding Error Ellipsoid & Dynamic Clearance Inset Sizing (Stage 4):**
-   - Compute maximum principal eigenvalue of spatial covariance: $\lambda_{\max} \leftarrow \max \operatorname{eig}(\mathbf{\Sigma}_{\text{body}})$.
-   - Evaluate $99\text{th}$-percentile error radius ($3\text{D}$ Chi-Square with 3 DoF, $\chi_3^2(0.99) \approx 11.345 \implies \kappa_{99} \approx 3.368$):
-     $$\|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}} \leftarrow \kappa_{99} \sqrt{\lambda_{\max}}$$
-   - Check covariance boundedness:
-     - If $\lambda_{\max} > \lambda_{\text{divergence\_limit}}$ or $\det(\mathbf{\Sigma}_{\text{body}}) \le 0$:
-       - Set $\mathcal{S}_{\text{perception}} \leftarrow \text{UNBOUNDED\_ERROR\_FAULT}$; revoke motion authorization.
-   - Sizing dynamic clearance inset:
-     $$C_{\text{inset}} \leftarrow C_{\text{safe}} + \|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}$$
+   Compute maximum principal eigenvalue $\lambda_{\max} \leftarrow \max \operatorname{eig}(\mathbf{\Sigma}_{\text{body}})$ and evaluate the $99\text{th}$-percentile error radius ($\chi_3^2(0.99) \implies \kappa_{99} \approx 3.368$):
+   $$\|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}} \leftarrow \kappa_{99} \sqrt{\lambda_{\max}}.$$
+   If $\lambda_{\max} > \lambda_{\text{divergence\_limit}}$ or $\det(\mathbf{\Sigma}_{\text{body}}) \le 0$, assert `UNBOUNDED_ERROR_FAULT` and revoke motion authorization. Otherwise, size the dynamic clearance inset:
+   $$C_{\text{inset}} \leftarrow C_{\text{safe}} + \|\boldsymbol{\epsilon}_{\text{spatial}}\|_{P_{99}}.$$
 
 5. **Record Packaging & Shared Memory Emission (Stage 5):**
-   - Populate claim record: $\mathcal{C}_{\text{body}} \leftarrow (\mathbf{p}_{\text{body}}, \mathbf{\Sigma}_{\text{body}}, C_{\text{inset}}, \tau_{\text{age}})$.
-   - Commit record to lock-free shared memory ring buffer with memory barrier (`DMB ISH`).
-:::
+   Populate claim record $\mathcal{C}_{\text{body}} \leftarrow (\mathbf{p}_{\text{body}}, \mathbf{\Sigma}_{\text{body}}, C_{\text{inset}}, \tau_{\text{age}})$ and commit to the lock-free shared memory ring buffer with memory barrier (`DMB ISH`).
 
-::: {.callout-rule title="The Clearance Inset Invariant"}
-A nominal clearance boundary that has not been expanded by the ninety-ninth percentile propagated perception covariance is an optical fiction that guarantees physical collision.
-:::
+A fundamental invariant emerges from this propagation chain: a nominal clearance boundary that has not been expanded by the ninety-ninth percentile propagated perception covariance is an optical fiction that guarantees physical collision.
 
 [^fn-math-inverse-depth]: While image disparity error is Gaussian ($\delta d \sim \mathcal{N}(0, \sigma_d^2)$), non-linear unprojection $z = fb/d$ creates asymmetric heavy tails in 3D Euclidean space. At long ranges ($d \to 0$), depth variance diverges, requiring estimators to parameterize landmarks in inverse depth ($\rho = 1/z$).
 
@@ -522,6 +510,7 @@ The **observation record** is the immutable engineering notebook schema extensio
 An observation record is not an ephemeral message passed between software threads. It is a formal, immutable contract that specifies the physical validity of a sensory measurement before any downstream process is permitted to trust it. Where @sec-nervous defines the base schema for all run records, this section details the specific fields that the perception subsystem adds to that foundation. The observation record combines raw perceptual data with its spatial frame, uncertainty bounds, and hardware health state in a single contiguous memory layout.
 
 The formal schema of the observation record contains five mandatory fields:
+
 1. **Exposure Midpoint Timestamp** ($t_{\text{exp-mid}}$): A $64\text{-bit}$ integer recording nanoseconds since the UNIX epoch, latched at the midpoint of physical exposure by a hardware timer.
 2. **Monotonic Sequence Index** ($k$): A $64\text{-bit}$ unsigned integer incremented by the hardware capture engine on every frame, allowing downstream nodes to detect frame drops and out-of-order delivery.
 3. **Reference Frame Identifier** ($\mathcal{F}_{\text{sensor}}$): A $16\text{-bit}$ enumerated identifier that indexes into the spatial transform tree, resolving the sensor's physical mounting location relative to the body origin.
@@ -529,6 +518,7 @@ The formal schema of the observation record contains five mandatory fields:
 5. **Spatial Covariance Matrix** ($\mathbf{\Sigma}_z$): A $6 \times 6$ positive semi-definite matrix encoding the spatial and angular uncertainty of the measurement in the sensor frame.
 
 Three metadata structures follow the mandatory physical fields to preserve calibration provenance across varying operating environments:
+
 1. **Active Optical Intrinsics**: Records focal lengths $(f_x, f_y)$, optical center coordinates $(c_x, c_y)$, and radial distortion coefficients.
 2. **Temperature Calibration Coefficients**: Stores thermal coefficients alongside real-time readings from thermistors mounted on the sensor housing. Mechanical structures expand with temperature changes. In an analytical calculation for an aluminum camera mounting bar with a thermal expansion coefficient of $23 \times 10^{-6}\text{ K}^{-1}$, a temperature rise of $25\text{ }^\circ\text{C}$ over an initial $120\text{ mm}$ baseline causes a mechanical expansion of $23 \times 10^{-6} \times 0.12\text{ m} \times 25\text{ K} \approx 6.9 \times 10^{-5}\text{ m} = 0.069\text{ mm}$. If left uncorrected, this thermal baseline drift induces systematic ranging errors in downstream triangulation.[^fn-hw-thermal-drift] The active temperature coefficients allow downstream estimators to adjust baseline and focal lengths dynamically during operation.
 3. **Sensor Firmware and Model Revision Hash**: A $256\text{-bit}$ cryptographic hash of the sensor firmware, register configurations, and foundation model backbone weights. This hash guarantees that downstream algorithms can verify the exact signal processing pipeline and model version used to acquire and encode the raw observations.
@@ -595,9 +585,17 @@ Perception in a physical AI system is the physical and computational process of 
 
 The resources required to ingest sensory data represent finite physical budgets that must be accounted for during system design rather than treated as software overhead. High-rate cameras, LiDAR units, and radar arrays generate continuous streams of digital payloads that compete directly for shared memory buses, direct memory access channels, and cache capacity. Consider an analytical example of an autonomous vehicle equipped with four high-resolution cameras operating at $30\text{ Hz}$. If each camera streams raw Bayer frames of $1920 \times 1080$ pixels at $16\text{ bits}$ per pixel, the four sensors continuously generate $497.7\text{ MB/s}$ of raw ingress traffic across the system interconnect. When image pipelines debayer these frames, convert color spaces, and populate input tensors for neural network backbones, the aggregate memory read and write volume exceeds $1.5\text{ GB/s}$. If this data stream shares a silicon crossbar with the microcontroller bus without hardware-enforced quality-of-service priorities, memory bus saturation can stall safety-critical telemetry. If an inertial measurement unit interrupt running at $1000\text{ Hz}$ experiences a $P_{99}$ scheduling delay of $5.0\text{ ms}$ because camera direct memory access transfers congest the bus, a vehicle traveling at $10.0\text{ m/s}$ travels $50\text{ mm}$ without active acceleration feedback. Ingestion latency cannot be masked through asynchronous software queues, because software buffering does not alter the physical time elapsed between photon arrival and actuator response. Every millisecond consumed by serialization, sensor driver dispatch, and neural inference ages the observation record and widens the physical distance traveled by the machine.
 
-Downstream controllers, planners, and safety enforcers require observation records expressed in metric coordinates with bounded uncertainty to prevent physical control errors. A neural object detector that outputs a classification probability of $0.97$ provides a metric of training distribution alignment, but it provides zero information regarding the spatial variance of the object surface. If an obstacle is reported at a nominal range of $5.0\text{ m}$ without a spatial covariance matrix, a trajectory optimization solver cannot evaluate clearance bounds along a planned path. Consider an analytical example where mechanical vibration or thermal expansion introduces an unmodeled angular calibration drift of $0.01\text{ rad}$ at a sensor bracket. At a measurement distance of $5.0\text{ m}$, this small angular deviation produces a lateral translation error of $50\text{ mm}$. If a mobile machine plans a navigation trajectory through an opening with a nominal clearance margin of $80\text{ mm}$, the unmodeled calibration error consumes over sixty percent of the available margin. When perception algorithms fail to output explicit covariance envelopes, downstream control systems cannot distinguish between sensor noise and true physical displacement. This missing bound leads either to phantom emergency braking when noise spikes cross fixed thresholds, or to structural collisions when physical drift remains undetected.
+Downstream controllers, planners, and safety enforcers require observation records expressed in metric coordinates with bounded uncertainty to prevent physical control errors. A neural object detector that outputs a scalar softmax classification probability of $0.97$ provides a metric of training distribution alignment, but it provides zero information regarding the spatial variance of the object surface. This creates a dangerous systems paradox: an AI model can be highly confident in its semantic prediction while being entirely blind to geometric drift. If an obstacle is reported at a nominal range of $5.0\text{ m}$ without a spatial covariance matrix $\mathbf{\Sigma}$, a trajectory optimization solver cannot evaluate clearance bounds along a planned path. Consider an analytical example where mechanical vibration or thermal expansion introduces an unmodeled angular calibration drift of $0.01\text{ rad}$ at a sensor bracket. At a measurement distance of $5.0\text{ m}$, this small angular deviation produces a lateral translation error of $50\text{ mm}$. If a mobile machine plans a navigation trajectory through an opening with a nominal clearance margin of $80\text{ mm}$, the unmodeled calibration error consumes over sixty percent of the available margin. Because the policy relies on a high softmax confidence while ignoring geometric uncertainty, the machine will drive smoothly into a catastrophic structural collision, entirely unaware that its physical reality has drifted from its mathematical belief. When perception algorithms fail to output explicit covariance envelopes, downstream control systems cannot distinguish between sensor noise and true physical displacement. This missing bound leads either to phantom emergency braking when noise spikes cross fixed thresholds, or to structural collisions when physical drift remains undetected.
 
 An observation record that knows its age, its spatial frame, and its uncertainty fulfills the contract of the perception system, but an individual observation remains an isolated, historical snapshot of a dynamic world. Sensors sample the environment at discrete intervals, introduce non-zero transport and inference delays, and experience intermittent dropouts when physical objects pass behind obstacles or enter sensor blind spots. A physical machine cannot achieve continuous, stable operation by reacting directly to raw, asynchronous perception packets as they arrive. If a high-speed vehicle updates its motor torques solely in response to instantaneous, delayed vision outputs, the feedback loop encounters phase lag that destabilizes tracking and induces violent oscillations. To bridge the gap between discrete, delayed sensory observations and continuous physical reality, the architecture must maintain an internal representation of the physical environment that persists across measurement intervals.
+
+::: {.callout-takeaways}
+- **Observation Age Begins at Transduction Midpoint:** Sensory records must carry hardware-latched exposure timestamps ($t_{\text{mid}}$). Every millisecond of serialization, debayering, and neural inference inflates observation age ($t_{\text{age}}$), consuming unguided stopping clearance ($\Delta d = \int v \, dt$).
+- **Sensory Ingress Contends for Shared Silicon Bandwidth:** Uncompressed camera streams ($>1.5\text{ GB/s}$) saturate shared SoC interconnects. Ingestion pipelines must enforce hardware QoS channels and DMA prioritization to prevent bulk visual payloads from starving real-time IMU interrupts ($1000\text{ Hz}$).
+- **Softmax Probability is Not Geometric Uncertainty:** A classification score ($0.97$) gives zero spatial variance. Downstream kinodynamic planners require metric coordinate vectors with formal covariance ellipsoids ($\mathbf{\Sigma} \in \mathbb{R}^{3 \times 3}$) to evaluate spatial clearance margins against obstacle surfaces.
+- **Sensor Calibration is a Dynamic Physical Variable:** Mechanical shock, vibration, and thermal expansion continuously drift extrinsic transformation matrices ($T_{\text{sensor}}^{\text{body}}$). An unmodeled $0.01\text{ rad}$ angular drift at $5.0\text{ m}$ range induces $50\text{ mm}$ of lateral error, requiring continuous online observability checks.
+- **Perception Provides Dated Snapshots, Not Continuous Reality:** Discrete sensory packets arrive with non-uniform latencies ($20\text{--}100\text{ ms}$). Raw perception outputs cannot directly drive motor inverters; they must feed persistent spatial memory representations that propagate physical state forward during sensor occlusion.
+:::
 
 This requirement defines the handoff to @sec-memory. Where perception produces isolated, dated observation records bounded in space and uncertainty, the memory and state estimation subsystem fuses these asynchronous records against forward kinematic and dynamic models. By maintaining an explicit state distribution, the nervous system propagates physical belief forward during sensory dead times, reconciles delayed observation records through historical state buffers, and preserves object permanence when obstacles are temporarily occluded. Perception answers what physical quantities were measured, when they occurred, and how imprecise they might be. The memory and state architecture consumes those bounded records to determine what the world is doing right now, providing the continuous, low-latency state vector required to govern physical action safely.
 <!-- END -->

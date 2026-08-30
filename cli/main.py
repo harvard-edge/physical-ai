@@ -65,12 +65,14 @@ def main():
     # 3. LAYOUT COMMAND
     layout_parser = subparsers.add_parser("layout", help="Run PDF layout, margin bounding box, and LaTeX log checks")
     layout_parser.add_argument("--build", action="store_true", help="Recompile PDF before checking layout")
+    layout_parser.add_argument("--sheets", action="store_true", help="Generate spread contact sheets for flagged pages")
     layout_parser.add_argument("--json", type=Path, help="Write structured diagnostic JSON report to path")
 
     # 4. AUDIT (ALL) COMMAND
     audit_parser = subparsers.add_parser("audit", help="Run end-to-end build, static checks, and visual layout audit")
     audit_parser.add_argument("--build", action="store_true", help="Recompile PDF before auditing")
     audit_parser.add_argument("--chapter", type=str, help="Filter to a specific chapter")
+    audit_parser.add_argument("--sheets", action="store_true", help="Generate spread contact sheets for flagged pages")
     audit_parser.add_argument("--json", type=Path, help="Write structured diagnostic JSON report to path")
 
     # 5. PLAYWRIGHT WEB/BROWSER COMMAND
@@ -126,6 +128,9 @@ def main():
         ctx = BookContext(repo_root)
         report = run_checks(ctx, categories=["layout"])
         print_terminal_report(report, title="PHYSICAL AI LAYOUT & MARGIN AUDITOR")
+        if getattr(args, "sheets", False) and not report.passed:
+            from .checks.layout_margins import render_flagged_contact_sheets
+            render_flagged_contact_sheets(ctx, report)
         if args.json:
             report.to_json(args.json)
             print(f"{GREEN}Structured JSON report written to {args.json}{RESET}")
@@ -151,6 +156,9 @@ def main():
         ctx = BookContext(repo_root, chapter_filter=getattr(args, "chapter", None))
         report = run_checks(ctx)
         print_terminal_report(report, title="PHYSICAL AI COMPREHENSIVE AUDIT")
+        if getattr(args, "sheets", False) and not report.passed:
+            from .checks.layout_margins import render_flagged_contact_sheets
+            render_flagged_contact_sheets(ctx, report)
         if getattr(args, "json", None):
             report.to_json(args.json)
             print(f"{GREEN}Structured JSON report written to {args.json}{RESET}")

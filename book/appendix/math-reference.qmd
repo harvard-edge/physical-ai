@@ -14,13 +14,11 @@ When an embodied robot maneuvers at linear velocity $v(t)$, the distance require
 1. **Reaction Drift ($d_{\text{drift}}$):** The distance traversed while sensory signals propagate through transduction, bus serialization, neural inference, and communication queues before the actuators can apply braking torque.
 2. **Kinematic Braking ($d_{\text{brake}}$):** The distance traversed while physical friction or counter-electromotive braking forces decelerate the moving mass at maximum safe deceleration $a_{\text{max}}$.
 
-```
-|<----------------------- Total Stopping Distance d_stop ------------------------>|
-|                                                |                                 |
-|  Reaction Drift (d_drift = v * tau_latency)    |  Kinematic Braking (v^2 / 2a)   |
-|===============================================>|================================>|
-t = 0 (Hazard Appears)                     t = tau (Brakes Engage)          t = t_stop (V=0)
-```
+| Phase | Physical Mechanism | Distance Formulation | Time Horizon |
+|:---|:---|:---|:---|
+| **Phase 1: Reaction Drift** | Sensor exposure, neural inference, network transport, inverter rise | $d_{\text{drift}} = v \cdot \tau_{\text{latency}}$ | $t \in [0, \tau_{\text{latency}}]$ |
+| **Phase 2: Kinematic Braking** | Counter-EMF braking, friction, ground adhesion | $d_{\text{brake}} = \dfrac{v^2}{2 a_{\text{max}}}$ | $t \in [\tau_{\text{latency}}, t_{\text{stop}}]$ |
+: Physical Decomposition of Total Stopping Distance ($d_{\text{stop}} = d_{\text{drift}} + d_{\text{brake}}$). {#tbl-stopping-distance-decomp}
 
 Integrating Newtonian dynamics under constant deceleration $a(t) = -a_{\text{max}}$:
 
@@ -925,10 +923,10 @@ The multi-rate, heterogeneous Physical AI architecture is modeled as a directed 
 Every control action $\mathbf{u}_j$ issued by controller $V_i$ is evaluated across the four canonical classes of **Unsafe Control Actions (UCAs)**:
 
 $$\begin{aligned}
-\text{UCA}_{j,1}(\mathbf{x}, t) &= (\mathbf{u}_j(t) = \emptyset) \land \mathcal{P}_{\text{req}}(\mathbf{x}(t)) \quad &&(\text{Control Action Not Provided}) \\
-\text{UCA}_{j,2}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) = \mathbf{u}_{\text{unsafe}}) \land \mathcal{P}_{\text{hazard}}(\mathbf{x}(t), \mathbf{u}_j) \quad &&(\text{Unsafe Action Provided}) \\
-\text{UCA}_{j,3}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) \neq \emptyset) \land (t < t_{\text{early}} \lor t > t_{\text{late}}) \quad &&(\text{Action Too Early or Too Late}) \\
-\text{UCA}_{j,4}(\mathbf{x}, \mathbf{u}, \Delta t) &= (\Delta t < \Delta t_{\text{min}} \lor \Delta t > \Delta t_{\text{max}}) \quad &&(\text{Action Stopped Too Soon or Too Long})
+\text{UCA}_{j,1}(\mathbf{x}, t) &= (\mathbf{u}_j(t) = \emptyset) \land \mathcal{P}_{\text{req}}(\mathbf{x}(t)) &&\text{[Not Provided]} \\
+\text{UCA}_{j,2}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) = \mathbf{u}_{\text{unsafe}}) \land \mathcal{P}_{\text{hazard}}(\mathbf{x}(t), \mathbf{u}_j) &&\text{[Unsafe Action]} \\
+\text{UCA}_{j,3}(\mathbf{x}, \mathbf{u}, t) &= (\mathbf{u}_j(t) \neq \emptyset) \land (t < t_{\text{early}} \lor t > t_{\text{late}}) &&\text{[Wrong Timing]} \\
+\text{UCA}_{j,4}(\mathbf{x}, \mathbf{u}, \Delta t) &= (\Delta t < \Delta t_{\text{min}} \lor \Delta t > \Delta t_{\text{max}}) &&\text{[Wrong Duration]}
 \end{aligned}$$
 
 where $\mathcal{P}(\mathbf{x})$ denotes a Boolean predicate over continuous physical state space $\mathcal{X}$.
@@ -1060,7 +1058,10 @@ $$\mathcal{U}_i(\mathbf{x}_i) = \left\{ \mathbf{u}_i \in \mathbb{R}^{m_i} \;\mid
 
 then the joint system trajectory satisfies:
 
-$$\dot{h}_{ij} + \gamma h_{ij} = \left( L_{f_i} h_{ij} + L_{g_i} h_{ij} \mathbf{u}_i + \frac{1}{2}\gamma h_{ij} \right) + \left( L_{f_j} h_{ij} + L_{g_j} h_{ij} \mathbf{u}_j + \frac{1}{2}\gamma h_{ij} \right) \ge 0 + 0 = 0$$
+$$\begin{aligned}
+\dot{h}_{ij} + \gamma h_{ij} &= \left( L_{f_i} h_{ij} + L_{g_i} h_{ij} \mathbf{u}_i + \tfrac{1}{2}\gamma h_{ij} \right) + \left( L_{f_j} h_{ij} + L_{g_j} h_{ij} \mathbf{u}_j + \tfrac{1}{2}\gamma h_{ij} \right) \\
+&\ge 0 + 0 = 0
+\end{aligned}$$
 
 Applying the Comparison Lemma, $h_{ij}(t) \ge h_{ij}(0) e^{-\gamma t} \ge 0$ for all $t \ge 0$. The collective safe operating set $\mathcal{C}_{\text{fleet}}$ is strictly forward invariant, guaranteeing zero inter-agent collisions across the entire fleet without centralized arbitration.
 

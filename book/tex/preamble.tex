@@ -120,27 +120,15 @@
 \setkomafont{pagehead}{\normalfont\sffamily\fontsize{7.8pt}{9.8pt}\selectfont\color{softink}}
 \setkomafont{pagenumber}{\normalfont\sffamily\bfseries\fontsize{8.5pt}{10.5pt}\selectfont\color{structural}}
 
-\makeatletter
-\renewcommand*{\chaptermark}[1]{%
-  \begingroup
-    \let\chaptersubtitle\@gobble
-    \let\newline\space
-    \unrestored@protected@xdef\@gtempa{#1}%
-  \endgroup
-  \markboth{\@gtempa}{}%
-}
-\renewcommand*{\sectionmark}[1]{%
-  \markright{#1}%
-}
-
 % Verso (even / left) header: Outer page number, Inner chapter title
-\lehead{\pagemark\hspace{1.2em}{\color{paleink!70}\rule[-0.2ex]{0.4pt}{1.2ex}}\hspace{1.2em}\leftmark}
+\lehead{\pagemark\hspace{1.2em}{\color{paleink!70}\rule[-0.2ex]{0.4pt}{1.2ex}}\hspace{1.2em}\headmark}
 \rehead{}
 
 % Recto (odd / right) header: Inner section title, Outer page number
 \lohead{}
-\rohead{\rightmark\hspace{1.2em}{\color{paleink!70}\rule[-0.2ex]{0.4pt}{1.2ex}}\hspace{1.2em}\pagemark}
-\makeatother
+\rohead{\headmark\hspace{1.2em}{\color{paleink!70}\rule[-0.2ex]{0.4pt}{1.2ex}}\hspace{1.2em}\pagemark}
+
+\automark[section]{chapter}
 
 
 
@@ -182,12 +170,12 @@
 
 % --- Headings -------------------------------------------------------------
 
-\setkomafont{disposition}{\normalfont}
-\setkomafont{chapter}{\normalfont\bfseries\fontsize{17pt}{21pt}\selectfont\color{ink}}
-\setkomafont{section}{\normalfont\bfseries\fontsize{12pt}{15pt}\selectfont\color{structural}}
-\setkomafont{subsection}{\normalfont\bfseries\fontsize{10.5pt}{13pt}\selectfont\color{structural}}
-\setkomafont{subsubsection}{\normalfont\bfseries\fontsize{9.5pt}{12pt}\selectfont\color{structural}}
-\setkomafont{paragraph}{\normalfont\bfseries\fontsize{9pt}{11.5pt}\selectfont\color{structural}}
+\setkomafont{disposition}{\normalfont\sffamily}
+\setkomafont{chapter}{\normalfont\sffamily\bfseries\fontsize{18pt}{22pt}\selectfont\color{ink}}
+\setkomafont{section}{\normalfont\sffamily\bfseries\fontsize{12pt}{15pt}\selectfont\color{structural}}
+\setkomafont{subsection}{\normalfont\sffamily\bfseries\fontsize{10.5pt}{13pt}\selectfont\color{structural}}
+\setkomafont{subsubsection}{\normalfont\sffamily\bfseries\fontsize{9.5pt}{12pt}\selectfont\color{structural}}
+\setkomafont{paragraph}{\normalfont\sffamily\bfseries\fontsize{9pt}{11.5pt}\selectfont\color{structural}}
 
 % Drop caps configuration for chapter openings
 \renewcommand{\LettrineFontHook}{\bfseries\color{consequence}}
@@ -219,7 +207,7 @@
 \renewcommand*{\chapterlinesformat}[3]{%
   \vspace*{0.05in}%
   #2%
-  {\normalfont\bfseries\fontsize{18pt}{22pt}\selectfont\color{ink}\raggedright #3}\par\nobreak
+  {\normalfont\sffamily\bfseries\fontsize{18pt}{22pt}\selectfont\color{ink}\raggedright #3}\par\nobreak
   \vspace{0.25\baselineskip}%
   \ifiscontentstoc\else
     {\color{consequence}\rule{1.4in}{1.4pt}\hspace{0.4em}\color{paleink!70}\rule{\dimexpr\textwidth-1.4in-0.4em\relax}{0.4pt}}\par
@@ -229,7 +217,7 @@
 \RedeclareSectionCommand[beforeskip=0pt,afterskip=0.20\baselineskip]{chapter}
 
 % Part opener: Authoritative architectural movement portal with rich personality
-\setkomafont{part}{\normalfont\bfseries\fontsize{22pt}{26pt}\selectfont\color{ink}\raggedright}
+\setkomafont{part}{\normalfont\sffamily\bfseries\fontsize{22pt}{26pt}\selectfont\color{ink}\raggedright}
 \setkomafont{partnumber}{\normalfont\sffamily\bfseries\fontsize{10.5pt}{13pt}\selectfont\color{consequence}}
 \renewcommand*{\partformat}{%
   {\usekomafont{partnumber}\MakeUppercase{Part~\thepart}}\par
@@ -404,15 +392,20 @@
   \@ifstar{\unnumbered@chapter}{\numbered@chapter}%
 }
 
+\newcommand{\cleanmark}[1]{%
+  \begingroup
+    \def\chaptersubtitle##1{}%
+    \def\newline{}%
+    \def\texorpdfstring##1##2{##2}%
+    \protected@xdef\@clean@title{#1}%
+  \endgroup
+  \markboth{\@clean@title}{}%
+}
+
 \newcommand{\unnumbered@chapter}[1]{%
   \cleardoublepage
   \old@chapter*{#1}%
-  \begingroup
-    \let\chaptersubtitle\@gobble
-    \let\newline\space
-    \unrestored@protected@xdef\@gtempa{#1}%
-  \endgroup
-  \markboth{\@gtempa}{}%
+  \cleanmark{#1}%
 }
 
 \newcommand{\numbered@chapter}[2][]{%
@@ -425,31 +418,15 @@
     \addtocontents{toc}{\protect\setcounter{tocdepth}{1}}%
     \global\@firstnumberedfalse
   \fi
-  \ifnum\value{chapter}=16
-    \ifsynthesiswritten\else
-      \addtocontents{toc}{\protect\tocdivisionentry{Synthesis}}%
-      \global\synthesiswrittentrue
-    \fi
-  \fi
   \refstepcounter{chapter}%
   \setcounter{section}{0}%
   \if\relax\detokenize{#1}\relax
-    \begingroup
-      \let\chaptersubtitle\@gobble
-      \let\newline\space
-      \unrestored@protected@xdef\@gtempa{#2}%
-    \endgroup
     \old@chapter*{{\chapterformat}#2}%
-    \markboth{Chapter~\thechapter\hspace{0.8em}\@gtempa}{}%
+    \cleanmark{#2}%
     \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#2}%
   \else
-    \begingroup
-      \let\chaptersubtitle\@gobble
-      \let\newline\space
-      \unrestored@protected@xdef\@gtempa{#1}%
-    \endgroup
     \old@chapter*[#1]{{\chapterformat}#2}%
-    \markboth{Chapter~\thechapter\hspace{0.8em}\@gtempa}{}%
+    \cleanmark{#1}%
     \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}%
   \fi
 }
@@ -523,12 +500,17 @@
 \setlength{\heavyrulewidth}{1.0pt}
 \setlength{\lightrulewidth}{0.5pt}
 
-% Prevent awkward mid-table splits: require at least 38 baselines of vertical space
-% before starting a longtable, automatically pushing tables to the top of the next page
+% Prevent awkward orphan headers: require at least 6 baselines of vertical space
+% before starting a longtable, allowing tables to render directly under their introducing prose
 \BeforeBeginEnvironment{longtable}{%
-  \par\penalty0\Needspace*{38\baselineskip}%
+  \par\penalty0\Needspace*{6\baselineskip}%
+}
+\AtBeginEnvironment{longtable}{%
   \normalfont\sffamily\fontsize{7.6pt}{9.6pt}\selectfont%
   \rowcolors{2}{white}{cardbg}%
+}
+\AfterEndEnvironment{longtable}{%
+  \normalfont\selectfont%
 }
 \AtBeginEnvironment{tabular}{%
   \normalfont\sffamily\fontsize{7.6pt}{9.6pt}\selectfont%
@@ -536,17 +518,23 @@
   \renewcommand{\arraystretch}{1.18}%
   \rowcolors{2}{white}{cardbg}%
 }
+\AfterEndEnvironment{tabular}{%
+  \normalfont\selectfont%
+}
 \AtBeginEnvironment{tabular*}{%
   \normalfont\sffamily\fontsize{7.6pt}{9.6pt}\selectfont%
   \setlength{\tabcolsep}{3.8pt}%
   \renewcommand{\arraystretch}{1.18}%
   \rowcolors{2}{white}{cardbg}%
 }
+\AfterEndEnvironment{tabular*}{%
+  \normalfont\selectfont%
+}
 
 % Floats: Academic textbook standard float placement with placeins barrier
 \makeatletter
 \def\fps@figure{tbp}
-\def\fps@table{tbp}
+\def\fps@table{htbp}
 \makeatother
 \setcounter{topnumber}{3}
 \setcounter{bottomnumber}{2}
@@ -746,5 +734,23 @@
     \begin{minipage}{\fullwidthlen}\BODY\end{minipage}%
   }\par
 }
+
+
+% ---------------------------------------------------------------------------
+% 10. Margin Alignment Guides (development aid — toggle)
+%
+% Draws light frames around the text block, header/footer, and the margin-note
+% column, so text, figures, tables, and notes can be aligned during authoring.
+% Set \MarginDebugfalse for production builds; \MarginDebugtrue to show guides.
+% ---------------------------------------------------------------------------
+
+\newif\ifMarginDebug
+\MarginDebugfalse% <<< set to \MarginDebugtrue to show margin alignment guides
+\ifMarginDebug
+  \usepackage{showframe}
+  \renewcommand*\ShowFrameLinethickness{0.2pt}
+  \renewcommand*\ShowFrameColor{\color{red!45}}
+\fi
+
 
 

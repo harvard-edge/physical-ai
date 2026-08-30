@@ -28,7 +28,7 @@ After studying this chapter, you will be able to:
 <!-- covers: Establish that even automatically logged data was produced by actions that selected which physical states the recorder could observe. -->
 <!-- covers: Distinguish scheduled time, motion time, retained episode time, and independent situations so that “one hour” does not conceal the acquisition denominator. -->
 <!-- covers: State the chapter’s four deliverables: acquisition cost, collector-induced coverage, embodiment dependence, and an explicit boundary on unsupported use. -->
-<!-- covers: Fence simulation and augmentation for Chapter 6 and policy evaluation for Chapter 7. -->
+<!-- covers: Fence simulation and augmentation for @sec-target and policy evaluation for @sec-target. -->
 <!-- GROUNDING: number — what one hour of demonstration costs, before any of it is analysed -->
 
 <!-- BEGIN -->
@@ -37,6 +37,7 @@ After studying this chapter, you will be able to:
 Because every training sample requires physical movement, demonstration data cannot be scaled by scraping or passive logging. A single hour of scheduled facility time on a robotic workcell yields only a fraction of active, usable trajectory records once startup overhead, sensor calibration routines, human fatigue, and physical scene resets are accounted for. Furthermore, because a robot cannot observe an environment without executing actions, the recorded data distribution is strictly closed under the control policy of the collecting agent. If an operator or scripted routine navigates only narrow, collision-free corridors, the dataset remains entirely silent on how to recover from boundary excursions, baking severe compounding drift into downstream imitation policies.
 
 Training dependable physical AI systems requires treating demonstration data as an expensive, perishable physical asset with explicit kinematic contracts and documented operational support boundaries. Characterizing a physical dataset demands accounting for four fundamental systems dimensions:
+
 1. **Physical Acquisition Cost and Fatigue Life:** The true accounting of scheduled facility time, active motion duty cycles, usable episode yield, and mechanical wear on transmissions and actuators.
 2. **Collector-Induced Support Manifolds:** The mathematical reality that the collecting policy dictates state-space coverage, creating the quadratic error growth of naive behavioral cloning ($O(T^2 \epsilon)$) and dictating where intervention episodes must be truncated.
 3. **Embodiment Idiosyncrasy:** The physical coupling between kinematic geometry, sensor latencies, actuator dynamics, and mass distributions that prevents uncalibrated transfer across different robot platforms.
@@ -57,12 +58,13 @@ The mathematical formulation of training algorithms, simulation environments, an
 <!-- covers: Show that kinesthetic demonstration, teleoperation, play, and autonomous logging occupy different regions even when they attempt the same contact task. -->
 <!-- covers: Separate samples, control steps, episodes, successful episodes, and independent task configurations; multiplying frequency by time produces correlated steps, not equivalent experience. -->
 <!-- covers: Compute usable yield from attempt duration, reset duration, failed-log rate, and retention criteria rather than reporting raw recording hours. -->
-<!-- covers: Defer simulated trajectories to Chapter 6 while preserving their physical provenance requirements when they are mixed with measured data. -->
+<!-- covers: Defer simulated trajectories to @sec-target while preserving their physical provenance requirements when they are mixed with measured data. -->
 <!-- GROUNDING: number — what one hour of demonstration costs, in time and in wear -->
 <!-- DERIVE: Derive each source’s usable episode rate from attempt time, reset time, parallel rigs, and retention rate instead of asserting that abundance is unavailable “at any price.” -->
 
 <!-- BEGIN -->
 A physical dataset is not found, logged from passive internet traffic, or assembled from an existing public repository. Every transition tuple in an archive required burning electrical energy, pushing against mechanical friction, and moving physical mass through a coordinate frame. Physical data sources separate according to who chooses the action:
+
 1. In **kinesthetic teaching**, a colocated demonstrator physically grasps and moves the unpowered or gravity-compensated joints of the mechanism.
 2. In **teleoperation**, a remote operator guides an input device such as a master arm, a multi-axis space mouse, or a tracked hand controller, transmitting commands across a software interface to the follower robot.[^fn-hw-goertz-teleop]
 3. In **scripted collection**, an engineer executes a deterministic control routine, such as a state machine tracking interpolated splines or force-thresholded primitives.
@@ -70,12 +72,14 @@ A physical dataset is not found, logged from passive internet traffic, or assemb
 5. In **autonomous logging during deployment**, the production policy commands the actuators as it performs work in a factory or warehouse, storing incoming sensor streams in situ.
 
 For each collection source, the engineer must decide which physical or digital variable is recorded as the action label, and that choice alters what the learned model attempts to reproduce. In teleoperation and autonomous systems, data logging taps into multiple layers across the control pipeline. On heterogeneous dual-brain platforms, such as a canonical heterogeneous dual-brain System-on-Chip (SoC) bench twin or a bimanual leader-follower teleoperation workstation [@zhao2023learning; @wu2023gello],[^fn-hw-gello-teleop] this pipeline spans two distinct computational domains:
+
 - The unprivileged **Linux Application Processor (MPU)** captures high-bandwidth camera streams (e.g., active stereo RGB-D at $30\text{ Hz}$), ingests master teleoperation inputs or neural policy forward passes, and maps coordinates.
 - The real-time **Microcontroller Unit (MCU)** executes at $1000\text{ Hz}$ on bare metal, running low-level PID/impedance control, forward-invariant safety barrier functions, velocity clamping, and motor current limiters over CAN-FD or PWM buses.[^fn-hw-encoder-capture]
 
-![**The Four-Stream Action Tap Tuple across the Dual-Brain MPU/MCU Boundary.** On a heterogeneous edge architecture, data logging captures four distinct physical semantics: (1) $a_{\text{req}}$ (raw operator or policy intent on the Linux MPU prior to software checks), (2) $a_{\text{cmd}}$ (kinematically retargeted setpoint), (3) $a_{\text{enf}}$ (safety-governed command post-CBF barrier enforcement and motor torque clamping on the real-time MCU), and (4) $a_{\text{meas}}$ (measured plant response via joint optical encoders and current shunts). Logging only $a_{\text{req}}$ bakes unexecutable actuator drift into training loss, while logging only $a_{\text{meas}}$ bakes mechanical compliance, link deflection, and backlash as demonstrated human skill. Source: Architectural design adapted from @zhao2023learning and @wu2023gello.](figures/fig05_four_stream_action_taps.svg){#fig-05-action-taps fig-pos="H" width=100%}
+![**The Four-Stream Action Tap Tuple across the Dual-Brain MPU/MCU Boundary.** On a heterogeneous edge architecture, data logging captures four distinct physical semantics: (1) $a_{\text{req}}$ (raw operator or policy intent on the Linux MPU prior to software checks), (2) $a_{\text{cmd}}$ (kinematically retargeted setpoint), (3) $a_{\text{enf}}$ (safety-governed command post-CBF barrier enforcement and motor torque clamping on the real-time MCU), and (4) $a_{\text{meas}}$ (measured plant response via joint optical encoders and current shunts). Logging only $a_{\text{req}}$ bakes unexecutable actuator drift into training loss, while logging only $a_{\text{meas}}$ bakes mechanical compliance, link deflection, and backlash as demonstrated human skill. Source: Architectural design adapted from @zhao2023learning and @wu2023gello.](figures/fig05_four_stream_action_taps.svg){#fig-05-action-taps fig-pos="t" width=100%}
 
 The four taps along this control path capture fundamentally different physical semantics:
+
 - The **requested action** ($a_{\text{req}}$): the raw input from the operator's tracking device or policy proposal before coordinate transformations or software boundary checks.
 - The **mapped command** ($a_{\text{cmd}}$): the Cartesian setpoint or joint target computed after kinematic retargeting and workspace boundary checks.
 - The **enforced command** ($a_{\text{enf}}$): the setpoint after real-time safety filters, velocity limits, and barrier functions have clamped the candidate trajectory.
@@ -87,40 +91,30 @@ If the logging pipeline records $a_{\text{req}}$ prior to software limit enforce
 The **four-stream action tap tuple** $(a_{\text{req}}, a_{\text{cmd}}, a_{\text{enf}}, a_{\text{meas}})$ is the synchronized multi-tier record logged across the Dual-Brain MPU/MCU boundary that distinguishes raw operator or policy intent ($a_{\text{req}}$), kinematically retargeted setpoints ($a_{\text{cmd}}$), safety-governor clamped commands ($a_{\text{enf}}$), and delivered physical actuator response ($a_{\text{meas}}$), preventing governor interventions or structural compliance from being falsely attributed to demonstrated physical skill.
 :::
 
-::: {.callout-algorithm title="Synchronous 4-Stream Action Tap and Telemetry Ring-Buffer Logging Protocol"}
-**Inputs:**
-- Raw observation stream $\mathbf{o}_t \in \mathcal{O}$ from Linux MPU perception pipeline (active stereo RGB-D at $30\text{ Hz}$, hardware timestamp $t_{\text{exp}}$).
+### Synchronous 4-Stream Action Tap and Telemetry Ring-Buffer Protocol
+
+To operationalize the four-stream action tap in hardware without introducing non-deterministic logging jitter or buffer contention, the system executes a synchronized inter-core capture loop:
+
+**Input Interfaces:**
+
+- Raw observation stream $\mathbf{o}_t \in \mathcal{O}$ from the host perception pipeline (active stereo RGB-D at $30\text{ Hz}$, hardware timestamp $t_{\text{exp}}$).
 - Raw operator input or policy action candidate $a_{\text{req}}(t) \in \mathcal{A}_{\text{raw}}$ from MPU shared memory ($50\text{ Hz}$).
 - Kinematic retargeting and workspace boundary mapping $\mathcal{K}: \mathcal{A}_{\text{raw}} \to \mathcal{A}_{\text{cartesian}}$.
-- Forward-invariant Control Barrier Function (CBF) and velocity limiter $\mathcal{B}: \mathcal{X} \times \mathcal{A}_{\text{cartesian}} \to \mathcal{A}_{\text{safe}}$ on real-time MCU.
+- Forward-invariant Control Barrier Function (CBF) and velocity limiter $\mathcal{B}: \mathcal{X} \times \mathcal{A}_{\text{cartesian}} \to \mathcal{A}_{\text{safe}}$ on the real-time MCU.
 - Bare-metal hardware registers for quadrature encoder counts (`TIMx_CNT` / `eQEP`) and phase current shunts (`ADC_DR`).
 
-**Outputs:**
-- Synchronous demonstration packet $\mathcal{P}_t = \langle t_{\text{mono}}, \mathbf{o}_t, a_{\text{req}}, a_{\text{cmd}}, a_{\text{enf}}, a_{\text{meas}}, \mathbf{h}_{\text{plant}}, \mathbf{b}_{\text{flags}} \rangle$ committed to non-volatile DMA storage ring buffer.
+**Execution Protocol (Periodic $1.0\text{ ms}$ MCU Cycle):**
 
-**Invariants:**
-1. *Real-Time Determinism:* MCU control cycle executes at strictly periodic $1000\text{ Hz}$ ($1000\text{ }\mu\text{s} \pm 1.2\text{ }\mu\text{s}$ jitter) on bare metal with zero dynamic heap allocation in interrupt service routines (ISRs).
-2. *Causal Multi-Rate Synchronization:* MPU-to-MCU communications utilize lock-free Single-Producer Single-Consumer (SPSC) ring buffers with memory barrier instructions (`DMB ISH`).
-3. *Hardware-Latched Monotonic Timebase:* Every telemetry packet latches a 64-bit microsecond counter ($t_{\text{mono}}$) synchronized across subnets via IEEE 1588 Precision Time Protocol (PTP).
+1. **Perception and Intent Ingestion (Host MPU Domain):**
+   Ingest synchronized camera frame $\mathbf{o}_t$ with hardware exposure timestamp $t_{\text{exp}}$, sample raw master input $a_{\text{req}}(t)$, evaluate forward kinematics $a_{\text{cmd}}(t) \leftarrow \mathcal{K}(a_{\text{req}}(t))$, and commit $\langle t_{\text{exp}}, \mathbf{o}_t, a_{\text{req}}, a_{\text{cmd}} \rangle$ to shared memory DMA TX descriptors.
 
-**Execution Protocol (Every $1.0\text{ ms}$ MCU Cycle):**
-1. **Perception and Intent Ingestion (MPU Domain):**
-   - Ingest synchronized camera frame $\mathbf{o}_t$ with hardware exposure timestamp $t_{\text{exp}}$.
-   - Sample raw master device input $a_{\text{req}}(t)$.
-   - Evaluate workspace envelope and Cartesian forward kinematics: $a_{\text{cmd}}(t) \leftarrow \mathcal{K}(a_{\text{req}}(t))$.
-   - Commit tuple $\langle t_{\text{exp}}, \mathbf{o}_t, a_{\text{req}}, a_{\text{cmd}} \rangle$ to shared memory DMA TX descriptor.
 2. **Safety Barrier Evaluation and Actuation (MCU Domain, $1000\text{ Hz}$ ISR):**
-   - Latch hardware monotonic clock: $t_{\text{mono}} \leftarrow \text{ReadTimerRegister}(\text{TIMx\_CNT})$.
-   - Ingest mapped setpoint $a_{\text{cmd}}(t)$ across inter-core SPSC buffer with memory fence (`DMB ISH`).
-   - Evaluate dynamic barrier constraints: $a_{\text{enf}}(t) \leftarrow \mathcal{B}(\mathbf{x}_{\text{current}}, a_{\text{cmd}}(t))$.
-   - If $a_{\text{enf}}(t) \neq a_{\text{cmd}}(t)$, assert governor intervention flag $b_{\text{clamped}} \leftarrow \text{true}$ with clamp code $\kappa$.
-   - Dispatch $a_{\text{enf}}(t)$ to motor phase PWM registers (`ePWM CMPA`) over CAN-FD / EtherCAT bus.
+   Latch hardware monotonic clock $t_{\text{mono}} \leftarrow \text{ReadTimerRegister}(\text{TIMx\_CNT})$, ingest $a_{\text{cmd}}(t)$ across inter-core SPSC buffers with memory fence (`DMB ISH`), and evaluate dynamic barrier constraints:
+   $$a_{\text{enf}}(t) \leftarrow \mathcal{B}(\mathbf{x}_{\text{current}}, a_{\text{cmd}}(t)).$$
+   If $a_{\text{enf}}(t) \neq a_{\text{cmd}}(t)$, assert governor intervention flag $b_{\text{clamped}} \leftarrow \text{true}$ with clamp code $\kappa$, and dispatch $a_{\text{enf}}(t)$ to motor PWM registers (`ePWM CMPA`) over the fieldbus.
+
 3. **Physical Response Capture and Commit:**
-   - Synchronously sample optical joint encoders (`eQEP`) and phase current shunts (`ADC_DR`) at PWM counter reload: $a_{\text{meas}}(t) \leftarrow \text{ReadPlantSensors}()$.
-   - Compute tracking discrepancy $\delta_{\text{track}} \leftarrow \|a_{\text{enf}}(t) - a_{\text{meas}}(t)\|_2$.
-   - Assemble packet $\mathcal{P}_t \leftarrow \langle t_{\text{mono}}, \mathbf{o}_t, a_{\text{req}}, a_{\text{cmd}}, a_{\text{enf}}, a_{\text{meas}}, \mathbf{h}_{\text{plant}}, [b_{\text{clamped}}, \kappa, \delta_{\text{track}}] \rangle$.
-   - Commit $\mathcal{P}_t$ into circular DMA ring buffer for non-blocking asynchronous flush to NVMe storage.
-:::
+   Sample optical joint encoders and phase current shunts at PWM reload ($a_{\text{meas}}(t) \leftarrow \text{ReadPlantSensors}()$), compute tracking discrepancy $\delta_{\text{track}} \leftarrow \|a_{\text{enf}}(t) - a_{\text{meas}}(t)\|_2$, assemble synchronous telemetry packet $\mathcal{P}_t = \langle t_{\text{mono}}, \mathbf{o}_t, a_{\text{req}}, a_{\text{cmd}}, a_{\text{enf}}, a_{\text{meas}}, \mathbf{h}_{\text{plant}}, [b_{\text{clamped}}, \kappa, \delta_{\text{track}}] \rangle$, and commit $\mathcal{P}_t$ into a lock-free DMA circular ring buffer for non-blocking asynchronous persistence.
 
 Because the collecting entity dictates how the machine approaches the environment, kinesthetic teaching, teleoperation, unguided play, and autonomous logging occupy disjoint state-action manifolds even when attempting the exact same physical contact task. Consider inserting a cylindrical steel pin into a chamfered hole with a clearance of $50\text{ }\mu\text{m}$. A colocated human guiding the tool directly senses contact reaction forces through their hands and makes instantaneous, fine-grained compliance adjustments at their own wrist joints. A remote teleoperator watching a two-dimensional video feed lacks direct haptic feedback, creating visual latency delays, command overshoot, and characteristic hunting motions as the operator pecks at the contact boundary. A scripted controller follows a programmed helical search pattern at constant linear velocity, generating a dense geometric spiral with predictable force spikes against the chamfer face. Autonomous logging from an exploratory or partially trained policy wanders across off-target regions, repeatedly binding the pin at oblique angles until motor current thresholds trigger a software fault. These logs do not constitute noisy samples of a single underlying trajectory. They represent outputs from distinct dynamical systems operating under different closed-loop bandwidths, latency profiles, and mechanical compliances.
 
@@ -139,7 +133,7 @@ Simulated trajectories generated in rigid-body physics engines avoid direct hard
 
 [^fn-hw-encoder-capture]: On real-time MCU architectures, $a_{\text{meas}}$ is captured via dedicated quadrature encoder peripheral registers (e.g., `TIMx_CNT` / `eQEP`) and phase-current shunt ADCs triggered synchronously by PWM counter reload events (`ePWM CMPA`), with telemetry packed into DMA ring buffers over CAN-FD (`FDCAN`) to eliminate OS interrupt latency jitter.
 
-[^fn-hw-gello-teleop]: The GELLO architecture [@wu2023gello] and ALOHA system [@zhao2023learning] utilize 3D-printed, kinematically isomorphic leader arms with digital joint encoders to provide direct joint-space retargeting without inverse kinematics singularities.
+[^fn-hw-gello-teleop]: Canonical dual-arm bimanual teleoperation workcells [@wu2023gello; @zhao2023learning] utilize 3D-printed, kinematically isomorphic leader arms with digital joint encoders to provide direct joint-space retargeting without inverse kinematics singularities.
 <!-- END -->
 <!-- END -->
 
@@ -160,7 +154,7 @@ Simulated trajectories generated in rigid-body physics engines avoid direct hard
 <!-- BEGIN -->
 Human teleoperation closes a feedback loop that spans the operator, the input device, the communication bus, the low-level motor controller, and the physical environment (@fig-05-teleop-rig). In a typical teleoperation workstation, an image sensor captures the workspace, encodes the video stream, and transmits the frames across a network to a display console. The human operator perceives the visual feedback, decides on a corrective trajectory, and applies physical displacement to an input device. The workstation samples the device state, maps the spatial displacement into joint or end-effector coordinates, and transmits the resulting setpoint across an industrial bus to the robot's motor drives. The actuators generate torque, accelerating the mechanical linkages against inertia, joint friction, and contact constraints. The resulting displacement alters the physical scene, producing new optical signals that the image sensor records on the next cycle.
 
-![**Kinematically Isomorphic Leader-Follower Teleoperation Architecture across Heterogeneous Manipulators.** Demonstration acquisition on physical robot platforms using low-cost, kinematically isomorphic leader controllers (GELLO system [@wu2023gello]). (A) Bimanual teleoperation setup with twin 6-DoF leader arms mapped directly to dual Universal Robots UR5e follower manipulators during a compliant liquid-pouring task. (B) Single-arm leader-follower configuration controlling a Franka Emika Panda robot with an overhead task camera. (C) Precision pick-and-place manipulation with passive gravity compensation and joint-angle direct drive. Because the leader device mirrors follower kinematics without requiring numerical inverse kinematics (IK), the interface eliminates IK singularities while preserving the operator's direct joint-level coordination. However, human reaction latency ($200\text{--}300\text{ ms}$) and communication delays still introduce phase lag into the recorded $(s_t, a_t)$ demonstration tuples. Source: Adapted from Wu et al. [@wu2023gello], CC BY 4.0.](figures/fig05_real_gello_teleop.png){#fig-05-teleop-rig fig-pos="H" width=95%}
+![**Kinematically Isomorphic Leader-Follower Teleoperation Architecture across Heterogeneous Manipulators.** Demonstration acquisition on physical robot platforms using low-cost, kinematically isomorphic leader controllers (canonical architecture [@wu2023gello]). (A) Bimanual teleoperation setup with twin 6-DoF leader arms mapped directly to dual heavy-payload follower manipulators during a compliant liquid-pouring task. (B) Single-arm leader-follower configuration controlling a torque-controlled manipulator with an overhead task camera. (C) Precision pick-and-place manipulation with passive gravity compensation and joint-angle direct drive. Because the leader device mirrors follower kinematics without requiring numerical inverse kinematics (IK), the interface eliminates IK singularities while preserving the operator's direct joint-level coordination. However, human reaction latency ($200\text{--}300\text{ ms}$) and communication delays still introduce phase lag into the recorded $(s_t, a_t)$ demonstration tuples. Source: Adapted from Wu et al. [@wu2023gello], CC BY 4.0.](figures/fig05_real_gello_teleop.png){#fig-05-teleop-rig fig-pos="t" width=95%}
 
 Every stage in this loop introduces latency that alters the timing of the demonstrated correction. In an analytical reference setup with a high-speed camera and a wired local network, display processing requires $t_{\text{disp}} = 50\text{ ms}$ across exposure, H.264 decoding, and monitor refresh. Human visual perception and neuromuscular transmission introduce an operator response latency of $t_{\text{hum}} = 200\text{ ms}$ for continuous path corrections. Command quantization, packetization, and bus transport to the robot controller add $t_{\text{cmd}} = 10\text{ ms}$. Actuator torque ramp-up and structural inertia impose a mechanical response latency of $t_{\text{mech}} = 80\text{ ms}$ before the robot achieves the commanded acceleration. The total round-trip latency is:
 $$t_{\text{loop}} = t_{\text{disp}} + t_{\text{hum}} + t_{\text{cmd}} + t_{\text{mech}} = 50\text{ ms} + 200\text{ ms} + 10\text{ ms} + 80\text{ ms} = 340\text{ ms}.$$
@@ -173,23 +167,30 @@ When a contact misalignment occurs at time $t$, the operator sees the error at $
 **Question:** What is the sustained data ingestion rate, NVMe storage bandwidth, and daily storage consumption for a bimanual leader-follower teleoperation rig capturing multi-modal demonstration data for physical imitation learning?
 
 **Parameters:**
+
 - **Perception:** 4 active stereo RGB-D cameras (2 static eye-to-hand environment cameras + 2 wrist eye-in-hand cameras):
+
   - RGB streams: $1920 \times 1080\text{ px}$ at $30\text{ Hz}$, $24\text{ bits/px}$ ($3\text{ bytes/px}$).
   - Depth streams: $1280 \times 720\text{ px}$ at $30\text{ Hz}$, $16\text{ bits/px}$ (raw `uint16` depth in millimeters, $2\text{ bytes/px}$).
 - **Kinematics & Dynamics:** 2 leader arms + 2 follower arms (14-DoF total):
+
   - Joint positions $\mathbf{q}$, velocities $\dot{\mathbf{q}}$, commanded torques $\boldsymbol{\tau}_{\text{cmd}}$, measured torques $\boldsymbol{\tau}_{\text{meas}}$, and 4-stream action tuples logged at $1000\text{ Hz}$ ($128\text{ bytes/step}$).
 - **Tactile & Haptics:** 2 dual-finger fingertip tactile sensor arrays ($16 \times 16$ pressure taxels $\times 2\text{ bytes} \times 4\text{ pads} = 2048\text{ bytes/step}$) logged at $100\text{ Hz}$.
 
 **Calculation:**
+
 1. **Raw Video Bandwidth:**
    $$\text{BW}_{\text{RGB}} = 4 \times (1920 \times 1080 \times 3\text{ bytes}) \times 30\text{ s}^{-1} = 4 \times 6.2208\text{ MB} \times 30 = 746.50\text{ MB/s}.$$
    $$\text{BW}_{\text{Depth}} = 4 \times (1280 \times 720 \times 2\text{ bytes}) \times 30\text{ s}^{-1} = 4 \times 1.8432\text{ MB} \times 30 = 221.18\text{ MB/s}.$$
    $$\text{BW}_{\text{Vision, total}} = 746.50\text{ MB/s} + 221.18\text{ MB/s} = 967.68\text{ MB/s} \approx 0.968\text{ GB/s}.$$
+
 2. **Kinematic and Tactile Bandwidth:**
    $$\text{BW}_{\text{Kinematics}} = 128\text{ bytes} \times 1000\text{ s}^{-1} = 0.128\text{ MB/s}.$$
    $$\text{BW}_{\text{Tactile}} = 2048\text{ bytes} \times 100\text{ s}^{-1} = 0.205\text{ MB/s}.$$
+
 3. **Total Sustained Ingestion Rate:**
    $$\text{BW}_{\text{total}} = 967.68 + 0.13 + 0.21 = 968.02\text{ MB/s} \approx 0.968\text{ GB/s}.$$
+
 4. **Hourly and Shift Storage Consumption:**
    $$\text{Storage}_{\text{1 hour}} = 968.02\text{ MB/s} \times 3600\text{ s} = 3{,}484{,}872\text{ MB} \approx 3.48\text{ TB/hr} \text{ (raw uncompressed)}.$$
    When recording at a standard $1280 \times 720$ RGB target ($331.8\text{ MB/s}$) alongside depth ($221.2\text{ MB/s}$) with synchronous 4-stream metadata, sustained ingestion requires **$740\text{ MB/s}$**, accumulating exactly **$2.66\text{ TB/hr}$** of uncompressed telemetry.
@@ -214,13 +215,14 @@ The physical interface through which the operator delivers commands acts as a ha
 
 | Interface Paradigm & Hardware Class | Kinematic & Control Mapping | Round-Trip Latency ($\tau_{\text{loop}}$) | Haptic / Force Feedback Fidelity | Effective Control Bandwidth ($f_{\text{ctrl}}$) | Operator Fatigue Limit ($T_{\text{fatigue}}$) | Characteristic Demonstration Artifacts & Policy Bias |
 |:---|:---|:---|:---|:---|:---|:---|
-| **Bilateral Kinesthetic Leader Arm** (1:1 Active Replica Puppet, e.g. ALOHA [@zhao2023learning]) | Direct joint-to-joint position copying ($q_{\text{master}} \mapsto q_{\text{follower}}$) with active gravity compensation | $15\text{ to }35\text{ ms}$ (Direct bus / EtherCAT / CANopen) | High bilateral force reflection; senses contact stiffness and binding directly | $500\text{ to }1000\text{ Hz}$ telemetry ($5\text{ to }10\text{ Hz}$ human neuromuscular) | $45\text{ to }60\text{ min}$ (Arm tremor $>2.0\text{ mm}$ after prolonged holding) | Continuous velocity profiles ($>0.15\text{ m/s}$); fluid compliance; operator motor tremors recorded in joint velocity derivatives |
+| **Bilateral Kinesthetic Leader Arm** (1:1 Active Replica Puppet, e.g., canonical dual-arm bimanual teleoperation workcell [@zhao2023learning]) | Direct joint-to-joint position copying ($q_{\text{master}} \mapsto q_{\text{follower}}$) with active gravity compensation | $15\text{ to }35\text{ ms}$ (Direct bus / EtherCAT / CANopen) | High bilateral force reflection; senses contact stiffness and binding directly | $500\text{ to }1000\text{ Hz}$ telemetry ($5\text{ to }10\text{ Hz}$ human neuromuscular) | $45\text{ to }60\text{ min}$ (Arm tremor $>2.0\text{ mm}$ after prolonged holding) | Continuous velocity profiles ($>0.15\text{ m/s}$); fluid compliance; operator motor tremors recorded in joint velocity derivatives |
 | **6-DoF 3D Spacemouse** (Isometric Elastic Puck) | Elastic force/torque to Cartesian velocity setpoint ($\dot{\mathbf{x}}_{\text{cmd}} = \mathbf{K}_v \mathbf{f}_{\text{mouse}}$); resolved by IK | $60\text{ to }120\text{ ms}$ (USB HID polling + host IK solver + motor ramp) | Zero force reflection; visual-only estimation of workpiece contact loads | $50\text{ to }100\text{ Hz}$ Cartesian rate ($<2\text{ Hz}$ human correction rate) | $90\text{ to }120\text{ min}$ (Low physical effort, desk-supported wrist rest) | Step-and-wait hunting motions; low average velocity ($<0.03\text{ m/s}$); prolonged zero-motion pauses during visual verification; absent reactive contact forces |
 | **Optical / VR 6-DoF Spatial Controller** (Tracked Wand / Spatial Poses) | Absolute Cartesian pose tracking ($\mathbf{T}_{\text{hand}} \in SE(3)$) with clutching and workspace scale | $80\text{ to }180\text{ ms}$ (Optical exposure + SLAM pose solve + wireless link) | Low (Vibrotactile ERM/LRA pulses only); no directional force reflection | $60\text{ to }120\text{ Hz}$ spatial pose ($\sigma_{\text{jitter}} \approx 0.8\text{ mm}$) | $30\text{ to }45\text{ min}$ ("Gorilla arm" shoulder fatigue from ungrounded holding) | Over-correction oscillations from visual-motor phase lag; clutching discontinuities; out-of-plane drift; exaggerated retraction motions upon visual contact |
 | **Direct Instrumented Exoskeleton** (Wearable Master Glove / Arm Linkage) | High-DoF joint-angle mapping with kinematic retargeting to multi-finger hand | $25\text{ to }60\text{ ms}$ (Wearable bus + retargeting solver + low-level drive) | Moderate-to-high active tendon force feedback on individual finger linkages | $200\text{ to }500\text{ Hz}$ joint state ($7\text{ to }12\text{ Hz}$ finger dexterity) | $20\text{ to }35\text{ min}$ (Mechanical weight burden, pressure points, harness sweating) | Biomechanical calibration mismatch; non-linear retargeting artifacts; rich contact force profiles during multi-point precision grasps |
 : **Teleoperation Master-Follower Interface Taxonomy for Physical Demonstration Collection.** Comparison of input interface paradigms across kinematic mapping, transport latency, haptic fidelity, control bandwidth, operator fatigue limits, and characteristic demonstration artifacts. The choice of teleoperation hardware acts as a mechanical and dynamical filter on the recorded state-action distribution. {#tbl-05-teleop-taxonomy}
 
 Treating the recorded stream as a single sequence of states and actions obscures the signal transformations that occur between human intent and mechanical motion. A physical logging pipeline must record four distinct quantities at each time step:
+
 1. $a_{\text{req}}$: the operator requested action from the master input device.
 2. $a_{\text{cmd}}$: the mapped setpoint produced after inverse kinematics and workspace checks on the Linux MPU.
 3. $a_{\text{enf}}$: the enforced command emitted by the real-time MCU safety layer after velocity limits, current clamps, and barrier functions have evaluated.
@@ -256,7 +258,7 @@ Teleoperation records trajectories that are bounded by what a human operator can
 ## Coverage and the Collecting Policy {#sec-data-5-4}
 
 <!-- SECTION 5.4 -->
-<!-- claim: The machine that gathers the data determines what is in it, which is the same endogeneity from Chapter 1 arriving at training time. -->
+<!-- claim: The machine that gathers the data determines what is in it, which is the same endogeneity from @sec-target arriving at training time. -->
 <!-- covers: Construct the collector’s empirical occupancy by counting the states and state-action pairs visited during complete trajectories. -->
 <!-- covers: Compare a cautious collector with an exploratory collector on the same touch task and show that their datasets answer different questions despite identical sensors and logging rates. -->
 <!-- covers: Explain that an action label exists only after the collector reaches the state, so an unvisited state has neither a preferred action nor evidence that no safe action exists. -->
@@ -292,7 +294,7 @@ Unsupported deployment regions are detected by performing a relational join betw
 
 This coverage deficit cannot be detected by evaluating validation loss on a held-out test split of the collected data. Because the held-out split is drawn from the same trajectories generated by $\pi_{\text{col}}$, it shares the identical empirical occupancy $d^{\pi_{\text{col}}}$. The validation loss can reach $0.001\text{ rad}$, indicating statistical convergence, while $98.7\%$ of the required operational envelope contains zero training examples. Verifying coverage requires computing the ratio of supported scenario cells to total required cells before a policy is deployed on physical actuators (@fig-05-collector-coverage-ledger).
 
-![**Collector Empirical Occupancy and Scenario Ledger Relational Join.** (Left) Comparison of empirical state-action visitation distributions between a cautious teleoperator (concentrating $1{,}000{,}000$ transitions into 8 nominal cells, leaving 98.7% of the 600-cell operational envelope unvisited despite near-zero validation loss $\mathcal{L}_{\text{val}} = 0.001\text{ rad}$) and an exploratory policy (visiting 510 cells with 85.0% coverage across the full contact angle and force envelope). (Right) Performing a relational join between the external scenario ledger $\mathcal{S}_{\text{req}}$ and empirical visitation $d^{\pi_{\text{col}}}$ partitions the state space into supported nominal regimes ($N_{\text{cell}} \ge 500$), high-variance transition zones ($0 < N_{\text{cell}} < 50$), and zero-support blind spots ($N_{\text{cell}} = 0$) where autonomous control must be refused. Systems significance: Demonstrates why statistical convergence on a training split cannot verify operational coverage on physical hardware.](figures/fig05_collector_coverage_ledger.svg){#fig-05-collector-coverage-ledger fig-pos="H" width=100%}
+![**Collector Empirical Occupancy and Scenario Ledger Relational Join.** (Left) Comparison of empirical state-action visitation distributions between a cautious teleoperator (concentrating $1{,}000{,}000$ transitions into 8 nominal cells, leaving 98.7% of the 600-cell operational envelope unvisited despite near-zero validation loss $\mathcal{L}_{\text{val}} = 0.001\text{ rad}$) and an exploratory policy (visiting 510 cells with 85.0% coverage across the full contact angle and force envelope). (Right) Performing a relational join between the external scenario ledger $\mathcal{S}_{\text{req}}$ and empirical visitation $d^{\pi_{\text{col}}}$ partitions the state space into supported nominal regimes ($N_{\text{cell}} \ge 500$), high-variance transition zones ($0 < N_{\text{cell}} < 50$), and zero-support blind spots ($N_{\text{cell}} = 0$) where autonomous control must be refused. Systems significance: Demonstrates why statistical convergence on a training split cannot verify operational coverage on physical hardware.](figures/fig05_collector_coverage_ledger.svg){#fig-05-collector-coverage-ledger fig-pos="t" width=100%}
 
 <!-- END -->
 
@@ -306,13 +308,14 @@ This coverage deficit cannot be detected by evaluating validation loss on a held
 <!-- covers: Where to cut the episode: terminating the autonomous trajectory at the moment of divergence rather than the moment of takeover, and what has to be logged for that moment to be recoverable at all. -->
 <!-- covers: Corrective aggregation rather than passive logging: treating the intervention as expert feedback on the distribution the policy itself induced. -->
 <!-- covers: The retraining cascade: what happens across successive policy generations trained on uncurated, human-rescued fleet data. -->
-<!-- covers: State what the intervention record in Chapter 14 must carry for any of this to be possible, and require it there. -->
+<!-- covers: State what the intervention record in @sec-target must carry for any of this to be possible, and require it there. -->
 <!-- GROUNDING: failure — an absent state, the four different things that absence can mean, and where the episode has to be cut -->
 <!-- FIGURE: A trajectory phase space showing nominal rollouts, divergence into a basin the policy cannot recover from, the takeover point, and the earlier divergence point where the training episode must actually be cut. -->
 <!-- DERIVE: The compounding-error bound under naive behavioral cloning against the bound under corrective aggregation, so the reader sees why the cut point matters quadratically rather than linearly. -->
 
 <!-- BEGIN -->
 When a hazardous or boundary state does not appear in a training dataset, an engineer cannot conclude that the physical system avoids that state naturally. An absent state in the empirical log corresponds to one of four distinct physical mechanisms during data collection:
+
 1. **Unvisited nominal path**: The collecting policy never visited the state because nominal rollouts remained entirely within the primary task corridor. This absence represents unmonitored nominal operation, detected by cross-referencing trajectory logs against the scenario ledger.
 2. **Safety governor interception**: An active safety barrier or deterministic reflex in the nervous system detected an impending boundary violation and truncated the motion before the state was reached. This absence is detected directly in the safety monitor logs, which record the barrier trip.
 3. **Human supervisory takeover**: A human safety operator perceived a developing hazard and disengaged the autonomous policy before contact occurred. This absence is detected through the takeover disengagement flag on the vehicle or manipulator bus.
@@ -346,9 +349,10 @@ $$\mathbb{E}[\text{Error}_{\text{CA}}] \le \sum_{t=1}^T \epsilon = T \epsilon = 
 
 For an assembly task running for $T = 500\text{ steps}$ ($5.0\text{ s}$ at $100\text{ Hz}$) with a per-step error probability of $\epsilon = 0.01$, quadratic compounding yields a theoretical error factor of $T^2 \epsilon = 2500$, whereas corrective aggregation holds the error factor to $T \epsilon = 5$, representing a $500\times$ reduction in cumulative drift (@fig-05-compounding-error-flywheel).
 
-![**Covariate Shift Compounding Error Flywheel and Intervention Episode Curation.** (Left) Cyclic feedback dynamics of naive Behavioral Cloning (BC) showing $O(T^2 \epsilon)$ quadratic error explosion as unobserved perturbations trigger out-of-distribution commands, contrasted against DAgger Corrective Aggregation (CA) which expands dataset support to perturbed states and bounds trajectory drift to $O(T \epsilon)$. (Right) Trajectory phase space showing an autonomous policy $\hat{\pi}$ diverging from nominal path $\pi^*$ at timestamp $t_{\text{div}}$, the subsequent human reaction delay window from $t_{\text{div}}$ to $t_{\text{takeover}}$ ($300\text{--}800\text{ ms}$) where divergent commands are falsely logged as autonomous execution, the takeover point $t_{\text{takeover}}$, and the expert recovery trajectory returning the state to the nominal tube. Preserving data integrity requires truncating rollouts at $t_{\text{div}}$, discarding the corrupted drift window from $t_{\text{div}}$ to $t_{\text{takeover}}$, and ingesting the recovery segment from $t_{\text{takeover}}$ to $t_{\text{rec}}$ into the corrective training buffer. Source: Theoretical formulation based on Ross et al. [@ross2011reduction] and Spencer et al. [@spencer2021feedback].](figures/fig05_compounding_error_flywheel.svg){#fig-05-compounding-error-flywheel fig-pos="H" width=100%}
+![**Covariate Shift Compounding Error Flywheel and Intervention Episode Curation.** (Left) Cyclic feedback dynamics of naive Behavioral Cloning (BC) showing $O(T^2 \epsilon)$ quadratic error explosion as unobserved perturbations trigger out-of-distribution commands, contrasted against DAgger Corrective Aggregation (CA) which expands dataset support to perturbed states and bounds trajectory drift to $O(T \epsilon)$. (Right) Trajectory phase space showing an autonomous policy $\hat{\pi}$ diverging from nominal path $\pi^*$ at timestamp $t_{\text{div}}$, the subsequent human reaction delay window from $t_{\text{div}}$ to $t_{\text{takeover}}$ ($300\text{--}800\text{ ms}$) where divergent commands are falsely logged as autonomous execution, the takeover point $t_{\text{takeover}}$, and the expert recovery trajectory returning the state to the nominal tube. Preserving data integrity requires truncating rollouts at $t_{\text{div}}$, discarding the corrupted drift window from $t_{\text{div}}$ to $t_{\text{takeover}}$, and ingesting the recovery segment from $t_{\text{takeover}}$ to $t_{\text{rec}}$ into the corrective training buffer. Source: Theoretical formulation based on Ross et al. [@ross2011reduction] and Spencer et al. [@spencer2021feedback].](figures/fig05_compounding_error_flywheel.svg){#fig-05-compounding-error-flywheel fig-pos="t" width=100%}
 
 Deploying successive policy generations on physical hardware without cutting divergence intervals triggers a retraining cascade:
+
 1. In **Generation 1**, a policy operates with a slight calibration error, causing a robotic arm to drift toward a joint torque limit until a human operator grabs the override pendant.
 - In **Generation 2**, a policy trained on these uncurated episodes treats the drifting states as if they were deliberate precursors to success. The resulting neural network develops phantom attractor basins near the intervention boundary, driving the arm aggressively toward the torque limit before attempting an abrupt, uncoordinated correction.
 - Operators respond by intervening earlier in subsequent deployments. By **Generation 3**, the intervention rate per operating hour increases while validation loss on the collected dataset continues to drop, creating a false metric of improvement while physical autonomy degrades.
@@ -382,6 +386,7 @@ The **cross-embodiment compatibility contract** is the formal geometric, dynamic
 Engineering a data reuse pipeline requires separating task-level invariants from embodiment-specific realizations. A task-level invariant is a geometric or dynamical condition required by the environment, such as bringing a compliant probe into contact with a terminal pad at an angle within $5^\circ$ of the surface normal while maintaining a normal force between $2.0\text{ N}$ and $5.0\text{ N}$. An embodiment-specific realization is the sequence of joint encoder counts, pulse-width modulation duty cycles, bus transport delays, and camera pixel rasters that achieved that condition on a specific test rig. While the contact target exists in world coordinates, the recorded dataset contains only the realization. A downstream model trained directly on those raw records learns the idiosyncratic dynamics of the source rig, including its structural flex, drive backlash, and camera mount vibration.
 
 In this analytical example, because no bench measurement exists yet, consider transferring a dataset recorded on Embodiment A to Embodiment B for an identical touch-and-grasp task:
+
 - **Embodiment A** uses a parallel-jaw gripper with a $0\text{ to }100\text{ mm}$ stroke range, a $50\text{ Hz}$ command rate ($20\text{ ms}$ period), a continuous force limit of $40\text{ N}$, and a wrist camera offset $45\text{ mm}$ behind the tool center point with a $15\text{ ms}$ transport delay.
 - **Embodiment B** uses a compact gripper with a $0\text{ to }60\text{ mm}$ stroke range, a $20\text{ Hz}$ command rate ($50\text{ ms}$ period), a continuous force limit of $15\text{ N}$, and a wrist camera offset $20\text{ mm}$ behind the tool center point with a $35\text{ ms}$ transport delay.
 
@@ -401,7 +406,7 @@ The emergence of large-scale multi-robot datasets, spearheaded by the **Open X-E
    $$\Delta \mathbf{x}_t = (\Delta x, \Delta y, \Delta z, \Delta \phi_{\text{roll}}, \Delta \phi_{\text{pitch}}, \Delta \phi_{\text{yaw}}) \in SE(3), \quad a_{\text{gripper}} \in [0, 1].$$
    While Cartesian deltas provide geometric standardization, they discard actuator dynamics. A Cartesian displacement $\Delta \mathbf{x} = [0.03\text{ m}, 0.0, 0.0]$ that is trivial for an industrial arm near its nominal configuration will drive a lightweight manipulator through a kinematic singularity, commanding infinite joint velocities that trigger immediate overcurrent protection.
 
-2. **Control Loop Frequency Discrepancies**: Across the Open X-Embodiment datasets, recording frequencies vary widely, spanning $3\text{ Hz}$ (e.g., Bridge-v2), $10\text{ Hz}$ (e.g., Google Fractal), $20\text{ Hz}$ (e.g., DROID), and $50\text{ Hz}$ (e.g., ALOHA). A step delta $\Delta x = 20\text{ mm}$ recorded at $3\text{ Hz}$ corresponds to a linear velocity of $0.06\text{ m/s}$, whereas the same numerical delta at $50\text{ Hz}$ corresponds to a violent $1.0\text{ m/s}$ stroke. If an ingestion pipeline trains a policy on unscaled delta tokens without explicit timebase conditioning ($\Delta t$), the learned model emits chaotic velocity commands that depend on which dataset dominated the training mini-batch.
+2. **Control Loop Frequency Discrepancies**: Across the Open X-Embodiment datasets, recording frequencies vary widely, spanning $3\text{ Hz}$ (e.g., Bridge-v2), $10\text{ Hz}$ (e.g., Google Fractal), $20\text{ Hz}$ (e.g., DROID), and $50\text{ Hz}$ (e.g., canonical bimanual high-frequency datasets). A step delta $\Delta x = 20\text{ mm}$ recorded at $3\text{ Hz}$ corresponds to a linear velocity of $0.06\text{ m/s}$, whereas the same numerical delta at $50\text{ Hz}$ corresponds to a violent $1.0\text{ m/s}$ stroke. If an ingestion pipeline trains a policy on unscaled delta tokens without explicit timebase conditioning ($\Delta t$), the learned model emits chaotic velocity commands that depend on which dataset dominated the training mini-batch.
 
 3. **Perception and Viewpoint Disparity**: Heterogeneous datasets combine disparate camera viewpoints, including high-mounted third-person room cameras, angled workcell cameras, and wrist-mounted eye-in-hand cameras, each with distinct optical focal lengths, sensor aspect ratios, and dynamic exposure ranges. Training an invariant visual representation requires multi-view camera extrinsic calibration and coordinate frame reprojection [@lynch2017modern].
 
@@ -437,7 +442,7 @@ When training data originates from human teleoperation, the data collection poli
 
 File containers such as HDF5, Zarr, or Apache Parquet enforce tabular schema consistency, but they conceal hardware state transitions that occur between recording runs. A robot arm may be shut down overnight, recalibrated, or bumped by a technician, altering the zero-position offsets of its joint encoders or the extrinsics of an overhead camera. If a camera mount shifts by $3\text{ mm}$, the visual position of the target workpiece changes relative to the robot base, yet the resulting image array matches the recorded tensor shape and type definitions perfectly. Similarly, clock synchronization drifts across distributed microcontrollers over long sessions, causing the actual temporal offset between a force-torque measurement and a camera frame to vary by tens of milliseconds.[^fn-hw-ptp-sync] As illustrated in @fig-05-camera-calibration, multi-camera demonstration rigs deployed across heterogeneous environments must continuously audit the extrinsic spatial transformation $\mathbf{T}_{\text{cam} \rightarrow \text{base}}$ by projecting the robot's kinematic URDF (Unified Robot Description Format) wireframe directly over raw camera streams. Detecting calibration and timebase discontinuities requires joining every recorded episode against an immutable hardware audit trail containing sensor calibration identifiers, optical reference checks, and clock synchronization health metrics. When a dataset is loaded without verifying that every trajectory shares a common, valid calibration identifier, the learning algorithm is forced to fit conflicting physical mappings within identical numerical coordinates.
 
-![**Multi-Camera-to-Robot Extrinsic Calibration and Visual Verification in Diverse Demonstration Environments.** Data collection across heterogeneous physical environments requires continuous validation of the extrinsic spatial transformation $\mathbf{T}_{\text{cam} \rightarrow \text{base}}$ between camera optical frames and the robot base frame. Six representative real-world collection scenes from the DROID platform depict autonomous extrinsic calibration verification using 3D kinematic reprojection (CtRNet-X / PyTorch3D) [@khazatsky2024droid]. Forward kinematics computed from optical joint encoders render the robot's URDF mesh directly over the camera video stream. If mechanical vibration or physical disturbances displace camera brackets by even a few millimeters, the visual discrepancy between the kinematic wireframe and the physical arm exposes extrinsic drift before corrupted trajectories enter the training pipeline. Documenting immutable calibration hashes in the dataset record prevents learning algorithms from attempting to fit contradictory spatial mappings within identical numerical coordinates. Source: Adapted from Khazatsky et al. [@khazatsky2024droid], CC BY 4.0.](figures/fig05_real_camera_calibration.jpg){#fig-05-camera-calibration fig-pos="H" width=95%}
+![**Multi-Camera-to-Robot Extrinsic Calibration and Visual Verification in Diverse Demonstration Environments.** Data collection across heterogeneous physical environments requires continuous validation of the extrinsic spatial transformation $\mathbf{T}_{\text{cam} \rightarrow \text{base}}$ between camera optical frames and the robot base frame. Six representative real-world collection scenes from the DROID platform depict autonomous extrinsic calibration verification using 3D kinematic reprojection (CtRNet-X / PyTorch3D) [@khazatsky2024droid]. Forward kinematics computed from optical joint encoders render the robot's URDF mesh directly over the camera video stream. If mechanical vibration or physical disturbances displace camera brackets by even a few millimeters, the visual discrepancy between the kinematic wireframe and the physical arm exposes extrinsic drift before corrupted trajectories enter the training pipeline. Documenting immutable calibration hashes in the dataset record prevents learning algorithms from attempting to fit contradictory spatial mappings within identical numerical coordinates. Source: Adapted from Khazatsky et al. [@khazatsky2024droid], CC BY 4.0.](figures/fig05_real_camera_calibration.jpg){#fig-05-camera-calibration fig-pos="t" width=95%}
 
 Physical data collected across multiple nominally identical workstations frequently harbors silent embodiment mismatch. Two robotic arms from the same manufacturer can have different gearbox wear, thermal dissipation profiles, or firmware velocity filters. In an analytical comparison, Rig 1 with new strain-wave gears exhibits $0.02^\circ$ backlash, whereas Rig 2 after $2000\text{ hours}$ of operation exhibits $0.35^\circ$ backlash and a $22\text{ ms}$ phase lag in joint torque response. Actions recorded on Rig 2 include compensatory lead times and higher gain commands that produce severe oscillations when executed on Rig 1. Detecting embodiment mismatch requires verifying a machine fingerprint before any trajectory enters the training pipeline. This fingerprint binds the kinematics, actuator serial numbers, firmware versions, and dynamic transfer function models to the recorded data file. If a trajectory fails the interface contract for the target deployment hardware, the ingestion pipeline must flag and exclude it before training begins.
 
@@ -451,21 +456,24 @@ When a silent coordinate or unit failure passes through an ingestion pipeline un
 
 On October 2, 2023, in San Francisco, California, an autonomous robotaxi operated by Cruise LLC was involved in a severe multi-agent collision that resulted in catastrophic physical injury and the subsequent grounding of the entire commercial fleet [@nhtsa2023cruise].[^fn-inc-cruise-pedestrian]
 
-**The Physical Sequence:**
+*The physical sequence.*
 A human-driven vehicle traveling in an adjacent lane struck a pedestrian crossing against the traffic signal, violently catapulting her across the lane divider directly into the path of the Cruise autonomous vehicle (AV). The AV executed an emergency stop, applying $1.4g$ maximum deceleration and stopping in $0.46\text{ s}$, coming to rest directly above the pedestrian who was now pinned underneath the vehicle's floorpan and rear axle.
 
-**The Catastrophic Covariate Drift:**
+*The catastrophic covariate drift.*
 Following the primary emergency stop, the onboard contextual planner evaluated its state: the vehicle was stationary in an active urban traffic lane. The autonomous driving policy executed its nominal post-collision "pull-over" maneuver to clear the travel lane and pull to the curb. In doing so, the AV accelerated forward, dragging the trapped pedestrian underneath the chassis for $20\text{ feet}$ ($6.1\text{ meters}$) at speeds up to $7\text{ mph}$ ($11\text{ km/h}$) before coming to a final stop.
 
-**Root-Cause Systems and Dataset Failure Analysis:**
+*Root-cause systems and dataset failure analysis.*
+
 1. **The Absent Recovery State in Training Distribution ($d^{\pi_{\text{col}}}(s) = 0$):**
    The autonomous driving policy had been trained on millions of miles of nominal driving and thousands of simulated and logged roadside pull-over maneuvers. However, the training corpus contained *zero* demonstration trajectories or recovery maneuvers representing states where an injured human was lodged underneath the vehicle chassis. 
+
 2. **Occlusion Tracker Blind Spot and Covariate Shift:**
    When the pedestrian was launched underneath the chassis, she passed entirely out of the line-of-sight of all vehicle LiDARs, RADARs, and perimeter cameras. The perception state estimator, lacking an under-chassis tactile or ultrasonic ground-plane sensor, cleared the pedestrian bounding-box track after several frames of total occlusion. The high-level planner evaluated the scene assuming the road ahead was clear.
+
 3. **Execution Outside the Empirical Support Envelope without Refusal:**
    Because empirical risk minimization produces arbitrary, ungrounded actions outside the training support $d^{\pi_{\text{col}}}$, the autonomous policy evaluated its nominal pull-over routine. The vehicle lacked a deterministic safety barrier or hardware governor prohibiting vehicle re-engagement after an airbag deployment or severe collision event without explicit remote human operator clearance.
 
-**The Physical AI Lesson:**
+*The physical AI lesson.*
 The Cruise incident is a tragic demonstration of compounding covariate shift in physical systems. When a machine enters an extreme edge state that was omitted during dataset collection, naive policy execution does not default to safe passivity—it executes nominal primitives that can convert a survivable incident into a fatal mechanical interaction. Autonomous machines must maintain an immutable scenario support ledger and enforce deterministic control refusal when sensor occlusions and state uncertainty cross the empirical boundary.
 :::
 
@@ -489,7 +497,7 @@ A **support envelope relational join** is the set-theoretic cross-referencing be
 <!-- covers: Preserve requested, mapped, enforced, and measured actions as separate fields, including overrides, truncations, and exclusion reasons. -->
 <!-- covers: State the supported conditions and the known absences: unattempted states, environmental bounds, excluded failures, missing operators, and unmatched embodiments. -->
 <!-- covers: Use a short record audit to show why two files with identical schemas and sample counts can support different deployment claims. -->
-<!-- covers: Separate downstream uses: Chapter 14 needs the human and override provenance, while Chapter 16 needs the coverage, exclusions, and embodiment evidence for release. -->
+<!-- covers: Separate downstream uses: @sec-target needs the human and override provenance, while @sec-target needs the coverage, exclusions, and embodiment evidence for release. -->
 
 <!-- BEGIN -->
 The general notebook schema, cryptographic hashing, and immutable logging contracts established in @sec-nervous govern how a machine records its execution events. This chapter adds the fields that bind physical movement to a training dataset. A raw array of joint trajectories and camera frames cannot speak for its own physical validity. Without an explicit data record, an ingestion pipeline treats numbers recorded on a vibrating, misaligned rig as equivalent to numbers collected on a rigid, calibrated testbed. The data record documents what was collected, by whom, on which physical instance, and under what operational limits, establishing the boundary between valid training evidence and unmodeled mechanical error.
@@ -521,12 +529,14 @@ Every physical dataset operates within a bounded envelope, and the data record m
 : **Demonstration Dataset Provenance Schema for Physical AI Systems.** Formal specification of metadata blocks, data types, physical invariants, and enforcement obligations required to bind physical movement logs to training pipelines (extending ISO/IEC 5259 and the @sec-nervous notebook schema). Trajectories omitting these fields fail ingestion compatibility checks. {#tbl-05-provenance-schema}
 
 A short record audit demonstrates why two files with identical tensor schemas and sample counts cannot support the same deployment claims. Consider an analytical audit of two dataset files, File A and File B, each containing 500,000 state-action pairs recorded at $50\text{ Hz}$ ($2.78\text{ h}$ of motion) for a dual-arm assembly task:
+
 - **File A** records four certified operators across eight fixture layouts, reports zero safety enforcer overrides, and verifies consistent fingertip durometer across all trajectories.
 - **File B** records a single operator at a single fixed jig, logs 620 enforcer interventions where joint velocity limits clamped the requested trajectories, and notes a sensor re-zeroing event midway through collection without recalibrating the extrinsics.
 
 While an automated validation script checking tensor shapes and value ranges accepts both files equally, File A supports a deployment claim across variable workstations, whereas File B documents an overconstrained demonstration corrupted by unmodeled kinematic shifts.
 
 Downstream lifecycle stages consume the data record for distinct engineering guarantees:
+
 - The human and override provenance feeds directly into the supervisory auditing of @sec-intervention, where safety engineers evaluate demonstrator consistency, teleoperation latency tails, and the frequency of governor interventions to assess human reliability.
 - The coverage boundaries, exclusion ledgers, and embodiment calibration histories pass forward to @sec-release, where they form the empirical baseline for the safety case, verifying that the training distribution matches the target operational design domain before the learned policy is granted execution authority on a physical machine.
 <!-- END -->
@@ -580,15 +590,16 @@ A dataset that satisfies every static schema validator and passes every tensor s
 ## Summary {#sec-data-5-10}
 
 <!-- SECTION 5.10 -->
-<!-- claim: Chapter 6 receives a dataset, and the question of what to do with it. -->
+<!-- claim: @sec-target receives a dataset, and the question of what to do with it. -->
 <!-- covers: Distill acquisition cost into scheduled time, usable trajectory time, reset burden, and consumed service life. -->
 <!-- covers: State that dataset coverage is the visitation record of a particular collector under particular constraints, not a property implied by sample count. -->
 <!-- covers: Preserve embodiment, interface, enforcement, and exclusion provenance as part of the data rather than as optional metadata. -->
 <!-- covers: Carry forward an explicit support boundary alongside the trajectories so later training cannot silently widen the dataset’s claim. -->
-<!-- covers: Hand Chapter 6 both the dataset and its record; training choices cannot recover states, actions, or counterfactuals that collection omitted. -->
+<!-- covers: Hand @sec-target both the dataset and its record; training choices cannot recover states, actions, or counterfactuals that collection omitted. -->
 
 <!-- BEGIN -->
 Physical data collection converts mechanical work, operator hours, and hardware fatigue into numerical records. A dataset of $1{,}000{,}000\text{ state-action pairs}$ logged at $50\text{ Hz}$ represents exactly $20{,}000\text{ s}$, or $5.56\text{ hours}$, of active motion. Translating scheduled time into that quantity requires budgeting across three operational stages and one hardware consumable:
+
 - **Scheduled facility time** spans the full operational shift, including rig initialization, sensor calibration, and network staging.
 - **Usable trajectory time** is the narrow window during which the machine actively executes task transitions under valid logging conditions.
 - **Reset burden** represents the time spent repositioning manipulators, fixtures, and workpieces between episodes, which frequently demands three to four times the duration of the demonstration run itself.
@@ -597,12 +608,21 @@ Physical data collection converts mechanical work, operator hours, and hardware 
 Coverage within a physical dataset is the empirical visitation record of a specific collector operating under specific physical, kinematic, and cognitive constraints. It is not an inherent attribute produced by large sample volumes. Amassing millions of transitions from a teleoperator manipulating a 3-DOF translation master cannot yield data on rotational dynamics or pitch recovery. When the collector is a human operator, the recorded trajectory distribution reflects biological reaction latencies ($P_{99} \approx 250\text{ ms}$), hand-eye coordination limits, and visual blind spots imposed by camera placement. When the collector is an algorithmic baseline or an existing policy, the distribution reflects the exact tracking gains, conservative safety margins, and kinematic limits of that controller. Adding volume within familiar operational envelopes merely increases statistical density over previously visited paths. Beyond the physical and cognitive boundaries of the collection setup, the dataset contains zero information.
 
 Because every physical sample reflects the exact conditions under which it was recorded, provenance cannot be treated as optional packaging. It is a constitutive component of the dataset. A complete dataset ledger preserves four distinct provenance dimensions alongside the raw observation and action arrays:
+
 1. **Embodiment provenance** logs the physical instance, link lengths, joint backlash, sensor calibration parameters, and firmware version of the recording testbed.
 2. **Interface provenance** captures the master controller type, mapping function, transport delay, and input filtering applied to operator commands.
 3. **Safety enforcement provenance** records every instance where an underlying reflex, velocity governor, or Cartesian barrier clipped, filtered, or overrode commanded actions before current reached the motor windings across the MPU/MCU boundary.
 4. **Exclusion provenance** records every trial terminated by safety trips, operator errors, or task aborts. Discarding failed runs without preserving their initial states, disturbance profiles, and divergence points artificially sanitizes the data, hiding the boundaries where the physical system failed.
 
 To prevent downstream training algorithms from interpolating across unvisited regions of the state space, the dataset must carry an explicit support boundary. This boundary is a formal geometric or statistical ledger of the subspace where empirical observations actually exist. In Cartesian coordinates, it bounds the envelope of reached positions and approach vectors. In velocity and acceleration space, it establishes the maximum dynamic rates verified on hardware. In wrench space, it records the envelope of contact forces sustained by the end effector. When a learned model is queried outside this support boundary during deployment, the ensuing error is not a minor statistical variance to be resolved by function approximation, but an ungrounded state transition where the physical system has never operated. Propagating the support boundary directly into the downstream pipeline provides the nervous system with the envelope required to trigger control refusal or safety interventions.
+
+::: {.callout-takeaways}
+- **Coverage is an Empirical Visitation Record, Not a Sample Count:** Repetitive collection inside nominal attractors inflates tensor row counts without expanding state-space coverage ($\Delta N_{\text{cells}} = 0$). Training corpora must be certified against multi-dimensional scenario ledgers spanning the entire operational design domain.
+- **Physical Datasets Are Bound to Embodiment Mechanics:** Optical calibrations can be reprojected mathematically across geometric transforms, but contact mechanics (elastomer durometer, contact compliance, joint backlash) permanently bake physical transfer functions into force-torque labels that cannot transfer across mutated hardware.
+- **Safety Interventions Must Be Preserved (Boundary Retention Law):** Censoring aborted collection runs or governor-clamped trajectories deprives the policy of boundary recovery dynamics. Datasets must record the complete 4-stream action tuple ($\mathbf{a}_{\text{req}}, \mathbf{a}_{\text{cmd}}, \mathbf{a}_{\text{enf}}, \mathbf{a}_{\text{meas}}$) to expose governor interventions.
+- **Master Interface Blind Spots Create Irrecoverable Voids:** Aggregating demonstrations across kinematically restricted master devices (e.g., 3-DOF translation pucks vs. 6-DOF arms) leaves structural voids across unvisited rotational degrees of freedom that no downstream scaling can recover.
+- **Training Cannot Synthesize Missing Physical Counterfactuals:** No loss function, diffusion schedule, or geometric data augmentation can generate physics that the collection regime omitted. Explicit support boundaries must accompany datasets to trigger selective runtime abstention outside the empirical convex hull.
+:::
 
 @sec-training receives both the logged dataset and this complete mechanical record, shifting the systems problem from acquisition to training. The governing constraint for every optimization method covered next is that no training choice can recover missing physics. No neural network architecture, loss formulation, diffusion schedule, or data augmentation heuristic can synthesize state transitions, reactive counterfactuals, or control authorities that the collection regime omitted. If the collection process never visited a high-slip friction regime, never demonstrated recovery from a $40\text{ mm}$ position error, or operated entirely behind a force governor that capped contact loads to $10.0\text{ N}$, the resulting policy cannot learn to manage those physical interactions. @sec-training examines the computational, architectural, and safety costs incurred when converting this finite, constrained record into an executable policy.
 <!-- END -->

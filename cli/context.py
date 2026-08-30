@@ -101,16 +101,16 @@ class BookContext:
                 if in_code_block:
                     continue
 
-                # 1. Definitions
-                for match in re.finditer(r"\{[^}]*#(fig-[\w-]+)", line):
+                # 1. Definitions (use non-greedy matching to support LaTeX math braces in captions)
+                for match in re.finditer(r"#(fig-[\w-]+)", line):
                     self.fig_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{[^}]*#(tbl-[\w-]+)", line):
+                for match in re.finditer(r"#(tbl-[\w-]+)", line):
                     self.tbl_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{[^}]*#(sec-[\w-]+)", line):
+                for match in re.finditer(r"#(sec-[\w-]+)", line):
                     self.sec_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{[^}]*#(eq-[\w-]+)", line):
+                for match in re.finditer(r"#(eq-[\w-]+)", line):
                     self.eq_defs[match.group(1)] = (file_path, line_idx)
-                for match in re.finditer(r"\{[^}]*#(callout-[\w-]+|def-[\w-]+|law-[\w-]+|contract-[\w-]+|autopsy-[\w-]+)", line):
+                for match in re.finditer(r"#(callout-[\w-]+|def-[\w-]+|law-[\w-]+|contract-[\w-]+|autopsy-[\w-]+)", line):
                     self.callout_defs[match.group(1)] = (file_path, line_idx)
 
                 # 2. Markdown image inclusions: ![alt](path)

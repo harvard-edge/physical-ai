@@ -48,8 +48,8 @@ In traditional computing architectures, an immutable variable in memory retains 
 
 To prevent a machine from acting on stale data, memory systems must treat expiry as an explicit interface event. An expired belief is not a missing variable or a null pointer in an operating system; it is a formal boundary condition where the uncertainty envelope around a state estimate exceeds the safety tolerance of the task. The **belief state invalidation horizon** ($t_{\mathrm{exp}} = \inf \{ t \ge 0 : E(t) \ge E_{\max} \}$) marks the exact temporal deadline where unobserved kinematic drift and process noise drive accumulated error past the mechanical clearance or safety margin ($E_{\max}$), revoking tracking authority and forcing an explicit transition to a safe fallback mode. Managing this boundary requires treating every stored quantity not merely as a coordinate or a vector, but as an active contract defined by when it was measured, the reference frame in which it was established, and the bounded rate at which its validity drains away.
 
-::: {.callout-rule title="The Provenance Invariant"}
-*Never let an intermediate predictor, filter, or transport bridge reset the evidence acquisition epoch $t_0$; compute freshness is an internal artifact, but physical freshness belongs strictly to the transducer.*
+::: {.callout-rule title="The Wow Core Invariant"}
+*Extrapolation advances timestamps without refreshing evidence age. Unmonitored belief drifts into physical failure. Never let an intermediate predictor, filter, or transport bridge reset the evidence acquisition epoch $t_0$; compute freshness is a software artifact, but physical freshness belongs strictly to the hardware transducer.*
 :::
 <!-- END -->
 
@@ -138,7 +138,7 @@ When the measurement epochs $t_k$ across individual edges diverge (due to asynch
 
 [^fn-hw-seqlock-dmb]: In heterogeneous dual-brain platforms, 6-DoF transformation matrices exceed atomic word sizes ($64\text{ B}$). Lock-free synchronization requires sequence locks (`seqlock`) with inner-shareable memory barriers (`DMB ISH` on ARM, `fence` on RISC-V) to prevent torn reads between MPU updates and MCU reads.
 
-![**Kinematic Coordinate Frame Tree on an Articulated Manipulator.** Physical and software transformation frame hierarchy for a 7-DOF Franka Emika Panda manipulator inside RViz. The coordinate tree anchors the base link ($\texttt{panda\_link0}$) to the world origin and recursively chains joint frames ($\texttt{panda\_link1}$ through $\texttt{panda\_link7}$) to the mechanical flange ($\texttt{panda\_link8}$), nominal end-effector ($\texttt{panda\_NE}$), tool center point ($\texttt{panda\_EE}$), finger graspers ($\texttt{panda\_hand}$, $\texttt{panda\_leftfinger}$, $\texttt{panda\_rightfinger}$), and stiffness frame ($\texttt{panda\_K}$). Each directed edge represents a time-varying homogeneous transformation matrix $\mathbf{T}_{A}^{B}(t)$ parameterized by encoder angles and kinematic offsets. Composing transforms of disparate measurement epochs injects lever-arm positioning error $e_{\mathrm{tool}} \approx e_{\mathrm{trans}} + \ell \Delta \theta$, while a frozen transform edge in the tree silently guides motion against phantom coordinates. (Credit: Franka Robotics GmbH / ROS Community, CC BY 4.0).](figures/fig09_real_robot_transform_tree.png){#fig-09-robot-transform-tree fig-pos="H" width=85%}
+![**Kinematic Coordinate Frame Tree on an Articulated Manipulator.** Physical and software transformation frame hierarchy for a 7-DOF Franka Emika Panda manipulator inside RViz. The coordinate tree anchors the base link ($\texttt{panda\_link0}$) to the world origin and recursively chains joint frames ($\texttt{panda\_link1}$ through $\texttt{panda\_link7}$) to the mechanical flange ($\texttt{panda\_link8}$), nominal end-effector ($\texttt{panda\_NE}$), tool center point ($\texttt{panda\_EE}$), finger graspers ($\texttt{panda\_hand}$, $\texttt{panda\_leftfinger}$, $\texttt{panda\_rightfinger}$), and stiffness frame ($\texttt{panda\_K}$). Each directed edge represents a time-varying homogeneous transformation matrix $\mathbf{T}_{A}^{B}(t)$ parameterized by encoder angles and kinematic offsets. Composing transforms of disparate measurement epochs injects lever-arm positioning error $e_{\mathrm{tool}} \approx e_{\mathrm{trans}} + \ell \Delta \theta$, while a frozen transform edge in the tree silently guides motion against phantom coordinates. (Credit: Franka Robotics GmbH / ROS Community, CC BY 4.0).](figures/fig09_real_robot_transform_tree.png){#fig-09-robot-transform-tree fig-pos="t" width=85%}
 
 The cost of an expired transform is direct spatial displacement (@fig-frame-staleness-error). Applying the delay-as-distance principle from @sec-body to kinematics, uncompensated latency translates directly into geometric positioning error through the lever arm of the linkages. For an articulated kinematic chain with $N$ moving joints, an uncompensated latency $\Delta t_i$ at joint $i$ moving with angular velocity $\boldsymbol{\omega}_i$ induces a spatial velocity $\mathbf{v}_{\text{tool}} = \boldsymbol{\omega}_i \times (\mathbf{p}_{\text{tool}} - \mathbf{p}_i)$ at the tool tip. Over an unobserved latency window, the cumulative tool-point positioning error expands across the articulated chain according to
 $$\Delta \mathbf{p}_{\text{tool}} \approx \Delta \mathbf{p}_{\text{base}} + \sum_{i=1}^N \left( \boldsymbol{\omega}_i \Delta t_i \right) \times (\mathbf{p}_{\text{tool}} - \mathbf{p}_i)$$
@@ -150,7 +150,7 @@ Consider an analytical example of a manipulator holding a tool point at a distan
 *Transform staleness multiplies through kinematic link lengths; an uncompensated millisecond of lag at the robot base swings the tool center point through centimeters of unobserved deflection.*
 :::
 
-![**Coordinate Transform Staleness and Lever-Arm Kinematic Error Propagation.** Rigid-body spatial divergence induced by an uncompensated $40\text{ ms}$ transform latency on a manipulator arm translating at $v = 0.80\text{ m/s}$ and rotating at $\omega = 1.50\text{ rad/s}$. Base translation shifts the tool frame by $e_{\text{trans}} = v \Delta t = 3.20\text{ cm}$, while arm link rotation ($\ell = 0.60\text{ m}$) swings the tool point through an arc $e_{\text{rot}} \approx \ell \omega \Delta t = 3.60\text{ cm}$, yielding a cumulative tool-point positioning error of $e_{\text{tool}} \approx 6.80\text{ cm}$ ($68.0\text{ mm}$) that breaches the $\pm 0.50\text{ mm}$ task clearance by $136\times$. Whereas a missing transform triggers a loud exception and safe holding reflex, a frozen transform republished with fresh system timestamps evaluates with zero linear algebra exceptions, silently driving the tool into collision.](figures/fig09_frame_staleness_error.svg){#fig-frame-staleness-error fig-pos="H" width=100%}
+![**Coordinate Transform Staleness and Lever-Arm Kinematic Error Propagation.** Rigid-body spatial divergence induced by an uncompensated $40\text{ ms}$ transform latency on a manipulator arm translating at $v = 0.80\text{ m/s}$ and rotating at $\omega = 1.50\text{ rad/s}$. Base translation shifts the tool frame by $e_{\text{trans}} = v \Delta t = 3.20\text{ cm}$, while arm link rotation ($\ell = 0.60\text{ m}$) swings the tool point through an arc $e_{\text{rot}} \approx \ell \omega \Delta t = 3.60\text{ cm}$, yielding a cumulative tool-point positioning error of $e_{\text{tool}} \approx 6.80\text{ cm}$ ($68.0\text{ mm}$) that breaches the $\pm 0.50\text{ mm}$ task clearance by $136\times$. Whereas a missing transform triggers a loud exception and safe holding reflex, a frozen transform republished with fresh system timestamps evaluates with zero linear algebra exceptions, silently driving the tool into collision.](figures/fig09_frame_staleness_error.svg){#fig-frame-staleness-error fig-pos="t" width=100%}
 
 Beyond discrete kinematic frames, an embodied agent must also maintain continuous volumetric spatial memory to track unobserved obstacles, plan collision-free paths, and support real-time reactive grasping (@fig-09-octomap-volumetric-mapping). By executing **volumetric free-space raycasting** along sensor sightlines, spatial memory actively updates 3D voxel hierarchies (such as OctoMap or OpenVDB) and deterministically clears unoccupied voxels. The foundational algorithm for volumetric raycasting is the 3D Differential Digital Analyzer (3D-DDA) fast voxel traversal [@amanatides1987fast].[^fn-hw-cuda-octree] For a sensor sightline ray $\mathbf{r}(s) = \mathbf{o} + s\mathbf{d}$ ($s \ge 0$) originating at optical origin $\mathbf{o} \in \mathbb{R}^3$ with unit direction $\mathbf{d} \in \mathbb{R}^3$ through a discrete voxel grid of isotropic pitch $\Delta v$, the traversal steps through voxel boundaries $(u, v, w)$ by maintaining next-plane crossing parameters:
 $$t_{\text{next}, x} = \frac{(u + \operatorname{step}_x)\Delta v - o_x}{d_x}, \quad \Delta t_x = \frac{\Delta v}{|d_x|}$$
@@ -176,7 +176,7 @@ where center $\boldsymbol{\mu}_i \in \mathbb{R}^3$ and spatial covariance $\math
 $$\mathcal{L} = (1 - \lambda) \|\mathbf{I} - \hat{\mathbf{I}}\|_1 + \lambda \mathcal{L}_{\text{D-SSIM}} + \lambda_d \|\mathbf{D} - \hat{\mathbf{D}}\|_1$$
 Gaussians are adaptively densified in under-reconstructed areas and pruned in empty regions, enabling real-time photorealistic novel-view synthesis and continuous collision querying without the memory explosion of uniform volumetric grids (@tbl-09-spatial-rep).
 
-![**Probabilistic 3D Volumetric Mapping and Hierarchical Octree Space Subdivision.** Empirical 3D spatial memory representation reconstructed from a physical mobile robot traversing an indoor corridor with a tilting LiDAR scanner [@hornung2013octomap]. (a) Raw 3D point cloud acquired during robot motion, subject to sensor noise and finite field-of-view occlusions. (b) Volumetric OctoMap voxel representation modeling 3D space as an 8-ary hierarchical tree, where occupied volumes are probabilistically updated and stored across variable resolutions. (c) Explicit free-space raycasting and lossless octree pruning, differentiating verified traversable space (white voxels) from occupied obstacles (dark voxels) and unobserved unknown regions. By maintaining explicit free-space evidence along sensor sightlines, spatial memory actively invalidates phantom obstacle tracks without waiting for arbitrary software timeouts. (Credit: Hornung et al. / Autonomous Intelligent Systems Lab, University of Freiburg, CC BY 3.0).](figures/fig09_real_octomap_volumetric_mapping.png){#fig-09-octomap-volumetric-mapping fig-pos="H" width=95%}
+![**Probabilistic 3D Volumetric Mapping and Hierarchical Octree Space Subdivision.** Empirical 3D spatial memory representation reconstructed from a physical mobile robot traversing an indoor corridor with a tilting LiDAR scanner [@hornung2013octomap]. (a) Raw 3D point cloud acquired during robot motion, subject to sensor noise and finite field-of-view occlusions. (b) Volumetric OctoMap voxel representation modeling 3D space as an 8-ary hierarchical tree, where occupied volumes are probabilistically updated and stored across variable resolutions. (c) Explicit free-space raycasting and lossless octree pruning, differentiating verified traversable space (white voxels) from occupied obstacles (dark voxels) and unobserved unknown regions. By maintaining explicit free-space evidence along sensor sightlines, spatial memory actively invalidates phantom obstacle tracks without waiting for arbitrary software timeouts. (Credit: Hornung et al. / Autonomous Intelligent Systems Lab, University of Freiburg, CC BY 3.0).](figures/fig09_real_octomap_volumetric_mapping.png){#fig-09-octomap-volumetric-mapping fig-pos="t" width=95%}
 
 | Spatial Representation Paradigm | Underlying Geometric Primitive | Memory Footprint ($300\,\text{m}^3 @ 1\,\text{cm}$) | Dynamic Update Latency ($10^5\,\text{pts}$) | Collision / Raycast Query Latency | Continuous Gradient $\nabla d(\mathbf{x})$ | Differentiable Fusion Support | Primary Execution Target & Bottleneck |
 |:---|:---|:---|:---|:---|:---|:---|:---|
@@ -192,28 +192,35 @@ Gaussians are adaptively densified in under-reconstructed areas and pruned in em
 
 *1. Naive Dense Volumetric Allocation:*
 Consider an active robotic manipulation workcell measuring $10\text{ m} \times 10\text{ m} \times 3\text{ m} = 300\text{ m}^3$.
+
 - At isotropic resolution $\Delta v = 1.0\text{ cm} = 0.01\text{ m}$:
   $$\text{Voxel Count} = \left(\frac{10}{0.01}\right) \times \left(\frac{10}{0.01}\right) \times \left(\frac{3}{0.01}\right) = 1000 \times 1000 \times 300 = 3 \times 10^8\text{ voxels}$$
+
 - Memory footprint at $4\text{ bytes}$ per voxel ($16\text{-bit}$ TSDF distance $+ 16\text{-bit}$ fusion weight):
   $$M_{\text{dense, 1cm}} = 3 \times 10^8 \times 4\text{ B} = 1.20 \times 10^9\text{ B} = 1.20\text{ GB}$$
+
 - If resolution is refined to $\Delta v = 5.0\text{ mm} = 0.005\text{ m}$ for precision tool contact:
   $$\text{Voxel Count} = 2000 \times 2000 \times 600 = 2.4 \times 10^9\text{ voxels} \implies M_{\text{dense, 5mm}} = 9.60\text{ GB}$$
   This exceeds the entire physical DRAM capacity ($8\text{ GB}$) of the edge SoC!
 
 *2. Sparse Voxel Hashing (Occupancy Sparsity $\approx 3\%$):*
 Physical obstacles and workcell surfaces occupy only a thin 2D manifold within 3D volume. Grouping voxels into $8^3 = 512$ voxel leaf blocks and allocating only within the TSDF truncation band ($\mu = \pm 3\text{ cm}$):
+
 - Active occupied volume: $\approx 3.0\%$ of $300\text{ m}^3 = 9.0\text{ m}^3$.
 - Active voxel count at $1\text{ cm}$: $9.0 \times 10^6\text{ voxels} \implies \approx 17,578\text{ blocks}$.
 - Memory footprint:
   $$M_{\text{sparse, 1cm}} = 17,578\text{ blocks} \times (512\text{ voxels} \times 4\text{ B} + 32\text{ B header}) \approx 36.5\text{ MB}$$
+
 - At $5.0\text{ mm}$ resolution: $M_{\text{sparse, 5mm}} \approx 292\text{ MB}$ (easily fits in SoC LPDDR5).
 
 *3. DRAM Bus Bandwidth under $60\text{ Hz}$ RGB-D Raycasting:*
 A depth sensor running at $640 \times 480$ resolution at $60\text{ fps}$ produces:
 $$\text{Ray Rate} = 640 \times 480 \times 60 = 18,432,000\text{ rays/sec} \approx 18.43\text{ M rays/s}$$
+
 - Traversing a dense grid requires reading and writing along the full $3.0\text{ m}$ ray ($300$ voxel lookups per ray):
   $$\text{Dense DRAM Bandwidth} = 18.43 \times 10^6 \times 300 \times 8\text{ B (R+W)} \approx 44.2\text{ GB/s}$$
   This consumes $>85\%$ of the SoC's total shared LPDDR5 bandwidth ($51.2\text{ GB/s}$), causing severe memory bus throttling.
+
 - Sparse VDB with 3D-DDA only updates voxels within the narrow truncation margin ($6$ voxels per ray) and caches active leaf blocks in GPU shared memory / L2 cache:
   $$\text{Sparse DRAM Bandwidth} = 18.43 \times 10^6 \times 6 \times 8\text{ B} \times (1 - 0.95\text{ cache hit rate}) \approx 44.2\text{ MB/s}$$
 
@@ -222,54 +229,40 @@ $$\text{Ray Rate} = 640 \times 480 \times 60 = 18,432,000\text{ rays/sec} \appro
 
 To integrate incoming sensory point clouds while actively evicting stale obstacle geometry, the spatial memory engine executes the structured raycast update detailed in Algorithm 9.1.
 
-```
-Algorithm 9.1: Volumetric TSDF Raycast Update with Temporal Decay
-═════════════════════════════════════════════════════════════════════════════════
-Input:        Point cloud frame P = {p_k = (x_k, y_k, z_k) | k = 1..N_pts} in sensor frame F_sensor
-              Sensor pose transform T_world_sensor(t_0) at capture epoch t_0
-              Truncation margin mu (m), max integration weight W_max, decay half-life tau_decay (s)
-State:        Sparse TSDF voxel block hash table V_tsdf = {block_idx -> Block(8^3 voxels)}
-Output:       Updated continuous TSDF spatial belief and dynamic negative evidence field
+::: {.callout-algorithm  title="Algorithm 9.1: Volumetric TSDF Raycast Update with Temporal Decay"}
+**Inputs:** Point cloud $\mathcal{P} = \{\mathbf{p}_k\}_{k=1}^{N_{\text{pts}}}$ in sensor frame $\mathcal{F}_{\text{sensor}}$, sensor pose $\mathbf{T}_{\text{world}\leftarrow\text{sensor}}(t_0)$ at capture epoch $t_0$, truncation margin $\mu$, max weight $W_{\max}$, decay half-life $\tau_{\text{decay}}$.
 
-Procedure UPDATE_VOLUMETRIC_TSDF(P, T_world_sensor, t_0):
-  1:  t_curr ← GET_SYNCHRONIZED_PTP_TIME_NS()
-  2:  dt_elapsed ← (t_curr - t_0) * 1e-9
-  3:  if dt_elapsed > TAU_MAX_SENSOR_LATENCY then
-  4:      return STATUS_FRAME_TOO_STALE                         ▷ Reject stale capture frame
-  5:
-  6:  p_cam_world ← T_world_sensor.translation                  ▷ Optical origin in world frame
-  7:  for each point p_k in P (parallel GPU warp threads) do:
-  8:      p_world ← T_world_sensor * p_k                        ▷ Transform ray endpoint to world
-  9:      ray_dir ← NORMALIZE(p_world - p_cam_world)
- 10:      ray_len ← NORM(p_world - p_cam_world)
- 11:
- 12:      ▷ Phase 1: 3D-DDA Fast Voxel Traversal for Negative Free-Space Evidence
- 13:      for each voxel v traversed by 3D_DDA(p_cam_world, ray_dir, 0, ray_len - mu) do:
- 14:          block ← GET_OR_ALLOCATE_BLOCK(V_tsdf, v.block_index)
- 15:          vox ← block.voxels[v.local_index]
- 16:          ▷ Decay historical weight if unobserved: W_decayed = W * exp(-dt / tau_decay)
- 17:          vox.weight ← vox.weight * EXP(-(t_0 - vox.last_update_t0) / tau_decay)
- 18:          vox.last_update_t0 ← t_0
- 19:          ▷ Assert negative free-space evidence: clear phantom obstacle voxels
- 20:          vox.free_space_evidence_epoch ← t_0
- 21:          if vox.tsdf_distance < 0.0 then
- 22:              vox.tsdf_distance ← MIN(vox.tsdf_distance + L_FREE_CLEAR, 1.0)
- 23:
- 24:      ▷ Phase 2: Surface Boundary Truncated Signed Distance Integration
- 25:      for each voxel v traversed by 3D_DDA(p_cam_world, ray_dir, ray_len - mu, ray_len + mu) do:
- 26:          block ← GET_OR_ALLOCATE_BLOCK(V_tsdf, v.block_index)
- 27:          vox ← block.voxels[v.local_index]
- 28:          dist_metric ← NORM(vox.world_pos - p_cam_world) - ray_len
- 29:          if dist_metric > -mu then
- 30:              tsdf_norm ← CLAMP(dist_metric / mu, -1.0, 1.0)
- 31:              w_obs ← 1.0 / (1.0 + SIGMA_Z_SQ * ray_len^2)       ▷ Distance-weighted confidence
- 32:              w_old ← vox.weight * EXP(-(t_0 - vox.last_update_t0) / tau_decay)
- 33:              vox.tsdf_distance ← (w_old * vox.tsdf_distance + w_obs * tsdf_norm) / (w_old + w_obs)
- 34:              vox.weight ← MIN(w_old + w_obs, W_max)
- 35:              vox.last_update_t0 ← t_0
- 36:  return STATUS_TSDF_UPDATED
-═════════════════════════════════════════════════════════════════════════════════
-```
+**State:** Sparse TSDF voxel block hash table $\mathcal{V}_{\text{tsdf}} = \{\text{block\_idx} \to \text{Block}(8^3\text{ voxels})\}$.
+
+**Outputs:** Updated continuous TSDF spatial belief and dynamic negative evidence field.
+
+**Execution Procedure (`UPDATE_VOLUMETRIC_TSDF`):**
+
+1. $t_{\text{curr}} \leftarrow \text{GetPtpMonotonicTimeNs}()$; $\Delta t_{\text{elapsed}} \leftarrow (t_{\text{curr}} - t_0) \times 10^{-9}$.
+2. If $\Delta t_{\text{elapsed}} > \tau_{\max,\text{latency}} \implies$ **return** $\text{STATUS\_FRAME\_TOO\_STALE}$ (reject stale sensory frame).
+3. $\mathbf{p}_{\text{cam,world}} \leftarrow \mathbf{T}_{\text{world}\leftarrow\text{sensor}}.\text{translation}$ (optical center in world frame).
+4. **For each point $\mathbf{p}_k \in \mathcal{P}$ (parallel GPU threads):**
+   * $\mathbf{p}_{\text{world}} \leftarrow \mathbf{T}_{\text{world}\leftarrow\text{sensor}} \cdot \mathbf{p}_k$; $\mathbf{r}_{\text{dir}} \leftarrow \frac{\mathbf{p}_{\text{world}} - \mathbf{p}_{\text{cam,world}}}{\|\mathbf{p}_{\text{world}} - \mathbf{p}_{\text{cam,world}}\|}$; $r_{\text{len}} \leftarrow \|\mathbf{p}_{\text{world}} - \mathbf{p}_{\text{cam,world}}\|$.
+   * *Phase 1 (Negative Free-Space Clearing via 3D-DDA):*
+     * For each voxel $v$ along ray from $0$ to $r_{\text{len}} - \mu$:
+
+       * $\text{vox} \leftarrow \text{GetOrAllocateBlock}(\mathcal{V}_{\text{tsdf}}, v.\text{block\_index}).\text{voxels}[v.\text{local\_idx}]$
+       * $\text{vox}.\text{weight} \leftarrow \text{vox}.\text{weight} \cdot \exp\left(-\frac{t_0 - \text{vox}.t_{\text{last}}}{\tau_{\text{decay}}}\right)$
+       * $\text{vox}.t_{\text{last}} \leftarrow t_0$
+       * If $\text{vox}.d_{\text{tsdf}} < 0.0 \implies \text{vox}.d_{\text{tsdf}} \leftarrow \min(\text{vox}.d_{\text{tsdf}} + L_{\text{clear}}, 1.0)$
+   * *Phase 2 (Surface Boundary Truncated Signed Distance Integration):*
+     * For each voxel $v$ along ray from $r_{\text{len}} - \mu$ to $r_{\text{len}} + \mu$:
+
+       * $\text{dist} \leftarrow \|\text{vox}.\mathbf{x} - \mathbf{p}_{\text{cam,world}}\| - r_{\text{len}}$
+       * If $\text{dist} > -\mu$:
+
+         * $d_{\text{norm}} \leftarrow \text{clamp}(\text{dist} / \mu, -1.0, 1.0)$
+         * $w_{\text{obs}} \leftarrow \frac{1}{1 + \sigma_z^2 r_{\text{len}}^2}$ (distance-weighted variance)
+         * $w_{\text{old}} \leftarrow \text{vox}.\text{weight} \cdot \exp\left(-\frac{t_0 - \text{vox}.t_{\text{last}}}{\tau_{\text{decay}}}\right)$
+         * $\text{vox}.d_{\text{tsdf}} \leftarrow \frac{w_{\text{old}} \cdot \text{vox}.d_{\text{tsdf}} + w_{\text{obs}} \cdot d_{\text{norm}}}{w_{\text{old}} + w_{\text{obs}}}$
+         * $\text{vox}.\text{weight} \leftarrow \min(w_{\text{old}} + w_{\text{obs}}, W_{\max})$; $\text{vox}.t_{\text{last}} \leftarrow t_0$
+5. **return** $\text{STATUS\_TSDF\_UPDATED}$
+:::
 
 The volumetric belief state produced by this pipeline adheres to the abstract data schema specified in @tbl-09-schema-volumetric-belief, guaranteeing typed spatial bounds and physical SI unit invariants for downstream motion planners.
 
@@ -341,7 +334,10 @@ In both discrete manipulation and continuous fluid control, model prediction ser
 <!-- BEGIN -->
 Physical tasks impose hard clearance and error limits on the body. In a precision peg-in-hole insertion, the chamfer geometry defines an allowable radial alignment error of $0.8\text{ mm}$ before the tool collides with the shoulder of the bore. In a continuous dispensing process, a fluid temperature error exceeding $2.5\text{ }^\circ\text{C}$ alters viscosity enough to double the bead width and flood the channel. These physical bounds define the maximum tolerable error budget $E_{\max}$. The task of state estimation is not to eliminate error, but to maintain an uncertainty envelope $E(t)$ that is guaranteed to remain strictly below $E_{\max}$ throughout execution.
 
-The moment an observation frame ends, that envelope expands as unmeasured dynamics accumulate. Between sensor updates, the nervous system propagates the state forward by integrating commanded forces through an internal model of the plant. In continuous-time estimation theory, the physical system is modeled as a linear stochastic differential equation:
+The moment an observation frame ends, that envelope expands as unmeasured dynamics accumulate. Between sensor updates, the nervous system propagates the state forward by integrating commanded forces through an internal model of the plant.
+
+::: {.callout-math title="Continuous-Time Covariance Propagation"}
+In continuous-time estimation theory, the physical system is modeled as a linear stochastic differential equation:
 $$\dot{\mathbf{x}}(t) = \mathbf{A}\mathbf{x}(t) + \mathbf{B}\mathbf{u}(t) + \mathbf{G}\mathbf{w}(t)$$
 where $\mathbf{x}(t) \in \mathbb{R}^n$ is the true state vector, $\mathbf{u}(t) \in \mathbb{R}^m$ is the control input, and $\mathbf{w}(t) \in \mathbb{R}^p$ is a zero-mean white Gaussian disturbance with continuous process noise spectral density matrix $\mathbf{Q}_c \in \mathbb{R}^{p \times p}$, representing torque ripple, unmodeled joint friction, and aerodynamic buffeting. The propagation of the state error covariance matrix $\mathbf{P}(t) = \mathbb{E}[(\mathbf{x}(t) - \hat{\mathbf{x}}(t))(\mathbf{x}(t) - \hat{\mathbf{x}}(t))^T]$ obeys the continuous-time Lyapunov differential equation:[^fn-math-covariance-growth]
 $$\dot{\mathbf{P}}(t) = \mathbf{A}\mathbf{P}(t) + \mathbf{P}\mathbf{A}^T + \mathbf{G}\mathbf{Q}_c\mathbf{G}^T$$
@@ -352,8 +348,10 @@ For a canonical kinematic double-integrator plant tracking position $p$ and velo
 $$\mathbf{A} = \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}, \quad \mathbf{G} = \begin{bmatrix} 0 \\ 1 \end{bmatrix}, \quad \mathbf{Q}_c = [q_c]$$
 where $q_c$ is the continuous acceleration noise power spectral density ($(\text{m/s}^2)^2/\text{Hz}$). Integrating the Lyapunov equation analytically from an initial covariance $\mathbf{P}(0) = \begin{bmatrix} \sigma_p^2(0) & \sigma_{pv}(0) \\ \sigma_{pv}(0) & \sigma_v^2(0) \end{bmatrix}$ over an unobserved duration $t$ yields the exact closed-form covariance matrix:
 $$\mathbf{P}(t) = \begin{bmatrix} \sigma_p^2(0) + 2\sigma_{pv}(0) t + \sigma_v^2(0) t^2 + \frac{1}{3} q_c t^3 & \sigma_{pv}(0) + \sigma_v^2(0) t + \frac{1}{2} q_c t^2 \\ \sigma_{pv}(0) + \sigma_v^2(0) t + \frac{1}{2} q_c t^2 & \sigma_v^2(0) + q_c t \end{bmatrix}$$
+:::
 
 This closed-form derivation exposes the three distinct physical mechanisms governing spatial memory decay:
+
 1. **Initial Velocity Dispersion ($\sigma_v^2(0) t^2$)**: An unmeasured velocity error at the moment of occlusion propagates linearly into position displacement ($\sigma_v(0) t$), driving quadratic variance expansion.
 2. **Stochastic Acceleration Diffusion ($\frac{1}{3} q_c t^3$)**: White process noise integrated through the double integrator induces cubic variance growth, causing rapid spatial dispersion over extended sensing dropouts.
 3. **Deterministic Disturbance Acceleration ($\frac{1}{2} a_{\mathrm{dist}} t^2$)**: Any unmodeled constant force or friction bias bounded by $|a_{\mathrm{dist}}|$ deflects the physical body quadratically with time.[^fn-math-nonsmooth-contact]
@@ -370,7 +368,7 @@ The **belief state invalidation horizon** (formalized as the expiry time $t_{\ma
 $$t_{\mathrm{exp}} = \inf \{ t \ge 0 : E(t) \ge E_{\max} \}$$
 Under this definition, expiry is neither an arbitrary communication watchdog timer nor a fixed $100\text{ ms}$ heuristic chosen for scheduling convenience. It is a physical deadline dictated by the intersection of task geometry, actuator authority, and disturbance dynamics. When the last valid observation occurs at timestamp $t_0$, the belief state carries an absolute expiration timestamp $t_{\mathrm{deadline}} = t_0 + t_{\mathrm{exp}}$. Beyond $t_{\mathrm{deadline}}$, downstream control loops cannot assume the estimated pose lies within the required mechanical clearance.
 
-![**Temporal Belief Uncertainty Growth and Invalidation Horizon.** Covariance expansion $E(t) = E(0) + 3\sigma_v t + \frac{1}{2} a_{\mathrm{dist}} t^2$ under unobserved forward propagation following measurement latch epoch $t_0$. The quadratic error envelope expands under unmodeled velocity uncertainty ($\sigma_v = 4.0\text{ mm/s}$) and unmeasured disturbance acceleration ($a_{\mathrm{dist}} = 50.0\text{ mm/s}^2$) until crossing the task clearance limit $E_{\max} = 1.00\text{ mm}$ at the invalidation horizon $t_{\mathrm{exp}} = 66\text{ ms}$. The lower lifecycle bar transitions through `VALID` (full tracking authority), `DEGRADED` (reduced speed and expanded safety margins), and `EXPIRED` (action permissions revoked). Incoming measurements within the innovation gate reset the evidence clock to $t_0'$, whereas republished cached matrices (the frozen transform trap) create deceptive software freshness while true physical drift compounds toward collision.](figures/fig09_uncertainty_growth.svg){#fig-uncertainty-growth fig-pos="H" width=100%}
+![**Temporal Belief Uncertainty Growth and Invalidation Horizon.** Covariance expansion $E(t) = E(0) + 3\sigma_v t + \frac{1}{2} a_{\mathrm{dist}} t^2$ under unobserved forward propagation following measurement latch epoch $t_0$. The quadratic error envelope expands under unmodeled velocity uncertainty ($\sigma_v = 4.0\text{ mm/s}$) and unmeasured disturbance acceleration ($a_{\mathrm{dist}} = 50.0\text{ mm/s}^2$) until crossing the task clearance limit $E_{\max} = 1.00\text{ mm}$ at the invalidation horizon $t_{\mathrm{exp}} = 66\text{ ms}$. The lower lifecycle bar transitions through `VALID` (full tracking authority), `DEGRADED` (reduced speed and expanded safety margins), and `EXPIRED` (action permissions revoked). Incoming measurements within the innovation gate reset the evidence clock to $t_0'$, whereas republished cached matrices (the frozen transform trap) create deceptive software freshness while true physical drift compounds toward collision.](figures/fig09_uncertainty_growth.svg){#fig-uncertainty-growth fig-pos="t" width=100%}
 
 Because disturbance magnitudes and plant dynamics vary with operating conditions, $t_{\mathrm{exp}}$ is not a single static scalar for the entire machine. A robotic arm traversing free space at $0.2\text{ m/s}$ incurs small disturbance torques, yielding a validated error growth that permits an unobserved window of $140\text{ ms}$. When the same arm moves at $1.5\text{ m/s}$ carrying an unmodeled $5.0\text{ kg}$ payload, centrifugal forces and joint compliance accelerate error accumulation, shrinking $t_{\mathrm{exp}}$ to $22\text{ ms}$. Transitions between free motion and surface contact introduce impulsive contact forces that invalidate kinematic drift models within milliseconds. A production state interface must therefore evaluate decay rates across distinct operating regimes, selecting the active expiry limit based on payload mass, velocity, and contact state.
 
@@ -447,6 +445,7 @@ The most deceptive silent failure is the **frozen transform**, which occurs when
 **Incident:** AMR traversing an aisle intersection collided with a high-speed manual forklift ($v_{\text{fork}} = 3.20\text{ m/s}$) traveling along the orthogonal cross-aisle. The AMR suffered severe frontal chassis buckling, crushing its primary safety LiDAR optical housing ($>\$45,000$ direct damage) and forcing a 6-hour facility-wide logistics dispatch shutdown.
 
 **Telemetry Snapshot:**
+
 - At $t = 0.000\text{ s}$, the AMR approaches the blind 4-way intersection at $v_0 = 1.80\text{ m/s}$. High-bay metal pallet racks obstruct optical and LiDAR line of sight into the cross-aisle.
 - At $t = 0.080\text{ s}$, the forward LiDAR briefly registers the forklift's steel mast through a narrow racking gap at a distance of $d = 4.20\text{ m}$, closing at relative velocity $v_{\mathrm{rel}} = 5.00\text{ m/s}$. The tracking pipeline instantiates track token `entity_track_942`.
 - At $t = 0.120\text{ s}$, an unmodeled structural building column completely occludes the forklift from all AMR sensor sightlines.
@@ -456,6 +455,7 @@ The most deceptive silent failure is the **frozen transform**, which occurs when
 - At $t = 0.650\text{ s}$, the AMR emerged from behind the rack and struck the forklift's steel forks with a kinetic impact energy of $2.92\text{ kJ}$.[^fn-inc-amr-occlusion]
 
 **Root Cause & Physics of Failure:**
+
 1. *Frozen Transform Trap:* A locked SLAM thread caused the `/tf` bridge to republish static coordinate frames with synthetic fresh timestamps ($\Delta t = t_{\text{now}} - t_{\text{msg}} < 2\text{ ms}$), completely blinding downstream collision checkers to $530\text{ ms}$ of uncompensated spatial drift.
 2. *Decoupled Spatial State from Existence Probability:* The obstacle tracker held existence probability $p_{\text{exist}} \ge 0.85$ over an arbitrary static timeout ($2.0\text{ s}$) rather than evaluating the physical invalidation horizon ($t_{\mathrm{exp}} = 137\text{ ms}$ for $E_{\max} = 0.30\text{ m}$ clearance at $v_{\mathrm{rel}} = 5.00\text{ m/s}$).
 3. *Absence of Negative Free-Space Evidence:* The volumetric memory failed to execute line-of-sight raycasting to clear or bound unobserved obstacle tracks as the AMR's viewing geometry evolved.
@@ -596,6 +596,14 @@ State propagation algorithms, such as numerical integration through a kinematic 
 The lifetime of a state estimate cannot be governed by convenient software timeouts, such as an operating system watchdog or a communications transport buffer set to a round $100\text{ ms}$. Expiry is a physical calculation dictated by the mechanical tolerances of the workpiece and the validated growth rate of unobserved error. If a milling cutter operates with an allowable geometric tolerance of $0.5\text{ mm}$, and the tool carriage can accelerate under unexpected load disturbances at up to $4.0\text{ m/s}^2$, then after an observation dropout of $\Delta t = 20\text{ ms}$, the unmeasured displacement can reach $0.8\text{ mm}$ via the second-order expansion $\frac{1}{2} a (\Delta t)^2$. At the threshold of $15.8\text{ ms}$, the unobserved error envelope crosses the $0.5\text{ mm}$ tolerance limit and the belief expires, regardless of whether the software message queue remains healthy. The nervous system must invalidate that belief at the exact physical budget boundary. A frozen transform or an expired state held in a transport cache is far more hazardous than an explicit missing frame, because a missing frame triggers an immediate reflex or a controlled stop, whereas a stale transform allows the machine to drive full power into a physical fixture.
 
 A systems engineer must preserve the operational distinction between modeled uncertainty and error that the available measurements cannot observe. Modeled uncertainty expands predictably, widening the covariance matrix as process noise accumulates during prediction steps. Unobservable error, in contrast, occurs when the available sensors cannot distinguish between physical states, such as when redundant force sensors share an elastic mounting plate that deforms under thermal load, or when an in-hand scanner experiences unmeasured structural vibration along the tool arm. In these regimes, the estimator may report a tightly bounded covariance and negligible residual between redundant channels, falsely indicating high agreement while the physical tool is off target by several millimeters. Guarding against unobservable drift requires cross-modal validation across mechanically independent sensing channels and explicit hardware lineage records, verifying that redundant estimators do not share common-mode physical failure paths or uncalibrated mechanical compliance.
+
+::: {.callout-takeaways}
+- **Prediction Advances State but Generates Zero Evidence:** Forward-propagating a state vector through kinematic differential equations advances the timestamp, but evidence age ($t_{\text{age}}$) remains rooted at the raw measurement epoch. Calling a forward predictor without new measurements inflates spatial variance ($\mathbf{\Sigma}(t)$).
+- **Temporal Skew Across Moving Bodies Destroys Spatial Clearance:** In multi-entity relative motion ($v_{\text{rel}} = 0.5\text{ m/s}$), an unsynchronized measurement skew of $\Delta t = 20\text{ ms}$ induces $\Delta x = 10\text{ mm}$ of unmodeled geometric error, requiring all relative states to be strictly reconciled to the identical microsecond epoch.
+- **Innovation Gating Must Precede Sensor Fusion (The Midpoint Fallacy):** When two sensors disagree by more than their combined uncertainty margins (e.g., a camera sees a block at $145\text{ mm}$ and a tactile probe feels it at $149\text{ mm}$ with $1\text{ mm}$ bounds), blindly averaging them computes a mathematically optimal midpoint ($147\text{ mm}$) where no physical object actually exists. Systems must reject fusion and halt motion when Chi-squared ($\chi^2$) innovation gates fail, rather than driving the machine into thin air.
+- **Spatial Covariance Does Not Represent Physical Existence:** Covariance matrices quantify geometric variance assuming an object exists. If a tracked object is removed or occluded, spatial extrapolation continues blindly, requiring an explicit existence probability field ($P_{\text{exist}}(t)$) that decays upon negative visual evidence.
+- **State Expiry is Dictated by Physics, Not Software Timeouts:** Belief validity windows are bounded by mechanical tolerances and disturbance acceleration ($\tau_{\text{expire}} = \sqrt{2 \delta_{\text{tol}} / a_{\text{dist}}}$). Stale state records held in transport buffers are far more hazardous than explicit missing frames.
+:::
 
 @sec-intent takes up the synthesis of intent, where planning architectures and learned policies construct trajectories and select actions. Those planners must consume the state estimate under a strict contract. An action is defensible only while the underlying coordinate frame tree remains synchronized, the sensor epochs match within an analytical tolerance $\epsilon$, and the physical error bound remains within the task budget. When structural components deflect under rapid deceleration, applying a kinematic transform from one epoch to a perceptual point cloud captured at another introduces geometric shear that no learned policy can identify or compensate for at runtime. By ensuring that every belief retains its evidence age, its kinematic epoch token, and its validated physical bounds, the memory architecture provides the policy with an honest boundary between what the machine directly perceives and where physical ignorance begins.
 <!-- END -->
