@@ -852,19 +852,10 @@ renderDiv = function(thediv)
 
     local fmt='html'
     if quarto.doc.is_format("pdf") then fmt = "tex" end;
-    if #thediv.content > 0 and thediv.content[1].t == "Para" and
-      thediv.content[#thediv.content].t == "Para" then
-        table.insert(thediv.content[1].content, 1,
-          pandoc.RawInline(fmt, stylez.blockStart(tt, fmt)))
-        table.insert(thediv.content,
-          pandoc.RawInline(fmt, stylez.blockEnd(tt, fmt)))
-      else
-        table.insert(thediv.content, 1,
-          pandoc.RawBlock(fmt, stylez.blockStart(tt, fmt)))
-        table.insert(thediv.content,
-          pandoc.RawBlock(fmt, stylez.blockEnd(tt, fmt)))
-    end
-    --]]
+    table.insert(thediv.content, 1,
+      pandoc.RawBlock(fmt, stylez.blockStart(tt, fmt)))
+    table.insert(thediv.content,
+      pandoc.RawBlock(fmt, stylez.blockEnd(tt, fmt)))
   end
   return(thediv)
 end -- function renderDiv

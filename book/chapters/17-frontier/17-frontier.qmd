@@ -165,23 +165,23 @@ The structured anatomy of these register entries is formalized across representa
 
 To ensure auditable tracking of unmonitored invariants across software deployments and physical revisions, safety-critical systems represent open residual claims through a formal, structured data contract (@tbl-17-residual-claims-schema). The abstract schema below defines the mandatory fields, scalar types, physical SI units, and structural invariants required for every unresolved physical assumption:
 
-| Manifest & Field Category | Parameter & Type | Physical Unit | Invariant & Operational Contract |
-| :--- | :--- | :--- | :--- |
+| Manifest Category | Parameter & Type | Physical Unit | Invariant & Operational Contract |
+|:---|:---|:---|:---|
 | **Manifest Header** | `system_identifier` (`str`) | — | Unique embodied platform ID (e.g., `AMR-450-DEPOT`) |
-| | `hardware_build_rev` (`str`) | — | Target silicon and chassis revision (`HW-REV-3.2`) |
-| | `software_digest` (`str`) | — | Cryptographic binary hash (SHA-256) |
-| | `validity_limit_hours` (`float`) | hours | Maximum statutory operating window before review |
+| **Manifest Header** | `hardware_build_rev` (`str`) | — | Target silicon and chassis revision (`HW-REV-3.2`) |
+| **Manifest Header** | `software_digest` (`str`) | — | Cryptographic binary hash (SHA-256) |
+| **Manifest Header** | `validity_limit_hours` (`float`) | hours | Maximum statutory operating window before review |
 | **Residual Claims** | `entry_id` (`str`) | — | Unique claim tag (e.g., `CLAIM-FRIC-001`) |
-| | `target_safety_claim` (`str`) | — | Explicit safety invariant ($d_{\text{stop}} \le 0.50\text{ m}$) |
-| | `missing_observable` (`str`) | SI units | Unmeasured physical state (e.g., surface friction $\mu$) |
+| **Residual Claims** | `target_safety_claim` (`str`) | — | Explicit safety invariant ($d_{\text{stop}} \le 0.50\text{ m}$) |
+| **Residual Claims** | `missing_observable` (`str`) | SI units | Unmeasured physical state (e.g., surface friction $\mu$) |
 | **Physical Hazard** | `governing_law` (`str`) | — | Newton-Euler, Navier-Stokes, Joule heating |
-| | `time_to_harm` (`float`) | seconds | Time from unmodeled transition to irreversible yield |
+| **Physical Hazard** | `time_to_harm` (`float`) | seconds | Time from unmodeled transition to irreversible yield |
 | **Operational Containment** | `containment_type` (`enum`) | — | `FIRMWARE_PARAM_CLAMP`, `PASSIVE_MECHANICAL`, `PROOF_TEST` |
-| | `authority_limit` (`float`) | $\text{m/s}, \text{N}$ | Hard numeric setpoint ceiling ($v_{\max}, F_{\max}$) |
-| | `kinetic_energy_ceiling` | $\text{J}$ | Maximum allowable kinetic energy under fault ($E_k \le E_{\max}$) |
+| **Operational Containment** | `authority_limit` (`float`) | $\text{m/s}, \text{N}$ | Hard numeric setpoint ceiling ($v_{\max}, F_{\max}$) |
+| **Operational Containment** | `kinetic_energy_ceiling` (`float`) | $\text{J}$ | Maximum allowable kinetic energy under fault ($E_k \le E_{\max}$) |
 | **Predeclared Closure** | `closure_modality` (`str`) | — | Transducer technology or formal method required |
-| | `sample_trials` (`int`) | count | Minimum empirical sample exposure ($N \ge 1000$) |
-| | `confidence_level` (`float`) | — | Statistical confidence threshold ($1 - \alpha \ge 0.999$) |
+| **Predeclared Closure** | `sample_trials` (`int`) | count | Minimum empirical sample exposure ($N \ge 1000$) |
+| **Predeclared Closure** | `confidence_level` (`float`) | — | Statistical confidence threshold ($1 - \alpha \ge 0.999$) |
 : Concrete Data Schema: Epistemic Residual-Claims Register. {#tbl-17-residual-claims-schema}
 
 ## Failures Without Detectors {#sec-frontier-17-4}
@@ -211,7 +211,7 @@ In reality, physical containment had completely failed due to an unmonitored, de
 2. **Elastic-Plastic Euler Buckling:** Under severe axial compression, the drill pipe exceeded its critical Euler buckling load ($P_{\text{cr}} = \pi^2 E I / L_{\text{eff}}^2$). The pipe buckled laterally, deflecting out of the wellbore centerline and pinning itself firmly against the inner wall of the blowout preventer casing.
 3. **Shear Blade Geometric Incompatibility:** The Cameron blind shear rams were designed, tested, and certified assuming a concentrically aligned drill pipe positioned squarely in the center of the bore. When the hardened V-shaped shear blades advanced, the off-center, buckled pipe was crushed and folded against the casing wall rather than cleanly severed. The flattened pipe jammed between the ram blocks, preventing the elastomeric seals from seating together and leaving a massive annular cross-section open for hydrocarbons to continue surging upward.
 
-*Systems significance.* The failure of the Deepwater Horizon blind shear ram is a definitive real-world manifestation of observational indistinguishability ($y_A(t) \equiv y_B(t)$). The subsea BOP instrumentation monitored only hydraulic supply pressure and piston stroke position; it possessed zero internal proximity sensors, magnetic resonance coils, or ultrasound transducers to observe the lateral spatial displacement or cross-sectional deformation of the drill pipe inside the casing. Control software operated under the unmonitored physical premise that the drill pipe remained concentric. Because the physical time-to-harm from pipe buckling to containment breach was instantaneous under blowout flow, and because the failure was completely detectorless to the control loop, software commands could not prevent disaster. Containment in such extreme regimes cannot rely on blind hydraulic actuation; it requires structural containment envelopes, multi-plane redundant shear geometries capable of severing off-center cross-sections, and hard physical proof-tests.[^fn-inc-deepwater-horizon]
+*Systems significance.* The failure of the Deepwater Horizon blind shear ram is a definitive real-world manifestation of observational indistinguishability ($y_A(t) \equiv y_B(t)$). The subsea BOP instrumentation monitored only hydraulic supply pressure and piston stroke position; it possessed zero internal proximity sensors, magnetic resonance coils, or ultrasound transducers to observe the lateral spatial displacement or cross-sectional deformation of the drill pipe inside the casing. Control software operated under the unmonitored physical premise that the drill pipe remained concentric. Because the physical time-to-harm from pipe buckling to containment breach was instantaneous under blowout flow, and because the failure was completely detectorless to the control loop, software commands could not prevent disaster. Containment in such extreme regimes cannot rely on blind hydraulic actuation; it requires structural containment envelopes, multi-plane redundant shear geometries capable of severing off-center cross-sections, and hard physical proof-tests.
 :::
 
 An identical detectorless challenge governs dynamic legged locomotion across unstructured disaster debris (@fig-17-humanoid-disaster-rubble). While exteroceptive vision and LiDAR can construct dense point clouds of irregular rubble, they cannot determine whether a fractured cinderblock will shear, tip, or crumble under footfall loading prior to touchdown. Because ground-reaction collapse occurs within tens of milliseconds—far faster than an end-to-end vision network can re-infer footstep trajectories—safety cannot rely on vision software. Traversability depends on low-level joint torque reflexes, passive foot compliance, and deterministic center-of-mass momentum bounds that arrest or adapt gait dynamics without waiting for high-level neural replanning.
@@ -283,8 +283,6 @@ A taxonomy of these unobservable physical failure modes across transduction, con
 [^fn-hw-piezoresistive-drift]: Piezoresistive diaphragms and strain gauges undergo mechanical creep and lattice fatigue over thermal cycles, shifting baseline offset voltages ($V_{\text{offset}} = V_0 + \kappa t$). Single-channel software filters cannot distinguish transducer aging from genuine physical changes without out-of-band calibration.
 
 [^fn-math-contact-lipschitz]: Rigid-body dynamics with Coulomb friction exhibit non-smooth velocity jumps ($\dot{q}^+ \neq \dot{q}^-$) and Painlevé paradoxes. Neural policies lacking uniform Lipschitz bounds cannot guarantee closed-loop reachability across impact manifolds without mechanical compliance or hardware limiters.
-
-[^fn-inc-deepwater-horizon]: CSB and USCG forensics confirmed the Macondo drill pipe buckled under flow-induced compressive loads, deflecting off-center. When blind shear rams closed, the flattened pipe jammed against the casing, causing total containment failure despite nominal hydraulic telemetry.
 
 [^fn-hw-bus-serialization]: GMSL2 deserializers introduce fixed serialization latencies ($16\text{--}33\text{ ms}$). POSIX IPC stacks suffer tail latency ($P_{99.9} > 50\text{ ms}$), creating dangerous sensory freshness deficits.
 

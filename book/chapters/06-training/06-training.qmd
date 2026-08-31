@@ -163,7 +163,10 @@ $$Q(s_t, a_t) \leftarrow r(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a')$$
 To evaluate the target value, the $\max_{a'}$ operator queries the parameterized critic network $Q_\phi(s', a')$ across the continuous action space. For actions $a'$ that were never executed in the logging dataset $\mathcal{D}$, the function approximator has received zero training signal. Due to neural network generalization variance, the unconstrained critic outputs erroneously large Q-values for some OOD actions. The $\max$ operator greedily selects these spurious peaks, propagating over-optimistic value errors backwards through the Bellman graph. When deployed on the physical machine, the actor greedily selects these ungrounded OOD actions, commanding physically unviable motor voltages that cause immediate joint stalls or boundary collisions.
 
 To prevent value explosion without querying the physical environment, **Conservative Q-Learning (CQL)** adds a regularization penalty directly to the critic loss.[^fn-math-cql-bound] CQL penalizes high Q-values on out-of-distribution actions while maximizing the expected Q-value on transitions within the empirical dataset:
-$$\min_Q \alpha \left( \mathbb{E}_{s \sim \mathcal{D}, a \sim \mu(a \mid s)} [Q(s, a)] - \mathbb{E}_{(s, a) \sim \mathcal{D}} [Q(s, a)] \right) + \frac{1}{2} \mathbb{E}_{(s, a, s') \sim \mathcal{D}} \left[ \left( Q(s, a) - \hat{\mathcal{B}}^{\pi} \hat{Q}(s, a) \right)^2 \right]$$
+$$\begin{aligned}
+\min_Q &\;\alpha \left( \mathbb{E}_{s \sim \mathcal{D}, a \sim \mu(a \mid s)} [Q(s, a)] - \mathbb{E}_{(s, a) \sim \mathcal{D}} [Q(s, a)] \right) \\
+&+ \frac{1}{2} \mathbb{E}_{(s, a, s') \sim \mathcal{D}} \left[ \left( Q(s, a) - \hat{\mathcal{B}}^{\pi} \hat{Q}(s, a) \right)^2 \right]
+\end{aligned}$$
 where $\mu(a \mid s)$ is a wide sampling distribution (such as a uniform distribution over the actuator limits or the current policy). By explicitly pushing down Q-values outside the data manifold, CQL mathematically guarantees that the learned critic is a lower bound on the true policy performance ($\hat{Q}^\pi(s, a) \le Q^\pi(s, a)$), preventing dangerous extrapolation beyond the physical support of the dataset.
 
 #### Compounding Covariate Error and State Support Drift {.unnumbered}
@@ -190,7 +193,10 @@ Even with $99.5\%$ one-step precision, an off-distribution departure is virtuall
 Under open-loop cloning, once perturbed at step $\tau$, lateral displacement error at step $t > \tau$ grows uncorrected as $d(t) \approx \frac{1}{2} a_{\text{bias}} ((t - \tau)\Delta t)^2$. Summing the expected drift across all steps under compounding covariate departure yields:
 $$D_{\text{cloning}} \approx \frac{1}{2} a_{\text{bias}} \Delta t^2 \sum_{t=1}^T t^2 \epsilon \approx \frac{1}{6} a_{\text{bias}} \Delta t^2 T^3 \epsilon$$
 Substituting parameters:
-$$D_{\text{cloning}} \approx \frac{1}{6} \times 0.05\text{ m/s}^2 \times (0.02\text{ s})^2 \times (500)^3 \times 0.005 = \frac{1}{6} \times 0.05 \times 4.0\times 10^{-4} \times 1.25\times 10^8 \times 0.005 \approx 2.08\text{ m}$$
+$$\begin{aligned}
+D_{\text{cloning}} &\approx \frac{1}{6} \times (0.05\text{ m/s}^2) \times (0.02\text{ s})^2 \times (500)^3 \times 0.005 \\
+&= \frac{1}{6} \times 0.05 \times (4.0\times 10^{-4}) \times (1.25\times 10^8) \times 0.005 \approx 2.08\text{ m}
+\end{aligned}$$
 
 *Step 3: Cumulative trajectory drift under on-policy recovery*
 Under on-policy recovery training, the policy actively steers back to the corridor within $\tau_{\text{rec}} = 5\Delta t$, bounding local displacement per error to $d_{\text{local}} = \frac{1}{2} a_{\text{bias}} (5\Delta t)^2 = 0.5 \times 0.05 \times (0.10)^2 = 2.5\times 10^{-4}\text{ m} = 0.25\text{ mm}$. Cumulative drift scales linearly as $\mathcal{O}(T \epsilon)$:
