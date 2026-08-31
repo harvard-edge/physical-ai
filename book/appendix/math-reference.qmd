@@ -70,7 +70,7 @@ $$(\mathbf{T}_A^B)^{-1} = \mathbf{T}_B^A = \begin{bmatrix} (\mathbf{R}_A^B)^T & 
 ### Quaternions for Singularity-Free Rotations
 While Euler angles (Roll, Pitch, Yaw) suffer from kinematic singularities (**Gimbal Lock** when pitch approaches $\pm 90^\circ$, causing division by zero in coordinate transformations), unit quaternions provide a continuous, computationally robust 4-parameter representation:
 
-$$\mathbf{q} = \begin{bmatrix} w \\ x \\ y \\ z \end{bmatrix} = \begin{bmatrix} \cos(\theta / 2) \\ \mathbf{u} \sin(\theta / 2) \end{bmatrix}, \quad \|\mathbf{q}\|_2 = w^2 + x^2 + y^2 + z^2 = 1$$
+$$\mathbf{q} = [w, x, y, z]^T = [\cos(\theta / 2), \mathbf{u}^T \sin(\theta / 2)]^T, \quad \|\mathbf{q}\|_2^2 = w^2 + x^2 + y^2 + z^2 = 1$$
 
 where $\mathbf{u} \in \mathbb{R}^3$ is the unit rotation axis and $\theta$ is the rotation angle.
 
@@ -827,11 +827,11 @@ $$\delta: \mathcal{S}_{\text{auth}} \times \{0, 1\}^4 \longrightarrow \mathcal{S
 The state transition logic is defined by the strict priority hierarchy:
 
 $$\delta(s, \mathbf{e}) = \begin{cases}
-\text{ESTOP} & \text{if } e_{\text{estop}} = 1 \\
-\text{MANUAL} & \text{if } e_{\text{estop}} = 0 \land e_{\text{human}} = 1 \\
-\text{SHARED} & \text{if } e_{\text{estop}} = 0 \land e_{\text{human}} = 0 \land e_{\text{shared\_req}} = 1 \\
-\text{AUTONOMOUS} & \text{if } e_{\text{estop}} = 0 \land e_{\text{human}} = 0 \land e_{\text{lease}} = 1 \land e_{\text{cbf}} = 1 \\
-\text{ESTOP} & \text{if } s = \text{AUTONOMOUS} \land (e_{\text{lease}} = 0 \lor e_{\text{cbf}} = 0)
+\text{ESTOP}, & \text{if } e_{\text{estop}} = 1 \\
+\text{MANUAL}, & \text{if } e_{\text{human}} = 1 \land \neg e_{\text{estop}} \\
+\text{SHARED}, & \text{if } e_{\text{shared\_req}} = 1 \land \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
+\text{AUTONOMOUS}, & \text{if } e_{\text{lease}} \land e_{\text{cbf}} \land \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
+\text{ESTOP}, & \text{otherwise}
 \end{cases}$$
 
 Hardware Safe Torque Off lines enforce the preemption invariant: if $e_{\text{estop}} = 1$, gate driver power is physically unlatched within $< 5.0\,\mu\text{s}$, regardless of processor state.
