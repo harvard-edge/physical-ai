@@ -152,39 +152,34 @@ When the untrusted application processor prepares a new action chunk proposal, i
 
 On the receiving side, the deterministic real-time microcontroller latches the newest proposal without ever acquiring a lock or stalling execution. At the start of its control cycle, the microcontroller reads the sequence counter with load-acquire semantics (`LDAR`). If the counter is odd, indicating that the producer is midway through updating the buffer, the consumer immediately aborts the read, retaining its existing validated trajectory spline. If the counter is even, the microcontroller copies the payload into its private, tightly-coupled static memory and re-reads the sequence counter. If the counter changed during the copy, a torn read occurred due to a concurrent write, and the frame is safely discarded. If the sequence counter remained identical and even throughout the read, the latch is verified: the microcontroller validates the cyclic redundancy checksum (CRC-32), checks timestamp freshness against its hardware timer, and accepts the proposal. Under this protocol, read latencies on the real-time microcontroller remain strictly bounded below $1.5\ \mu\text{s}$, completely decoupled from the scheduling state or operating system load of the host processor.
 
-```
-Algorithm 4.1: Lock-Free Trajectory Seqlock Exchange Protocol
-═════════════════════════════════════════════════════════════════════════════════
-Input (Writer):  Proposal payload P = {seq_id, timestamp_ns, lease_us, waypoints[1..K], crc32}
-Input (Reader):  Target local buffer B_local in tightly-coupled static SRAM
-State:           Shared SRAM mailbox: atomic uint64 c_seq (init 0), payload slot Slot_shared
-Output (Reader): Verified action chunk P_latched or rejection status
+::: {.callout-algorithm title="Algorithm 4.1: Lock-Free Trajectory Seqlock Exchange Protocol"}
+**Input (Writer):** Proposal payload $P = \{\text{seq\_id}, \text{timestamp\_ns}, \text{lease\_us}, \mathbf{w}_{1..K}, \text{crc32}\}$.  
+**Input (Reader):** Target local buffer $B_{\text{local}}$ in tightly-coupled static SRAM.  
+**State:** Shared SRAM mailbox: atomic `uint64` $c_{\text{seq}}$ (init 0), payload slot $\text{Slot}_{\text{shared}}$.  
+**Output (Reader):** Verified action chunk $P_{\text{latched}}$ or status rejection code.
 
-Procedure PUBLISH_ACTION_CHUNK(P):
-  1: c_curr ← ATOMIC_LOAD_EXPLICIT(c_seq, memory_order_relaxed)
-  2: ATOMIC_STORE_EXPLICIT(c_seq, c_curr + 1, memory_order_relaxed)  ▷ Mark odd: write in progress
-  3: HARDWARE_MEMORY_BARRIER(DMB_ISHST)                              ▷ Store barrier pushes counter
-  4: COPY_MEMORY(Slot_shared.payload, P, sizeof(P))                   ▷ Copy multi-word trajectory
-  5: HARDWARE_MEMORY_BARRIER(DMB_ISH)                                ▷ Full barrier: payload visible
-  6: ATOMIC_STORE_EXPLICIT(c_seq, c_curr + 2, memory_order_release)  ▷ Mark even: publish committed
+**Procedure `PUBLISH_ACTION_CHUNK`($P$):**
 
-Procedure LATCH_LATEST_ACTION_CHUNK(B_local, current_time_ns):
-  1: c_start ← ATOMIC_LOAD_EXPLICIT(c_seq, memory_order_acquire)     ▷ Load initial sequence counter
-  2: if c_start is ODD then
-  3:     return STATUS_WRITER_ACTIVE                                 ▷ Writer active; retain prior spline
-  4: HARDWARE_MEMORY_BARRIER(DMB_ISHLD)                              ▷ Load barrier prevents reordering
-  5: COPY_MEMORY(B_local, Slot_shared.payload, sizeof(Payload))      ▷ Latch payload to local SRAM
-  6: HARDWARE_MEMORY_BARRIER(DMB_ISHLD)                              ▷ Ensure payload reads finish
-  7: c_end ← ATOMIC_LOAD_EXPLICIT(c_seq, memory_order_acquire)       ▷ Re-read sequence counter
-  8: if c_start ≠ c_end then
-  9:     return STATUS_TORN_READ                                     ▷ Concurrent write detected
- 10: if COMPUTE_CRC32(B_local) ≠ B_local.crc32 then
- 11:     return STATUS_CHECKSUM_INVALID                              ▷ Bit-flip corruption detected
- 12: if (current_time_ns - B_local.timestamp_ns) > B_local.lease_us * 1000 then
- 13:     return STATUS_LEASE_EXPIRED                                 ▷ Proposal exceeded time validity
- 14: return STATUS_VALID_LATCHED                                     ▷ Proposal verified for spline feed
-═════════════════════════════════════════════════════════════════════════════════
-```
+1. $c_{\text{curr}} \leftarrow \text{ATOMIC\_LOAD\_EXPLICIT}(c_{\text{seq}}, \text{memory\_order\_relaxed})$
+2. $\text{ATOMIC\_STORE\_EXPLICIT}(c_{\text{seq}}, c_{\text{curr}} + 1, \text{memory\_order\_relaxed})$ *(Mark odd: write in progress)*
+3. $\text{HARDWARE\_MEMORY\_BARRIER}(\text{DMB\_ISHST})$ *(Store barrier pushes counter)*
+4. $\text{COPY\_MEMORY}(\text{Slot}_{\text{shared}}.\text{payload}, P, \text{sizeof}(P))$ *(Copy multi-word trajectory)*
+5. $\text{HARDWARE\_MEMORY\_BARRIER}(\text{DMB\_ISH})$ *(Full barrier: payload visible)*
+6. $\text{ATOMIC\_STORE\_EXPLICIT}(c_{\text{seq}}, c_{\text{curr}} + 2, \text{memory\_order\_release})$ *(Mark even: publish committed)*
+
+**Procedure `LATCH_LATEST_ACTION_CHUNK`($B_{\text{local}}, t_{\text{now}}$):**
+
+1. $c_{\text{start}} \leftarrow \text{ATOMIC\_LOAD\_EXPLICIT}(c_{\text{seq}}, \text{memory\_order\_acquire})$ *(Load initial counter)*
+2. **if** $c_{\text{start}}$ is **ODD then return** $\text{STATUS\_WRITER\_ACTIVE}$ *(Writer active; retain prior spline)*
+3. $\text{HARDWARE\_MEMORY\_BARRIER}(\text{DMB\_ISHLD})$ *(Load barrier prevents reordering)*
+4. $\text{COPY\_MEMORY}(B_{\text{local}}, \text{Slot}_{\text{shared}}.\text{payload}, \text{sizeof}(\text{Payload}))$ *(Latch to local SRAM)*
+5. $\text{HARDWARE\_MEMORY\_BARRIER}(\text{DMB\_ISHLD})$ *(Ensure payload reads finish)*
+6. $c_{\text{end}} \leftarrow \text{ATOMIC\_LOAD\_EXPLICIT}(c_{\text{seq}}, \text{memory\_order\_acquire})$ *(Re-read sequence counter)*
+7. **if** $c_{\text{start}} \neq c_{\text{end}}$ **then return** $\text{STATUS\_TORN\_READ}$ *(Concurrent write detected)*
+8. **if** $\text{COMPUTE\_CRC32}(B_{\text{local}}) \neq B_{\text{local}}.\text{crc32}$ **then return** $\text{STATUS\_CHECKSUM\_INVALID}$
+9. **if** $(t_{\text{now}} - B_{\text{local}}.\text{timestamp\_ns}) > B_{\text{local}}.\text{lease\_us} \times 1000$ **then return** $\text{STATUS\_LEASE\_EXPIRED}$
+10. **return** $\text{STATUS\_VALID\_LATCHED}$ *(Proposal verified for spline synthesis)*
+:::
 
 The trajectory payload exchanged through this lock-free mailbox follows the strict schema defined in @tbl-04-schema-action-chunk, establishing explicit data types, SI units, and structural invariants.
 
@@ -610,9 +605,9 @@ In @sec-evaluation, we complete the policy foundation by establishing how to eva
 :::
 <!-- END -->
 
-[^fn-math-zoh-phaselag]: The zero-order hold (ZOH) transfer function $G_{\text{zoh}}(j\omega) = e^{-j \omega T_s / 2} \cdot T_s \operatorname{sinc}(\frac{\omega T_s}{2\pi})$ introduces an unavoidable half-sample phase lag $\Delta \phi = -\frac{\omega T_s}{2}$ radians. Discrete sampling directly degrades feedback phase margin independently of computational delay $T_d$.
+[^fn-math-zoh-phaselag]: The zero-order hold introduces an unavoidable half-sample phase lag $\Delta \phi = -\omega T_s / 2$, degrading phase margin independently of computational delay $T_d$.
 
-[^fn-hw-dma-coherence]: On heterogeneous SoCs without hardware cache coherency, software must execute cache clean and invalidate barriers (`SCB_CleanInvalidateDCache`) around peripheral DMA transfers. An omitted flush leaves stale cache lines, silently corrupting motor buffers without raising CPU fault traps.
+[^fn-hw-dma-coherence]: On non-coherent SoCs, software must execute cache invalidation barriers around peripheral DMA transfers to prevent stale cache lines from corrupting motor buffers.
 
 [^fn-hw-epwm-deadtime]: Dedicated motor control timers (TI `ePWM`, STM32 `TIM1`) inject programmable dead-time delays ($100\text{--}500\text{ ns}$) between complementary high-side and low-side gate signals (`TIMx_BDTR`, `DBRED`), preventing catastrophic direct-current bus shoot-through across power inverter phase legs.
 

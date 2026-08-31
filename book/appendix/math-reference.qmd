@@ -820,17 +820,13 @@ In collaborative and supervisory robotics, physical control authority transfers 
 
 ### The 4-State Authority Machine and Preemption Invariant
 
-Let $\mathcal{S}_{\text{auth}} = \{\text{MANUAL}, \text{SHARED}, \text{AUTONOMOUS}, \text{ESTOP}\}$ denote the set of discrete authority states. State transitions are governed by input event vector $\mathbf{e} = [e_{\text{estop}}, e_{\text{human}}, e_{\text{lease}}, e_{\text{cbf}}]^T \in \{0, 1\}^4$:
-
-$$\delta: \mathcal{S}_{\text{auth}} \times \{0, 1\}^4 \longrightarrow \mathcal{S}_{\text{auth}}$$
-
-The state transition logic is defined by the strict priority hierarchy:
+The state transition mapping $\delta: \mathcal{S}_{\text{auth}} \times \{0, 1\}^4 \to \mathcal{S}_{\text{auth}}$ enforces strict priority:
 
 $$\delta(s, \mathbf{e}) = \begin{cases}
 \text{ESTOP}, & \text{if } e_{\text{estop}} = 1 \\
-\text{MANUAL}, & \text{if } e_{\text{human}} = 1 \land \neg e_{\text{estop}} \\
-\text{SHARED}, & \text{if } e_{\text{shared\_req}} = 1 \land \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
-\text{AUTONOMOUS}, & \text{if } e_{\text{lease}} \land e_{\text{cbf}} \land \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
+\text{MANUAL}, & \text{if } e_{\text{human}} = 1, \neg e_{\text{estop}} \\
+\text{SHARED}, & \text{if } e_{\text{shared}} = 1, \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
+\text{AUTONOMOUS}, & \text{if } e_{\text{lease}} \land e_{\text{cbf}}, \neg (e_{\text{estop}} \lor e_{\text{human}}) \\
 \text{ESTOP}, & \text{otherwise}
 \end{cases}$$
 
@@ -840,9 +836,7 @@ Hardware Safe Torque Off lines enforce the preemption invariant: if $e_{\text{es
 
 When transitioning between autonomous policy command $\mathbf{u}_{\text{policy}}(t)$ and human operator input $\mathbf{u}_{\text{human}}(t)$ over transition window $T_{\text{blend}} \in [100, 200]\text{ ms}$, the blended command is:
 
-$$\mathbf{u}_{\text{cmd}}(t) = (1 - S(\alpha(t))) \cdot \mathbf{u}_{\text{policy}}(t) + S(\alpha(t)) \cdot \mathbf{u}_{\text{human}}(t)$$
-
-$$\alpha(t) = \frac{t - t_{\text{takeover}}}{T_{\text{blend}}}, \quad \alpha \in [0, 1]$$
+$$\mathbf{u}_{\text{cmd}}(t) = (1 - S(\alpha(t))) \mathbf{u}_{\text{policy}}(t) + S(\alpha(t)) \mathbf{u}_{\text{human}}(t), \quad \text{with } \alpha(t) = \frac{t - t_{\text{takeover}}}{T_{\text{blend}}} \in [0, 1]$$
 
 To eliminate torque derivative shocks ($\dot{\mathbf{u}} \to \infty$) and mechanical jerk impulses ($\dddot{\mathbf{q}} \to \infty$), the blending polynomial $S(\alpha) = \sum_{k=0}^5 c_k \alpha^k$ must satisfy six physical boundary conditions:
 

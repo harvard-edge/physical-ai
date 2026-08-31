@@ -182,7 +182,7 @@ Rather than commanding actuator voltages directly, the intent stage packages eac
 | `lease_id` | `uint64_t` | — | Monotonically increasing 64-bit sequence identifier |
 | `target_entity_id` | `uint32_t` | — | Hash of target entity in persistent spatial memory |
 | `pose_target_se3` | `float32[4][4]` | $\text{m}, \text{rad}$ | Valid $\text{SE}(3)$ pose matrix: $\mathbf{R} \in \text{SO}(3), \det(\mathbf{R})=1, \mathbf{p} \in \mathbb{R}^3$ |
-| `spatial_corridor_box` | `float32[6]` | $\text{m}$ | Authorized bounding envelope $[x_{\min}, y_{\min}, z_{\min}, x_{\max}, y_{\max}, z_{\max}]$ |
+| `spatial_corridor_box` | `float32[6]` | $\text{m}$ | Authorized 3D bounding box $[\mathbf{p}_{\min}, \mathbf{p}_{\max}] \in \mathbb{R}^6$ |
 | `t_generated_ns` | `uint64_t` | $\text{ns}$ | PTP monotonic hardware timestamp at deliberation completion |
 | `t_expire_ns` | `uint64_t` | $\text{ns}$ | Hard expiration timestamp; enforces $t_{\text{expire}} - t_{\text{gen}} \le \tau_{\text{valid}}$ |
 | `max_permissible_jerk` | `float32` | $\text{m/s}^3$ | Maximum allowable end-effector / joint jerk magnitude |
@@ -511,17 +511,17 @@ These cognitive stages define how an embodied agent perceives, remembers, reason
 
 [^fn-arch-curriculum-deepdives]: **Curriculum Architecture.** While this chapter establishes the overarching mental model of embodied cognition, deep algorithmic formulations for each stage are detailed in Part III (@sec-perception through @sec-enforcement).
 
-[^fn-trans-unprivileged-control]: **For Control & Robotics Readers:** Treating the neural network as an "unprivileged proposer" preserves learned generalizability while isolating the physical actuators behind a deterministic Control Barrier Function (CBF) safety filter.
+[^fn-trans-unprivileged-control]: Unprivileged proposal isolates actuators behind deterministic Control Barrier Functions.
 
 [^fn-trans-roofline-ai]: **For AI & Theory Readers:** The Patterson Roofline proves why scaling raw FLOP capacity on edge SoCs cannot increase inference frequency if the memory bus bandwidth $B_{\text{mem}}$ remains the operational bottleneck.
 
-[^fn-trans-vla-concept]: **For ML & Systems Readers:** In physical AI, a Vision-Language-Action (VLA) model replaces discrete text token generation with continuous trajectory chunks $\mathbf{a}_{t:t+H}$ commanding joint angles $\mathbf{q}$ or end-effector twists.
+[^fn-trans-vla-concept]: **For MLSys Readers:** A VLA model replaces discrete text tokens with continuous trajectory chunks $\mathbf{a}_{t:t+H}$ commanding joint angles or twists.
 
 [^fn-hw-lpddr5-bandwidth]: **LPDDR5 Memory Subsystem Throughput.** The $204.8\text{ GB/s}$ peak bandwidth on a canonical heterogeneous SoC (256-bit LPDDR5 at $6400\text{ MT/s}$) drops to $70\text{--}75\%$ sustained efficiency ($145\text{ GB/s}$) due to DRAM bank turnaround and auto-refresh ($t_{\text{RFC}}$).
 
 [^fn-math-roofline-derivation]: **Roofline Hardware Ridge Point.** With $P_{\text{peak}} = 275\text{ TFLOP/s}$ and $B_{\text{mem}} = 204.8\text{ GB/s}$, the ridge point is $I_{\text{knee}} = 1342.8\text{ FLOP/byte}$. Single-token generation ($I \approx 1$) achieves $<0.1\%$ peak compute efficiency ($99.9\%$ idle time stalled on DRAM).
 
-[^fn-math-action-chunking]: **Action Chunk Horizon Bounds.** Horizon $H$ balances latency amortization ($\tau_{\text{amort}} = \tau_{\text{inf}}/H$) against open-loop state drift $\|\mathbf{e}_{t+H}\| \le \frac{\epsilon_w + \epsilon_{\pi}}{L_f}(e^{L_f H \Delta t} - 1)$. Setting $H \in [16, 64]$ yields stable $320\text{--}1280\text{ ms}$ windows.
+[^fn-math-action-chunking]: **Action Chunk Horizon Bounds.** Horizon $H$ balances latency amortization against open-loop state drift $\|\mathbf{e}_{t+H}\| \le \frac{\epsilon_{\text{tot}}}{L_f}(e^{L_f H \Delta t} - 1)$. Setting $H \in [16, 64]$ yields stable $320\text{--}1280\text{ ms}$ windows.
 
 [^fn-math-lipschitz-calibration]: **Non-Lipschitz Neural Mappings.** Deep ReLU/GELU networks exhibit global Lipschitz constants $L$ that scale exponentially with depth ($\prod \|W_l\|$). Infinitesimal sensor perturbations can induce massive trajectory jumps without pointwise safety guarantees.
 
@@ -531,5 +531,5 @@ These cognitive stages define how an embodied agent perceives, remembers, reason
 
 [^fn-inc-tesla-williston]: **The 2016 Williston Tesla Collision.** The NTSB investigation [@ntsb2017tesla] established that the monocular vision system failed to distinguish the white side of a crossing tractor-semitrailer against a bright sky, resulting in zero braking prior to impact.
 
-[^fn-hw-safety-silicon]: **Hardware Register Trip Zones.** In safety-critical robots, System 1 runs on an isolated MCU (e.g., a canonical safety-certified bare-metal MCU). When invariants fail ($d_{\text{stop}} > D_{\text{clear}}$), hardware trip zones force PWMs to Hi-Z within $<100\text{ ns}$ (Safe Torque Off).
+[^fn-hw-safety-silicon]: **Hardware Trip Zones.** When invariants fail ($d_{\text{stop}} > D_{\text{clear}}$), hardware trip zones force PWMs to Hi-Z within $<100\text{ ns}$ (Safe Torque Off).
 
