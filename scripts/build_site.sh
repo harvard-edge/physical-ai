@@ -54,8 +54,13 @@ if [[ -f "$BUILD_DIR/Physical-AI.pdf" ]]; then
 HTMLEOF
 fi
 
-echo "==> Creating CNAME and .nojekyll"
+echo "==> Creating CNAME, .nojekyll, and robots.txt (noindex)"
 echo "$SITE_DOMAIN" > "$SITE_DIR/CNAME"
 touch "$SITE_DIR/.nojekyll"
+
+cat << 'ROBOTSEOF' > "$SITE_DIR/robots.txt"
+User-agent: *
+Disallow: /
+ROBOTSEOF
 
 echo "==> Site build complete in $SITE_DIR"
