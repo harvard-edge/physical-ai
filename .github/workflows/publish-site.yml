@@ -1,0 +1,129 @@
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-site
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+  PAI_SITE_DOMAIN: ${{ vars.PAI_SITE_DOMAIN || 'physical.mlsysbook.ai' }}
+
+jobs:
+  build:
+    name: Render and assemble site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pages: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system dependencies & LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk \
+            tex-gyre \
+            lmodern \
+            librsvg2-bin \
+            poppler-utils \
+            texlive-fonts-extra \
+            texlive-fonts-recommended \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-latex-recommended \
+            texlive-plain-generic \
+            texlive-science
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.9.36
+
+      - name: Build the full site and PDF
+        run: |
+          chmod +x scripts/build_site.sh
+          ./scripts/build_site.sh
+
+      - name: Validate Pages payload
+        run: |
+          test -f _site/index.html
+          test -f _site/pdf/Physical-AI.pdf
+          test -f _site/pdf/index.html
+          test -f _site/CNAME
+          test -f _site/.nojekyll
+          {
+            echo "Domain: $PAI_SITE_DOMAIN"
+            echo "HTML pages: $(find _site -name '*.html' | wc -l)"
+            echo "PDF: _site/pdf/Physical-AI.pdf"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: [build]
+    permissions:
+      contents: read
+      id-token: write
+      pages: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Verify live site
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl -fsSL "https://$PAI_SITE_DOMAIN/" -o /tmp/pai-index.html &&
+               grep -q "Physical AI" /tmp/pai-index.html &&
+               curl -fsSI "https://$PAI_SITE_DOMAIN/pdf/Physical-AI.pdf" >/dev/null; then
+              echo "Live site verified on attempt $attempt" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Waiting for Pages propagation ($attempt/12)..."
+            sleep 10
+          done
+          echo "Live site did not verify after Pages deployment."
+          exit 1
+
+      - name: Summarize deployment
+        run: |
+          {
+            echo "Published: ${{ steps.deployment.outputs.page_url }}"
+            echo "Custom domain: https://$PAI_SITE_DOMAIN/"
+            echo "PDF URL: https://$PAI_SITE_DOMAIN/pdf/Physical-AI.pdf"
+          } >> "$GITHUB_STEP_SUMMARY"
