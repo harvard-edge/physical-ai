@@ -2,8 +2,6 @@
 
 ![*Systems organ focus: The brain.* The four-tier physical AI systems architecture highlights the cognitive deliberative layer. Operating above the real-time nervous system and physical body, the learned brain processes high-dimensional multimodal streams to generate candidate proposals, with execution authority reserved for downstream deterministic safety governors.](figures/fig_locator.svg){#fig-locator fig-pos="H" width=100%}
 
-*How can an unverified neural policy that occasionally hallucinates be trusted to propose actions for a physical machine?*
-
 Every embodied agent requires a cognitive core—a brain that perceives physical reality, maintains spatial memory, and synthesizes candidate motion trajectories. In classical robotics, this layer was authored through explicit differential equations and state machines, which break down in unstructured environments. Physical AI introduces high-capacity foundation models to generalize across open worlds. Yet this statistical power introduces critical vulnerabilities: neural models forfeit formal verifiability, output uncalibrated confidence, and collide with the physical Memory Wall during real-time weight streaming. To engineer dependable machines, we must treat the learned brain as an unprivileged proposal engine—harnessing its generalizability while delegating all execution authority to deterministic safety governors.
 
 {{< pagebreak >}}
@@ -255,7 +253,7 @@ To guarantee smooth physical execution, systems implement **Temporal Ensembling*
 
 $$\mathbf{a}_t = \frac{\sum_{i=0}^{\min(t, H-1)} w_i \, \mathbf{a}_{t \mid t-i}}{\sum_{i=0}^{\min(t, H-1)} w_i}, \quad w_i = \exp(-m \cdot i)$$
 
-where $\mathbf{a}_{t \mid t-i}$ represents the action predicted for time step $t$ by the action chunk initiated at time $t-i$, and $m > 0$ is a tunable temporal discount factor. The resulting smoothed waypoints are interpolated via quintic ($C^2$) splines by the downstream real-time nervous system at $1000\text{ Hz}$, ensuring continuous positions, velocities, and accelerations across all actuator joints.
+where $\mathbf{a}_{t \mid t-i}$ represents the action predicted for time step $t$ by the action chunk initiated at time $t-i$, and $m > 0$ is a tunable temporal discount factor. The resulting smoothed waypoints are interpolated via quintic ($C^2$) splines by the downstream real-time nervous system at $1000\text{ Hz}$, ensuring continuous positions, velocities, and accelerations across all actuator joints while preserving valid $SE(3)$ transformations (using Lie algebra $\mathfrak{se}(3)$ exponential mapping or Spherical Linear Interpolation to keep rotation matrices strictly orthonormal).
 
 The complete operational loop spanning intent reasoning, action chunk synthesis, and deterministic safety arbitration is formalized in Algorithm 3.1.
 
@@ -415,7 +413,7 @@ Physical AI reconciles this fundamental tension by establishing the **Proposal�
 
 This principle organizes the machine into a **Two-Speed Brain Architecture** (@fig-two-speed-brain). At the top tier, high-capacity Vision-Language-Action foundation models perform slow deliberative cognition (System 2) at $1\text{--}5\text{ Hz}$, parsing open-world multimodal streams to interpret semantic commands and emit structured intent leases. At the intermediate tier, generative action chunking diffusion policies and trajectory transformers (System 1.5) operate at $20\text{--}50\text{ Hz}$, unrolling high-level intent into continuous candidate motion chunks. At the base reflex tier, hard real-time safety supervisors (System 1) execute deterministically at $1000\text{ Hz}$ on isolated safety silicon,[^fn-hw-safety-silicon] evaluating candidate proposals against physical kinematic invariants and dynamic stopping clearances ($d_{\text{stop}} \le D_{\text{clear}}$). If a proposal is safe, the supervisor grants execution permission ($u_t$); if it threatens collision or mechanical instability, the supervisor rejects the proposal ($\bot$) and executes a deterministic safe stop.
 
-Treating the learned brain as an unprivileged proposal generator guarantees that even when a model hallucinates, suffers out-of-distribution drift, or generates invalid trajectory setpoints, the physical machine remains protected by deterministic physical invariants.
+Treating the learned brain as an unprivileged proposal generator guarantees that even when a model hallucinates, suffers out-of-distribution drift, or generates invalid trajectory setpoints, the physical machine remains protected by deterministic physical invariants. When the System 1 supervisor rejects a candidate proposal or executes a safe holding reflex, the architecture engages a closed-loop **Operational Recovery Loop**: the real-time enforcer immediately asserts an asynchronous notification across the shared IPC mailbox, causing the System 2 deliberative model to flush its pending trajectory buffer, refresh its spatial belief map with the current stationary plant state, and re-prompt the policy with the specific refusal reason (e.g., clearance obstacle detected or kinematic boundary reached), preventing deadlock and continuous chattering.
 
 ![*The two-speed brain architecture and proposal--permission privilege boundary.* The systems architecture partitions into an untrusted deliberative cognitive realm (System 2 vision-language model intent proposer at $1\text{--}5\text{ Hz}$ and System 1.5 generative trajectory planner at $20\text{--}50\text{ Hz}$) and a trusted hard real-time safety realm (System 1 deterministic barrier enforcer at $1000\text{ Hz}$). All unprivileged candidate proposals ($p_t$, dashed path) must cross the non-negotiable proposal--permission privilege boundary, where deterministic safety monitors validate dynamic stopping clearances and state constraints before granting permission ($u_t$, solid path) to energize physical actuators, falling back to deterministic emergency-stop refusals ($\bot$) upon any contract violation.](figures/fig03_two_speed_brain.svg){#fig-two-speed-brain fig-pos="t" width=90%}
 <!-- END -->
@@ -525,11 +523,11 @@ These cognitive stages define how an embodied agent perceives, remembers, reason
 
 [^fn-math-lipschitz-calibration]: **Non-Lipschitz Neural Mappings.** Deep ReLU/GELU networks exhibit global Lipschitz constants $L$ that scale exponentially with depth ($\prod \|W_l\|$). Infinitesimal sensor perturbations can induce massive trajectory jumps without pointwise safety guarantees.
 
-[^fn-std-ece-ul4600]: **Expected Calibration Error & Safety Standards.** Expected Calibration Error measures the gap between confidence and empirical accuracy. Under ANSI/UL 4600 §8.4 and ISO 26262, uncalibrated neural confidence ($\text{ECE} > 0.05$) cannot qualify as an ASIL safety gate.
+[^fn-std-ece-ul4600]: Under ANSI/UL 4600 §8.4, uncalibrated neural confidence ($\text{ECE} > 0.05$) cannot serve as an ASIL safety gate.
 
-[^fn-inc-uber-tempe]: **The 2018 Uber ATG Tempe Collision.** The NTSB report [@ntsb2019uber] revealed the perception system toggled object classifications between vehicle, bicycle, and unknown, repeatedly resetting tracking histories until emergency braking triggered 1.2 s prior to impact.
+[^fn-inc-uber-tempe]: NTSB report [@ntsb2019uber]: semantic classification toggling repeatedly reset tracking histories before impact.
 
-[^fn-inc-tesla-williston]: **The 2016 Williston Tesla Collision.** The NTSB investigation [@ntsb2017tesla] established that the monocular vision system failed to distinguish the white side of a crossing tractor-semitrailer against a bright sky, resulting in zero braking prior to impact.
+[^fn-inc-tesla-williston]: NTSB report [@ntsb2017tesla]: monocular vision failed on trailer glare against a bright sky.
 
-[^fn-hw-safety-silicon]: **Hardware Trip Zones.** When invariants fail ($d_{\text{stop}} > D_{\text{clear}}$), hardware trip zones force PWMs to Hi-Z within $<100\text{ ns}$ (Safe Torque Off).
+[^fn-hw-safety-silicon]: Invariant violations force PWMs to Hi-Z in $<100\text{ ns}$ (Safe Torque Off).
 
